@@ -61,44 +61,44 @@ export async function savePrograma(patch) {
 }
 
 // ============================ CLIENTES ============================
-export async function crearCliente(serial) {
+export async function crearCliente(serial, nombre = null) {
   if (hasSupabase()) {
-    const { error } = await supa().from("clientes").insert({ serial, sellos: 0, premios: 0 });
+    const { error } = await supa()
+      .from("clientes").insert({ serial, sellos: 0, premios: 0, nombre });
     if (error) throw new Error(`Supabase insert cliente: ${error.message}`);
     return;
   }
   const all = await readJson(F.clientes, {});
-  all[serial] = { serial, sellos: 0, premios: 0, creado: new Date().toISOString() };
+  all[serial] = { serial, sellos: 0, premios: 0, nombre, creado: new Date().toISOString() };
   await writeJson(F.clientes, all);
 }
 
 export async function getCliente(serial) {
   if (hasSupabase()) {
     const { data } = await supa()
-      .from("clientes").select("serial, sellos, premios").eq("serial", serial).single();
-    return data || null;
+      .from("clientes").select("serial, sellos, premios, nombre").eq("serial", serial).single();
+    return data ? { ...data, nombre: data.nombre ?? null } : null;
   }
   const all = await readJson(F.clientes, {});
   const c = all[serial];
-  return c ? { serial: c.serial, sellos: c.sellos, premios: c.premios || 0 } : null;
+  return c
+    ? { serial: c.serial, sellos: c.sellos, premios: c.premios || 0, nombre: c.nombre ?? null }
+    : null;
 }
 
 export async function saveCliente(cliente) {
+  // Solo se persisten los campos que trae el patch (nombre es opcional).
+  const patch = { sellos: cliente.sellos, premios: cliente.premios || 0 };
+  if (cliente.nombre !== undefined) patch.nombre = cliente.nombre ?? null;
+
   if (hasSupabase()) {
-    const { error } = await supa()
-      .from("clientes")
-      .update({ sellos: cliente.sellos, premios: cliente.premios || 0 })
-      .eq("serial", cliente.serial);
+    const { error } = await supa().from("clientes").update(patch).eq("serial", cliente.serial);
     if (error) throw new Error(`Supabase update cliente: ${error.message}`);
     return;
   }
   const all = await readJson(F.clientes, {});
   if (all[cliente.serial]) {
-    all[cliente.serial] = {
-      ...all[cliente.serial],
-      sellos: cliente.sellos,
-      premios: cliente.premios || 0,
-    };
+    all[cliente.serial] = { ...all[cliente.serial], ...patch };
     await writeJson(F.clientes, all);
   }
 }
@@ -106,7 +106,7 @@ export async function saveCliente(cliente) {
 export async function listClientes() {
   if (hasSupabase()) {
     const { data } = await supa()
-      .from("clientes").select("serial, sellos, premios, creado")
+      .from("clientes").select("serial, sellos, premios, nombre, creado")
       .order("creado", { ascending: false });
     return data || [];
   }

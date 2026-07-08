@@ -63,13 +63,19 @@ Cada dependencia se detecta por separado y hace *fallback* a demo:
 
 El resto del código (rutas, UI, lógica de acciones) es idéntico en ambos modos.
 
-## <a name="seguridad"></a>Seguridad (para producción, fuera del scope de la demo)
+## <a name="seguridad"></a>Seguridad
 
-- **`/w/<serial>` es público** ahora mismo: cualquiera que escanee el QR ve el
-  perfil y puede actuar. En producción hay que poner **login del trabajador**
-  delante (session/cookie) y/o firmar el enlace del QR.
-- **Anti-fraude del QR**: el QR es visible; alguien podría enseñar una captura.
-  Mitigación: rotar el `barcodeValue` por push, o validar contra backend con un
-  token de un solo uso.
+- **Login de caja/manager (implementado).** [`src/middleware.js`](../src/middleware.js)
+  exige una sesión firmada (HMAC, [`src/lib/auth.js`](../src/lib/auth.js)) para
+  entrar a `/w/*`, `/worker`, `/manager` y las APIs sensibles. Dos roles por PIN:
+  `worker` (solo caja) y `manager` (todo). Público a propósito: `/api/tap` (el
+  cliente emite su pase sin login) y `/p/<serial>` (vista de su propio pase).
+  Config: `AUTH_SECRET`, `WORKER_PIN`, `MANAGER_PIN`.
+- **Anti-fraude del QR (pendiente).** El QR es visible; alguien podría enseñar
+  una captura. Con el login ya no puede *actuar* sin sesión de caja, pero para
+  cerrar el hueco del todo: rotar el `barcodeValue` por push o validar contra
+  backend con un token de un solo uso.
 - **Service key de Supabase**: solo en el backend, nunca en el cliente
   (por eso el store se instancia en route handlers).
+- **`AUTH_SECRET`**: en producción, cadena larga y aleatoria. Sin ella se usa un
+  secreto de demo (los tokens serían falsificables).

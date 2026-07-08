@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 // Dibujo del pase estilo Wallet (solo lectura) + su QR de identidad.
 // El QR codifica /w/<serial>: al escanearlo, la tienda abre el perfil del cliente.
-export default function PassCard({ serial, sellos, premios, meta, titulo, premio, promo }) {
+export default function PassCard({ serial, nombre, sellos, premios, meta, titulo, premio, promo, googleSaveUrl }) {
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
 
@@ -24,6 +24,8 @@ export default function PassCard({ serial, sellos, premios, meta, titulo, premio
           <span style={{ fontWeight: 500 }}>☕ {titulo}</span>
           <span style={{ fontSize: 13, opacity: 0.6 }}>{mostrados}/{meta}</span>
         </div>
+
+        {nombre && <div style={{ marginTop: 10, fontSize: 15, opacity: 0.9 }}>👤 {nombre}</div>}
 
         <div style={cap}>Sellos</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -50,6 +52,12 @@ export default function PassCard({ serial, sellos, premios, meta, titulo, premio
         </div>
       </div>
 
+      {googleSaveUrl && (
+        <a href={googleSaveUrl} style={googleBtn}>
+          🤖 Guardar en Google Wallet
+        </a>
+      )}
+
       <p style={{ opacity: 0.5, fontSize: 13, marginTop: 14 }}>
         Este QR es lo que escanea la tienda. En real vive dentro de tu Wallet.
       </p>
@@ -71,6 +79,17 @@ const cardStyle = {
   textAlign: "left",
 };
 const cap = { fontSize: 12, opacity: 0.55, textTransform: "uppercase", letterSpacing: 1, margin: "18px 0 8px" };
+const googleBtn = {
+  display: "inline-block",
+  marginTop: 16,
+  padding: "0.7rem 1.2rem",
+  borderRadius: 999,
+  background: "#fff",
+  color: "#000",
+  fontWeight: 500,
+  fontSize: 14,
+  textDecoration: "none",
+};
 const dot = (on) => ({
   width: 26,
   height: 26,

@@ -1,7 +1,33 @@
 # API
 
 Base: la URL de la app. Todas las rutas corren en Node (`runtime = "nodejs"`) y
-son dinámicas. En modo demo no requieren credenciales.
+son dinámicas. En modo demo no requieren credenciales de WalletWallet/Supabase,
+**pero sí requieren sesión** (login de caja/manager) salvo las marcadas `público`.
+
+## Autenticación
+
+El acceso se controla en [`src/middleware.js`](../src/middleware.js) verificando
+una cookie de sesión firmada (HMAC, ver [`src/lib/auth.js`](../src/lib/auth.js)).
+
+| Ruta | Acceso |
+|------|--------|
+| `/`, `/login`, `/api/login`, `/api/logout` | público |
+| `GET /api/tap`, `/p/<serial>` | público (emisión y vista del pase del cliente) |
+| `/worker`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `/api/clientes` | **worker** o manager |
+| `/manager`, `/api/programa`, `/api/promo`, `/api/crear` | **manager** |
+
+### `POST /api/login`
+```json
+// request           // response ok (+ cookie httpOnly "sesion")
+{ "pin": "1234" }    { "ok": true, "role": "worker" }
+```
+`401` si el PIN no coincide con `WORKER_PIN` ni `MANAGER_PIN`. El rol lo decide
+el PIN. Sin `next`, el cliente redirige a `/worker` o `/manager` según el rol.
+
+### `POST /api/logout`
+Borra la cookie de sesión. `{ "ok": true }`.
+
+Peticiones sin sesión válida: página → `307` a `/login?next=…` · API → `401`.
 
 ## Emitir
 
@@ -10,9 +36,10 @@ El "tap NFC". Crea un pase y **redirige (302)** a su `shareUrl`. Es la URL que s
 carga en el tag NFC / QR del mostrador.
 
 ### `POST /api/crear`
-Crea un pase y devuelve JSON (lo usa el botón del manager).
+Crea un pase y devuelve JSON (lo usa el botón del manager). `googleSaveUrl` es
+el enlace "Guardar en Google Wallet" (Android), o `null` si no hay credenciales.
 ```json
-{ "serial": "uuid", "shareUrl": "https://…/p/uuid", "demo": true }
+{ "serial": "uuid", "shareUrl": "https://…/p/uuid", "googleSaveUrl": null, "demo": true }
 ```
 
 ## Trabajador
@@ -21,13 +48,21 @@ Crea un pase y devuelve JSON (lo usa el botón del manager).
 Perfil completo para la vista del trabajador.
 ```json
 {
-  "cliente":  { "serial": "…", "sellos": 5, "premios": 0 },
+  "cliente":  { "serial": "…", "sellos": 5, "premios": 0, "nombre": "Marta" },
   "programa": { "titulo": "…", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null },
   "eventos":  [ { "tipo": "sellar", "mensaje": "Sello 5/8", "ts": "…" } ],
   "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "➕", "descripcion": "…" } ]
 }
 ```
 `404` si el cliente no existe.
+
+### `PUT /api/cliente/<serial>`
+Personaliza el pase: fija (o borra) el nombre del cliente y empuja el pase.
+```json
+// request                    // response ok
+{ "nombre": "Marta" }         { "ok": true, "cliente": { "serial": "…", "nombre": "Marta", … } }
+```
+`nombre` vacío/omitido lo borra. `404` si el cliente no existe.
 
 ### `POST /api/accion`
 Ejecuta una acción sobre un cliente.

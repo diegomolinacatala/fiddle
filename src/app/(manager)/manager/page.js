@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LISTA_ACCIONES } from "@/lib/acciones";
+import LogoutButton from "@/app/LogoutButton";
 
 const COLORES = ["dark", "blue", "green", "red", "purple", "orange"];
 
@@ -92,7 +93,10 @@ export default function Manager() {
   return (
     <main style={wrap}>
       <div style={{ width: "min(1000px, 96vw)" }}>
-        <h1 style={{ fontSize: "1.8rem", marginBottom: 2 }}>🖥️ Manager</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ fontSize: "1.8rem", marginBottom: 2 }}>🖥️ Manager</h1>
+          <LogoutButton />
+        </div>
         <p style={{ opacity: 0.55, marginTop: 0 }}>Define qué hace la tienda. Cambios sin reeditar ningún pase.</p>
 
         <div style={grid}>
@@ -168,7 +172,9 @@ export default function Manager() {
             <div style={{ maxHeight: 260, overflow: "auto" }}>
               {clientes.map((c) => (
                 <div key={c.serial} style={row}>
-                  <span style={{ fontFamily: "monospace", fontSize: 12, opacity: 0.6 }}>{c.serial.slice(0, 8)}…</span>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>
+                    {c.nombre || <span style={{ fontFamily: "monospace", opacity: 0.6 }}>{c.serial.slice(0, 8)}…</span>}
+                  </span>
                   <span style={{ fontSize: 13, opacity: 0.8 }}>{c.sellos} sellos · {c.premios || 0} 🎁</span>
                   <span style={{ display: "flex", gap: 8 }}>
                     <a href={`/p/${c.serial}`} style={link}>pase</a>

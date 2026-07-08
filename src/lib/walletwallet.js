@@ -24,7 +24,7 @@ export function appUrl() {
  * función es la única fuente de verdad del aspecto del pase. La usan emitir(),
  * /api/accion y /api/promo.
  *
- * @param {{serial: string|null, sellos: number, premios?: number}} cliente
+ * @param {{serial: string|null, sellos: number, premios?: number, nombre?: string|null}} cliente
  * @param {{titulo, color, meta, premio, promo}} prog
  */
 export function buildPassBody(cliente, prog) {
@@ -41,7 +41,13 @@ export function buildPassBody(cliente, prog) {
     description: "Tarjeta de fidelización",
     organizationName: prog.titulo,
     colorPreset: prog.color,
-    headerFields: [{ label: "Sellos", value: `${sellos}/${meta}` }],
+    // Personalización por cliente: si tiene nombre, encabeza el pase con él;
+    // si no, cae al contador de sellos (el detalle sigue en primaryFields).
+    headerFields: [
+      cliente.nombre
+        ? { label: "Cliente", value: cliente.nombre }
+        : { label: "Sellos", value: `${sellos}/${meta}` },
+    ],
     primaryFields: [
       { label: "Sellos", value: `${sellos} / ${meta}`, changeMessage: "Ya tienes %@ sellos" },
     ],

@@ -1,6 +1,8 @@
 import { getCliente, getPrograma, listEventos } from "@/lib/store";
 import { LISTA_ACCIONES } from "@/lib/acciones";
 import WorkerActions from "./WorkerActions";
+import SetNombre from "./SetNombre";
+import LogoutButton from "@/app/LogoutButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +34,13 @@ export default async function Page({ params }) {
   return (
     <main style={wrap}>
       <div style={{ width: "min(430px, 94vw)" }}>
-        <div style={{ fontSize: 13, opacity: 0.5 }}>Perfil de cliente · {prog.titulo}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 13, opacity: 0.5 }}>Perfil de cliente · {prog.titulo}</div>
+          <LogoutButton />
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 500, marginTop: 4 }}>
+          {cliente.nombre || "Cliente sin nombre"}
+        </div>
         <div style={{ fontSize: 12, opacity: 0.35, fontFamily: "monospace", marginBottom: 14 }}>
           {serial}
         </div>
@@ -68,6 +76,9 @@ export default async function Page({ params }) {
 
         {/* Botones de acción (los que el manager activó) */}
         <WorkerActions serial={serial} acciones={acciones} />
+
+        {/* Personalización: nombre del cliente en el pase */}
+        <SetNombre serial={serial} nombre={cliente.nombre} />
 
         {/* Historial */}
         {eventos.length > 0 && (

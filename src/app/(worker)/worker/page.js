@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import QrScanner from "./QrScanner";
+import LogoutButton from "@/app/LogoutButton";
 
 // Home de la app de CAJA (móvil). Escanea el pase o abre un cliente a mano.
 export default function Worker() {
@@ -25,7 +26,10 @@ export default function Worker() {
   return (
     <main style={wrap}>
       <div style={{ width: "min(430px, 94vw)" }}>
-        <h1 style={{ fontSize: "1.5rem", marginBottom: 2 }}>📱 Caja</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ fontSize: "1.5rem", marginBottom: 2 }}>📱 Caja</h1>
+          <LogoutButton />
+        </div>
         <p style={{ opacity: 0.6, fontSize: 14, marginTop: 0 }}>
           Escanea el QR del pase del cliente para abrir su perfil.
         </p>

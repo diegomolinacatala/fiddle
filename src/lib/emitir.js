@@ -1,5 +1,6 @@
 import { crearCliente, getPrograma } from "./store";
 import { createPass, updatePass, buildPassBody, isDemoWallet } from "./walletwallet";
+import { googleSaveUrl } from "./googlewallet";
 
 // Emite un pase nuevo (el "tap NFC" de la tienda).
 // El serial lo genera WalletWallet, así que: POST (placeholder) -> guardar ->
@@ -11,7 +12,13 @@ export async function emitirPase() {
   const serial = created.serialNumber;
 
   await crearCliente(serial);
-  await updatePass(serial, buildPassBody({ serial, sellos: 0, premios: 0 }, prog));
+  const cliente = { serial, sellos: 0, premios: 0 };
+  await updatePass(serial, buildPassBody(cliente, prog));
 
-  return { serial, shareUrl: created.shareUrl, demo: isDemoWallet() };
+  return {
+    serial,
+    shareUrl: created.shareUrl, // Apple (WalletWallet)
+    googleSaveUrl: googleSaveUrl(cliente, prog), // Android (null en demo)
+    demo: isDemoWallet(),
+  };
 }

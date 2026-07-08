@@ -1,4 +1,5 @@
 import { getCliente, getPrograma } from "@/lib/store";
+import { googleSaveUrl } from "@/lib/googlewallet";
 import PassCard from "./PassCard";
 
 export const runtime = "nodejs";
@@ -27,12 +28,14 @@ export default async function Page({ params }) {
     <main style={wrap}>
       <PassCard
         serial={serial}
+        nombre={cliente.nombre}
         sellos={cliente.sellos}
         premios={cliente.premios}
         meta={prog.meta}
         titulo={prog.titulo}
         premio={prog.premio}
         promo={prog.promo}
+        googleSaveUrl={googleSaveUrl(cliente, prog)}
       />
     </main>
   );

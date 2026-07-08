@@ -18,8 +18,11 @@ create table if not exists clientes (
   serial  text primary key,          -- lo genera WalletWallet
   sellos  int  not null default 0,
   premios int  not null default 0,
+  nombre  text,                       -- personalización opcional (cara del pase)
   creado  timestamptz not null default now()
 );
+-- Si la tabla ya existía sin la columna, añádela:
+alter table clientes add column if not exists nombre text;
 
 -- Historial de acciones (auditoría / actividad reciente en el perfil).
 create table if not exists eventos (

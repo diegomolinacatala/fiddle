@@ -23,6 +23,7 @@ sirve para los dos backends: **Supabase** (real) o **ficheros JSON en `.data/`**
 | `serial` | text (PK) | lo genera WalletWallet |
 | `sellos` | int | contador actual |
 | `premios` | int | premios canjeados |
+| `nombre` | text\|null | personalización opcional (aparece en la cara del pase) |
 | `creado` | timestamptz | |
 
 ### `eventos` (historial / actividad)
@@ -39,9 +40,9 @@ sirve para los dos backends: **Supabase** (real) o **ficheros JSON en `.data/`**
 ```
 Programa:  getPrograma()                       -> {…}
            savePrograma(patch)                 -> {…}          (merge + persist)
-Clientes:  crearCliente(serial)
-           getCliente(serial)                  -> {serial,sellos,premios}|null
-           saveCliente({serial,sellos,premios})
+Clientes:  crearCliente(serial, nombre=null)
+           getCliente(serial)                  -> {serial,sellos,premios,nombre}|null
+           saveCliente({serial,sellos,premios,nombre?})   (nombre opcional en el patch)
            listClientes()                      -> [ … ]
 Eventos:   addEvento(serial, tipo, mensaje)
            listEventos(serial, limit=8)        -> [ … ] (recientes primero)
