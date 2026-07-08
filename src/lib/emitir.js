@@ -1,17 +1,25 @@
-import { crearCliente, getPrograma } from "./store";
-import { createPass, updatePass, buildPassBody, isDemoWallet } from "./walletwallet";
+import { crearCliente, getNegocio } from "./store";
+import { createPass, buildPassBody, isDemoWallet, nuevoSerial, appUrl } from "./walletwallet";
 
-// Emite un pase nuevo (el "tap NFC" de la tienda).
-// El serial lo genera WalletWallet, así que: POST (placeholder) -> guardar ->
-// PUT con el barcode real que apunta a /w/<serial>.
-export async function emitirPase() {
-  const prog = await getPrograma();
+// Emite un pase nuevo para un negocio (el "tap NFC").
+// Usamos NUESTRO serial como identidad, así el barcode ya va correcto en el POST
+// y el .pkpass devuelto es instalable directamente (menos fricción).
+export async function emitirPase(slug) {
+  const negocio = await getNegocio(slug);
+  if (!negocio) throw new Error(`Negocio desconocido: ${slug}`);
 
-  const created = await createPass(buildPassBody({ serial: null, sellos: 0, premios: 0 }, prog));
-  const serial = created.serialNumber;
+  const serial = nuevoSerial();
+  const cliente = { serial, negocio: slug, sellos: 0, premios: 0 };
+  const created = await createPass(buildPassBody(cliente, negocio));
 
-  await crearCliente(serial);
-  await updatePass(serial, buildPassBody({ serial, sellos: 0, premios: 0 }, prog));
+  await crearCliente(serial, slug, created.wwSerial);
 
-  return { serial, shareUrl: created.shareUrl, demo: isDemoWallet() };
+  return {
+    serial,
+    negocio: slug,
+    wwSerial: created.wwSerial,
+    shareUrl: created.shareUrl || `${appUrl()}/p/${serial}`, // demo: vista previa propia
+    applePass: created.applePass, // base64 .pkpass (real) o null (demo)
+    demo: isDemoWallet(),
+  };
 }

@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Café Demo — Fidelización",
-  description: "Tarjeta de sellos en Wallet, sin fricción",
+  title: "Sellos",
+  description: "Tarjetas de fidelización en Wallet — multi-negocio",
 };
 
 export default function RootLayout({ children }) {

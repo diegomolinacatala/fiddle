@@ -1,32 +1,32 @@
 import { NextResponse } from "next/server";
-import { savePrograma, listClientes } from "@/lib/store";
+import { saveNegocio, listClientes } from "@/lib/store";
 import { updatePass, buildPassBody } from "@/lib/walletwallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Lanza (o quita) una promo a TODAS las tarjetas a la vez.
-// POST /api/promo  body: { "texto": "Hoy 2x1 en lattes" }   (texto vacío/null la quita)
+// Lanza (o quita) una promo a TODOS los pases de un negocio.
+// POST /api/promo  body: { b: "<slug>", texto: "..." }   (texto vacío la quita)
 export async function POST(request) {
   try {
-    const { texto } = await request.json().catch(() => ({}));
+    const { b, texto } = await request.json().catch(() => ({}));
+    if (!b) return NextResponse.json({ error: "Falta b (negocio)" }, { status: 400 });
 
-    // La promo es a nivel de programa: se guarda y se propaga a todos los pases.
-    const prog = await savePrograma({ promo: texto || null });
-    const clientes = await listClientes();
+    const negocio = await saveNegocio(b, { promo: texto || null });
+    if (!negocio) return NextResponse.json({ error: "negocio desconocido" }, { status: 404 });
 
+    const clientes = await listClientes(b);
     let enviadas = 0;
     const fallidas = [];
     for (const c of clientes) {
       try {
-        await updatePass(c.serial, buildPassBody(c, prog));
+        await updatePass(c.ww_serial, buildPassBody({ serial: c.serial, sellos: c.sellos, premios: c.premios }, negocio));
         enviadas++;
       } catch (e) {
         fallidas.push({ serial: c.serial, error: String(e?.message || e) });
       }
     }
-
-    return NextResponse.json({ promo: prog.promo, total: clientes.length, enviadas, fallidas });
+    return NextResponse.json({ promo: negocio.promo, total: clientes.length, enviadas, fallidas });
   } catch (e) {
     return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
   }
