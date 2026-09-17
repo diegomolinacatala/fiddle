@@ -75,13 +75,14 @@ Cada dependencia se detecta por separado:
 
 ## <a name="seguridad"></a>Seguridad
 
-- **Login por negocio.** PIN de caja y de manager por negocio (`PIN_<SLUG>_<ROL>`).
+- **Login por negocio.** Usuario (`nube` manager · `nube-caja`) y contraseña (`CLAVE_<SLUG>_<ROL>`).
   Sesión HMAC `negocio.rol.exp.firma`: una sesión de Nube no vale en Fade. El
   middleware aplica las reglas de [`acceso.js`](../src/lib/acceso.js); los handlers
   comprueban el negocio del recurso (cliente, `?b=`, body). Por defecto, cualquier
   `/api` nueva exige sesión.
 - **Fallo cerrado en producción.** Sin `AUTH_SECRET` no se firman ni aceptan sesiones;
-  sin PIN configurado, ese rol no entra. Los valores de demo solo existen en desarrollo.
+  sin contraseña configurada, ese usuario no entra. Los accesos de prueba (contraseña =
+  usuario, visibles en el login) solo existen fuera de producción o con `USUARIOS_DEMO=1`.
 - **Límites de uso** (persistidos en `intentos`): login 10 fallos por IP+negocio y 100
   por negocio en 15 min; `/api/tap` 30 pases por IP en 10 min (firmar cuesta CPU);
   log de Apple 60 por IP en 10 min.

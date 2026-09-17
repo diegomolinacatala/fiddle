@@ -89,10 +89,14 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
   const esCupon = negocio.tipo === "descuento";
   const campos = esCupon ? camposCupon(cliente, negocio) : camposSellos(cliente, negocio);
 
-  const auxiliares = cliente.nombre ? [{ key: "cliente", label: "CLIENTE", value: cliente.nombre }] : [];
+  // La promo va en la CARA del pase: iOS solo avisa en la pantalla de bloqueo
+  // cuando cambia un campo visible. Un campo del reverso se actualiza en silencio.
+  const auxiliares = [
+    ...(negocio.promo ? [{ key: "promo", label: "PROMO", value: negocio.promo, changeMessage: "%@" }] : []),
+    ...(cliente.nombre ? [{ key: "cliente", label: "CLIENTE", value: cliente.nombre }] : []),
+  ];
 
   const reverso = [
-    ...(negocio.promo ? [{ key: "promo", label: "Promoción", value: negocio.promo, changeMessage: "%@" }] : []),
     { key: "como", label: "Cómo funciona", value: t.atras },
     { key: "codigo", label: "Tu código", value: cliente.serial },
   ];

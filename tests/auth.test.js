@@ -1,35 +1,60 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
-  firmarSesion, verificarSesion, rolParaPin, puedeAcceder, pinDe, varPin, secretoSesion, igualSeguro, TTL_SEGUNDOS,
+  firmarSesion, verificarSesion, puedeAcceder, claveDe, varClave, varPin, usuarioDe, usuariosDemo,
+  resolverUsuario, verificarAcceso, secretoSesion, igualSeguro, TTL_SEGUNDOS,
 } from "@/lib/auth";
 
 afterEach(() => vi.unstubAllEnvs());
 
-describe("PINs por negocio", () => {
-  it("usa PINs de demo fuera de producción", () => {
-    expect(rolParaPin("nube", "1234")).toBe("caja");
-    expect(rolParaPin("nube", "4321")).toBe("manager");
-    expect(rolParaPin("nube", "0000")).toBeNull();
-    expect(rolParaPin("nube", "")).toBeNull();
+describe("usuarios", () => {
+  it("el usuario dice negocio y rol", () => {
+    expect(resolverUsuario("nube")).toEqual({ negocio: "nube", rol: "manager" });
+    expect(resolverUsuario("NUBE ")).toEqual({ negocio: "nube", rol: "manager" });
+    expect(resolverUsuario("nube-caja")).toEqual({ negocio: "nube", rol: "caja" });
+    expect(resolverUsuario("fade-manager")).toEqual({ negocio: "fade", rol: "manager" });
+    expect(resolverUsuario("nube caja")).toBeNull();
+    expect(resolverUsuario("")).toBeNull();
+    expect(usuarioDe("nube", "caja")).toBe("nube-caja");
+    expect(usuarioDe("nube", "manager")).toBe("nube");
+  });
+});
+
+describe("contraseñas", () => {
+  it("en pruebas la contraseña puede ser igual que el usuario", () => {
+    expect(usuariosDemo()).toBe(true);
+    expect(verificarAcceso("nube", "nube")).toEqual({ negocio: "nube", rol: "manager" });
+    expect(verificarAcceso("nube-caja", "nube-caja")).toEqual({ negocio: "nube", rol: "caja" });
+    expect(verificarAcceso("nube", "otra")).toBeNull();
+    expect(verificarAcceso("nube", "")).toBeNull();
   });
 
-  it("lee PIN_<SLUG>_<ROL> del entorno", () => {
-    vi.stubEnv("PIN_NUBE_CAJA", "778899");
-    expect(rolParaPin("nube", "778899")).toBe("caja");
-    expect(rolParaPin("nube", "1234")).toBeNull();
-    expect(varPin("fade-room", "manager")).toBe("PIN_FADE_ROOM_MANAGER");
-  });
-
-  it("en producción sin PIN configurado nadie entra", () => {
+  it("lee CLAVE_<SLUG>_<ROL> y también el nombre antiguo PIN_", () => {
     vi.stubEnv("NODE_ENV", "production");
-    expect(pinDe("nube", "caja")).toBeNull();
-    expect(rolParaPin("nube", "1234")).toBeNull();
+    vi.stubEnv("CLAVE_NUBE_CAJA", "s3creta");
+    vi.stubEnv("PIN_FADE_MANAGER", "778899");
+    expect(varClave("fade-room", "manager")).toBe("CLAVE_FADE_ROOM_MANAGER");
+    expect(varPin("fade-room", "manager")).toBe("PIN_FADE_ROOM_MANAGER");
+    expect(claveDe("nube", "caja")).toBe("s3creta");
+    expect(verificarAcceso("nube-caja", "s3creta")).toEqual({ negocio: "nube", rol: "caja" });
+    expect(verificarAcceso("fade", "778899")).toEqual({ negocio: "fade", rol: "manager" });
   });
 
-  it("si caja y manager comparten PIN gana manager", () => {
-    vi.stubEnv("PIN_FADE_CAJA", "5555");
-    vi.stubEnv("PIN_FADE_MANAGER", "5555");
-    expect(rolParaPin("fade", "5555")).toBe("manager");
+  it("en producción no valen los accesos de prueba salvo con USUARIOS_DEMO=1", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(usuariosDemo()).toBe(false);
+    expect(claveDe("nube", "caja")).toBeNull();
+    expect(verificarAcceso("nube", "nube")).toBeNull();
+
+    vi.stubEnv("USUARIOS_DEMO", "1");
+    expect(usuariosDemo()).toBe(true);
+    expect(verificarAcceso("nube", "nube")).toEqual({ negocio: "nube", rol: "manager" });
+  });
+
+  it("la contraseña de un rol no sirve para el otro", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("CLAVE_FADE_CAJA", "abc123");
+    expect(verificarAcceso("fade-caja", "abc123")).toEqual({ negocio: "fade", rol: "caja" });
+    expect(verificarAcceso("fade", "abc123")).toBeNull();
   });
 });
 

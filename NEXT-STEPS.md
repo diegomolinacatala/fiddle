@@ -17,13 +17,13 @@ npm run dev        # http://localhost:3000
 npm test           # 103 tests
 ```
 - `/` → directorio de negocios (Nube Café, Fade Room, Forno Nostro).
-- `/nube/caja` → PIN **1234** · `/nube/manager` → PIN **4321** (solo fuera de producción).
+- Login único en `/login`: usuario **nube** (manager) o **nube-caja**, contraseña igual que el usuario (solo con `USUARIOS_DEMO=1` o fuera de producción; el login los lista abajo).
 - Sin variables = **modo demo**: datos en `.data/`, sin pases reales.
 
 ## 1. Decidir la rama con Víctor — [ ]
 `fiddle-zeta.vercel.app` está desplegado desde `victor-temp`, **sin login**: cualquiera
 con la URL puede sellar o lanzar promos. Esta rama lo arregla. Revisadla (está solo en local hasta hacer push) y
-fusionad a `main`. Al desplegarla, configurad antes los PINs y `AUTH_SECRET` (paso 4):
+fusionad a `main`. Al desplegarla, configurad antes las contraseñas y `AUTH_SECRET` (paso 4):
 en producción, sin ellos **nadie puede entrar** (falla cerrado a propósito).
 
 ## 2. Supabase — [ ]
@@ -46,7 +46,7 @@ Ver [`.env.example`](.env.example). Imprescindibles en producción:
 |----------|--|
 | `APP_URL` | URL HTTPS **definitiva** (va dentro de cada pase) |
 | `AUTH_SECRET` | `npm run secretos` lo genera en `certs/secretos.env` |
-| `PIN_NUBE_CAJA`, `PIN_NUBE_MANAGER`, … (uno por negocio y rol) | también en `certs/secretos.env` (6 cifras) |
+| `CLAVE_NUBE_MANAGER`, `CLAVE_NUBE_CAJA`, … (una por negocio y rol) | también en `certs/secretos.env` · `PIN_*` sigue valiendo |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | paso 2 |
 | `APPLE_*` (5) | paso 3 |
 
@@ -66,7 +66,7 @@ Redeploy. En `/<negocio>/manager` → **Estado de la integración** debe salir t
 
 ## ✅ Qué YA funciona
 - **Tres negocios** con su tarjeta, caja, manager, tag NFC e icono (`src/lib/negocios.js`).
-- **Login por negocio**: PIN de caja y de manager por negocio, sesión firmada (HMAC),
+- **Login por negocio**: usuario y contraseña de caja y de manager, sesión firmada (HMAC),
   aislamiento entre negocios, **límite de intentos** (10 fallos/IP/15 min) y fallo
   cerrado en producción sin secretos.
 - **Apple Wallet propio**: `.pkpass` firmado con colores del negocio, icono, logo y
