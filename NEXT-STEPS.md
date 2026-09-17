@@ -3,7 +3,7 @@
 **Estado (17-sep-2026):** rama `feat/apple-wallet`. Las dos ramas (`main` con el login
 y `victor-temp` con los tres negocios) están unidas, y la app **firma y actualiza los
 pases de Apple Wallet por sí misma** con la cuenta de Apple Developer. Todo probado en
-local: 91 tests, build limpio, flujo completo del web service de Apple verificado con
+local: 103 tests, build limpio, flujo completo del web service de Apple verificado con
 certificados de prueba. **Falta lo que requiere tus cuentas** (Apple, Supabase, Vercel)
 y probar en un iPhone real.
 
@@ -14,7 +14,7 @@ y probar en un iPhone real.
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 91 tests
+npm test           # 103 tests
 ```
 - `/` → directorio de negocios (Nube Café, Fade Room, Forno Nostro).
 - `/nube/caja` → PIN **1234** · `/nube/manager` → PIN **4321** (solo fuera de producción).
@@ -34,7 +34,7 @@ en producción, sin ellos **nadie puede entrar** (falla cerrado a propósito).
 
 ## 3. Apple Wallet (cuenta Apple Developer) — [ ]
 Guía completa: **[docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)**. Resumen:
-1. `npm run apple:csr -- --email tu@correo` → clave + CSR en `certs/`.
+1. **Ya hecho:** `certs/pass.key.pem` (clave privada, haz copia segura) y `certs/pass.certSigningRequest` (CSR). Si trabajas en otro ordenador: `npm run apple:csr`.
 2. developer.apple.com → Identifiers → **Pass Type ID** `pass.com.TUDOMINIO.sellos`
    → **Create Certificate** → sube el CSR → descarga → `certs/pass.cer`.
 3. `npm run apple:env` → `certs/apple.env` con las variables `APPLE_*`.
@@ -79,7 +79,7 @@ Redeploy. En `/<negocio>/manager` → **Estado de la integración** debe salir t
 - Página del pase `/p/<serial>` con botón *Añadir a Apple Wallet* (y Google si hay credenciales).
 - QR generado en local (antes se mandaba el serial a `api.qrserver.com`).
 - Plan B WalletWallet y esqueleto de Google Wallet conservados.
-- Script para certificados desde Windows, 91 tests (86 % de cobertura en `src/lib`).
+- Script para certificados desde Windows, 103 tests (93 % de cobertura en `src/lib`).
 
 ## ⚠️ Pendiente / límites
 - **Probar en un iPhone real** con el certificado de verdad (pasos 3–5).
