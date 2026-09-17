@@ -1,98 +1,85 @@
-# Sellos — fidelización en Wallet (pass = QR, backend = cerebro)
+# Sellos — fidelización en Apple Wallet (multi-negocio)
 
-> 🌅 **¿Retomas el proyecto? Abre [NEXT-STEPS.md](NEXT-STEPS.md)** — checklist paso a paso.
+> 🌅 ¿Retomas el proyecto? Abre **[NEXT-STEPS.md](NEXT-STEPS.md)**.
 
-Plataforma de tarjetas de fidelización donde **el pase del cliente es solo un QR
-con su identidad**. Toda la lógica —qué significa un escaneo, cuántos sellos, qué
-premio, qué promo— vive en el backend y se cambia sin reeditar ningún pase.
+Plataforma donde **el pase del cliente es solo un QR con su identidad**. Toda la lógica
+vive en el backend. Cada negocio tiene su tarjeta (diseño propio), su **caja** (app
+instalable que escanea), su **manager** y su **tag NFC**.
 
-**Dos apps separadas** (instalables en el móvil como PWA):
+Con la cuenta de **Apple Developer** firmamos los pases y los **actualizamos solos**
+(web service de Apple + avisos APNs): cada sello llega al iPhone con notificación.
 
-- 📱 **Caja / trabajador** (`/worker`) — vive en la pantalla de inicio del móvil.
-  **Escanea el QR del pase con la cámara**, ve el perfil del cliente y ejecuta
-  acciones (sellar, canjear…).
-- 🖥️ **Manager** (`/manager`) — uso ocasional. Elige la funcionalidad (meta de
-  sellos, premio, qué acciones hay), lanza promos por push, emite pases.
+Stack: **Next.js 15 (App Router) + Supabase + Vercel**.
 
-Stack: **Next.js (App Router) + Supabase + Vercel**. Firma del pase y push
-delegados en [WalletWallet](https://www.walletwallet.dev) (sin cuenta de Apple
-Developer).
-
-> 📚 Docs: [Arranque](NEXT-STEPS.md) · [Deploy](docs/DEPLOY.md) ·
-> [Arquitectura](docs/ARCHITECTURE.md) · [Acciones (modularidad)](docs/ACTIONS.md) ·
+> 📚 [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
+> [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
 > [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
 
----
+## Negocios de ejemplo
 
-## La idea en una frase
+Añadir uno = una entrada en [`src/lib/negocios.js`](src/lib/negocios.js).
 
-El pase es una **tarjeta de identidad tonta**: su QR solo dice "este soy yo". La
-caja lo escanea, el backend decide qué hacer **ahora** con esa persona, y empuja
-el cambio al Wallet. Cambiar qué hace un escaneo = cambiar config en el manager.
-El pase y el QR nunca cambian.
+| Negocio | Tipo | URLs |
+|---------|------|------|
+| ☕ **Nube Café** (`nube`) | cartilla de sellos | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
+| 💈 **Fade Room** (`fade`) | sellos + niveles | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
+| 🍕 **Forno Nostro** (`forno`) | cupón de un uso | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
+
+## Cómo funciona
 
 ```
-Tag NFC del mostrador ──▶ /api/tap ──▶ pase nuevo en el móvil      (EMITIR)
+Tag NFC ─▶ /api/tap?b=<negocio> ─▶ iPhone: .pkpass firmado directo ─▶ "Añadir a Wallet"
+                                    Android/otros: /p/<serial>
 
-Pase del cliente (QR = /w/<serial>)
-   │ la caja lo escanea con la cámara (app /worker)
+Pase (QR = /w/<serial>)
+   │ la caja lo escanea (/<negocio>/caja, con PIN)
    ▼
-Perfil del cliente + botones ──▶ /api/accion ──▶ backend actualiza ──▶ push al pase
+Perfil + botones ─▶ /api/accion ─▶ guarda ─▶ aviso APNs ─▶ el iPhone baja el pase nuevo
 ```
 
----
+El pase **nunca cambia de identidad**: qué hace un escaneo lo decide el manager.
 
-## 🟢 Correr en local (sin cuentas)
+## Correr en local
 
 ```bash
 npm install
-npm run dev
+npm run dev     # http://localhost:3000   (PIN demo: caja 1234 · manager 4321)
+npm test
 ```
-- **/manager** — configura, emite un pase, lanza una promo.
-- **/worker** — app de caja: escáner QR + lista de clientes.
-- **/w/&lt;serial&gt;** — perfil del cliente con botones (lo abre el QR del pase).
-- **/p/&lt;serial&gt;** — el pase del cliente (su QR).
 
-Sin credenciales = **modo demo**: firma/push simulados, estado en `.data/`.
-
-## 🔵 Pases reales + deploy
-
-Todo en [NEXT-STEPS.md](NEXT-STEPS.md) y [docs/DEPLOY.md](docs/DEPLOY.md). Resumen:
-Supabase (`supabase/schema.sql`) + key WalletWallet + `.env.local` + Vercel + tag NFC.
-Con `APP_MODE=worker|manager` puedes desplegar las dos apps en **dominios separados
-desde este mismo repo**.
-
----
+Sin variables = **modo demo** (datos en `.data/`, sin pases reales). Para probar la
+firma de Apple sin iPhone: `npm run apple:prueba` (ver [docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)).
 
 ## Estructura
 
 ```
 src/app/
-├─ page.js                    Hub (redirige según APP_MODE)
-├─ (worker)/                  ── APP DE CAJA (PWA) ──
-│  ├─ layout.js               manifest + instalable
-│  ├─ worker/page.js          home: escáner QR + lista
-│  ├─ worker/QrScanner.js     cámara + jsQR
-│  └─ w/[serial]/             perfil del cliente + acciones
-├─ (manager)/                 ── APP DE MANAGER (PWA) ──
-│  ├─ layout.js
-│  └─ manager/page.js         config + promo + emitir + NFC
-├─ p/[serial]/                pase del cliente (solo lectura + su QR)
-└─ api/                       tap · crear · accion · programa · promo · clientes · cliente/[serial]
-
+├─ page.js                    directorio de negocios
+├─ login/                     PIN por negocio
+├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/ (+ estado de integración)
+├─ w/[serial]/                perfil del cliente + acciones + nombre (caja)
+├─ p/[serial]/                página pública del pase + "Añadir a Apple Wallet"
+└─ api/
+   ├─ tap · crear · pase/[serial]          emitir / descargar pase
+   ├─ accion · cliente/[serial] · clientes caja
+   ├─ negocio · promo · estado             manager
+   ├─ login · logout · manifest · negocios
+   └─ wallet/v1/...                        web service de Apple Wallet
 src/lib/
-├─ acciones.js                ★ registro MODULAR de acciones (añade funcionalidad aquí)
-├─ store.js                   Supabase real o ficheros locales (demo)
-├─ walletwallet.js            buildPassBody() + createPass()/updatePass() (real o demo)
-├─ emitir.js · config.js · appmode.js
-
-public/
-├─ manifest.worker.webmanifest · manifest.manager.webmanifest · sw.js · icons/
+├─ negocios.js   ★ presets de cada negocio
+├─ acciones.js   ★ registro modular de acciones
+├─ wallet.js       fachada: emitir + avisar (apple > walletwallet > demo)
+├─ apple/          pase.js · imagenes.js · firmar.js · servicio.js · apns.js · config.js
+├─ auth.js · acceso.js · limitador.js · http.js   login y permisos
+├─ store.js        Supabase o ficheros locales
+└─ walletwallet.js · googlewallet.js · validacion.js · url.js
+scripts/apple-setup.mjs   CSR + certificado de Apple -> variables (sin Mac)
+supabase/schema.sql       esquema idempotente
+tests/                    vitest
 ```
 
 ## Límites conocidos
-- Push no instantáneo garantizado (Apple entrega cuando hay conexión).
-- `/w/<serial>` es público: en producción necesita login de caja (ver ARCHITECTURE).
-- El escáner necesita HTTPS o localhost (contexto seguro para la cámara).
-- Sin email = sin recuperación si el cliente borra el pase.
-- "Confirmar pago" registra la transacción en NUESTRO sistema; no mueve dinero.
+- Apple entrega los avisos cuando el iPhone tiene conexión (normalmente segundos).
+- iOS no permite instalar un pase en silencio: el cliente toca "Añadir".
+- El escáner de la caja necesita HTTPS (o localhost) para la cámara.
+- El QR es estático: una captura se puede enseñar, pero no se puede actuar sin sesión de caja.

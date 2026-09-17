@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 
-// Cierra la sesión y vuelve a /login. Se usa en la caja y en el manager.
-export default function LogoutButton({ style }) {
+// Cierra la sesión y vuelve al login del mismo negocio.
+export default function LogoutButton({ negocio, style }) {
   const router = useRouter();
 
   async function salir() {
     await fetch("/api/logout", { method: "POST" }).catch(() => {});
-    router.push("/login");
+    router.push(negocio ? `/login?b=${encodeURIComponent(negocio)}` : "/login");
     router.refresh();
   }
 

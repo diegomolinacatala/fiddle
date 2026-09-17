@@ -1,62 +1,45 @@
 // ============================================================================
 // REGISTRO MODULAR DE ACCIONES
 // ----------------------------------------------------------------------------
-// Cada acción es lo que un scan PUEDE significar. El manager elige cuáles están
-// activas; la LÓGICA vive aquí. Para añadir una funcionalidad nueva a toda la
-// plataforma basta con añadir una entrada a este objeto — no se toca nada más.
-//
-// Contrato de `aplicar(cliente, programa)`:
-//   cliente  = { serial, sellos, premios }
-//   programa = { titulo, meta, premio, ... }
-//   devuelve = { cliente: <nuevo estado>, mensaje: <feedback>, evento?: <log> }
-//              o bien { ok: false, mensaje } para rechazar sin cambiar nada.
-// Este fichero NO importa nada del servidor (fs, next), así que la UI también
-// puede importarlo para pintar los botones.
+// aplicar(cliente, negocio) -> { cliente, mensaje, evento? }  ó  { ok:false, mensaje }
+// cliente  = { serial, negocio, sellos, premios }
+// negocio  = { slug, nombre, tipo, meta, premio, tema, ... }
+// No importa nada del servidor, así la UI también lo usa para pintar botones.
 // ============================================================================
 
 export const ACCIONES = {
   sellar: {
     label: "Añadir sello",
     icon: "➕",
-    descripcion: "Suma un sello a la cartilla del cliente.",
-    aplicar(c, p) {
-      if (c.sellos >= p.meta)
-        return { ok: false, mensaje: "La cartilla ya está llena — toca canjear." };
+    descripcion: "Suma un sello a la cartilla.",
+    aplicar(c, n) {
+      if (c.sellos >= n.meta) return { ok: false, mensaje: "Cartilla llena — toca canjear." };
       const sellos = c.sellos + 1;
-      return {
-        cliente: { ...c, sellos },
-        mensaje: `Sello añadido · ${sellos}/${p.meta}`,
-        evento: `Sello ${sellos}/${p.meta}`,
-      };
+      return { cliente: { ...c, sellos }, mensaje: `Sello añadido · ${sellos}/${n.meta}`, evento: `Sello ${sellos}/${n.meta}` };
     },
   },
 
   restar: {
     label: "Quitar sello",
     icon: "➖",
-    descripcion: "Corrige un sello puesto de más.",
-    aplicar(c, p) {
+    descripcion: "Corrige un sello de más.",
+    aplicar(c, n) {
       const sellos = Math.max(0, c.sellos - 1);
-      return {
-        cliente: { ...c, sellos },
-        mensaje: `Sello quitado · ${sellos}/${p.meta}`,
-        evento: `Corrección → ${sellos}/${p.meta}`,
-      };
+      return { cliente: { ...c, sellos }, mensaje: `Sello quitado · ${sellos}/${n.meta}`, evento: `Corrección → ${sellos}/${n.meta}` };
     },
   },
 
   canjear: {
-    label: "Canjear premio",
+    label: "Canjear",
     icon: "🎁",
-    descripcion: "Entrega el premio y reinicia la cartilla.",
-    aplicar(c, p) {
-      if (c.sellos < p.meta)
-        return { ok: false, mensaje: `Aún no llega · ${c.sellos}/${p.meta}` };
-      return {
-        cliente: { ...c, sellos: 0, premios: (c.premios || 0) + 1 },
-        mensaje: `🎉 Premio entregado: ${p.premio}`,
-        evento: `Canjeó: ${p.premio}`,
-      };
+    descripcion: "Entrega el premio / aplica el descuento.",
+    aplicar(c, n) {
+      if (n.tipo === "descuento") {
+        if ((c.premios || 0) > 0) return { ok: false, mensaje: "Este cupón ya se usó." };
+        return { cliente: { ...c, premios: 1 }, mensaje: `✓ Descuento aplicado: ${n.premio}`, evento: `Cupón usado: ${n.premio}` };
+      }
+      if (c.sellos < n.meta) return { ok: false, mensaje: `Aún no llega · ${c.sellos}/${n.meta}` };
+      return { cliente: { ...c, sellos: 0, premios: (c.premios || 0) + 1 }, mensaje: `🎉 Premio: ${n.premio}`, evento: `Canjeó: ${n.premio}` };
     },
   },
 
@@ -70,10 +53,6 @@ export const ACCIONES = {
   },
 };
 
-// Lista estable para pintar en la UI.
 export const LISTA_ACCIONES = Object.entries(ACCIONES).map(([key, v]) => ({
-  key,
-  label: v.label,
-  icon: v.icon,
-  descripcion: v.descripcion,
+  key, label: v.label, icon: v.icon, descripcion: v.descripcion,
 }));

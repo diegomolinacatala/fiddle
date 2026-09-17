@@ -1,17 +1,43 @@
 import { NextResponse } from "next/server";
-import { emitirPase } from "@/lib/emitir";
+import { emitirPase } from "@/lib/wallet";
+import { generarPkpass, MIME_PKPASS } from "@/lib/apple/firmar";
+import { esNegocio } from "@/lib/negocios";
+import { jsonError, errorInterno } from "@/lib/http";
+import { usoExcedido, ipDe } from "@/lib/limitador";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// El "tap NFC": el tag de la tienda apunta a esta URL. Al abrirla, el móvil
-// crea un pase nuevo y aterriza en la pantalla de "Añadir a Wallet".
-// GET /api/tap -> 302 a la shareUrl del pase recién creado.
-export async function GET() {
+const esIOS = (ua) => /iPhone|iPad|iPod/i.test(ua || "");
+
+const respuestaPkpass = (buffer, slug) =>
+  new Response(buffer, {
+    headers: {
+      "content-type": MIME_PKPASS,
+      "content-disposition": `attachment; filename="${slug}.pkpass"`,
+      "cache-control": "no-store",
+    },
+  });
+
+// El "tap NFC" de un negocio. El tag guarda /api/tap?b=<slug>.
+// iPhone + pase real -> devolvemos el .pkpass directo => sale "Añadir a Wallet"
+// al instante, sin página intermedia. Resto -> página del pase (/p/<serial>),
+// que ofrece Apple / Google Wallet y muestra el QR.
+export async function GET(request) {
+  const slug = new URL(request.url).searchParams.get("b");
+  if (!esNegocio(slug)) return jsonError("Falta o no existe ?b=<negocio>", 400);
+
   try {
-    const { shareUrl } = await emitirPase();
-    return NextResponse.redirect(shareUrl, 302);
+    if (await usoExcedido("tap", ipDe(request))) {
+      return jsonError("Demasiados pases desde esta conexión. Prueba en unos minutos.", 429);
+    }
+    const r = await emitirPase(slug);
+    if (esIOS(request.headers.get("user-agent"))) {
+      if (r.proveedor === "apple") return respuestaPkpass(await generarPkpass(r.cliente, r.negocio), slug);
+      if (r.pkpassWalletWallet) return respuestaPkpass(r.pkpassWalletWallet, slug);
+    }
+    return NextResponse.redirect(r.proveedor === "walletwallet" ? r.shareUrl : r.urlPase, 302);
   } catch (e) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
+    return errorInterno("tap", e);
   }
 }

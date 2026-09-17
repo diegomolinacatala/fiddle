@@ -1,41 +1,50 @@
 import { NextResponse } from "next/server";
-import { getCliente, saveCliente, getPrograma, addEvento } from "@/lib/store";
+import { getCliente, saveCliente, getNegocio, addEvento, clientePublico } from "@/lib/store";
 import { ACCIONES } from "@/lib/acciones";
-import { updatePass, buildPassBody } from "@/lib/walletwallet";
+import { notificarCliente } from "@/lib/wallet";
+import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// El trabajador ejecuta una acción sobre un cliente.
+// La caja ejecuta una acción sobre un cliente. El negocio se deduce del cliente y
+// la sesión tiene que ser de ESE negocio.
 // POST /api/accion  body: { serial, accion }
 export async function POST(request) {
   try {
     const { serial, accion } = await request.json().catch(() => ({}));
-    if (!serial || !accion) {
-      return NextResponse.json({ error: "Falta serial o accion" }, { status: 400 });
-    }
+    if (typeof serial !== "string" || typeof accion !== "string") return jsonError("Falta serial o accion", 400);
 
-    const def = ACCIONES[accion];
-    if (!def) return NextResponse.json({ error: `Acción desconocida: ${accion}` }, { status: 400 });
-
-    const prog = await getPrograma();
-    if (!prog.acciones.includes(accion)) {
-      return NextResponse.json({ error: "Esa acción no está activada por el manager" }, { status: 403 });
-    }
+    const def = Object.hasOwn(ACCIONES, accion) ? ACCIONES[accion] : null;
+    if (!def) return jsonError(`Acción desconocida: ${accion}`, 400);
 
     const cliente = await getCliente(serial);
-    if (!cliente) return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
+    if (!cliente) return jsonError("Cliente no encontrado", 404);
 
-    // La lógica modular vive en el registro de acciones.
-    const r = def.aplicar(cliente, prog);
-    if (r.ok === false) return NextResponse.json({ ok: false, mensaje: r.mensaje, cliente });
+    const { respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
+    if (respuesta) return respuesta;
 
-    await saveCliente(r.cliente);
+    const negocio = await getNegocio(cliente.negocio);
+    if (!negocio) return jsonError("Negocio no encontrado", 404);
+    if (!negocio.acciones.includes(accion)) return jsonError("Esa acción no está activada por el manager", 403);
+
+    const r = def.aplicar(cliente, negocio);
+    if (r.ok === false) return NextResponse.json({ ok: false, mensaje: r.mensaje, cliente: clientePublico(cliente) });
+
+    // Guardado optimista: si otra caja tocó a este cliente entre la lectura y ahora
+    // (dos canjes a la vez), no se aplica y se pide repetir con el estado nuevo.
+    const guardado = await saveCliente(r.cliente, { esperado: cliente });
+    if (!guardado) {
+      return NextResponse.json(
+        { ok: false, mensaje: "Otra caja acaba de actualizar a este cliente. Vuelve a intentarlo.", cliente: clientePublico(await getCliente(serial)) },
+        { status: 409 },
+      );
+    }
     if (r.evento) await addEvento(serial, accion, r.evento);
-    await updatePass(serial, buildPassBody(r.cliente, prog)); // push al Wallet
+    const aviso = await notificarCliente(r.cliente, negocio);
 
-    return NextResponse.json({ ok: true, mensaje: r.mensaje, cliente: r.cliente });
+    return NextResponse.json({ ok: true, mensaje: r.mensaje, cliente: clientePublico(r.cliente), aviso });
   } catch (e) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
+    return errorInterno("accion", e);
   }
 }
