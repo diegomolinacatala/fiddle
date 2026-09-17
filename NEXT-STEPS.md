@@ -45,8 +45,8 @@ Ver [`.env.example`](.env.example). Imprescindibles en producción:
 | Variable | |
 |----------|--|
 | `APP_URL` | URL HTTPS **definitiva** (va dentro de cada pase) |
-| `AUTH_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `PIN_NUBE_CAJA`, `PIN_NUBE_MANAGER`, … (uno por negocio y rol) | 6+ cifras |
+| `AUTH_SECRET` | `npm run secretos` lo genera en `certs/secretos.env` |
+| `PIN_NUBE_CAJA`, `PIN_NUBE_MANAGER`, … (uno por negocio y rol) | también en `certs/secretos.env` (6 cifras) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | paso 2 |
 | `APPLE_*` (5) | paso 3 |
 
