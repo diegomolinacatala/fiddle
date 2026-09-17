@@ -1,68 +1,73 @@
 # Modelo de datos
 
-Tres entidades. La misma API de acceso ([`src/lib/store.js`](../src/lib/store.js))
-sirve para los dos backends: **Supabase** (real) o **ficheros JSON en `.data/`**
-(demo). Se elige con `hasSupabase()`.
+Una API de acceso ([`src/lib/store.js`](../src/lib/store.js)) para dos backends:
+**Supabase** (real) o **ficheros JSON en `.data/`** (demo). Se elige con `hasSupabase()`.
+Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 
-## Entidades
+## Tablas
 
-### `programa` (config del manager — singleton)
+### `negocios` — config editable por su manager
 | Campo | Tipo | Notas |
 |-------|------|-------|
-| `id` | text | siempre `'default'` |
-| `titulo` | text | título de la tarjeta |
-| `color` | text | preset: dark/blue/green/red/purple/orange |
-| `meta` | int | sellos para el premio |
-| `premio` | text | descripción del premio |
-| `acciones` | jsonb / array | claves de acciones activas |
-| `promo` | text\|null | promo activa |
+| `slug` | text PK | `nube`, `fade`, `forno` (el preset vive en `negocios.js`) |
+| `nombre`, `tipo` | text | copia informativa del preset |
+| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones: [{lat,lng,texto?}] }` |
 
-### `clientes` (la identidad detrás de cada pase)
+### `clientes` — la identidad detrás de cada pase
 | Campo | Tipo | Notas |
 |-------|------|-------|
-| `serial` | text (PK) | lo genera WalletWallet |
-| `sellos` | int | contador actual |
-| `premios` | int | premios canjeados |
-| `nombre` | text\|null | personalización opcional (aparece en la cara del pase) |
+| `serial` | text PK | uuid nuestro; va en el QR (`/w/<serial>`) |
+| `negocio` | text | slug |
+| `sellos`, `premios` | int | estado |
+| `nombre` | text? | personalización (sale en el pase) |
+| `auth_token` | text | `authenticationToken` del pase (secreto, nunca al navegador) |
+| `actualizado` | timestamptz | se marca en cada cambio; Apple pregunta "¿qué cambió desde…?" |
+| `ww_serial` | text? | solo plan B WalletWallet |
 | `creado` | timestamptz | |
 
-### `eventos` (historial / actividad)
+### `eventos` — historial
+`id` · `serial` · `tipo` (clave de acción) · `mensaje` · `ts`
+
+### `dispositivos` — iPhones con algún pase
 | Campo | Tipo | Notas |
 |-------|------|-------|
-| `id` | bigint (PK) | autoincremental |
-| `serial` | text (FK → clientes) | |
-| `tipo` | text | clave de la acción |
-| `mensaje` | text | texto mostrado en el perfil |
-| `ts` | timestamptz | |
+| `id` | text PK | `deviceLibraryIdentifier` de Apple |
+| `push_token` | text | destino de los avisos APNs |
+
+### `registros` — qué pases tiene cada iPhone
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `dispositivo` | text FK → dispositivos (cascade) | |
+| `pass_type` | text | `APPLE_PASS_TYPE_ID` |
+| `serial` | text FK → clientes (cascade) | |
+| `negocio` | text | desnormalizado para avisar a todo un negocio |
+PK (`dispositivo`, `pass_type`, `serial`).
+
+### `intentos` — límites de uso
+`id` · `clave` · `ts`. Claves: `login:<negocio>:<ip>`, `login:<negocio>:*` (PINs
+fallidos), `tap:<ip>` (emisiones), `log:<ip>` (logs de Apple). Ver
+[`limitador.js`](../src/lib/limitador.js).
 
 ## API del store
 
 ```
-Programa:  getPrograma()                       -> {…}
-           savePrograma(patch)                 -> {…}          (merge + persist)
-Clientes:  crearCliente(serial, nombre=null)
-           getCliente(serial)                  -> {serial,sellos,premios,nombre}|null
-           saveCliente({serial,sellos,premios,nombre?})   (nombre opcional en el patch)
-           listClientes()                      -> [ … ]
-Eventos:   addEvento(serial, tipo, mensaje)
-           listEventos(serial, limit=8)        -> [ … ] (recientes primero)
+Negocios:     getNegocio(slug) · listNegocios() · saveNegocio(slug, patch)
+Clientes:     crearCliente({serial, negocio, authToken, wwSerial?}) · getCliente(serial)
+              saveCliente({serial, sellos, premios}, {esperado?}) -> guardado?
+                (marca actualizado; con `esperado` solo escribe si el estado no cambió:
+                 dos cajas canjeando a la vez no entregan el premio dos veces)
+              guardarNombre(serial, nombre) -> guardado?
+              tocarClientesDeNegocio(slug) · listClientes(negocio?, {limite?}) · clientePublico(c)
+Eventos:      addEvento(serial, tipo, mensaje) · listEventos(serial, limit=8)
+Apple Wallet: registrarPase({dispositivo, pushToken, passType, serial, negocio}) -> nuevo?
+              borrarRegistro({dispositivo, passType, serial})
+              pasesDeDispositivo({dispositivo, passType}) -> [{serial, actualizado}]
+              pushTokens({seriales?, negocio?}) · borrarDispositivosPorToken(tokens)
+Límites:      registrarIntento(clave) · contarIntentos(clave, desdeMs)
 ```
 
 ## Backend demo (ficheros)
-- `.data/programa.json` — objeto de config.
-- `.data/clientes.json` — mapa `{ [serial]: cliente }`.
-- `.data/eventos.json`  — array de eventos.
-
-`.data/` está en `.gitignore`. Es efímero y local: perfecto para la demo, no vale
-para producción en serverless (Vercel no persiste el sistema de ficheros).
-
-## Backend real (Supabase)
-Ejecuta [`../supabase/schema.sql`](../supabase/schema.sql) (crea las 3 tablas +
-la fila `programa` por defecto + índice de eventos). Variables de entorno:
-
-```
-SUPABASE_URL=…
-SUPABASE_SERVICE_KEY=…        # service_role, SOLO backend
-```
-
-Con esas dos, `hasSupabase()` es true y el store pasa a Supabase sin más cambios.
+`.data/{negocios,clientes,eventos,dispositivos,registros,intentos}.json`. En `.gitignore`.
+(`.data/` de la versión anterior de un solo negocio no es compatible: bórrala si ves clientes raros.)
+Todas las operaciones van en fila dentro del proceso. Vale para local; **no** para
+Vercel (el sistema de ficheros no persiste). La carpeta se cambia con `DATA_DIR` (tests).

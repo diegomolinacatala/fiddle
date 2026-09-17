@@ -15,9 +15,9 @@ clave: {
   label: "Texto del botón",
   icon: "🙂",                    // emoji para la UI
   descripcion: "Qué hace, en una línea.",
-  aplicar(cliente, programa) {
-    // cliente  = { serial, sellos, premios }
-    // programa = { titulo, meta, premio, color, promo, acciones }
+  aplicar(cliente, negocio) {
+    // cliente = { serial, negocio, sellos, premios, nombre }
+    // negocio = { slug, nombre, tipo: "sellos"|"descuento", meta, premio, promo, acciones, tema }
     // Devuelve UNA de estas dos formas:
     return {
       cliente: { ...cliente, sellos: cliente.sellos + 1 }, // nuevo estado a guardar
@@ -34,10 +34,15 @@ clave: {
 toca la base de datos ni el pase — de eso se encarga
 [`/api/accion`](../src/app/api/accion/route.js):
 
-1. valida que la acción existe y está **activada** por el manager (si no → 403),
-2. llama a `aplicar(cliente, programa)`,
-3. si `ok !== false`: guarda el cliente, registra el evento y hace `updatePass()`
-   (push al Wallet).
+1. comprueba que la sesión es de la caja (o manager) **del negocio del cliente**,
+2. valida que la acción existe y está **activada** por su manager (si no → 403),
+3. llama a `aplicar(cliente, negocio)`,
+4. si `ok !== false`: guarda el cliente (marca `actualizado`), registra el evento y
+   llama a `notificarCliente()` → aviso APNs → el iPhone baja el pase nuevo.
+
+Qué se ve en el pase lo decide [`apple/pase.js`](../src/lib/apple/pase.js) a partir del
+estado: si tu acción cambia algo nuevo (p.ej. un campo `nivel`), añade ahí el campo
+con su `changeMessage` para que el cliente reciba la notificación.
 
 Como `acciones.js` no importa nada del servidor, la **UI también lo importa**
 (`LISTA_ACCIONES`) para pintar casillas/botones. Una sola fuente de verdad.
@@ -70,7 +75,7 @@ ya tiene el botón. Cero cambios en rutas, UI o base de datos.
 |-------|-------|----------|
 | `sellar` | ➕ Añadir sello | +1 sello (hasta la meta) |
 | `restar` | ➖ Quitar sello | −1 sello (corrección) |
-| `canjear` | 🎁 Canjear premio | exige cartilla llena; entrega premio y reinicia |
+| `canjear` | 🎁 Canjear | sellos: exige cartilla llena, entrega premio y reinicia · descuento: usa el cupón una vez (el pase queda anulado) |
 | `confirmar` | ✅ Confirmar visita | registra una visita sin tocar la cartilla |
 
 ## Ideas de acciones modulares futuras

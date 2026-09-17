@@ -1,60 +1,85 @@
-# Sellos — plataforma de fidelización en Wallet (multi-negocio)
+# Sellos — fidelización en Apple Wallet (multi-negocio)
 
-> 🌅 ¿Retomas el proyecto? Mira [NEXT-STEPS.md](NEXT-STEPS.md).
+> 🌅 ¿Retomas el proyecto? Abre **[NEXT-STEPS.md](NEXT-STEPS.md)**.
 
-Plataforma donde **el pase del cliente es solo un QR con su identidad**. Toda la
-lógica vive en el backend. Es **multi-negocio**: cada negocio tiene su propia
-tarjeta (diseño), su caja (app instalable), su manager y su tag NFC.
+Plataforma donde **el pase del cliente es solo un QR con su identidad**. Toda la lógica
+vive en el backend. Cada negocio tiene su tarjeta (diseño propio), su **caja** (app
+instalable que escanea), su **manager** y su **tag NFC**.
 
-En vivo: **https://fiddle-zeta.vercel.app**
+Con la cuenta de **Apple Developer** firmamos los pases y los **actualizamos solos**
+(web service de Apple + avisos APNs): cada sello llega al iPhone con notificación.
 
-## Negocios de ejemplo (modular: añadir uno = una entrada en [`src/lib/negocios.js`](src/lib/negocios.js))
+Stack: **Next.js 15 (App Router) + Supabase + Vercel**.
 
-| Negocio | Tipo | Tarjeta | URLs |
-|---------|------|---------|------|
-| ☕ **Nube Café** (`nube`) | cartilla de sellos | colorida | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
-| 💈 **Fade Room** (`fade`) | sellos + niveles | sleek, animada | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
-| 🍕 **Forno Nostro** (`forno`) | cupón descuento | cupón pizza | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
+> 📚 [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
+> [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
+> [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
+
+## Negocios de ejemplo
+
+Añadir uno = una entrada en [`src/lib/negocios.js`](src/lib/negocios.js).
+
+| Negocio | Tipo | URLs |
+|---------|------|------|
+| ☕ **Nube Café** (`nube`) | cartilla de sellos | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
+| 💈 **Fade Room** (`fade`) | sellos + niveles | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
+| 🍕 **Forno Nostro** (`forno`) | cupón de un uso | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
 
 ## Cómo funciona
 
 ```
-Tag NFC del negocio ─▶ /api/tap?b=<slug> ─▶ pase en el móvil   (iOS: .pkpass directo, menos fricción)
+Tag NFC ─▶ /api/tap?b=<negocio> ─▶ iPhone: .pkpass firmado directo ─▶ "Añadir a Wallet"
+                                    Android/otros: /p/<serial>
 
-Pase del cliente (QR = /w/<serial>)
-   │ la caja del negocio lo escanea con la cámara (/<slug>/caja)
+Pase (QR = /w/<serial>)
+   │ la caja lo escanea (/<negocio>/caja, con PIN)
    ▼
-Perfil del cliente + botones ─▶ /api/accion ─▶ backend ─▶ push al Wallet (live)
+Perfil + botones ─▶ /api/accion ─▶ guarda ─▶ aviso APNs ─▶ el iPhone baja el pase nuevo
 ```
 
-- **Menos fricción:** en iOS, `/api/tap` devuelve el `.pkpass` firmado directamente
-  → la hoja "Añadir a Wallet" sale al instante (sin página intermedia). Apple sigue
-  exigiendo el toque final "Añadir" (no se puede instalar en silencio).
-- **Identidad:** usamos nuestro propio `serial` (uuid). El barcode ya va correcto en
-  el primer POST, y guardamos el `ww_serial` de WalletWallet para los push.
+El pase **nunca cambia de identidad**: qué hace un escaneo lo decide el manager.
+
+## Correr en local
+
+```bash
+npm install
+npm run dev     # http://localhost:3000   (PIN demo: caja 1234 · manager 4321)
+npm test
+```
+
+Sin variables = **modo demo** (datos en `.data/`, sin pases reales). Para probar la
+firma de Apple sin iPhone: `npm run apple:prueba` (ver [docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)).
 
 ## Estructura
 
 ```
 src/app/
-├─ page.js                    Directorio de negocios
-├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/
-├─ w/[serial]/                Perfil del cliente + acciones (lo abre el QR)
-├─ p/[serial]/                Pase del cliente (ThemedPass: 3 diseños)
-└─ api/  tap · crear · accion · negocio · negocios · clientes · promo · manifest
+├─ page.js                    directorio de negocios
+├─ login/                     PIN por negocio
+├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/ (+ estado de integración)
+├─ w/[serial]/                perfil del cliente + acciones + nombre (caja)
+├─ p/[serial]/                página pública del pase + "Añadir a Apple Wallet"
+└─ api/
+   ├─ tap · crear · pase/[serial]          emitir / descargar pase
+   ├─ accion · cliente/[serial] · clientes caja
+   ├─ negocio · promo · estado             manager
+   ├─ login · logout · manifest · negocios
+   └─ wallet/v1/...                        web service de Apple Wallet
 src/lib/
-├─ negocios.js   ★ presets de cada negocio (diseño + defaults)
+├─ negocios.js   ★ presets de cada negocio
 ├─ acciones.js   ★ registro modular de acciones
-├─ store.js · walletwallet.js · emitir.js
+├─ wallet.js       fachada: emitir + avisar (apple > walletwallet > demo)
+├─ apple/          pase.js · imagenes.js · firmar.js · servicio.js · apns.js · config.js
+├─ auth.js · acceso.js · limitador.js · http.js   login y permisos
+├─ store.js        Supabase o ficheros locales
+└─ walletwallet.js · googlewallet.js · validacion.js · url.js
+scripts/apple-setup.mjs   CSR + certificado de Apple -> variables (sin Mac)
+supabase/schema.sql       esquema idempotente
+tests/                    vitest
 ```
 
-## Puesta en marcha / deploy
-Ver [NEXT-STEPS.md](NEXT-STEPS.md) y [docs/DEPLOY.md](docs/DEPLOY.md). Requiere Supabase
-(ejecutar [`supabase/schema.sql`](supabase/schema.sql)), key de WalletWallet, y Vercel.
-Con `APP_MODE`/dominios se pueden separar cajas y managers.
-
 ## Límites conocidos
-- El push no es instantáneo garantizado (Apple entrega cuando hay conexión).
-- iOS no permite instalar un pase en silencio (toque "Añadir" obligatorio).
-- `/w/<serial>` es público: en producción necesita login de caja.
-- El escáner necesita HTTPS o localhost.
+- Apple entrega los avisos cuando el iPhone tiene conexión (normalmente segundos).
+- iOS no permite instalar un pase en silencio: el cliente toca "Añadir".
+- El escáner de la caja necesita HTTPS (o localhost) para la cámara.
+- El QR es estático: una captura se puede enseñar, pero no se puede actuar sin sesión de caja.

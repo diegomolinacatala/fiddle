@@ -2,65 +2,51 @@
 
 ## Variables de entorno
 
-| Variable | Para qué | Obligatoria |
-|----------|----------|-------------|
-| `WALLETWALLET_API_KEY` | Firma del pase + push (`ww_live_...`) | para pases reales |
-| `SUPABASE_URL` | Base de datos | para producción |
-| `SUPABASE_SERVICE_KEY` | Base de datos (service_role, solo backend) | para producción |
-| `APP_URL` | URL pública; se usa en el QR del pase (`/w/<serial>`) | sí en real |
-| `APP_MODE` | `worker` \| `manager` \| `both` (raíz "/") | no (default `both`) |
-| `SELLOS_TOTAL`, `CARD_TITLE`, `PREMIO`, `CARD_COLOR` | defaults del programa | no |
+Plantilla completa: [`.env.example`](../.env.example).
 
-Sin `WALLETWALLET_API_KEY` → firma/push simulados. Sin Supabase → estado en `.data/`.
-Cada uno se detecta por separado.
+| Variable | Para qué | En producción |
+|----------|----------|---------------|
+| `APP_URL` | URL pública HTTPS. Va dentro de cada pase (QR y `webServiceURL`) | **obligatoria** |
+| `AUTH_SECRET` | firma de las sesiones | **obligatoria** (sin ella nadie entra) |
+| `PIN_<SLUG>_CAJA`, `PIN_<SLUG>_MANAGER` | PIN por negocio y rol (`PIN_NUBE_CAJA`…) | **obligatorias** (sin ellas ese rol no entra) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | base de datos (service_role, solo backend) | **obligatorias** |
+| `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_PASS_CERT`, `APPLE_PASS_KEY`, `APPLE_WWDR_CERT` | firma y avisos de Apple Wallet ([guía](APPLE-WALLET.md)) | para pases reales |
+| `APPLE_PASS_KEY_PASSPHRASE` | si la clave está cifrada | opcional |
+| `WALLETWALLET_API_KEY` | plan B sin Apple Developer (solo si no hay `APPLE_*`) | opcional |
+| `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_EMAIL`, `GOOGLE_WALLET_SA_KEY` | botón "Guardar en Google Wallet" | opcional |
 
-## Vercel (una web)
+Cada integración se detecta por separado; lo que falte cae a modo demo. El manager
+de cada negocio muestra **Estado de la integración** con lo que está activo.
 
-1. Repo en GitHub → **Import** en Vercel (detecta Next.js solo).
-2. **Settings → Environment Variables**: añade las de arriba.
-3. `APP_URL` = la URL del deploy.
-4. Deploy. Listo: `/worker`, `/manager`, `/api/tap` disponibles.
+Fuera de producción (`next dev`) hay PINs y secreto de demo. **En producción no**:
+es a propósito, para que un deploy mal configurado no quede abierto.
 
-## <a name="dos-webs"></a>Vercel (dos webs separadas, un repo)
+## Vercel
 
-Como pediste apps separadas (caja siempre en el móvil; manager ocasional), puedes
-desplegar **el mismo repo dos veces**:
+1. Repo en GitHub → **Import** en Vercel (detecta Next.js).
+2. **Settings → Environment Variables**: las de arriba.
+3. `APP_URL` = dominio definitivo. Si vas a usar dominio propio, configúralo **antes**
+   de emitir pases reales: los pases guardan la URL con la que se emitieron.
+4. Deploy. Comprueba `/<negocio>/manager` → Estado de la integración.
 
-| Proyecto Vercel | `APP_MODE` | Dominio sugerido | La raíz "/" abre |
-|-----------------|-----------|------------------|------------------|
-| tienda-caja | `worker` | `caja.tudominio.com` | la app de caja |
-| tienda-manager | `manager` | `admin.tudominio.com` | el panel del manager |
+`sharp` (imágenes del pase) y `passkit-generator` (firma) corren en las funciones
+Node de Vercel sin configuración extra (`next.config.mjs` los marca como externos).
 
-Ambos comparten la MISMA `SUPABASE_URL`/`WALLETWALLET_API_KEY` (misma tienda).
-`APP_URL` de cada uno = su propio dominio (el QR del pase apuntará al que emitió).
-Recomendado: emite y pon `APP_URL` = el dominio de **caja** (es quien escanea).
+## Supabase
 
-> Alternativa avanzada: separar en dos apps Next en un monorepo. No hace falta —
-> `APP_MODE` da webs separadas sin duplicar código.
+SQL Editor → [`supabase/schema.sql`](../supabase/schema.sql) → Run. Es idempotente:
+sobre la base del deploy anterior añade columnas (`nombre`, `auth_token`,
+`actualizado`) y tablas (`dispositivos`, `registros`, `intentos`) sin borrar
+nada, genera `auth_token` a los clientes antiguos y activa RLS.
 
-## <a name="walletwallet"></a>WalletWallet — confirmaciones antes de producción
-
-El plan entero depende de dos contratos. Confírmalos en sus docs/soporte:
-1. El `PUT /api/passes/<serial>` **dispara el push** automáticamente.
-2. Sus pases incluyen `webServiceURL` + `authenticationToken` por defecto (si no,
-   un pase instalado no se puede actualizar nunca).
-3. El tramo gratis cubre **crear y actualizar** (no solo crear).
-
-Contratos usados por el código (`src/lib/walletwallet.js`):
-- `POST /api/passes` → `{ serialNumber, shareUrl, googleSaveUrl, applePass }`
-- `PUT /api/passes/<serial>` (body completo; reemplaza el pase)
-- Auth: `Authorization: Bearer ww_live_...`
+Opcional: limpiar intentos de login viejos con un job diario
+(`delete from intentos where ts < now() - interval '1 day'`).
 
 ## Tag NFC
 
-El sticker NFC solo guarda una URL (registro NDEF de tipo URI): `APP_URL/api/tap`.
-Al tocarlo, el móvil abre esa URL → se crea un pase → "Añadir a Wallet".
+El sticker guarda una URL (registro NDEF URI): `APP_URL/api/tap?b=<negocio>`.
+1. Manager → *Tag NFC / emitir* → **Copiar URL** (o imprime el QR que aparece).
+2. NFC Tools → **Write → Add a record → URL/URI** → pega → **Write** → acerca el sticker.
 
-**Grabarlo con NFC Tools** (gratis, iOS/Android):
-1. Copia la URL desde `/manager` ("Copiar URL del tag").
-2. NFC Tools → **Write → Add a record → URL/URI** → pega → **Write**.
-3. Acerca el sticker al móvil hasta que confirme la escritura.
-
-> Esto es NFC-como-enlace (abrir una URL), no el NFC de Apple donde el pase toca
-> un lector (eso requiere aprobación VAS de Apple). Para "tocar → aparece el pase",
-> un sticker NFC barato basta.
+Es NFC como enlace rápido. El NFC de Apple Wallet en el que el pase toca un lector
+(VAS) requiere aprobación aparte de Apple y lectores compatibles.
