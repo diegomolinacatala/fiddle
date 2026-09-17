@@ -11,6 +11,8 @@ Con la cuenta de **Apple Developer** firmamos los pases y los **actualizamos sol
 
 Stack: **Next.js 15 (App Router) + Supabase + Vercel**.
 
+En producción: **<https://fiddle-zeta.vercel.app>** (se despliega solo al fusionar en `main`).
+
 > 📚 [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
 > [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
 > [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
@@ -32,7 +34,7 @@ Tag NFC ─▶ /api/tap?b=<negocio> ─▶ iPhone: .pkpass firmado directo ─�
                                     Android/otros: /p/<serial>
 
 Pase (QR = /w/<serial>)
-   │ la caja lo escanea (/<negocio>/caja, con PIN)
+   │ la caja lo escanea (/<negocio>/caja, con login)
    ▼
 Perfil + botones ─▶ /api/accion ─▶ guarda ─▶ aviso APNs ─▶ el iPhone baja el pase nuevo
 ```
@@ -43,19 +45,26 @@ El pase **nunca cambia de identidad**: qué hace un escaneo lo decide el manager
 
 ```bash
 npm install
-npm run dev     # http://localhost:3000   (PIN demo: caja 1234 · manager 4321)
+npm run dev     # http://localhost:3000
 npm test
 ```
 
 Sin variables = **modo demo** (datos en `.data/`, sin pases reales). Para probar la
 firma de Apple sin iPhone: `npm run apple:prueba` (ver [docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)).
 
+Entrar en `/login`: usuario **`nube`** (manager) o **`nube-caja`** (caja), contraseña
+igual que el usuario; lo mismo con `fade` y `forno`. En local siempre valen y se
+listan en la propia pantalla de login.
+
+Cómo ponerse a trabajar desde otro ordenador, qué tocar para cada cosa y qué queda
+pendiente: **[NEXT-STEPS.md](NEXT-STEPS.md)**.
+
 ## Estructura
 
 ```
 src/app/
 ├─ page.js                    directorio de negocios
-├─ login/                     PIN por negocio
+├─ login/                     usuario + contraseña
 ├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/ (+ estado de integración)
 ├─ w/[serial]/                perfil del cliente + acciones + nombre (caja)
 ├─ p/[serial]/                página pública del pase + "Añadir a Apple Wallet"

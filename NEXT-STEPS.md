@@ -1,94 +1,127 @@
 # 👋 Empieza aquí
 
-**Estado (17-sep-2026):** rama `feat/apple-wallet`. Las dos ramas (`main` con el login
-y `victor-temp` con los tres negocios) están unidas, y la app **firma y actualiza los
-pases de Apple Wallet por sí misma** con la cuenta de Apple Developer. Todo probado en
-local: 103 tests, build limpio, flujo completo del web service de Apple verificado con
-certificados de prueba. **Falta lo que requiere tus cuentas** (Apple, Supabase, Vercel)
-y probar en un iPhone real.
+**Estado (17-sep-2026):** en producción y funcionando en
+**<https://fiddle-zeta.vercel.app>**, desplegado automáticamente desde `main`.
+
+Comprobado contra el sitio real:
+
+| Pieza | Estado |
+|-------|--------|
+| Pases de Apple Wallet | **firmados con nuestra cuenta** (`pass.com.fiddle`, caduca 2027-10-17) |
+| Actualizaciones en el iPhone | web service + avisos APNs activos |
+| Base de datos | Supabase conectado, 6 tablas |
+| Login | usuario + contraseña por negocio, sesión firmada |
+| Tres negocios | Nube Café, Fade Room, Forno Nostro |
 
 ---
 
-## 0. Arrancar en local (2 min)
+## Trabajar en el proyecto desde cualquier ordenador
+
+**No hace falta ningún secreto para desarrollar.** Sin variables de entorno la app
+arranca en *modo demo*: guarda en ficheros locales (`.data/`) y no firma pases reales.
 
 ```bash
+git clone https://github.com/diegomolinacatala/fiddle.git
+cd fiddle
 npm install
-npm run dev        # http://localhost:3000
-npm test           # 103 tests
+npm run dev      # http://localhost:3000
 ```
-- `/` → directorio de negocios (Nube Café, Fade Room, Forno Nostro).
-- Login único en `/login`: usuario **nube** (manager) o **nube-caja**, contraseña igual que el usuario (solo con `USUARIOS_DEMO=1` o fuera de producción; el login los lista abajo).
-- Sin variables = **modo demo**: datos en `.data/`, sin pases reales.
 
-## 1. Decidir la rama con Víctor — [ ]
-`fiddle-zeta.vercel.app` está desplegado desde `victor-temp`, **sin login**: cualquiera
-con la URL puede sellar o lanzar promos. Esta rama lo arregla. Revisadla (está solo en local hasta hacer push) y
-fusionad a `main`. Al desplegarla, configurad antes las contraseñas y `AUTH_SECRET` (paso 4):
-en producción, sin ellos **nadie puede entrar** (falla cerrado a propósito).
+Necesitas **Node 22 o superior** (`node -v`) y git. Nada más.
 
-## 2. Supabase — [ ]
-1. Proyecto en <https://supabase.com> (o el que ya use el deploy de Víctor).
-2. **SQL Editor →** pega [`supabase/schema.sql`](supabase/schema.sql) → **Run**.
-   Es idempotente: sobre una base existente solo añade lo nuevo.
-3. **Project Settings → API:** `Project URL` → `SUPABASE_URL` · `service_role` → `SUPABASE_SERVICE_KEY`.
+- `/` → directorio de los tres negocios.
+- `/login` → usuario **nube** (manager) o **nube-caja** (caja); la contraseña es igual
+  que el usuario. En local siempre funcionan y salen listados en la propia pantalla.
+- `/nube/caja` escanea pases · `/nube/manager` configura, lanza promos y emite.
+- `/p/<serial>` es la página del pase de un cliente.
 
-## 3. Apple Wallet (cuenta Apple Developer) — [ ]
-Guía completa: **[docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)**. Resumen:
-1. **Ya hecho:** `certs/pass.key.pem` (clave privada, haz copia segura) y `certs/pass.certSigningRequest` (CSR). Si trabajas en otro ordenador: `npm run apple:csr`.
-2. developer.apple.com → Identifiers → **Pass Type ID** `pass.com.TUDOMINIO.sellos`
-   → **Create Certificate** → sube el CSR → descarga → `certs/pass.cer`.
-3. `npm run apple:env` → `certs/apple.env` con las variables `APPLE_*`.
+```bash
+npm test          # 112 tests
+npm run build     # comprobar que compila antes de subir
+```
 
-## 4. Variables en Vercel — [ ]
-Ver [`.env.example`](.env.example). Imprescindibles en producción:
+### Probar la firma de pases en local (opcional)
 
-| Variable | |
-|----------|--|
-| `APP_URL` | URL HTTPS **definitiva** (va dentro de cada pase) |
-| `AUTH_SECRET` | `npm run secretos` lo genera en `certs/secretos.env` |
-| `CLAVE_NUBE_MANAGER`, `CLAVE_NUBE_CAJA`, … (una por negocio y rol) | también en `certs/secretos.env` · `PIN_*` sigue valiendo |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | paso 2 |
-| `APPLE_*` (5) | paso 3 |
+```bash
+npm run apple:prueba     # certificados FALSOS -> certs/prueba.env
+```
 
-Redeploy. En `/<negocio>/manager` → **Estado de la integración** debe salir todo 🟢.
+Copia esas líneas a `.env.local` y reinicia `npm run dev`: se generan `.pkpass`
+firmados y funciona todo el web service de Apple. Un iPhone **no** aceptará esos
+pases; sirve para desarrollar. Los certificados de verdad **solo viven en Vercel**.
 
-## 5. Probar en un iPhone — [ ]
-1. Safari → `https://TU-APP/api/tap?b=nube` → **Añadir** a Wallet.
-2. Otro móvil → `/nube/caja` → escanear el pase → **Añadir sello**.
-3. Debe llegar la notificación "Tienes 1 de 8 sellos" y cambiar la banda del pase.
-4. Manager → lanzar promo → llega a todos.
+### Qué NO está en el repositorio (y no debe estarlo)
 
-## 6. Tag NFC y app de caja — [ ]
-- Manager → *Tag NFC / emitir* → **Copiar URL** → NFC Tools → Write → URL → acercar sticker.
-- En el móvil de la tienda: abrir `/nube/caja` → Compartir → *Añadir a pantalla de inicio*.
+| Carpeta / fichero | Qué es | Dónde está |
+|---|---|---|
+| `certs/` | clave privada de Apple, `apple.env`, `secretos.env` | ordenador de Diego + gestor de contraseñas |
+| `.env.local` | variables locales de cada uno | solo en tu ordenador |
+| `.data/` | datos del modo demo | solo en tu ordenador |
+
+Las variables reales se ven y se editan en **Vercel → Settings → Environment Variables**.
+
+### Cómo subir cambios
+
+```bash
+git switch main && git pull
+git switch -c feat/lo-que-sea
+# ... trabajar ...
+npm test && npm run build
+git push -u origin feat/lo-que-sea
+```
+
+Abre el Pull Request en GitHub, revisa y fusiona a `main`. **Al fusionar en `main`,
+Vercel despliega solo** a producción. Sin PR también vale (`git push origin main`),
+pero perdéis la revisión.
 
 ---
 
-## ✅ Qué YA funciona
-- **Tres negocios** con su tarjeta, caja, manager, tag NFC e icono (`src/lib/negocios.js`).
-- **Login por negocio**: usuario y contraseña de caja y de manager, sesión firmada (HMAC),
-  aislamiento entre negocios, **límite de intentos** (10 fallos/IP/15 min) y fallo
-  cerrado en producción sin secretos.
-- **Apple Wallet propio**: `.pkpass` firmado con colores del negocio, icono, logo y
-  **banda con la cartilla dibujada**; cupón que queda *anulado* al usarse; nombre del
-  cliente; promo en el reverso; ubicación de la tienda (aviso en pantalla de bloqueo);
-  no se puede reenviar.
-- **Actualizaciones automáticas**: web service de Apple completo + avisos APNs. Cada
-  sello, canje, nombre, promo o cambio de config actualiza los iPhone.
-- En iPhone el tag entrega el pase **directo** (sin página intermedia).
-- Página del pase `/p/<serial>` con botón *Añadir a Apple Wallet* (y Google si hay credenciales).
-- QR generado en local (antes se mandaba el serial a `api.qrserver.com`).
-- Plan B WalletWallet y esqueleto de Google Wallet conservados.
-- Script para certificados desde Windows, 103 tests (93 % de cobertura en `src/lib`).
+## Dónde tocar cada cosa
 
-## ⚠️ Pendiente / límites
-- **Probar en un iPhone real** con el certificado de verdad (pasos 3–5).
-- **Badge oficial** "Add to Apple Wallet" en `/p/<serial>` (ahora es un botón provisional).
-- **Google Wallet**: el enlace de guardado existe, pero las actualizaciones en Android
-  (REST API) no. Requiere cuenta de Google Pay & Wallet Console.
-- **Anti-fraude del QR**: el QR es estático (una captura sirve para enseñarlo). Mitigado:
-  hace falta sesión de caja para actuar y el pase no se puede reenviar. Siguiente nivel:
-  código rotativo o NFC (requiere aprobación aparte de Apple).
-- **Negocios en código**: añadir uno = entrada en `src/lib/negocios.js` + redeploy
-  (no hay alta desde una UI todavía).
-- **Tests E2E** (Playwright) de los flujos de caja/manager: no hay.
+| Quiero… | Fichero |
+|---------|---------|
+| Añadir o cambiar un negocio (nombre, colores, premio) | [`src/lib/negocios.js`](src/lib/negocios.js) |
+| Añadir una acción de caja (sellar, canjear, …) | [`src/lib/acciones.js`](src/lib/acciones.js) · ver [docs/ACTIONS.md](docs/ACTIONS.md) |
+| Cambiar lo que muestra el pase | [`src/lib/apple/pase.js`](src/lib/apple/pase.js) (campos) · [`imagenes.js`](src/lib/apple/imagenes.js) (dibujo) |
+| Tocar el login o los permisos | [`src/lib/auth.js`](src/lib/auth.js) · [`src/lib/acceso.js`](src/lib/acceso.js) |
+| Pantallas de caja / manager | [`src/app/[negocio]`](src/app/[negocio]) |
+| Guardar datos nuevos | [`src/lib/store.js`](src/lib/store.js) + [`supabase/schema.sql`](supabase/schema.sql) |
+
+Documentación: [Apple Wallet](docs/APPLE-WALLET.md) · [Arquitectura](docs/ARCHITECTURE.md) ·
+[API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md) · [Deploy](docs/DEPLOY.md)
+
+---
+
+## Pendiente
+
+### Ahora
+- [ ] Confirmar en el iPhone la notificación de **promo** y la de **sello**.
+- [ ] Grabar los tags NFC (manager → *Tag NFC / emitir* → Copiar URL → app NFC Tools).
+- [ ] Instalar la caja en el móvil de cada tienda (*Añadir a pantalla de inicio*).
+- [ ] Poner la **ubicación** de cada negocio desde su manager (aviso en pantalla de bloqueo).
+
+### Antes de abrir al público
+- [ ] Quitar `USUARIOS_DEMO` de Vercel: se desactivan los accesos de prueba y dejan de
+      mostrarse en el login. Quedan solo las contraseñas de `certs/secretos.env`.
+- [ ] Badge oficial "Add to Apple Wallet" en `/p/<serial>` (ahora hay un botón provisional).
+- [ ] Quitar WalletWallet del código y la columna `ww_serial` (ya no se usa).
+- [ ] Plan **Pro** en Vercel: el gratuito es solo para uso no comercial.
+
+### Más adelante
+- [ ] Alta de negocios desde el manager (hoy es tocar `negocios.js` y desplegar).
+- [ ] Actualizaciones en Android (Google Wallet REST API); hoy solo existe el botón de guardar.
+- [ ] Anti-fraude: código rotativo en el QR.
+- [ ] Métricas para el dueño: visitas, canjes, clientes nuevos.
+- [ ] Tests end-to-end (Playwright) de caja y manager.
+
+---
+
+## Operación
+
+- **Certificado de Apple:** caduca el **17-10-2027**. Renovarlo antes ([guía](docs/APPLE-WALLET.md)).
+- **Supabase gratuito** se pausa tras ~7 días sin actividad y la app deja de funcionar;
+  `/api/salud` lo dice al instante.
+- **Diagnóstico rápido:** `/api/salud` (público) y el panel *Estado de la integración*
+  dentro de cualquier manager.
+- **Copias:** `certs/pass.key.pem`, `certs/apple.env` y `certs/secretos.env` en el gestor
+  de contraseñas. Si se pierde la clave privada, hay que sacar otro certificado en Apple.

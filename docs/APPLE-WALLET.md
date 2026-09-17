@@ -66,7 +66,7 @@ y revisa:
 | `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_PASS_CERT`, `APPLE_PASS_KEY`, `APPLE_WWDR_CERT` | de `certs/apple.env` |
 | `APP_URL` | la URL **HTTPS definitiva** (ver aviso abajo) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | obligatorias: los registros de iPhones se guardan ahí |
-| `AUTH_SECRET`, `PIN_<NEGOCIO>_CAJA`, `PIN_<NEGOCIO>_MANAGER` | obligatorias en producción |
+| `AUTH_SECRET`, `CLAVE_<NEGOCIO>_MANAGER`, `CLAVE_<NEGOCIO>_CAJA` | obligatorias en producción |
 
 Ejecuta de nuevo [`supabase/schema.sql`](../supabase/schema.sql) (es idempotente: añade
 las tablas `dispositivos`, `registros`, `intentos` y las columnas nuevas).
@@ -83,7 +83,7 @@ integración**: tiene que salir 🟢 en Apple Wallet, URL HTTPS, base de datos y
 
 1. En Safari del iPhone abre `https://TU-APP/api/tap?b=nube` (o toca el tag NFC).
    → Sale la hoja **Añadir a Apple Wallet** directamente. Añade.
-2. En otro móvil abre `https://TU-APP/nube/caja`, entra con el PIN de caja,
+2. En otro móvil abre `https://TU-APP/nube/caja`, entra con el usuario `nube-caja`,
    **Escanear pase** → apunta al QR del pase → **Añadir sello**.
 3. En unos segundos el iPhone recibe la notificación *"Tienes 1 de 8 sellos"* y la
    banda del pase muestra el primer café relleno.
@@ -124,7 +124,8 @@ ACTUALIZAR (cada sello, canje, nombre, promo, cambio de config)
 | descuento (Forno) | `coupon` | — | porciones de pizza | descuento, estado | `voided` al usarse |
 
 Todos: colores del tema del negocio, `sharingProhibited` (no se puede reenviar por
-AirDrop/Mensajes), reverso con promo, cómo funciona y el código del cliente.
+AirDrop/Mensajes), la promo en la CARA del pase (en el reverso no notificaría) y, en el
+reverso, cómo funciona y el código del cliente.
 
 **Ubicación:** en el manager → *Ubicación de la tienda* (o 📍 *Usar mi ubicación
 actual* estando en la tienda). El pase se sugiere en la pantalla de bloqueo al llegar.
