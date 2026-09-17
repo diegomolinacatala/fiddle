@@ -14,9 +14,26 @@ export const hasSupabase = () =>
   Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY);
 
 function supa() {
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+  // trim(): al pegar en Vercel es fácil colar un espacio o salto de línea.
+  return createClient(process.env.SUPABASE_URL.trim().replace(/\/+$/, ""), process.env.SUPABASE_SERVICE_KEY.trim(), {
     auth: { persistSession: false },
   });
+}
+
+// Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos"];
+
+/**
+ * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
+ * @returns {Promise<{ok:true} | {ok:false, tabla:string, error:string}>}
+ */
+export async function comprobarTablas() {
+  const db = supa();
+  for (const tabla of TABLAS) {
+    const { error } = await db.from(tabla).select("*", { count: "exact", head: true });
+    if (error) return { ok: false, tabla, error: error.message || String(error.code || "error desconocido") };
+  }
+  return { ok: true };
 }
 
 // Lanza con contexto si Supabase devolvió error. Nunca se traga fallos.

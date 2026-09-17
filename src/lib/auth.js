@@ -29,7 +29,8 @@ const esProduccion = () => process.env.NODE_ENV === "production";
 
 /** Secreto HMAC, o null si falta en producción (=> nadie puede entrar). */
 export function secretoSesion() {
-  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
+  const secreto = process.env.AUTH_SECRET?.trim(); // tolera espacios/saltos al pegar en Vercel
+  if (secreto) return secreto;
   return esProduccion() ? null : SECRETO_DEMO;
 }
 
@@ -39,7 +40,7 @@ export const varPin = (slug, rol) =>
 
 /** PIN configurado para un negocio y rol, o null si no hay (en producción). */
 export function pinDe(slug, rol) {
-  const valor = process.env[varPin(slug, rol)];
+  const valor = process.env[varPin(slug, rol)]?.trim();
   if (valor) return valor;
   return esProduccion() ? null : PINS_DEMO[rol];
 }

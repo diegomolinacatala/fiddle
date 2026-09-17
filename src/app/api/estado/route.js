@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { proveedorWallet } from "@/lib/wallet";
-import { faltanVariablesApple } from "@/lib/apple/config";
-import { hasSupabase } from "@/lib/store";
+import { configApple } from "@/lib/apple/config";
 import { hayGoogle } from "@/lib/googlewallet";
+import { diagnosticoApple, diagnosticoSupabase } from "@/lib/diagnostico";
 import { appUrl } from "@/lib/url";
 import { sesionDeRequest } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
@@ -10,23 +10,25 @@ import { jsonError } from "@/lib/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/estado -> qué integraciones están activas (panel del manager).
-// Nunca devuelve secretos: solo si existen.
+// GET /api/estado -> diagnóstico real de las integraciones (panel del manager).
+// Comprueba que funcionan, no solo que existen. Nunca devuelve secretos.
 export async function GET(request) {
   const sesion = await sesionDeRequest(request);
   if (sesion?.rol !== "manager") return jsonError("Solo el manager", 403);
 
   const url = appUrl();
+  let apple;
+  try {
+    apple = diagnosticoApple(configApple());
+  } catch (e) {
+    apple = { ok: false, problemas: [`Variables de Apple ilegibles: ${e.message}`], avisos: [] };
+  }
+
   return NextResponse.json({
     proveedor: proveedorWallet(),
-    apple: {
-      configurado: faltanVariablesApple().length === 0,
-      faltan: faltanVariablesApple(),
-      passTypeId: process.env.APPLE_PASS_TYPE_ID || null,
-      webServiceURL: `${url}/api/wallet`,
-    },
+    apple: { ...apple, webServiceURL: `${url}/api/wallet` },
+    supabase: await diagnosticoSupabase(),
     google: hayGoogle(),
-    supabase: hasSupabase(),
     authSecret: Boolean(process.env.AUTH_SECRET),
     appUrl: url,
     // Apple solo acepta webServiceURL con HTTPS: en local no habrá actualizaciones.
