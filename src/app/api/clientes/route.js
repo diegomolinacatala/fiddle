@@ -4,7 +4,8 @@ import { listClientes } from "@/lib/store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/clientes -> lista de clientes (para el manager y el trabajador)
-export async function GET() {
-  return NextResponse.json(await listClientes());
+// GET /api/clientes?b=<slug> -> clientes de ese negocio (o todos si no se pasa b)
+export async function GET(request) {
+  const slug = new URL(request.url).searchParams.get("b");
+  return NextResponse.json(await listClientes(slug || undefined));
 }

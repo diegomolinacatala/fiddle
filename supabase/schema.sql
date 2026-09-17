@@ -1,33 +1,32 @@
--- Esquema para MODO REAL (Supabase). En modo demo se usan ficheros en .data/.
+-- Esquema MULTI-NEGOCIO (Supabase). Idempotente: seguro de re-ejecutar.
 -- Ejecuta en Supabase: SQL Editor -> New query -> pega esto -> Run.
 
--- Config del programa (una sola fila, id='default'). Es lo que edita el manager.
-create table if not exists programa (
-  id       text primary key default 'default',
-  titulo   text  not null default 'Café Demo',
-  color    text  not null default 'dark',
-  meta     int   not null default 10,
-  premio   text  not null default 'Café gratis',
-  acciones jsonb not null default '["sellar","canjear"]'::jsonb,
-  promo    text
+-- Negocios (config editable por su manager; el diseño vive en el código).
+create table if not exists negocios (
+  slug   text primary key,
+  nombre text,
+  tipo   text,
+  config jsonb not null default '{}'::jsonb,   -- { meta, premio, acciones, promo }
+  creado timestamptz not null default now()
 );
-insert into programa (id) values ('default') on conflict (id) do nothing;
 
--- Clientes: la identidad detrás de cada pase.
+-- Clientes (la identidad detrás de cada pase). Un cliente pertenece a un negocio.
 create table if not exists clientes (
-  serial  text primary key,          -- lo genera WalletWallet
-  sellos  int  not null default 0,
-  premios int  not null default 0,
-  nombre  text,                       -- personalización opcional (cara del pase)
-  creado  timestamptz not null default now()
+  serial    text primary key,          -- nuestro id (va en el QR: /w/<serial>)
+  negocio   text,                       -- slug del negocio
+  ww_serial text,                       -- serial de WalletWallet (para el push)
+  sellos    int  not null default 0,
+  premios   int  not null default 0,
+  creado    timestamptz not null default now()
 );
--- Si la tabla ya existía sin la columna, añádela:
-alter table clientes add column if not exists nombre text;
+-- Por si la tabla clientes ya existía de antes (añade columnas nuevas):
+alter table clientes add column if not exists negocio text;
+alter table clientes add column if not exists ww_serial text;
 
--- Historial de acciones (auditoría / actividad reciente en el perfil).
+-- Historial de acciones.
 create table if not exists eventos (
   id      bigint generated always as identity primary key,
-  serial  text not null references clientes(serial) on delete cascade,
+  serial  text not null,
   tipo    text not null,
   mensaje text not null,
   ts      timestamptz not null default now()

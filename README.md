@@ -1,98 +1,60 @@
-# Sellos — fidelización en Wallet (pass = QR, backend = cerebro)
+# Sellos — plataforma de fidelización en Wallet (multi-negocio)
 
-> 🌅 **¿Retomas el proyecto? Abre [NEXT-STEPS.md](NEXT-STEPS.md)** — checklist paso a paso.
+> 🌅 ¿Retomas el proyecto? Mira [NEXT-STEPS.md](NEXT-STEPS.md).
 
-Plataforma de tarjetas de fidelización donde **el pase del cliente es solo un QR
-con su identidad**. Toda la lógica —qué significa un escaneo, cuántos sellos, qué
-premio, qué promo— vive en el backend y se cambia sin reeditar ningún pase.
+Plataforma donde **el pase del cliente es solo un QR con su identidad**. Toda la
+lógica vive en el backend. Es **multi-negocio**: cada negocio tiene su propia
+tarjeta (diseño), su caja (app instalable), su manager y su tag NFC.
 
-**Dos apps separadas** (instalables en el móvil como PWA):
+En vivo: **https://fiddle-zeta.vercel.app**
 
-- 📱 **Caja / trabajador** (`/worker`) — vive en la pantalla de inicio del móvil.
-  **Escanea el QR del pase con la cámara**, ve el perfil del cliente y ejecuta
-  acciones (sellar, canjear…).
-- 🖥️ **Manager** (`/manager`) — uso ocasional. Elige la funcionalidad (meta de
-  sellos, premio, qué acciones hay), lanza promos por push, emite pases.
+## Negocios de ejemplo (modular: añadir uno = una entrada en [`src/lib/negocios.js`](src/lib/negocios.js))
 
-Stack: **Next.js (App Router) + Supabase + Vercel**. Firma del pase y push
-delegados en [WalletWallet](https://www.walletwallet.dev) (sin cuenta de Apple
-Developer).
+| Negocio | Tipo | Tarjeta | URLs |
+|---------|------|---------|------|
+| ☕ **Nube Café** (`nube`) | cartilla de sellos | colorida | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
+| 💈 **Fade Room** (`fade`) | sellos + niveles | sleek, animada | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
+| 🍕 **Forno Nostro** (`forno`) | cupón descuento | cupón pizza | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
 
-> 📚 Docs: [Arranque](NEXT-STEPS.md) · [Deploy](docs/DEPLOY.md) ·
-> [Arquitectura](docs/ARCHITECTURE.md) · [Acciones (modularidad)](docs/ACTIONS.md) ·
-> [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
-
----
-
-## La idea en una frase
-
-El pase es una **tarjeta de identidad tonta**: su QR solo dice "este soy yo". La
-caja lo escanea, el backend decide qué hacer **ahora** con esa persona, y empuja
-el cambio al Wallet. Cambiar qué hace un escaneo = cambiar config en el manager.
-El pase y el QR nunca cambian.
+## Cómo funciona
 
 ```
-Tag NFC del mostrador ──▶ /api/tap ──▶ pase nuevo en el móvil      (EMITIR)
+Tag NFC del negocio ─▶ /api/tap?b=<slug> ─▶ pase en el móvil   (iOS: .pkpass directo, menos fricción)
 
 Pase del cliente (QR = /w/<serial>)
-   │ la caja lo escanea con la cámara (app /worker)
+   │ la caja del negocio lo escanea con la cámara (/<slug>/caja)
    ▼
-Perfil del cliente + botones ──▶ /api/accion ──▶ backend actualiza ──▶ push al pase
+Perfil del cliente + botones ─▶ /api/accion ─▶ backend ─▶ push al Wallet (live)
 ```
 
----
-
-## 🟢 Correr en local (sin cuentas)
-
-```bash
-npm install
-npm run dev
-```
-- **/manager** — configura, emite un pase, lanza una promo.
-- **/worker** — app de caja: escáner QR + lista de clientes.
-- **/w/&lt;serial&gt;** — perfil del cliente con botones (lo abre el QR del pase).
-- **/p/&lt;serial&gt;** — el pase del cliente (su QR).
-
-Sin credenciales = **modo demo**: firma/push simulados, estado en `.data/`.
-
-## 🔵 Pases reales + deploy
-
-Todo en [NEXT-STEPS.md](NEXT-STEPS.md) y [docs/DEPLOY.md](docs/DEPLOY.md). Resumen:
-Supabase (`supabase/schema.sql`) + key WalletWallet + `.env.local` + Vercel + tag NFC.
-Con `APP_MODE=worker|manager` puedes desplegar las dos apps en **dominios separados
-desde este mismo repo**.
-
----
+- **Menos fricción:** en iOS, `/api/tap` devuelve el `.pkpass` firmado directamente
+  → la hoja "Añadir a Wallet" sale al instante (sin página intermedia). Apple sigue
+  exigiendo el toque final "Añadir" (no se puede instalar en silencio).
+- **Identidad:** usamos nuestro propio `serial` (uuid). El barcode ya va correcto en
+  el primer POST, y guardamos el `ww_serial` de WalletWallet para los push.
 
 ## Estructura
 
 ```
 src/app/
-├─ page.js                    Hub (redirige según APP_MODE)
-├─ (worker)/                  ── APP DE CAJA (PWA) ──
-│  ├─ layout.js               manifest + instalable
-│  ├─ worker/page.js          home: escáner QR + lista
-│  ├─ worker/QrScanner.js     cámara + jsQR
-│  └─ w/[serial]/             perfil del cliente + acciones
-├─ (manager)/                 ── APP DE MANAGER (PWA) ──
-│  ├─ layout.js
-│  └─ manager/page.js         config + promo + emitir + NFC
-├─ p/[serial]/                pase del cliente (solo lectura + su QR)
-└─ api/                       tap · crear · accion · programa · promo · clientes · cliente/[serial]
-
+├─ page.js                    Directorio de negocios
+├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/
+├─ w/[serial]/                Perfil del cliente + acciones (lo abre el QR)
+├─ p/[serial]/                Pase del cliente (ThemedPass: 3 diseños)
+└─ api/  tap · crear · accion · negocio · negocios · clientes · promo · manifest
 src/lib/
-├─ acciones.js                ★ registro MODULAR de acciones (añade funcionalidad aquí)
-├─ store.js                   Supabase real o ficheros locales (demo)
-├─ walletwallet.js            buildPassBody() + createPass()/updatePass() (real o demo)
-├─ emitir.js · config.js · appmode.js
-
-public/
-├─ manifest.worker.webmanifest · manifest.manager.webmanifest · sw.js · icons/
+├─ negocios.js   ★ presets de cada negocio (diseño + defaults)
+├─ acciones.js   ★ registro modular de acciones
+├─ store.js · walletwallet.js · emitir.js
 ```
 
+## Puesta en marcha / deploy
+Ver [NEXT-STEPS.md](NEXT-STEPS.md) y [docs/DEPLOY.md](docs/DEPLOY.md). Requiere Supabase
+(ejecutar [`supabase/schema.sql`](supabase/schema.sql)), key de WalletWallet, y Vercel.
+Con `APP_MODE`/dominios se pueden separar cajas y managers.
+
 ## Límites conocidos
-- Push no instantáneo garantizado (Apple entrega cuando hay conexión).
-- `/w/<serial>` es público: en producción necesita login de caja (ver ARCHITECTURE).
-- El escáner necesita HTTPS o localhost (contexto seguro para la cámara).
-- Sin email = sin recuperación si el cliente borra el pase.
-- "Confirmar pago" registra la transacción en NUESTRO sistema; no mueve dinero.
+- El push no es instantáneo garantizado (Apple entrega cuando hay conexión).
+- iOS no permite instalar un pase en silencio (toque "Añadir" obligatorio).
+- `/w/<serial>` es público: en producción necesita login de caja.
+- El escáner necesita HTTPS o localhost.
