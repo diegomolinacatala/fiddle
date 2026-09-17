@@ -29,6 +29,7 @@ const PUBLICAS = [
   /^\/api\/wallet(\/.*)?$/,
   /^\/api\/manifest$/,
   /^\/api\/negocios$/,
+  /^\/api\/salud$/,
 ];
 
 // Segmentos de primer nivel que NO son un negocio.

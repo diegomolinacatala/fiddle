@@ -15,14 +15,20 @@ export async function POST(request) {
     if (!esNegocio(negocio)) return jsonError("Elige un negocio", 400);
     if (!secretoSesion()) return jsonError("Login desactivado: falta AUTH_SECRET en el servidor", 503);
 
+    // El límite de intentos vive en la base de datos. Si falla, se deja entrar
+    // igualmente (con el PIN correcto): quedarse sin acceso a la caja sería peor.
     const ip = ipDe(request);
-    if (await loginBloqueado(negocio, ip)) {
-      return jsonError("Demasiados intentos. Espera 15 minutos.", 429);
+    try {
+      if (await loginBloqueado(negocio, ip)) {
+        return jsonError("Demasiados intentos. Espera 15 minutos.", 429);
+      }
+    } catch (e) {
+      console.error("[login] no se pudo consultar el límite de intentos:", e);
     }
 
     const rol = rolParaPin(negocio, String(pin ?? ""));
     if (!rol) {
-      await anotarFalloLogin(negocio, ip);
+      await anotarFalloLogin(negocio, ip).catch((e) => console.error("[login] no se pudo anotar el fallo:", e));
       return jsonError("PIN incorrecto", 401);
     }
 

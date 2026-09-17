@@ -1,13 +1,21 @@
 import { getNegocio } from "@/lib/store";
+import { explicarErrorSupabase } from "@/lib/diagnostico";
 import { appUrl } from "@/lib/url";
 import { notFound } from "next/navigation";
+import ErrorDatos from "@/app/ErrorDatos";
 
 export const dynamic = "force-dynamic";
 
 // Landing de un negocio: instalar pase (tap), caja y manager.
 export default async function Page({ params }) {
   const { negocio } = await params;
-  const n = await getNegocio(negocio);
+  let n;
+  try {
+    n = await getNegocio(negocio);
+  } catch (e) {
+    console.error(`[landing ${negocio}] no se pudo leer la base de datos:`, e);
+    return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
+  }
   if (!n) notFound();
 
   const tapUrl = `${appUrl()}/api/tap?b=${negocio}`;
