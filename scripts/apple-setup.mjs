@@ -116,7 +116,8 @@ async function env(opts) {
 ✔ Caduca:       ${info.caduca.toISOString().slice(0, 10)}  (renuévalo antes: con él se firman y actualizan los pases)
 ✔ Variables en ${salida}
 
-Pega esas 5 variables en Vercel (Settings -> Environment Variables) y en .env.local.
+Pega esas 5 variables en Vercel (Settings -> Environment Variables, entorno Production).
+NO hace falta .env.local: en local (http://localhost) Apple no puede actualizar pases.
 Asegúrate de que APP_URL es la URL HTTPS pública: Apple solo actualiza pases contra HTTPS.
 `);
 }
