@@ -1,10 +1,14 @@
-import { getCliente, getNegocio } from "@/lib/store";
+import { getCliente, getNegocio, clientePublico } from "@/lib/store";
+import { proveedorWallet } from "@/lib/wallet";
+import { googleSaveUrl } from "@/lib/googlewallet";
+import { urlCaja } from "@/lib/url";
 import ThemedPass from "./ThemedPass";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Vista del PASE del cliente (cómo se ve la tarjeta). Diseño según el negocio.
+// Página del PASE del cliente: cómo se ve su tarjeta + botones para guardarla en
+// Apple Wallet / Google Wallet. Pública (el serial es un uuid aleatorio).
 export default async function Page({ params }) {
   const { serial } = await params;
   const cliente = await getCliente(serial);
@@ -16,5 +20,17 @@ export default async function Page({ params }) {
     );
   }
   const negocio = await getNegocio(cliente.negocio);
-  return <ThemedPass serial={serial} cliente={cliente} negocio={negocio} />;
+  const proveedor = proveedorWallet();
+
+  return (
+    <ThemedPass
+      serial={serial}
+      cliente={clientePublico(cliente)}
+      negocio={negocio}
+      qrTexto={urlCaja(serial)}
+      appleUrl={proveedor === "apple" ? `/api/pase/${serial}` : null}
+      googleUrl={googleSaveUrl(cliente, negocio)}
+      demo={proveedor === "demo"}
+    />
+  );
 }

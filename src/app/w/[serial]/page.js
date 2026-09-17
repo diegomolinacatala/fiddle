@@ -1,15 +1,32 @@
+import { cookies } from "next/headers";
 import { getCliente, getNegocio, listEventos } from "@/lib/store";
 import { LISTA_ACCIONES } from "@/lib/acciones";
+import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import WorkerActions from "./WorkerActions";
+import SetNombre from "./SetNombre";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Vista del TRABAJADOR (lo que abre el QR del pase). Perfil + acciones.
+// El middleware ya exige sesión; aquí se comprueba que sea del negocio del cliente.
 export default async function Page({ params }) {
   const { serial } = await params;
   const cliente = await getCliente(serial);
   if (!cliente) return <main style={wrap}><Center>🔍<br /><span style={{ opacity: 0.7, fontSize: 16 }}>Cliente no encontrado</span></Center></main>;
+
+  const sesion = await verificarSesion((await cookies()).get(COOKIE)?.value);
+  if (!puedeAcceder(sesion, cliente.negocio, "caja")) {
+    return (
+      <main style={wrap}>
+        <Center>
+          🚫<br />
+          <span style={{ opacity: 0.7, fontSize: 16 }}>Este pase es de otro negocio.</span><br />
+          <a href={`/login?b=${cliente.negocio}&next=/w/${serial}`} style={{ color: "#fff", fontSize: 14 }}>Entrar con otra caja</a>
+        </Center>
+      </main>
+    );
+  }
 
   const n = await getNegocio(cliente.negocio);
   const eventos = await listEventos(serial);
@@ -23,7 +40,8 @@ export default async function Page({ params }) {
   return (
     <main style={wrap}>
       <div style={{ width: "min(430px, 94vw)" }}>
-        <div style={{ fontSize: 13, opacity: 0.5 }}>{n.tema.emoji} {n.nombre}</div>
+        <a href={`/${n.slug}/caja`} style={{ fontSize: 13, opacity: 0.5, color: "#fff", textDecoration: "none" }}>← {n.tema.emoji} {n.nombre}</a>
+        {cliente.nombre && <div style={{ fontSize: 22, fontWeight: 600, marginTop: 6 }}>{cliente.nombre}</div>}
         <div style={{ fontSize: 12, opacity: 0.35, fontFamily: "monospace", marginBottom: 14 }}>{serial}</div>
 
         <div style={{ ...panel, borderColor: accent }}>
@@ -55,6 +73,7 @@ export default async function Page({ params }) {
         </div>
 
         <WorkerActions serial={serial} acciones={acciones} accent={accent} />
+        <SetNombre serial={serial} nombre={cliente.nombre} />
 
         {eventos.length > 0 && (
           <div style={{ marginTop: 22 }}>

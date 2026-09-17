@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import QrScanner from "./QrScanner";
+import LogoutButton from "@/app/LogoutButton";
 
 // App de CAJA de un negocio (móvil, instalable). Escanea el pase o abre a mano.
 export default function Caja() {
@@ -16,7 +17,8 @@ export default function Caja() {
   useEffect(() => {
     if (!negocio) return;
     fetch(`/api/negocio?b=${negocio}`).then((r) => r.json()).then(setN).catch(() => {});
-    fetch(`/api/clientes?b=${negocio}`).then((r) => r.json()).then(setClientes).catch(() => {});
+    fetch(`/api/clientes?b=${negocio}`).then((r) => r.json())
+      .then((d) => setClientes(Array.isArray(d) ? d : [])).catch(() => {});
   }, [negocio]);
 
   function abrir(e) {
@@ -31,9 +33,12 @@ export default function Caja() {
   return (
     <main style={wrap}>
       <div style={{ width: "min(430px, 94vw)" }}>
-        <h1 style={{ fontSize: "1.5rem", marginBottom: 2 }}>
-          {n?.tema?.emoji || "📱"} {n?.nombre || "Caja"} · caja
-        </h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <h1 style={{ fontSize: "1.5rem", marginBottom: 2 }}>
+            {n?.tema?.emoji || "📱"} {n?.nombre || "Caja"} · caja
+          </h1>
+          <LogoutButton negocio={negocio} />
+        </div>
         <p style={{ opacity: 0.6, fontSize: 14, marginTop: 0 }}>Escanea el QR del pase del cliente.</p>
 
         <QrScanner accent={accent} />
@@ -53,7 +58,9 @@ export default function Caja() {
         </div>
         {clientes.slice(0, 15).map((c) => (
           <a key={c.serial} href={`/w/${c.serial}`} style={row}>
-            <span style={{ fontFamily: "monospace", fontSize: 13, opacity: 0.7 }}>{c.serial.slice(0, 8)}…</span>
+            <span style={{ fontFamily: c.nombre ? "inherit" : "monospace", fontSize: 13, opacity: 0.8 }}>
+              {c.nombre || `${c.serial.slice(0, 8)}…`}
+            </span>
             <span style={{ opacity: 0.8 }}>{c.sellos} · {c.premios || 0} 🎁</span>
           </a>
         ))}

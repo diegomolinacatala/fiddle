@@ -1,17 +1,34 @@
 {
-  "name": "cafe-demo-wallet",
+  "name": "sellos-wallet",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "apple:csr": "node scripts/apple-setup.mjs csr",
+    "apple:env": "node scripts/apple-setup.mjs env",
+    "apple:prueba": "node scripts/apple-setup.mjs prueba"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "jsqr": "^1.4.0",
-    "next": "^15.0.0",
+    "next": "^15.5.25",
+    "passkit-generator": "^3.6.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.1",
+    "node-forge": "^1.4.0",
+    "vitest": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

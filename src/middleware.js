@@ -1,57 +1,38 @@
 import { NextResponse } from "next/server";
-import { verifySession, canAccess, COOKIE } from "@/lib/auth";
+import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
+import { reglaDeRuta, negocioDeRuta } from "@/lib/acceso";
 
 // ============================================================================
 // GATE DE AUTENTICACIÓN
 // ----------------------------------------------------------------------------
 // Verifica la sesión (firma HMAC real, no solo "existe la cookie") antes de
-// dejar pasar a las rutas sensibles. Página sin sesión -> redirige a /login.
-// API sin sesión -> 401 JSON.
-//
-// PÚBLICO a propósito:
-//   /                 hub
-//   /login /api/login /api/logout
-//   /api/tap          EMISIÓN del pase: el cliente NO tiene login (crea su pase)
-//   /p/<serial>       vista del pase del cliente (solo lectura, su identidad)
+// dejar pasar. Las reglas viven en lib/acceso.js (testeadas).
+// Página sin permiso -> /login?b=<negocio>&next=<ruta>.  API sin permiso -> 401.
 // ============================================================================
 
-const PUBLIC = [
-  /^\/$/,
-  /^\/login$/,
-  /^\/api\/login$/,
-  /^\/api\/logout$/,
-  /^\/api\/tap$/,
-  /^\/p\//,
-];
-
-// Rutas que exigen rol manager. El resto de protegidas se conforman con worker.
-const MANAGER_ONLY = [
-  /^\/manager$/,
-  /^\/api\/programa$/,
-  /^\/api\/promo$/,
-  /^\/api\/crear$/,
-];
-
 export async function middleware(req) {
-  const { pathname } = req.nextUrl;
-  if (PUBLIC.some((re) => re.test(pathname))) return NextResponse.next();
+  const { pathname, searchParams } = req.nextUrl;
+  const regla = reglaDeRuta(pathname, searchParams, req.method);
+  if (regla.tipo === "publica") return NextResponse.next();
 
-  const needed = MANAGER_ONLY.some((re) => re.test(pathname)) ? "manager" : "worker";
-  const sesion = await verifySession(req.cookies.get(COOKIE)?.value);
+  const sesion = await verificarSesion(req.cookies.get(COOKIE)?.value);
+  const permitido =
+    regla.tipo === "sesion" ? Boolean(sesion) : puedeAcceder(sesion, regla.slug, regla.rol);
+  if (permitido) return NextResponse.next();
 
-  if (!sesion || !canAccess(sesion.role, needed)) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-    const url = req.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  return NextResponse.next();
+  const url = req.nextUrl.clone();
+  url.pathname = "/login";
+  url.search = "";
+  const negocio = negocioDeRuta(pathname) || sesion?.negocio;
+  if (negocio) url.searchParams.set("b", negocio);
+  url.searchParams.set("next", pathname);
+  return NextResponse.redirect(url);
 }
 
-// Solo corre en estas rutas: assets, manifiestos y _next quedan fuera.
+// Todo salvo estáticos: assets de Next, iconos, service worker y favicon.
 export const config = {
-  matcher: ["/manager", "/worker", "/w/:path*", "/api/:path*"],
+  matcher: ["/((?!_next/|icons/|sw\\.js|favicon\\.ico).*)"],
 };

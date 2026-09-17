@@ -1,33 +1,43 @@
 import { NextResponse } from "next/server";
 import { getNegocio, saveNegocio } from "@/lib/store";
 import { ACCIONES } from "@/lib/acciones";
-import { NEGOCIOS } from "@/lib/negocios";
+import { esNegocio } from "@/lib/negocios";
+import { notificarNegocio } from "@/lib/wallet";
+import { patchNegocio } from "@/lib/validacion";
+import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/negocio?b=<slug>  -> config actual (con tema)
+// GET /api/negocio?b=<slug>  -> config actual (con tema). Caja o manager.
 export async function GET(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  const n = await getNegocio(slug);
-  if (!n) return NextResponse.json({ error: "negocio desconocido" }, { status: 404 });
-  return NextResponse.json(n);
+  if (!esNegocio(slug)) return jsonError("negocio desconocido", 404);
+  const { respuesta } = await exigirNegocio(request, slug, "caja");
+  if (respuesta) return respuesta;
+  try {
+    return NextResponse.json(await getNegocio(slug));
+  } catch (e) {
+    return errorInterno("negocio GET", e);
+  }
 }
 
-// PUT /api/negocio?b=<slug>  -> guarda la config editable
+// PUT /api/negocio?b=<slug>  -> guarda la config editable y actualiza todos los pases.
 export async function PUT(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  if (!NEGOCIOS[slug]) return NextResponse.json({ error: "negocio desconocido" }, { status: 404 });
+  if (!esNegocio(slug)) return jsonError("negocio desconocido", 404);
+  const { respuesta } = await exigirNegocio(request, slug, "manager");
+  if (respuesta) return respuesta;
+
   try {
     const body = await request.json().catch(() => ({}));
-    const patch = {};
-    if (Number.isFinite(body.meta)) patch.meta = Math.max(1, Math.min(50, Math.round(body.meta)));
-    if (typeof body.premio === "string") patch.premio = body.premio.slice(0, 128);
-    if (Array.isArray(body.acciones)) patch.acciones = body.acciones.filter((k) => ACCIONES[k]);
-    if (typeof body.promo === "string" || body.promo === null) patch.promo = body.promo || null;
-    const nuevo = await saveNegocio(slug, patch);
-    return NextResponse.json(nuevo);
+    const r = patchNegocio(body, Object.keys(ACCIONES));
+    if (r.error) return jsonError(r.error, 400);
+
+    const nuevo = await saveNegocio(slug, r.patch);
+    const aviso = await notificarNegocio(nuevo);
+    return NextResponse.json({ ...nuevo, aviso });
   } catch (e) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
+    return errorInterno("negocio PUT", e);
   }
 }

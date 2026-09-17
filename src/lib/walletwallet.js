@@ -1,31 +1,32 @@
-import { randomUUID } from "crypto";
+import { urlCaja } from "./url";
+
+// ============================================================================
+// WALLETWALLET (alternativa sin cuenta de Apple Developer)
+// ----------------------------------------------------------------------------
+// Servicio externo que firma el pase y hace el push por nosotros. Ahora que hay
+// cuenta de Apple Developer, el proveedor preferido es el propio (lib/apple).
+// Se mantiene como plan B: solo se usa si NO hay variables APPLE_* y SÍ hay
+// WALLETWALLET_API_KEY. Ver lib/wallet.js.
+// ============================================================================
 
 const WW_BASE = "https://api.walletwallet.dev";
 
-export const isDemoWallet = () => !process.env.WALLETWALLET_API_KEY;
+export const hayWalletWallet = () => Boolean(process.env.WALLETWALLET_API_KEY);
 
 function authHeaders() {
   return { Authorization: `Bearer ${process.env.WALLETWALLET_API_KEY}`, "Content-Type": "application/json" };
 }
 
-export function appUrl() {
-  return (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
-}
-
-export function nuevoSerial() {
-  return randomUUID();
-}
-
 /**
  * Reconstruye el pase completo desde el estado del cliente + la config del negocio.
- * El barcode apunta a /w/<serial> (identidad). Se usa el serial NUESTRO (no el de
- * WalletWallet), así el barcode ya va correcto en el primer POST.
+ * El PUT de WalletWallet reemplaza el body entero, así que esta función es la
+ * única fuente de verdad del pase en este proveedor.
  */
 export function buildPassBody(cliente, negocio) {
   const t = negocio.tema;
   const body = {
     barcodeFormat: "QR",
-    barcodeValue: cliente.serial ? `${appUrl()}/w/${cliente.serial}` : "PENDING",
+    barcodeValue: urlCaja(cliente.serial),
     logoText: `${t.emoji} ${negocio.nombre}`,
     description: negocio.nombre,
     organizationName: negocio.nombre,
@@ -42,7 +43,9 @@ export function buildPassBody(cliente, negocio) {
     const meta = negocio.meta;
     const sellos = Math.min(cliente.sellos, meta);
     const completa = cliente.sellos >= meta;
-    body.headerFields = [{ label: "Sellos", value: `${sellos}/${meta}` }];
+    body.headerFields = [
+      cliente.nombre ? { label: "Cliente", value: cliente.nombre } : { label: "Sellos", value: `${sellos}/${meta}` },
+    ];
     body.primaryFields = [{ label: "Sellos", value: `${sellos} / ${meta}`, changeMessage: "Ya tienes %@ sellos" }];
     body.secondaryFields = [{ label: "Premio", value: completa ? `¡${negocio.premio}! 🎉` : `Faltan ${meta - cliente.sellos}` }];
     if ((cliente.premios || 0) > 0) body.backFields.push({ label: "Canjeados", value: String(cliente.premios) });
@@ -52,20 +55,17 @@ export function buildPassBody(cliente, negocio) {
   return body;
 }
 
-// POST /api/passes -> crea el pase. Devuelve wwSerial + applePass (bytes .pkpass ya firmados).
+// POST /api/passes -> crea el pase. Devuelve wwSerial + applePass (bytes .pkpass ya firmados, base64).
 export async function createPass(body) {
-  if (isDemoWallet()) {
-    return { wwSerial: null, shareUrl: null, applePass: null, _demo: true };
-  }
   const res = await fetch(`${WW_BASE}/api/passes`, { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`WalletWallet POST ${res.status}: ${await res.text()}`);
   const d = await res.json();
-  return { wwSerial: d.serialNumber, shareUrl: d.shareUrl, googleSaveUrl: d.googleSaveUrl, applePass: d.applePass, _demo: false };
+  return { wwSerial: d.serialNumber, shareUrl: d.shareUrl, applePass: d.applePass };
 }
 
-// PUT /api/passes/<wwSerial> -> reemplaza el pase y dispara el push automático.
+// PUT /api/passes/<wwSerial> -> reemplaza el pase y (según su doc) dispara el push.
 export async function updatePass(wwSerial, body) {
-  if (isDemoWallet() || !wwSerial) return { ok: true, _demo: true };
+  if (!wwSerial) return { ok: false, motivo: "cliente sin ww_serial" };
   const res = await fetch(`${WW_BASE}/api/passes/${wwSerial}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`WalletWallet PUT ${res.status}: ${await res.text()}`);
   return res.json();

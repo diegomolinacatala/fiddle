@@ -1,5 +1,5 @@
 import { getNegocio } from "@/lib/store";
-import { appUrl } from "@/lib/walletwallet";
+import { appUrl } from "@/lib/url";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";

@@ -70,8 +70,13 @@ export const NEGOCIOS = {
 
 export const LISTA_NEGOCIOS = Object.values(NEGOCIOS);
 
+/** @param {unknown} slug @returns {boolean} */
+export const esNegocio = (slug) => typeof slug === "string" && Object.hasOwn(NEGOCIOS, slug);
+
 // Config editable (lo que se guarda en BD). El resto (tema, tipo, nombre) es del preset.
+// `ubicaciones` = tiendas físicas: el pase se sugiere en la pantalla de bloqueo al
+// acercarse (Apple Wallet, máx. 10). [{ lat, lng, texto? }]
 export function configDefault(slug) {
   const n = NEGOCIOS[slug];
-  return { meta: n.meta, premio: n.premio, acciones: n.acciones, promo: null };
+  return { meta: n.meta, premio: n.premio, acciones: n.acciones, promo: null, ubicaciones: [] };
 }
