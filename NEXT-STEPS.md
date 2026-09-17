@@ -22,8 +22,8 @@ npm test           # 103 tests
 
 ## 1. Decidir la rama con Víctor — [ ]
 `fiddle-zeta.vercel.app` está desplegado desde `victor-temp`, **sin login**: cualquiera
-con la URL puede sellar o lanzar promos. Esta rama lo arregla. Revisad el PR y
-fusionad a `main`. Al desplegarla, configurad antes los PINs y `AUTH_SECRET` (paso 3):
+con la URL puede sellar o lanzar promos. Esta rama lo arregla. Revisadla (está solo en local hasta hacer push) y
+fusionad a `main`. Al desplegarla, configurad antes los PINs y `AUTH_SECRET` (paso 4):
 en producción, sin ellos **nadie puede entrar** (falla cerrado a propósito).
 
 ## 2. Supabase — [ ]
