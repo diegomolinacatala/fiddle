@@ -19,12 +19,14 @@ sesión sea **del negocio del recurso** (`403` si no).
 
 Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
 
-### `POST /api/login`
+### `GET /api/login` · `POST /api/login`
+El GET dice si hay accesos de prueba (`USUARIOS_DEMO=1`) y cuáles, para pintarlos en el login.
 ```json
-// request                          // response ok (+ cookie httpOnly "sesion")
-{ "negocio": "nube", "pin": "1234" }  { "ok": true, "negocio": "nube", "rol": "caja" }
+// POST request                              // response ok (+ cookie httpOnly "sesion")
+{ "usuario": "nube", "clave": "..." }        { "ok": true, "negocio": "nube", "rol": "manager" }
 ```
-`400` negocio inválido · `401` PIN incorrecto · `429` demasiados intentos (10 por IP y
+Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. Contraseña en `CLAVE_<SLUG>_<ROL>`.
+`401` usuario o contraseña incorrectos · `429` demasiados intentos (10 por IP y
 negocio en 15 min, 100 por negocio) · `503` falta `AUTH_SECRET` en producción.
 Sesión de caja: 30 días. Sesión de manager: 12 h.
 

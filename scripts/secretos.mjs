@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // ============================================================================
-// Genera los secretos de producción: AUTH_SECRET + un PIN de 6 cifras por
-// negocio y rol. Los escribe en certs/secretos.env (ignorado por git) listos
-// para pegar en Vercel -> Settings -> Environment Variables.
+// Genera los secretos de producción: AUTH_SECRET + una contraseña de 6 cifras
+// por negocio y rol (CLAVE_<SLUG>_<ROL>; el nombre antiguo PIN_<SLUG>_<ROL>
+// también sigue valiendo). Los escribe en certs/secretos.env (ignorado por git)
+// listos para pegar en Vercel -> Settings -> Environment Variables.
 //
 //   npm run secretos            (no sobrescribe si ya existe)
 //   npm run secretos -- --force
@@ -12,7 +13,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { LISTA_NEGOCIOS } from "../src/lib/negocios.js";
-import { varPin } from "../src/lib/auth.js";
+import { varClave, usuarioDe } from "../src/lib/auth.js";
 
 const raiz = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const salida = process.argv.includes("--salida")
@@ -27,10 +28,10 @@ if (existsSync(salida) && !process.argv.includes("--force")) {
 const lineas = [`AUTH_SECRET=${randomBytes(32).toString("hex")}`];
 const tabla = [];
 for (const n of LISTA_NEGOCIOS) {
-  for (const rol of ["caja", "manager"]) {
-    const pin = String(randomInt(0, 1_000_000)).padStart(6, "0");
-    lineas.push(`${varPin(n.slug, rol)}=${pin}`);
-    tabla.push(`  ${n.nombre.padEnd(14)} ${rol.padEnd(8)} ${pin}`);
+  for (const rol of ["manager", "caja"]) {
+    const clave = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    lineas.push(`${varClave(n.slug, rol)}=${clave}`);
+    tabla.push(`  ${n.nombre.padEnd(14)} ${rol.padEnd(8)} usuario ${usuarioDe(n.slug, rol).padEnd(14)} contraseña ${clave}`);
   }
 }
 
@@ -39,7 +40,7 @@ writeFileSync(salida, lineas.join("\n") + "\n", { mode: 0o600 });
 console.log(`
 ✔ Secretos en ${salida}
 
-PINs (dáselos a cada negocio; el de manager solo al responsable):
+Accesos (da el de manager solo al responsable de cada negocio):
 ${tabla.join("\n")}
 
 Pega el contenido del fichero en Vercel -> Settings -> Environment Variables.

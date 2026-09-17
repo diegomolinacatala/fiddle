@@ -9,10 +9,16 @@
 // Roles: "manager" (todo su negocio) y "caja" (solo escanear y actuar). Una
 // sesión SOLO vale para su negocio: la caja de Nube no entra en Fade.
 //
-// PINs por negocio y rol, desde env:  PIN_<SLUG>_CAJA  ·  PIN_<SLUG>_MANAGER
-// Fuera de producción hay PINs de demo (1234 caja / 4321 manager) y un secreto de
-// demo. EN PRODUCCIÓN no hay valores por defecto: sin AUTH_SECRET o sin PIN, no
-// se puede entrar (falla cerrado).
+// ENTRADA: usuario + contraseña en un único login.
+//   usuario `nube`        -> manager de nube (incluye lo de la caja)
+//   usuario `nube-caja`   -> solo caja de nube
+// La contraseña sale de env: CLAVE_<SLUG>_<ROL> (o PIN_<SLUG>_<ROL>, el mismo
+// valor con el nombre antiguo).
+//
+// MODO PRUEBAS: fuera de producción, o con USUARIOS_DEMO=1, la contraseña puede
+// ser igual que el usuario (nube/nube) y el login los muestra en pantalla.
+// EN PRODUCCIÓN sin USUARIOS_DEMO no hay valores por defecto: sin AUTH_SECRET o
+// sin contraseña configurada, no se puede entrar (falla cerrado).
 // ============================================================================
 
 const enc = new TextEncoder();
@@ -22,10 +28,12 @@ export const ROLES = ["caja", "manager"];
 // La caja vive en un móvil de la tienda: sesión larga. El manager, corta.
 export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 12 };
 
-const PINS_DEMO = { caja: "1234", manager: "4321" };
 const SECRETO_DEMO = "demo-secret-cambia-en-produccion";
 
 const esProduccion = () => process.env.NODE_ENV === "production";
+
+/** ¿Están activos los accesos de prueba (usuario = contraseña, visibles en el login)? */
+export const usuariosDemo = () => process.env.USUARIOS_DEMO === "1" || !esProduccion();
 
 /** Secreto HMAC, o null si falta en producción (=> nadie puede entrar). */
 export function secretoSesion() {
@@ -34,30 +42,44 @@ export function secretoSesion() {
   return esProduccion() ? null : SECRETO_DEMO;
 }
 
-/** Nombre de la variable de entorno del PIN. `fade-room` -> PIN_FADE_ROOM_CAJA */
-export const varPin = (slug, rol) =>
-  `PIN_${String(slug).toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${rol.toUpperCase()}`;
+/** Nombre de la variable de entorno de la contraseña. `fade` -> CLAVE_FADE_CAJA */
+export const varClave = (slug, rol) =>
+  `CLAVE_${String(slug).toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${rol.toUpperCase()}`;
+/** Nombre antiguo, que sigue valiendo: PIN_FADE_CAJA */
+export const varPin = (slug, rol) => varClave(slug, rol).replace(/^CLAVE_/, "PIN_");
 
-/** PIN configurado para un negocio y rol, o null si no hay (en producción). */
-export function pinDe(slug, rol) {
-  const valor = process.env[varPin(slug, rol)]?.trim();
-  if (valor) return valor;
-  return esProduccion() ? null : PINS_DEMO[rol];
+/** Contraseña configurada para un negocio y rol, o null si no hay ninguna. */
+export function claveDe(slug, rol) {
+  return process.env[varClave(slug, rol)]?.trim() || process.env[varPin(slug, rol)]?.trim() || null;
+}
+
+/** Usuario de acceso de un negocio y rol: `nube` (manager) · `nube-caja`. */
+export const usuarioDe = (slug, rol) => (rol === "manager" ? slug : `${slug}-caja`);
+
+/**
+ * A qué negocio y rol corresponde un usuario. No comprueba la contraseña.
+ * @returns {{negocio:string, rol:"caja"|"manager"}|null}
+ */
+export function resolverUsuario(usuario) {
+  const limpio = String(usuario ?? "").trim().toLowerCase();
+  const m = /^([a-z0-9-]+?)(?:-(caja|manager))?$/.exec(limpio);
+  if (!m) return null;
+  return { negocio: m[1], rol: m[2] === "caja" ? "caja" : "manager" };
 }
 
 /**
- * Rol al que corresponde un PIN dentro de un negocio, o null.
- * @param {string} slug @param {string} pin @returns {"caja"|"manager"|null}
+ * Comprueba usuario + contraseña. Devuelve a quién corresponde, o null.
+ * @returns {{negocio:string, rol:"caja"|"manager"}|null}
  */
-export function rolParaPin(slug, pin) {
-  if (!pin) return null;
-  // Se comprueba manager primero: si alguien pone el mismo PIN a los dos, gana
-  // el rol con más permisos (y así se ve el error de configuración).
-  for (const rol of ["manager", "caja"]) {
-    const esperado = pinDe(slug, rol);
-    if (esperado && igualSeguro(String(pin), esperado)) return rol;
-  }
-  return null;
+export function verificarAcceso(usuario, clave) {
+  const quien = resolverUsuario(usuario);
+  if (!quien || !clave) return null;
+
+  const valida = [claveDe(quien.negocio, quien.rol)];
+  // En pruebas vale además "contraseña = usuario" (nube/nube, nube-caja/nube-caja).
+  if (usuariosDemo()) valida.push(usuarioDe(quien.negocio, quien.rol));
+
+  return valida.some((esperada) => esperada && igualSeguro(String(clave), esperada)) ? quien : null;
 }
 
 /**

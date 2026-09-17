@@ -56,8 +56,13 @@ describe("construirPassJson", () => {
       negocio("nube", { promo: "2x1 hoy", ubicaciones: [{ lat: 40.4, lng: -3.7 }] }),
       opciones,
     );
-    expect(p.storeCard.auxiliaryFields).toEqual([{ key: "cliente", label: "CLIENTE", value: "Marta" }]);
-    expect(p.storeCard.backFields[0]).toMatchObject({ key: "promo", value: "2x1 hoy", changeMessage: "%@" });
+    // La promo va en la cara (auxiliaryFields): es lo único que hace que iOS
+    // muestre notificación en la pantalla de bloqueo.
+    expect(p.storeCard.auxiliaryFields).toEqual([
+      { key: "promo", label: "PROMO", value: "2x1 hoy", changeMessage: "%@" },
+      { key: "cliente", label: "CLIENTE", value: "Marta" },
+    ]);
+    expect(p.storeCard.backFields.map((f) => f.key)).toEqual(["como", "codigo"]);
     expect(p.locations).toEqual([{ latitude: 40.4, longitude: -3.7, relevantText: expect.stringContaining("Nube Café") }]);
   });
 
