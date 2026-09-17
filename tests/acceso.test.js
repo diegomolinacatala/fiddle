@@ -9,7 +9,8 @@ const regla = (ruta, method = "GET") => {
 describe("reglaDeRuta", () => {
   it("rutas públicas", () => {
     for (const r of ["/", "/login", "/api/login", "/api/logout", "/api/tap?b=nube", "/p/abc", "/api/pase/abc",
-      "/api/wallet/v1/log", "/api/wallet/v1/devices/d/registrations/pass.x/s", "/api/manifest?b=nube", "/api/negocios", "/nube"]) {
+      "/api/wallet/v1/log", "/api/wallet/v1/devices/d/registrations/pass.x/s", "/api/manifest?b=nube", "/api/negocios",
+      "/api/salud", "/nube"]) {
       expect(regla(r), r).toEqual({ tipo: "publica" });
     }
   });

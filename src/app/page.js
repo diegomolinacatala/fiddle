@@ -1,10 +1,18 @@
 import { listNegocios } from "@/lib/store";
+import { explicarErrorSupabase } from "@/lib/diagnostico";
+import ErrorDatos from "./ErrorDatos";
 
 export const dynamic = "force-dynamic";
 
 // Directorio de negocios. Cada uno tiene su propia tarjeta, caja, manager y tag.
 export default async function Home() {
-  const negocios = await listNegocios();
+  let negocios;
+  try {
+    negocios = await listNegocios();
+  } catch (e) {
+    console.error("[home] no se pudo leer la base de datos:", e);
+    return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
+  }
   return (
     <main style={wrap}>
       <div style={{ width: "min(720px, 94vw)" }}>
