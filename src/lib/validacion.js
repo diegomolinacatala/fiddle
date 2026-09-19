@@ -1,7 +1,7 @@
 // Validación de entradas del manager (funciones puras, testeadas).
 
 import { normalizarTextoMarca } from "./apple/glifos";
-import { MARCAS, FORMAS, BANDAS } from "./apple/dibujo";
+import { FORMAS, BANDAS, MODOS, resolverMarca } from "./apple/dibujo";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 
@@ -47,7 +47,7 @@ const texto = (v, max) => (typeof v === "string" && v.trim() ? v.trim().slice(0,
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
- * Las tres piezas con las que se dibuja el pase (ver lib/apple/dibujo.js).
+ * Las piezas con las que se dibuja el pase (ver lib/apple/dibujo.js).
  * Solo devuelve las que vengan y sean válidas; el resto lo pone el estilo.
  * El texto de la marca se limpia a lo que se sabe dibujar ("Café 68" -> "CAFE").
  * @returns {{marca?:string, forma?:string, banda?:string, texto?:string}}
@@ -55,9 +55,11 @@ const HEX = /^#[0-9a-f]{6}$/i;
 export function piezasDeDibujo(origen) {
   const o = origen && typeof origen === "object" ? origen : {};
   const piezas = {};
-  if (MARCAS.includes(o.marca)) piezas.marca = o.marca;
+  const marca = resolverMarca(o.marca);
+  if (marca) piezas.marca = marca;
   if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
   if (BANDAS.includes(o.banda)) piezas.banda = o.banda;
+  if (MODOS.includes(o.modo)) piezas.modo = o.modo;
   if (typeof o.texto === "string") piezas.texto = normalizarTextoMarca(o.texto);
   return piezas;
 }

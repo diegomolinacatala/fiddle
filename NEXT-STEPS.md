@@ -41,7 +41,7 @@ Necesitas **Node 22 o superior** (`node -v`) y git. Nada más.
 - `/p/<serial>` es la página del pase de un cliente.
 
 ```bash
-npm test          # 112 tests
+npm test          # 151 tests
 npm run build     # comprobar que compila antes de subir
 ```
 
@@ -71,7 +71,8 @@ Las variables reales se ven y se editan en **Vercel → Settings → Environment
 git switch main && git pull
 git switch -c feat/lo-que-sea
 # ... trabajar ...
-npm test && npm run build
+npm test
+npm run build
 git push -u origin feat/lo-que-sea
 ```
 
@@ -87,7 +88,8 @@ pero perdéis la revisión.
 |---------|---------|
 | Añadir o cambiar un negocio (nombre, colores, premio) | [`src/lib/negocios.js`](src/lib/negocios.js) |
 | Añadir una acción de caja (sellar, canjear, …) | [`src/lib/acciones.js`](src/lib/acciones.js) · ver [docs/ACTIONS.md](docs/ACTIONS.md) |
-| Cambiar lo que muestra el pase | [`src/lib/apple/pase.js`](src/lib/apple/pase.js) (campos) · [`imagenes.js`](src/lib/apple/imagenes.js) (dibujo) |
+| Cambiar lo que muestra el pase | [`src/lib/apple/pase.js`](src/lib/apple/pase.js) (campos) · [`dibujo.js`](src/lib/apple/dibujo.js) (marca, casillas, banda) |
+| Cambiar el aspecto de UNA tienda | no toques código: `/admin/<tienda>`, selector con miniaturas |
 | Tocar el login o los permisos | [`src/lib/auth.js`](src/lib/auth.js) · [`src/lib/acceso.js`](src/lib/acceso.js) |
 | Pantallas de caja / manager | [`src/app/[negocio]`](src/app/[negocio]) |
 | Guardar datos nuevos | [`src/lib/store.js`](src/lib/store.js) + [`supabase/schema.sql`](supabase/schema.sql) |
@@ -113,11 +115,31 @@ Documentación: [Apple Wallet](docs/APPLE-WALLET.md) · [Arquitectura](docs/ARCH
 - [ ] Plan **Pro** en Vercel: el gratuito es solo para uso no comercial.
 
 ### Más adelante
-- [ ] Alta de negocios desde el manager (hoy es tocar `negocios.js` y desplegar).
-- [ ] Actualizaciones en Android (Google Wallet REST API); hoy solo existe el botón de guardar.
 - [ ] Anti-fraude: código rotativo en el QR.
 - [ ] Métricas para el dueño: visitas, canjes, clientes nuevos.
 - [ ] Tests end-to-end (Playwright) de caja y manager.
+
+### Google Wallet — aparcado a propósito (20-sep-2026)
+
+Hoy `googlewallet.js` **solo genera el enlace de guardar**, y ni eso está activo
+en producción (faltan las credenciales). Actualizar un pase ya guardado necesita
+la Wallet REST API, que no está escrita. Decisión: **no se toca por ahora**.
+
+Cuando toque, esto es lo que cuesta:
+
+| Trabajo | Coste | Notas |
+|---|---|---|
+| OAuth de la cuenta de servicio + `PATCH` del objeto | ~3-4 h | Hace falta igual para que los puntos se muevan en Android |
+| Alta en Google Pay & Wallet Console | — | Issuer ID + una LoyaltyClass por tienda. Es papeleo, no código |
+| Dibujar los sellos en el pase de Android | ~1 h **encima** de lo anterior | Ruta pública que sirve la banda en PNG + `heroImage` apuntando ahí |
+
+Lo de dibujar los sellos sale casi gratis **porque el dibujo ya es modular**: se
+rasteriza `stripDelPase()` y se le da a Google una URL, así que vale para
+cualquier diseño sin trabajo por tienda. Los dos problemas de verdad son que
+Google **cachea las imágenes** (la URL tiene que cambiar con cada sello, p. ej.
+`?v=5`, *y* hay que hacer PATCH del objeto) y que el `heroImage` es un **banner
+ancho (1032x336) encima de la tarjeta**, no la cuadrícula de Apple: se parecerá,
+no será igual.
 
 ---
 

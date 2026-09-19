@@ -14,11 +14,12 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 | `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado }` |
 
 `tema` (colores, emoji y las piezas del dibujo: `marca` · `texto` · `forma` ·
-`banda`, ver [`dibujo.js`](../src/lib/apple/dibujo.js)), `brief` (texto libre para Claude), `notas`
+`banda` · `modo`, ver [`dibujo.js`](../src/lib/apple/dibujo.js)), `brief` (texto libre para Claude), `notas`
 (`{"apple.premio": "esto debería ser X"}`, del modo comentarios del admin) y
 `archivado` los edita **/admin**. Las tiendas se crean y se borran ahí: `negocios.js`
 solo aporta las *semillas* y las plantillas de estilo. Un tema guardado antes de
-las piezas sueltas sigue valiendo: `completarTema()` las deduce de su `estilo`.
+las piezas sueltas sigue valiendo: `piezasDeTema()` las deduce de su `estilo`, y
+hay un test que fija que el SVG que sale es idéntico al de antes.
 
 ### `clientes` — la identidad detrás de cada pase
 | Campo | Tipo | Notas |

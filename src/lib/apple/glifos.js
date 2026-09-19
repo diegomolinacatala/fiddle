@@ -54,6 +54,7 @@ const GLIFOS = {
   Y: ["0,0 3,5 6,0", "3,5 3,10"],
   Z: ["0,0 6,0 0,10 6,10"],
   "-": ["1,5 5,5"],
+  "/": ["5,0 1,10"],
   "+": ["1,5 5,5", "3,3 3,7"],
   "&": ["6,10 1,2 3,0 5,2 0,7 2,10 6,6"],
 };
@@ -87,8 +88,8 @@ export const anchoDeTexto = (n) => (n > 0 ? n * ANCHO + (n - 1) * SEPARACION : 0
  * @param {{cx:number, cy:number, alto:number, color:string}} opciones
  * @returns {string} "" si no queda nada que dibujar
  */
-export function svgTextoCuadrado(texto, { cx, cy, alto, color }) {
-  const letras = normalizarTextoMarca(texto);
+export function svgTextoCuadrado(texto, { cx, cy, alto, color, max = 4 }) {
+  const letras = normalizarTextoMarca(texto, max);
   if (!letras) return "";
 
   // El trazo sobresale medio grosor por cada lado: cuenta para el tamaño real.

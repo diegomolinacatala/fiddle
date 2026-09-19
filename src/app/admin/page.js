@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
-import { ESTILOS } from "@/lib/negocios";
+import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
+import Selector from "@/app/admin/Selector";
+import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
 // ============================================================================
@@ -184,10 +186,16 @@ function ConfirmarBorrado({ negocio, onCancelar, onBorrar }) {
 
 // ------------------------------------------------------------ nueva tienda
 function NuevaTienda({ onCreada }) {
-  const [f, setF] = useState({ slug: "", nombre: "", tipo: "sellos", estilo: "coffee", emoji: "", accent: "", meta: 8, premio: "", brief: "" });
+  const [f, setF] = useState({
+    slug: "", nombre: "", tipo: "sellos", meta: 8, premio: "", brief: "",
+    tema: temaPorDefecto({ estilo: "coffee" }),
+  });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+  const setTema = (k, v) => setF((p) => ({ ...p, tema: { ...p.tema, [k]: v } }));
+  // Elegir plantilla parte de cero: sus colores, su marca y sus casillas.
+  const cambiarPlantilla = (estilo) => setF((p) => ({ ...p, tema: temaPorDefecto({ estilo, texto: p.tema.texto }) }));
 
   // El identificador sale del nombre, pero se puede cambiar a mano.
   function ponNombre(v) {
@@ -203,7 +211,13 @@ function NuevaTienda({ onCreada }) {
       const r = await fetch("/api/admin/negocios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(f),
+        // El servidor pide las piezas sueltas, no el tema entero.
+        body: JSON.stringify({
+          slug: f.slug, nombre: f.nombre, tipo: f.tipo, meta: f.meta, premio: f.premio, brief: f.brief,
+          estilo: f.tema.estilo, emoji: f.tema.emoji, accent: f.tema.accent,
+          marca: f.tema.marca, texto: f.tema.texto, forma: f.tema.forma,
+          banda: f.tema.banda, modo: f.tema.modo,
+        }),
       });
       const d = await r.json();
       if (!r.ok) return setError(d.error || "No se pudo crear");
@@ -235,18 +249,12 @@ function NuevaTienda({ onCreada }) {
           </select>
         </div>
         <div>
-          <label style={{ ...etiqueta, marginTop: 0 }}>Estilo de tarjeta</label>
-          <select value={f.estilo} onChange={(e) => set("estilo", e.target.value)} style={campo}>
-            {ESTILOS.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-        </div>
-        <div>
           <label style={{ ...etiqueta, marginTop: 0 }}>Emoji</label>
-          <input value={f.emoji} onChange={(e) => set("emoji", e.target.value)} placeholder="🥐" style={campo} />
+          <input value={f.tema.emoji} onChange={(e) => setTema("emoji", e.target.value)} placeholder="🥐" style={campo} />
         </div>
         <div>
           <label style={{ ...etiqueta, marginTop: 0 }}>Color</label>
-          <input type="color" value={f.accent || "#ff5c8a"} onChange={(e) => set("accent", e.target.value)} style={{ ...campo, padding: 4, height: 42 }} />
+          <input type="color" value={f.tema.accent} onChange={(e) => setTema("accent", e.target.value)} style={{ ...campo, padding: 4, height: 42 }} />
         </div>
         {f.tipo === "sellos" && (
           <div>
@@ -258,6 +266,72 @@ function NuevaTienda({ onCreada }) {
           <label style={{ ...etiqueta, marginTop: 0 }}>{f.tipo === "descuento" ? "Descuento" : "Premio"}</label>
           <input value={f.premio} onChange={(e) => set("premio", e.target.value)} placeholder={f.tipo === "descuento" ? "20% en la tarta" : "croissant gratis"} style={campo} />
         </div>
+      </div>
+
+      {/* El aspecto: se elige VIÉNDOLO, no leyendo nombres. */}
+      <Selector
+        titulo="Plantilla"
+        valor={f.tema.estilo}
+        opciones={ESTILOS}
+        rotulos={ROTULO_PLANTILLA}
+        vista={vistaPlantilla}
+        onChange={cambiarPlantilla}
+        ancho={132}
+      />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12, alignItems: "flex-end" }}>
+        <Selector
+          titulo="Marca"
+          valor={f.tema.marca}
+          opciones={MARCAS}
+          rotulos={ROTULO}
+          vista={(m) => vistaMarca(f.tema, m)}
+          onChange={(m) => setTema("marca", m)}
+        />
+        {f.tema.marca === "texto" && (
+          <div>
+            <label style={etiqueta}>Letras o números</label>
+            <input
+              value={f.tema.texto || ""}
+              onChange={(e) => setTema("texto", e.target.value.toUpperCase().slice(0, 4))}
+              placeholder="68"
+              style={{ ...campo, letterSpacing: 2 }}
+            />
+          </div>
+        )}
+        {f.tipo !== "descuento" && (
+          <>
+            <Selector
+              titulo="Cómo se cuentan los sellos"
+              valor={f.tema.modo}
+              opciones={MODOS}
+              rotulos={ROTULO}
+              vista={(m) => vistaModo(f.tema, m, f.meta)}
+              onChange={(m) => setTema("modo", m)}
+              ancho={150}
+            />
+            {f.tema.modo !== "relleno" && (
+              <Selector
+                titulo="Casilla del sello"
+                valor={f.tema.forma}
+                opciones={FORMAS}
+                rotulos={ROTULO}
+                vista={(x) => vistaForma(f.tema, x)}
+                onChange={(x) => setTema("forma", x)}
+                ancho={120}
+              />
+            )}
+            <Selector
+              titulo="Banda"
+              valor={f.tema.banda}
+              opciones={BANDAS}
+              rotulos={ROTULO}
+              vista={(b) => vistaBanda(f.tema, b)}
+              onChange={(b) => setTema("banda", b)}
+              ancho={150}
+            />
+          </>
+        )}
       </div>
 
       <label style={etiqueta}>Brief para Claude</label>
