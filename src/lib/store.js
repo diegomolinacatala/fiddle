@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { NEGOCIOS, configDefault, esNegocio } from "./negocios";
+import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -130,13 +131,15 @@ export async function saveNegocio(slug, patch) {
 }
 
 // ============================ CLIENTES ============================
-const CAMPOS_CLIENTE = "serial, negocio, ww_serial, sellos, premios, nombre, auth_token, actualizado, creado";
+const CAMPOS_CLIENTE = "serial, negocio, codigo, ww_serial, sellos, premios, nombre, auth_token, actualizado, creado";
 
 function normalizarCliente(c) {
   return c
     ? {
         serial: c.serial,
         negocio: c.negocio,
+        // Clientes creados antes del código corto: se deduce del serial (estable).
+        codigo: c.codigo || codigoDesdeSerial(c.serial),
         ww_serial: c.ww_serial ?? null,
         sellos: c.sellos ?? 0,
         premios: c.premios ?? 0,
@@ -151,7 +154,7 @@ function normalizarCliente(c) {
 /** Lo que puede salir hacia el navegador: sin auth_token ni ww_serial. */
 export const clientePublico = (c) =>
   c && {
-    serial: c.serial, negocio: c.negocio, sellos: c.sellos, premios: c.premios,
+    serial: c.serial, negocio: c.negocio, codigo: c.codigo, sellos: c.sellos, premios: c.premios,
     nombre: c.nombre ?? null, creado: c.creado ?? null,
   };
 
@@ -160,19 +163,41 @@ export const clientePublico = (c) =>
  */
 export async function crearCliente({ serial, negocio, authToken, wwSerial = null }) {
   const ts = ahoraISO();
-  const fila = {
+  const base = {
     serial, negocio, ww_serial: wwSerial, auth_token: authToken,
     sellos: 0, premios: 0, nombre: null, actualizado: ts, creado: ts,
   };
+  // El código corto solo tiene que ser único DENTRO del negocio: se mira qué
+  // códigos tiene ya esta tienda, no la plataforma entera.
   if (hasSupabase()) {
+    const usados = sinError(
+      await supa().from("clientes").select("serial, codigo").eq("negocio", negocio),
+      "leer códigos del negocio",
+    ) || [];
+    const fila = { ...base, codigo: codigoLibre(new Set(usados.map((c) => c.codigo || codigoDesdeSerial(c.serial))), serial) };
     sinError(await supa().from("clientes").insert(fila), "crear cliente");
     return normalizarCliente(fila);
   }
   return enFila(async () => {
     const all = await leer("clientes", {});
+    const usados = new Set(
+      Object.values(all).filter((c) => c.negocio === negocio).map((c) => c.codigo || codigoDesdeSerial(c.serial)),
+    );
+    const fila = { ...base, codigo: codigoLibre(usados, serial) };
     await escribir("clientes", { ...all, [serial]: fila });
     return normalizarCliente(fila);
   });
+}
+
+/**
+ * Cliente por su código corto DENTRO de un negocio ("K7M" en nube). Devuelve
+ * null si no existe: el mismo código en otra tienda es otro cliente distinto.
+ */
+export async function getClientePorCodigo(negocio, codigo) {
+  const cod = normalizarCodigo(codigo);
+  if (!cod || !esNegocio(negocio)) return null;
+  const lista = await listClientes(negocio);
+  return lista.find((c) => c.codigo === cod) || null;
 }
 
 export async function getCliente(serial) {

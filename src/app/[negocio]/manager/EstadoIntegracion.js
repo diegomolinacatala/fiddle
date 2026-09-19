@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { C } from "@/app/ui";
 
 // Panel "¿está todo conectado?" del manager. Lee /api/estado, que comprueba de
 // verdad certificado de Apple y Supabase, y dice qué tocar si algo falla.
@@ -35,7 +36,7 @@ export default function EstadoIntegracion({ accent }) {
   const todoBien = filas.every((f) => f.ok || f.aviso);
 
   return (
-    <details open={!todoBien} style={{ ...panel, borderColor: todoBien ? "rgba(48,209,88,.35)" : `${accent}66` }}>
+    <details open={!todoBien} style={{ ...panel, borderColor: todoBien ? "#bfe5cd" : `${accent}66` }}>
       <summary style={{ cursor: "pointer", fontSize: 14 }}>
         Estado de la integración · {filas.filter((f) => f.ok).length}/{filas.length} listo
       </summary>
@@ -44,7 +45,7 @@ export default function EstadoIntegracion({ accent }) {
           <div key={f.titulo} style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "baseline" }}>
             <span aria-hidden>{f.ok && !f.aviso ? "🟢" : f.ok || f.aviso ? "🟡" : "🔴"}</span>
             <strong style={{ fontWeight: 500, minWidth: 130 }}>{f.titulo}</strong>
-            <span style={{ opacity: 0.65, wordBreak: "break-word" }}>{f.detalle}</span>
+            <span style={{ color: C.suave, wordBreak: "break-word" }}>{f.detalle}</span>
           </div>
         ))}
       </div>
@@ -59,4 +60,4 @@ function detalleApple({ proveedor, apple }) {
   return apple.avisos.length ? `${base} · ${apple.avisos.join(" · ")}` : base;
 }
 
-const panel = { marginTop: 8, padding: "10px 14px", borderRadius: 12, border: "1px solid", background: "#111113" };
+const panel = { marginTop: 16, padding: "10px 14px", borderRadius: 12, border: "1px solid", background: C.panel };

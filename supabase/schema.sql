@@ -15,6 +15,7 @@ create table if not exists negocios (
 create table if not exists clientes (
   serial      text primary key,          -- nuestro id (va en el QR: /w/<serial>)
   negocio     text,                       -- slug del negocio
+  codigo      text,                       -- clave corta de 3 caracteres, única DENTRO del negocio
   ww_serial   text,                       -- serial de WalletWallet (solo plan B)
   sellos      int  not null default 0,
   premios     int  not null default 0,
@@ -25,6 +26,7 @@ create table if not exists clientes (
 );
 -- Por si la tabla clientes ya existía de antes (añade columnas nuevas):
 alter table clientes add column if not exists negocio text;
+alter table clientes add column if not exists codigo text;
 alter table clientes add column if not exists ww_serial text;
 alter table clientes add column if not exists nombre text;
 alter table clientes add column if not exists auth_token text;
@@ -32,6 +34,11 @@ alter table clientes add column if not exists actualizado timestamptz not null d
 -- Clientes antiguos sin token: se les genera uno (32 hex) para poder actualizar su pase.
 update clientes set auth_token = replace(gen_random_uuid()::text, '-', '') where auth_token is null;
 create index if not exists clientes_negocio on clientes (negocio);
+-- Búsqueda por código corto dentro de un negocio (la caja teclea "K7M").
+-- Índice NO único a propósito: la unicidad la garantiza la app al emitir
+-- (mira los códigos de ese negocio); los clientes antiguos sin código lo
+-- deducen de su serial al leerlos, así que no hay filas que migrar.
+create index if not exists clientes_negocio_codigo on clientes (negocio, codigo);
 
 -- Historial de acciones.
 create table if not exists eventos (

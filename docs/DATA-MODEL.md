@@ -18,6 +18,7 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 |-------|------|-------|
 | `serial` | text PK | uuid nuestro; va en el QR (`/w/<serial>`) |
 | `negocio` | text | slug |
+| `codigo` | text | clave corta de 3 caracteres, **única dentro del negocio** (la misma puede repetirse en otra tienda). Se asigna al emitir; los clientes antiguos la deducen de su serial. Ver [`codigo.js`](../src/lib/codigo.js) |
 | `sellos`, `premios` | int | estado |
 | `nombre` | text? | personalización (sale en el pase) |
 | `auth_token` | text | `authenticationToken` del pase (secreto, nunca al navegador) |
@@ -58,6 +59,7 @@ Clientes:     crearCliente({serial, negocio, authToken, wwSerial?}) · getClient
                  dos cajas canjeando a la vez no entregan el premio dos veces)
               guardarNombre(serial, nombre) -> guardado?
               tocarClientesDeNegocio(slug) · listClientes(negocio?, {limite?}) · clientePublico(c)
+              getClientePorCodigo(negocio, "K7M")  (busca solo dentro de ese negocio)
 Eventos:      addEvento(serial, tipo, mensaje) · listEventos(serial, limit=8)
 Apple Wallet: registrarPase({dispositivo, pushToken, passType, serial, negocio}) -> nuevo?
               borrarRegistro({dispositivo, passType, serial})

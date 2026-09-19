@@ -43,7 +43,7 @@ El "tap NFC". Crea cliente y pase.
 
 ### `POST /api/crear?b=<negocio>` · manager
 ```json
-{ "serial": "uuid", "negocio": "nube", "proveedor": "apple", "urlPase": "https://…/p/uuid", "googleSaveUrl": null }
+{ "serial": "uuid", "codigo": "K7M", "negocio": "nube", "proveedor": "apple", "urlPase": "https://…/p/uuid", "googleSaveUrl": null }
 ```
 
 ### `GET /api/pase/<serial>`
@@ -54,7 +54,7 @@ Descarga el `.pkpass` actual (botón "Añadir a Apple Wallet"). `404` si Apple n
 ### `GET /api/cliente/<serial>`
 ```json
 {
-  "cliente":  { "serial": "…", "negocio": "nube", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
+  "cliente":  { "serial": "…", "negocio": "nube", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
   "negocio":  { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null, "ubicaciones": [], "tema": { … } },
   "eventos":  [ { "tipo": "sellar", "mensaje": "Sello 5/8", "ts": "…" } ],
   "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "➕", "descripcion": "…" } ]
@@ -76,8 +76,13 @@ Si el aviso al Wallet falla, la acción **no** falla (el estado ya está guardad
 `aviso.error` lo indica y el pase se pondrá al día en la próxima sincronización.
 
 ### `GET /api/clientes?b=<negocio>`
-`[{ serial, negocio, sellos, premios, nombre, creado }]`, los 200 más recientes.
-Nunca incluye `auth_token`.
+`[{ serial, negocio, codigo, sellos, premios, nombre, creado }]`, los 200 más
+recientes. Nunca incluye `auth_token`.
+
+### `GET /api/clientes?b=<negocio>&codigo=K7M`
+Un solo cliente por su **código corto** (3 caracteres), o `404`. La búsqueda se
+queda dentro de `<negocio>`: el mismo código en otra tienda es otro cliente y no
+se puede resolver desde aquí. Lo usa la caja cuando el QR no se deja leer.
 
 ## Manager
 

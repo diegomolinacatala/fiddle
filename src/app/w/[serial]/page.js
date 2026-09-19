@@ -4,6 +4,7 @@ import { LISTA_ACCIONES } from "@/lib/acciones";
 import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import WorkerActions from "./WorkerActions";
 import SetNombre from "./SetNombre";
+import { C, pagina, panel, chipCodigo } from "@/app/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,17 +14,17 @@ export const dynamic = "force-dynamic";
 export default async function Page({ params }) {
   const { serial } = await params;
   const cliente = await getCliente(serial);
-  if (!cliente) return <main style={wrap}><Center>🔍<br /><span style={{ opacity: 0.7, fontSize: 16 }}>Cliente no encontrado</span></Center></main>;
+  if (!cliente) return <main style={pagina}><Centro>🔍<br /><span style={aclaracion}>Cliente no encontrado</span></Centro></main>;
 
   const sesion = await verificarSesion((await cookies()).get(COOKIE)?.value);
   if (!puedeAcceder(sesion, cliente.negocio, "caja")) {
     return (
-      <main style={wrap}>
-        <Center>
+      <main style={pagina}>
+        <Centro>
           🚫<br />
-          <span style={{ opacity: 0.7, fontSize: 16 }}>Este pase es de otro negocio.</span><br />
-          <a href={`/login?b=${cliente.negocio}&next=/w/${serial}`} style={{ color: "#fff", fontSize: 14 }}>Entrar con otra caja</a>
-        </Center>
+          <span style={aclaracion}>Este pase es de otro negocio.</span><br />
+          <a href={`/login?b=${cliente.negocio}&next=/w/${serial}`} style={{ fontSize: 14 }}>Entrar con otra caja</a>
+        </Centro>
       </main>
     );
   }
@@ -38,36 +39,42 @@ export default async function Page({ params }) {
   const usado = (cliente.premios || 0) > 0;
 
   return (
-    <main style={wrap}>
+    <main style={pagina}>
       <div style={{ width: "min(430px, 94vw)" }}>
-        <a href={`/${n.slug}/caja`} style={{ fontSize: 13, opacity: 0.5, color: "#fff", textDecoration: "none" }}>← {n.tema.emoji} {n.nombre}</a>
-        {cliente.nombre && <div style={{ fontSize: 22, fontWeight: 600, marginTop: 6 }}>{cliente.nombre}</div>}
-        <div style={{ fontSize: 12, opacity: 0.35, fontFamily: "monospace", marginBottom: 14 }}>{serial}</div>
+        <a href={`/${n.slug}/caja`} style={{ fontSize: 13, color: C.suave, textDecoration: "none" }}>← {n.tema.emoji} {n.nombre}</a>
 
-        <div style={{ ...panel, borderColor: accent }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 16px" }}>
+          <span style={{ ...chipCodigo(accent), fontSize: 18, padding: "4px 10px" }}>{cliente.codigo}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>{cliente.nombre || "Sin nombre"}</div>
+            <div style={{ fontSize: 11, color: C.tenue, fontFamily: "ui-monospace, Menlo, monospace", overflow: "hidden", textOverflow: "ellipsis" }}>{serial}</div>
+          </div>
+        </div>
+
+        <div style={{ ...panel, borderColor: `${accent}66` }}>
           {esDescuento ? (
             <>
               <div style={cap}>Cupón</div>
-              <div style={{ fontSize: 22, fontWeight: 500, color: usado ? "#888" : accent }}>
+              <div style={{ fontSize: 22, fontWeight: 600, color: usado ? C.tenue : accent }}>
                 {usado ? "Ya usado" : "Válido — un uso"}
               </div>
-              <div style={{ marginTop: 10, fontSize: 15, opacity: 0.85 }}>{n.premio}</div>
+              <div style={{ marginTop: 10, fontSize: 15, color: C.suave }}>{n.premio}</div>
             </>
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={cap}>Sellos</span>
-                <span style={{ fontSize: 22, fontWeight: 500 }}>{Math.min(cliente.sellos, meta)}/{meta}</span>
+                <span style={{ fontSize: 22, fontWeight: 600 }}>{Math.min(cliente.sellos, meta)}/{meta}</span>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                {dots.map((on, i) => <span key={i} style={dot(on, accent)}>{on ? "★" : ""}</span>)}
+                {dots.map((on, i) => <span key={i} style={punto(on, accent)}>{on ? "★" : ""}</span>)}
               </div>
               <div style={{ marginTop: 16, fontSize: 15 }}>
                 {cliente.sellos >= meta
-                  ? <span style={{ color: accent }}>🎁 Premio disponible: {n.premio}</span>
-                  : <span style={{ opacity: 0.7 }}>Faltan {meta - cliente.sellos} para {n.premio}</span>}
+                  ? <span style={{ color: accent, fontWeight: 600 }}>🎁 Premio disponible: {n.premio}</span>
+                  : <span style={{ color: C.suave }}>Faltan {meta - cliente.sellos} para {n.premio}</span>}
               </div>
-              {cliente.premios > 0 && <div style={{ marginTop: 6, fontSize: 13, opacity: 0.5 }}>Canjeados: {cliente.premios}</div>}
+              {cliente.premios > 0 && <div style={{ marginTop: 6, fontSize: 13, color: C.tenue }}>Canjeados: {cliente.premios}</div>}
             </>
           )}
         </div>
@@ -79,7 +86,7 @@ export default async function Page({ params }) {
           <div style={{ marginTop: 22 }}>
             <div style={{ ...cap, marginBottom: 8 }}>Actividad reciente</div>
             {eventos.map((e, i) => (
-              <div key={i} style={{ fontSize: 14, opacity: 0.8, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,.06)" }}>{e.mensaje}</div>
+              <div key={i} style={{ fontSize: 14, color: C.suave, padding: "7px 0", borderBottom: `1px solid ${C.borde}` }}>{e.mensaje}</div>
             ))}
           </div>
         )}
@@ -88,11 +95,13 @@ export default async function Page({ params }) {
   );
 }
 
-function Center({ children }) {
-  return <div style={{ textAlign: "center", fontSize: 40 }}>{children}</div>;
+function Centro({ children }) {
+  return <div style={{ textAlign: "center", fontSize: 40, width: "min(430px, 94vw)" }}>{children}</div>;
 }
 
-const wrap = { minHeight: "100vh", display: "grid", placeItems: "start center", background: "#0b0b0c", color: "#fff", padding: "2rem 1rem" };
-const panel = { background: "#141416", border: "1px solid rgba(255,255,255,.1)", borderRadius: 16, padding: "18px" };
-const cap = { fontSize: 12, opacity: 0.55, textTransform: "uppercase", letterSpacing: 1 };
-const dot = (on, accent) => ({ width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 15, background: on ? accent : "transparent", color: "#111", border: on ? "0" : "1.5px solid rgba(255,255,255,.3)" });
+const aclaracion = { color: C.suave, fontSize: 16 };
+const cap = { fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 };
+const punto = (on, accent) => ({
+  width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 15,
+  background: on ? accent : "transparent", color: "#fff", border: on ? 0 : `1.5px solid ${C.bordeFuerte}`,
+});

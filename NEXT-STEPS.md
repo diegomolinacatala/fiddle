@@ -29,10 +29,13 @@ npm run dev      # http://localhost:3000
 
 Necesitas **Node 22 o superior** (`node -v`) y git. Nada más.
 
-- `/` → directorio de los tres negocios.
+- `/` → lleva directo al **login** (o a tu negocio, si ya has entrado).
 - `/login` → usuario **nube** (manager) o **nube-caja** (caja); la contraseña es igual
   que el usuario. En local siempre funcionan y salen listados en la propia pantalla.
-- `/nube/caja` escanea pases · `/nube/manager` configura, lanza promos y emite.
+- `/nube/caja` escanea pases (o acepta el código de 3 caracteres a mano) ·
+  `/nube/manager` configura, lanza promos, emite y **enseña cómo queda el pase**
+  en Apple y en Google.
+- `/nube` es la landing pública de la tienda (lo que abre el tag NFC).
 - `/p/<serial>` es la página del pase de un cliente.
 
 ```bash

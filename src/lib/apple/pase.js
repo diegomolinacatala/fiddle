@@ -76,7 +76,35 @@ export function ubicacionesApple(negocio) {
 }
 
 /**
- * @param {{serial:string, sellos:number, premios:number, nombre:string|null, auth_token:string}} cliente
+ * Campos del pase (cara y reverso) para un cliente. Exportado aparte de
+ * `construirPassJson` para que la VISTA PREVIA del manager pinte exactamente lo
+ * mismo que acaba dentro del .pkpass, sin poder desviarse.
+ * @returns {{headerFields:object[], primaryFields:object[], secondaryFields:object[], auxiliaryFields:object[], backFields:object[]}}
+ */
+export function camposDelPase(cliente, negocio) {
+  const esCupon = negocio.tipo === "descuento";
+  const campos = esCupon ? camposCupon(cliente, negocio) : camposSellos(cliente, negocio);
+
+  // La promo va en la CARA del pase: iOS solo avisa en la pantalla de bloqueo
+  // cuando cambia un campo visible. Un campo del reverso se actualiza en silencio.
+  const auxiliaryFields = [
+    ...(negocio.promo ? [{ key: "promo", label: "PROMO", value: negocio.promo, changeMessage: "%@" }] : []),
+    ...(cliente.nombre ? [{ key: "cliente", label: "CLIENTE", value: cliente.nombre }] : []),
+  ];
+
+  const backFields = [
+    { key: "como", label: "Cómo funciona", value: negocio.tema.atras },
+    { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
+  ];
+
+  return { ...campos, auxiliaryFields, backFields };
+}
+
+/** Clave corta del cliente ("K7M"). Los pases antiguos caen a los 3 primeros del serial. */
+const codigoDe = (cliente) => cliente.codigo || String(cliente.serial || "").slice(0, 3).toUpperCase();
+
+/**
+ * @param {{serial:string, codigo?:string, sellos:number, premios:number, nombre:string|null, auth_token:string}} cliente
  * @param {{slug:string, nombre:string, tipo:string, tema:object, meta:number, premio:string, promo:string|null, ubicaciones?:object[]}} negocio
  * @param {{passTypeId:string, teamId:string, appUrl:string}} opciones
  * @returns {object} pass.json
@@ -87,19 +115,7 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
   }
   const t = negocio.tema;
   const esCupon = negocio.tipo === "descuento";
-  const campos = esCupon ? camposCupon(cliente, negocio) : camposSellos(cliente, negocio);
-
-  // La promo va en la CARA del pase: iOS solo avisa en la pantalla de bloqueo
-  // cuando cambia un campo visible. Un campo del reverso se actualiza en silencio.
-  const auxiliares = [
-    ...(negocio.promo ? [{ key: "promo", label: "PROMO", value: negocio.promo, changeMessage: "%@" }] : []),
-    ...(cliente.nombre ? [{ key: "cliente", label: "CLIENTE", value: cliente.nombre }] : []),
-  ];
-
-  const reverso = [
-    { key: "como", label: "Cómo funciona", value: t.atras },
-    { key: "codigo", label: "Tu código", value: cliente.serial },
-  ];
+  const { backFields, ...cara } = camposDelPase(cliente, negocio);
 
   const pase = {
     formatVersion: 1,
@@ -122,10 +138,11 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
         format: "PKBarcodeFormatQR",
         message: `${appUrl}/w/${cliente.serial}`,
         messageEncoding: "iso-8859-1",
-        altText: cliente.serial.slice(0, 8).toUpperCase(),
+        // Debajo del QR: la clave corta que se dice en voz alta en el mostrador.
+        altText: codigoDe(cliente),
       },
     ],
-    [esCupon ? "coupon" : "storeCard"]: { ...campos, auxiliaryFields: auxiliares, backFields: reverso },
+    [esCupon ? "coupon" : "storeCard"]: { ...cara, backFields },
   };
 
   const ubicaciones = ubicacionesApple(negocio);

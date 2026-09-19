@@ -18,6 +18,7 @@ export async function POST(request) {
     const r = await emitirPase(slug);
     return NextResponse.json({
       serial: r.cliente.serial,
+      codigo: r.cliente.codigo,
       negocio: slug,
       proveedor: r.proveedor,
       urlPase: r.urlPase,

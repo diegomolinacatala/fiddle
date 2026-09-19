@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { C, aviso } from "@/app/ui";
 
 // Botones de acción del trabajador. Cada uno llama a /api/accion y refresca.
-export default function WorkerActions({ serial, acciones, accent = "#fff" }) {
+export default function WorkerActions({ serial, acciones, accent = C.texto }) {
   const router = useRouter();
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
@@ -29,7 +30,7 @@ export default function WorkerActions({ serial, acciones, accent = "#fff" }) {
   }
 
   if (!acciones.length) {
-    return <p style={{ opacity: 0.5, fontSize: 14, marginTop: 18 }}>El manager no ha activado ninguna acción.</p>;
+    return <p style={{ color: C.suave, fontSize: 14, marginTop: 18 }}>El manager no ha activado ninguna acción.</p>;
   }
 
   return (
@@ -42,18 +43,14 @@ export default function WorkerActions({ serial, acciones, accent = "#fff" }) {
           </button>
         ))}
       </div>
-      {toast && (
-        <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 12, fontSize: 15, background: toast.ok ? "rgba(48,209,88,.15)" : "rgba(255,69,58,.15)", border: `1px solid ${toast.ok ? "rgba(48,209,88,.4)" : "rgba(255,69,58,.4)"}` }}>
-          {toast.msg}
-        </div>
-      )}
+      {toast && <div style={{ ...aviso(toast.ok), marginTop: 14 }}>{toast.msg}</div>}
     </div>
   );
 }
 
-const btn = (active, accent) => ({
+const btn = (activo, accent) => ({
   display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-  padding: "16px 10px", borderRadius: 14, border: "1px solid rgba(255,255,255,.16)",
-  background: active ? "#2a2a2e" : accent, color: active ? "#fff" : "#111",
+  padding: "16px 10px", borderRadius: 12, border: 0,
+  background: accent, color: "#fff", opacity: activo ? 0.6 : 1,
   fontWeight: 600, fontSize: 14, cursor: "pointer",
 });

@@ -3,11 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
+import { C, paginaCentrada, panel, campo, etiqueta, aviso } from "@/app/ui";
 
-// Login único para todos los negocios: usuario + contraseña.
+// PRIMERA PANTALLA de la app: usuario + contraseña, para todos los negocios.
 //   nube / nube-caja · fade / fade-caja · forno / forno-caja
 // El rol lo decide el usuario. Si el servidor tiene activo el modo pruebas,
-// abajo se listan los accesos (y se rellenan al tocarlos).
+// debajo se listan los accesos de ejemplo y se rellenan al tocarlos.
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -60,16 +61,21 @@ function LoginForm() {
     setError(null);
   }
 
-  return (
-    <main style={wrap}>
-      <div style={{ width: "min(380px, 92vw)" }}>
-        <form onSubmit={entrar} style={card}>
-          <h1 style={{ fontSize: "1.5rem", margin: 0 }}>🔒 Acceso</h1>
-          <p style={{ opacity: 0.55, fontSize: 14, marginTop: 6, marginBottom: 4 }}>
-            Entra con el usuario de tu negocio.
-          </p>
+  const listo = usuario && clave && !busy;
 
-          <label style={lbl} htmlFor="usuario">Usuario</label>
+  return (
+    <main style={paginaCentrada}>
+      <div style={{ width: "min(400px, 94vw)" }}>
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ fontSize: 34 }}>🎟️</div>
+          <h1 style={{ fontSize: "1.5rem", margin: "6px 0 2px" }}>Sellos</h1>
+          <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>
+            Fidelización en Wallet. Entra con el usuario de tu negocio.
+          </p>
+        </div>
+
+        <form onSubmit={entrar} style={{ ...panel, display: "flex", flexDirection: "column" }}>
+          <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="usuario">Usuario</label>
           <input
             id="usuario"
             value={usuario}
@@ -79,10 +85,10 @@ function LoginForm() {
             autoCorrect="off"
             placeholder="nube"
             autoFocus
-            style={input}
+            style={campo}
           />
 
-          <label style={lbl} htmlFor="clave">Contraseña</label>
+          <label style={etiqueta} htmlFor="clave">Contraseña</label>
           <input
             id="clave"
             value={clave}
@@ -90,34 +96,35 @@ function LoginForm() {
             type="password"
             autoComplete="current-password"
             placeholder="••••••"
-            style={input}
+            style={campo}
           />
 
-          <button type="submit" disabled={busy || !usuario || !clave} style={{ ...btn, opacity: busy || !usuario || !clave ? 0.5 : 1 }}>
+          <button type="submit" disabled={!listo} style={{ ...entrarBtn, opacity: listo ? 1 : 0.45, cursor: listo ? "pointer" : "default" }}>
             {busy ? "Entrando…" : "Entrar"}
           </button>
 
-          {error && <div role="alert" style={errBox}>{error}</div>}
+          {error && <div role="alert" style={{ ...aviso(false), marginTop: 14 }}>{error}</div>}
         </form>
 
         {accesos.length > 0 && (
-          <details style={ayuda}>
-            <summary style={{ cursor: "pointer", fontSize: 13, opacity: 0.8 }}>
-              Accesos de prueba (toca uno para rellenarlo)
-            </summary>
-            <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+          <div style={{ ...panel, marginTop: 14, padding: 16, background: C.panelSuave }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Accesos de ejemplo</div>
+            <p style={{ fontSize: 12, color: C.suave, margin: "0 0 10px" }}>
+              Toca uno para rellenar el formulario. La contraseña es igual que el usuario.
+            </p>
+            <div style={{ display: "grid", gap: 6 }}>
               {accesos.map((a) => (
                 <button key={a.usuario} type="button" onClick={() => usar(a)} style={fila}>
                   <span>{a.emoji} {a.negocio}</span>
-                  <span style={{ opacity: 0.55 }}>{a.rol === "manager" ? "manager" : "caja"}</span>
-                  <code style={{ fontSize: 12 }}>{a.usuario} / {a.clave}</code>
+                  <span style={{ color: C.suave, fontSize: 12 }}>{a.rol === "manager" ? "manager" : "caja"}</span>
+                  <code style={{ fontSize: 12, color: C.suave }}>{a.usuario} / {a.clave}</code>
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: 11, opacity: 0.45, marginBottom: 0 }}>
+            <p style={{ fontSize: 11, color: C.tenue, margin: "10px 0 0" }}>
               Solo mientras el servidor tenga USUARIOS_DEMO=1. Quítalo antes de abrir al público.
             </p>
-          </details>
+          </div>
         )}
       </div>
     </main>
@@ -132,15 +139,28 @@ export default function LoginPage() {
   );
 }
 
-const wrap = { minHeight: "100vh", display: "grid", placeItems: "center", background: "#0b0b0c", color: "#fff", padding: "1.5rem" };
-const card = { background: "#141416", border: "1px solid rgba(255,255,255,.1)", borderRadius: 16, padding: 24, display: "flex", flexDirection: "column" };
-const lbl = { fontSize: 12, opacity: 0.55, textTransform: "uppercase", letterSpacing: 1, margin: "12px 0 4px" };
-const input = { width: "100%", boxSizing: "border-box", padding: "0.7rem 0.9rem", borderRadius: 12, border: "1px solid rgba(255,255,255,.18)", background: "#0e0e10", color: "#fff", fontSize: 16 };
-const btn = { marginTop: 18, padding: "0.7rem 1.2rem", borderRadius: 999, border: 0, background: "#fff", color: "#000", fontWeight: 600, fontSize: 15, cursor: "pointer" };
-const errBox = { marginTop: 14, padding: "10px 14px", borderRadius: 12, fontSize: 14, background: "rgba(255,69,58,.15)", border: "1px solid rgba(255,69,58,.4)" };
-const ayuda = { marginTop: 14, padding: "12px 14px", borderRadius: 14, background: "#101012", border: "1px dashed rgba(255,255,255,.18)" };
+const entrarBtn = {
+  marginTop: 20,
+  padding: "0.7rem 1.2rem",
+  borderRadius: 10,
+  border: 0,
+  background: "#1b1e23",
+  color: "#fff",
+  fontWeight: 600,
+  fontSize: 15,
+};
+
 const fila = {
-  display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center", textAlign: "left",
-  padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(255,255,255,.08)", background: "#16161a",
-  color: "#fff", fontSize: 13, cursor: "pointer",
+  display: "grid",
+  gridTemplateColumns: "1fr auto auto",
+  gap: 10,
+  alignItems: "center",
+  textAlign: "left",
+  padding: "9px 11px",
+  borderRadius: 9,
+  border: `1px solid ${C.borde}`,
+  background: "#fff",
+  color: C.texto,
+  fontSize: 13,
+  cursor: "pointer",
 };

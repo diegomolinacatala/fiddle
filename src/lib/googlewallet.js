@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { appUrl, urlCaja } from "./url";
+import { puntosDe } from "./resumen";
 
 // ============================================================================
 // GOOGLE WALLET (Android) — enlace "Guardar en Google Wallet"
@@ -30,18 +31,16 @@ const b64url = (input) => Buffer.from(input).toString("base64url");
 // Objeto de fidelización del cliente (equivalente a construirPassJson de Apple).
 function loyaltyObject(cliente, negocio) {
   const issuer = process.env.GOOGLE_WALLET_ISSUER_ID;
-  const esCupon = negocio.tipo === "descuento";
-  const balance = esCupon
-    ? ((cliente.premios || 0) > 0 ? "Usado" : "Válido")
-    : `${Math.min(cliente.sellos, negocio.meta)}/${negocio.meta}`;
+  const puntos = puntosDe(cliente, negocio);
   return {
     id: `${issuer}.${cliente.serial}`,
     classId: `${issuer}.${negocio.slug}`,
     state: "ACTIVE",
     accountName: cliente.nombre || "Cliente",
     accountId: cliente.serial,
-    loyaltyPoints: { label: esCupon ? "Cupón" : "Sellos", balance: { string: balance } },
-    barcode: { type: "QR_CODE", value: urlCaja(cliente.serial) },
+    loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },
+    // altText: la clave corta que el cliente puede decir si el QR no se lee.
+    barcode: { type: "QR_CODE", value: urlCaja(cliente.serial), alternateText: cliente.codigo || "" },
   };
 }
 
