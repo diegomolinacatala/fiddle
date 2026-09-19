@@ -3,18 +3,24 @@
 import { useState } from "react";
 import QrImagen from "@/app/QrImagen";
 import { camposDelPase } from "@/lib/apple/pase";
+import { svgLogo, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { puntosDe, estadoDe } from "@/lib/resumen";
 import { C } from "@/app/ui";
 
 // ============================================================================
 // VISTA PREVIA DEL PASE (Apple / Google)
 // ----------------------------------------------------------------------------
-// Lo que el manager ve mientras configura su cartilla. No es un pase de verdad:
-// es una maqueta HTML con la misma información y una disposición parecida.
+// Lo que el manager ve mientras configura su cartilla. No es un pase de verdad,
+// pero tampoco es una maqueta inventada: todo lo que sale aquí viene de las
+// mismas funciones que arman el pase real.
 //
-// Los campos NO se escriben aquí: salen de `camposDelPase` (Apple) y `puntosDe`
-// (Google), las mismas funciones que rellenan el pase real. Así la vista previa
-// no puede mentir sobre lo que verá el cliente, aunque los píxeles no cuadren.
+//   texto  -> camposDelPase()             (el mismo que llena pass.json)
+//   dibujo -> stripDelPase() y svgLogo()  (el mismo SVG que va dentro del .pkpass)
+//   Google -> puntosDe()                  (el mismo contador del loyaltyObject)
+//
+// Lo que no se puede copiar es la tipografía de iOS y su espaciado exacto, así
+// que la disposición es la de Apple (cabecera, banda a sangre, secundarios,
+// auxiliares y código) pero con tipos del sistema.
 // ============================================================================
 
 export default function PaseVista({ negocio, cliente, qrTexto, pie = null }) {
@@ -44,48 +50,67 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null }) {
         : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} />}
 
       <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>
-        {pie || "Aproximado: el pase definitivo lo dibuja el teléfono."}
+        {pie || "Parecido, no idéntico: la banda y el logo son los del pase real; la tipografía la pone iOS."}
       </p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------- Apple
-// storeCard / coupon: cabecera con el nombre, filas de campos y el QR abajo.
-// Colores del pase real: fondo cardBg, texto ink, etiquetas accent.
+// Orden real de un pase: cabecera (logo + nombre | headerFields), banda a
+// sangre, secundarios, auxiliares y el código abajo. En los cupones los
+// primaryFields van ENCIMA de la banda (por eso su dibujo deja hueco a la
+// izquierda); en las cartillas no hay primarios y la banda se ve entera.
 function TarjetaApple({ negocio, cliente, qrTexto }) {
   const t = negocio.tema;
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields, backFields } =
     camposDelPase(cliente, negocio);
-  const codigo = cliente.codigo || "—";
+  const strip = stripDelPase(negocio, cliente);
 
   return (
-    <div style={{ ...marco, background: t.cardBg, color: t.ink }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-        <strong style={{ fontSize: 15, fontWeight: 600 }}>{t.emoji} {negocio.nombre}</strong>
-        <Fila campos={headerFields} accent={t.accent} alinear="right" compacto />
+    <div style={{ ...marco, background: t.cardBg, color: t.ink, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+        <img src={comoDataUri(svgLogo(t))} alt="" width={26} height={26} style={{ display: "block", flexShrink: 0 }} />
+        <strong style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0 }}>{negocio.nombre}</strong>
+        {headerFields.map((f) => (
+          <div key={f.key} style={{ textAlign: "right" }}>
+            <div style={etiquetaPase(t.accent)}>{f.label}</div>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>{f.value}</div>
+          </div>
+        ))}
       </div>
 
-      {primaryFields.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <div style={etiquetaPase(t.accent)}>{primaryFields[0].label}</div>
-          <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.1 }}>{primaryFields[0].value}</div>
-        </div>
-      )}
+      <div style={{ position: "relative" }}>
+        <img
+          src={comoDataUri(strip.svg)}
+          alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`}
+          style={{ display: "block", width: "100%", height: "auto" }}
+        />
+        {primaryFields.length > 0 && (
+          <div style={sobreLaBanda}>
+            <div style={{ ...etiquetaPase("#ffffff"), opacity: 0.9 }}>{primaryFields[0].label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", lineHeight: 1.1, maxWidth: "58%", textShadow: "0 1px 2px rgba(0,0,0,.25)" }}>
+              {primaryFields[0].value}
+            </div>
+          </div>
+        )}
+      </div>
 
-      <Fila campos={secondaryFields} accent={t.accent} margen={18} />
-      <Fila campos={auxiliaryFields} accent={t.accent} margen={14} />
+      <div style={{ padding: "12px 12px 0" }}>
+        <Fila campos={secondaryFields} accent={t.accent} />
+        <Fila campos={auxiliaryFields} accent={t.accent} margen={12} />
+      </div>
 
-      <div style={{ display: "grid", placeItems: "center", marginTop: 18 }}>
+      <div style={{ display: "grid", placeItems: "center", padding: "16px 12px 14px" }}>
         <div style={{ background: "#fff", padding: 8, borderRadius: 6 }}>
           <QrImagen texto={qrTexto} lado={104} />
         </div>
         <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 6, fontFamily: "ui-monospace, Menlo, monospace" }}>
-          {codigo}
+          {cliente.codigo || "—"}
         </div>
       </div>
 
-      <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${t.accent}33`, opacity: 0.75 }}>
+      <div style={{ margin: "0 12px 12px", paddingTop: 10, borderTop: `1px solid ${t.accent}33`, opacity: 0.75 }}>
         <div style={{ ...etiquetaPase(t.accent), marginBottom: 4 }}>Reverso</div>
         {backFields.map((f) => (
           <div key={f.key} style={{ fontSize: 11, marginTop: 2 }}>
@@ -97,14 +122,14 @@ function TarjetaApple({ negocio, cliente, qrTexto }) {
   );
 }
 
-function Fila({ campos, accent, margen = 0, alinear = "left", compacto = false }) {
+function Fila({ campos, accent, margen = 0 }) {
   if (!campos.length) return null;
   return (
-    <div style={{ display: "flex", gap: 18, marginTop: margen, textAlign: alinear }}>
+    <div style={{ display: "flex", gap: 14, marginTop: margen }}>
       {campos.map((f) => (
-        <div key={f.key} style={{ flex: alinear === "right" ? "0 0 auto" : 1, minWidth: 0 }}>
+        <div key={f.key} style={{ flex: 1, minWidth: 0 }}>
           <div style={etiquetaPase(accent)}>{f.label}</div>
-          <div style={{ fontSize: compacto ? 15 : 16, fontWeight: 500, marginTop: 1 }}>{f.value}</div>
+          <div style={{ fontSize: 15, fontWeight: 500, marginTop: 1 }}>{f.value}</div>
         </div>
       ))}
     </div>
@@ -112,15 +137,16 @@ function Fila({ campos, accent, margen = 0, alinear = "left", compacto = false }
 }
 
 // ---------------------------------------------------------------- Google
-// LoyaltyObject: cabecera de color con el negocio, nombre de la cuenta, el
-// contador de puntos y el código de barras abajo, sobre blanco.
+// LoyaltyObject: cabecera de color, titular, contador de puntos y el código
+// abajo. Sin banda: el objeto que manda `googlewallet.js` no lleva imagen, así
+// que dibujarla aquí sería enseñar algo que el cliente no va a ver.
 function TarjetaGoogle({ negocio, cliente, qrTexto }) {
   const t = negocio.tema;
   const puntos = puntosDe(cliente, negocio);
   const e = estadoDe(cliente, negocio);
 
   return (
-    <div style={{ ...marco, background: "#fff", color: "#202124", padding: 0, overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif" }}>
+    <div style={{ ...marco, background: "#fff", color: "#202124", overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif" }}>
       <div style={{ background: t.accent, color: "#fff", padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 22 }}>{t.emoji}</span>
         <strong style={{ fontSize: 15, fontWeight: 500 }}>{negocio.nombre}</strong>
@@ -161,9 +187,17 @@ const marco = {
   maxWidth: 320,
   margin: "0 auto",
   borderRadius: 16,
-  padding: 18,
   border: `1px solid ${C.borde}`,
   boxShadow: "0 8px 24px rgba(16,20,28,.12)",
+};
+
+const sobreLaBanda = {
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  padding: "0 14px",
 };
 
 const etiquetaPase = (accent) => ({
