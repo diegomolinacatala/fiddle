@@ -95,12 +95,12 @@ src/app/
    ├─ login · logout · manifest · negocios
    └─ wallet/v1/...                        web service de Apple Wallet
 src/lib/
-├─ negocios.js   ★ semillas y estilos (las tiendas viven en la base)
+├─ negocios.js   ★ semillas y plantillas (las tiendas viven en la base)
 ├─ codigo.js       clave corta de 3 caracteres del pase (única por negocio)
 ├─ resumen.js      "cuántos sellos lleva": lo comparten Google Wallet y la vista previa
 ├─ acciones.js   ★ registro modular de acciones
 ├─ wallet.js       fachada: emitir + avisar (apple > walletwallet > demo)
-├─ apple/          pase.js · imagenes.js · firmar.js · servicio.js · apns.js · config.js
+├─ apple/          pase.js · dibujo.js · glifos.js · imagenes.js · firmar.js · servicio.js · apns.js · config.js
 ├─ auth.js · acceso.js · limitador.js · http.js   login y permisos
 ├─ store.js        Supabase o ficheros locales
 └─ walletwallet.js · googlewallet.js · validacion.js · url.js

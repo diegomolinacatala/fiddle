@@ -1,5 +1,8 @@
 // Validación de entradas del manager (funciones puras, testeadas).
 
+import { normalizarTextoMarca } from "./apple/glifos";
+import { MARCAS, FORMAS, BANDAS } from "./apple/dibujo";
+
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 
 /**
@@ -44,6 +47,22 @@ const texto = (v, max) => (typeof v === "string" && v.trim() ? v.trim().slice(0,
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
+ * Las tres piezas con las que se dibuja el pase (ver lib/apple/dibujo.js).
+ * Solo devuelve las que vengan y sean válidas; el resto lo pone el estilo.
+ * El texto de la marca se limpia a lo que se sabe dibujar ("Café 68" -> "CAFE").
+ * @returns {{marca?:string, forma?:string, banda?:string, texto?:string}}
+ */
+export function piezasDeDibujo(origen) {
+  const o = origen && typeof origen === "object" ? origen : {};
+  const piezas = {};
+  if (MARCAS.includes(o.marca)) piezas.marca = o.marca;
+  if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
+  if (BANDAS.includes(o.banda)) piezas.banda = o.banda;
+  if (typeof o.texto === "string") piezas.texto = normalizarTextoMarca(o.texto);
+  return piezas;
+}
+
+/**
  * Datos de un negocio NUEVO (formulario del admin). Solo pide lo imprescindible:
  * el resto del tema sale del estilo elegido y se puede afinar después.
  * @returns {{datos:object} | {error:string}}
@@ -59,6 +78,8 @@ export function datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto }) {
   const estilo = ESTILOS.includes(b.estilo) ? b.estilo : "coffee";
   const accent = HEX.test(String(b.accent || "")) ? b.accent : undefined;
   const emoji = texto(b.emoji, 4) || undefined;
+  // Piezas del dibujo: lo que no venga (o no valga) lo pone el estilo elegido.
+  const dibujo = piezasDeDibujo(b);
 
   const meta = tipo === "descuento" ? 1 : Math.max(1, Math.min(50, Math.round(Number(b.meta) || 8)));
   const premio = texto(b.premio, 128) || (tipo === "descuento" ? "descuento" : "premio");
@@ -67,7 +88,7 @@ export function datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto }) {
   return {
     datos: {
       slug, nombre, tipo, meta, premio, acciones,
-      tema: temaPorDefecto({ estilo, emoji, accent }),
+      tema: temaPorDefecto({ estilo, emoji, accent, ...dibujo }),
       brief: texto(b.brief, 4000) || "",
     },
   };
@@ -76,9 +97,14 @@ export function datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto }) {
 /**
  * Patch del admin sobre un negocio existente: además de lo del manager puede
  * tocar el nombre, el tema y el brief.
+ *
+ * Si el tema trae un `estilo` válido se entiende como CAMBIO DE PLANTILLA: se
+ * vuelve a sembrar la paleta entera desde ese estilo y encima se aplican los
+ * retoques que vengan. Sin `estilo`, solo se tocan los campos enviados.
+ *
  * @returns {{patch:object} | {error:string}}
  */
-export function patchNegocioAdmin(body, accionesValidas) {
+export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPorDefecto = null } = {}) {
   const b = body && typeof body === "object" ? body : {};
   const r = patchNegocio(b, accionesValidas);
   if (r.error) return r;
@@ -91,7 +117,11 @@ export function patchNegocioAdmin(body, accionesValidas) {
   }
   if (typeof b.brief === "string") patch.brief = b.brief.trim().slice(0, 4000);
   if (b.tema && typeof b.tema === "object") {
-    const tema = {};
+    const cambiaPlantilla = temaPorDefecto && ESTILOS.includes(b.tema.estilo);
+    const tema = {
+      ...(cambiaPlantilla ? temaPorDefecto({ estilo: b.tema.estilo }) : {}),
+      ...piezasDeDibujo(b.tema),
+    };
     for (const clave of ["emoji", "atras"]) {
       const v = texto(b.tema[clave], clave === "emoji" ? 4 : 200);
       if (v) tema[clave] = v;
