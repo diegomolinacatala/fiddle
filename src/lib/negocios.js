@@ -12,8 +12,15 @@
 //             dibujo del pase (lib/apple/dibujo.js) solo sabe de estos estilos.
 // ============================================================================
 
-/** Estilos de tarjeta disponibles. `estilo` decide la marca que se dibuja. */
-export const ESTILOS = ["coffee", "barber", "pizza"];
+// El dibujo del pase se arma con piezas sueltas (ver lib/apple/dibujo.js): qué
+// marca, con qué forma de casilla y sobre qué banda. Un ESTILO no es más que
+// una combinación de partida con nombre; a partir de ahí cada tienda cambia lo
+// que quiera sin tocar código.
+export { MARCAS, FORMAS, BANDAS } from "./apple/dibujo";
+import { MARCAS, FORMAS, BANDAS } from "./apple/dibujo";
+
+/** Combinaciones de partida al crear una tienda. */
+export const ESTILOS = ["coffee", "barber", "pizza", "moderno"];
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
 // de uno de estos y se le cambia el emoji y el color de acento.
@@ -21,6 +28,9 @@ const TEMA_DE_ESTILO = {
   coffee: {
     estilo: "coffee",
     emoji: "☕",
+    marca: "coffee",
+    forma: "circulo",
+    banda: "clara",
     preset: "purple",
     pageBg: "linear-gradient(135deg,#ffd1dc 0%,#c3f0e0 40%,#a1c4fd 100%)",
     pageInk: "#2b2430",
@@ -32,6 +42,9 @@ const TEMA_DE_ESTILO = {
   barber: {
     estilo: "barber",
     emoji: "💈",
+    marca: "barber",
+    forma: "redondeado",
+    banda: "oscura",
     preset: "dark",
     pageBg: "linear-gradient(160deg,#0d0d0f,#17171c)",
     pageInk: "#e9e9ec",
@@ -43,6 +56,9 @@ const TEMA_DE_ESTILO = {
   pizza: {
     estilo: "pizza",
     emoji: "🍕",
+    marca: "pizza",
+    forma: "circulo",
+    banda: "clara",
     preset: "red",
     pageBg: "radial-gradient(circle at 30% 20%,#ffd54a,#ff7a18 55%,#c1121f 100%)",
     pageInk: "#ffffff",
@@ -51,12 +67,43 @@ const TEMA_DE_ESTILO = {
     accent: "#c1121f",
     atras: "Cupón de un solo uso · enséñalo en caja.",
   },
+  // Neutro y sin dibujito: la marca son las iniciales o el número de la tienda.
+  moderno: {
+    estilo: "moderno",
+    emoji: "◆",
+    marca: "texto",
+    texto: "",
+    forma: "cuadrado",
+    banda: "clara",
+    preset: "purple",
+    pageBg: "linear-gradient(135deg,#f5efe6 0%,#e8dccb 55%,#d8c7ae 100%)",
+    pageInk: "#3a2f26",
+    cardBg: "#faf6f0",
+    ink: "#3a2f26",
+    accent: "#a98963",
+    atras: "Un sello por visita. Al completar la cartilla, invita la casa.",
+  },
 };
 
+/**
+ * Rellena las piezas de dibujo que falten. Los temas viejos solo tenían
+ * `estilo`, así que de ahí se deducen: un tema guardado hace meses tiene que
+ * seguir pintándose igual que antes.
+ */
+export function completarTema(tema = {}) {
+  const marca = MARCAS.includes(tema.marca) ? tema.marca : (MARCAS.includes(tema.estilo) ? tema.estilo : "coffee");
+  const forma = FORMAS.includes(tema.forma) ? tema.forma : (tema.estilo === "barber" ? "redondeado" : "circulo");
+  const banda = BANDAS.includes(tema.banda) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara");
+  return { ...tema, marca, forma, banda, texto: typeof tema.texto === "string" ? tema.texto : "" };
+}
+
 /** Tema completo para un negocio nuevo: plantilla del estilo + sus retoques. */
-export function temaPorDefecto({ estilo, emoji, accent } = {}) {
+export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, texto } = {}) {
   const base = TEMA_DE_ESTILO[estilo] || TEMA_DE_ESTILO.coffee;
-  return { ...base, ...(emoji ? { emoji } : {}), ...(accent ? { accent } : {}) };
+  const retoques = { emoji, accent, texto, marca: MARCAS.includes(marca) ? marca : undefined,
+    forma: FORMAS.includes(forma) ? forma : undefined, banda: BANDAS.includes(banda) ? banda : undefined };
+  for (const k of Object.keys(retoques)) if (retoques[k] === undefined || retoques[k] === "") delete retoques[k];
+  return completarTema({ ...base, ...retoques });
 }
 
 // Primeros segmentos de la URL que NO pueden ser un negocio.
@@ -117,7 +164,7 @@ export function componerNegocio(slug, guardado) {
   const c = guardado?.config || {};
   const nombre = guardado?.nombre ?? semilla?.nombre ?? slug;
   const tipo = guardado?.tipo ?? semilla?.tipo ?? "sellos";
-  const tema = { ...temaPorDefecto(c.tema || semilla?.tema), ...(semilla?.tema || {}), ...(c.tema || {}) };
+  const tema = completarTema({ ...temaPorDefecto(c.tema || semilla?.tema), ...(semilla?.tema || {}), ...(c.tema || {}) });
 
   return {
     slug,

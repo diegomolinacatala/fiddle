@@ -77,6 +77,20 @@ describe("validación del admin", () => {
     expect(patch.tema).toEqual({ emoji: "🥐", accent: "#123456" }); // cardBg inválido se cae
   });
 
+  it("cambiar de plantilla re-siembra la paleta; sin estilo solo toca lo enviado", () => {
+    const deps2 = { ESTILOS, temaPorDefecto };
+    const { patch } = patchNegocioAdmin({ tema: { estilo: "barber" } }, ACCIONES, deps2);
+    expect(patch.tema).toMatchObject(temaPorDefecto({ estilo: "barber" })); // colores nuevos enteros
+
+    // Los retoques mandan sobre la plantilla.
+    const conColor = patchNegocioAdmin({ tema: { estilo: "barber", forma: "cuadrado" } }, ACCIONES, deps2).patch;
+    expect(conColor.tema.forma).toBe("cuadrado");
+
+    // Sin estilo (o con uno inventado) no se toca la paleta.
+    const suelto = patchNegocioAdmin({ tema: { estilo: "cyberpunk", forma: "cuadrado" } }, ACCIONES, deps2).patch;
+    expect(suelto.tema).toEqual({ forma: "cuadrado" });
+  });
+
   it("las notas de campo llevan clave limpia; sin texto se borran", () => {
     expect(notaDeCampo({ clave: "apple.premio", texto: "esto debería ser X" })).toEqual({ clave: "apple.premio", texto: "esto debería ser X" });
     expect(notaDeCampo({ clave: "apple.premio", texto: "  " }).texto).toBeNull();

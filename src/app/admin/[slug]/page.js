@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
+import { MARCAS, FORMAS, BANDAS, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
 // ============================================================================
@@ -49,6 +50,11 @@ export default function AdminNegocio() {
   const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
   const setTema = (k, v) => setN((p) => ({ ...p, tema: { ...p.tema, [k]: v } }));
 
+  // Cambiar de plantilla re-siembra la paleta entera (el servidor hace lo mismo
+  // al guardar); solo se conserva el texto de la marca, que es de la tienda.
+  const cambiarPlantilla = (estilo) =>
+    setN((p) => ({ ...p, tema: temaPorDefecto({ estilo, texto: p.tema.texto }) }));
+
   async function guardar() {
     const r = await fetch("/api/admin/negocios", {
       method: "PUT",
@@ -59,7 +65,10 @@ export default function AdminNegocio() {
         meta: n.meta,
         premio: n.premio,
         brief: n.brief,
-        tema: { emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras },
+        tema: {
+          estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
+          marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma, banda: n.tema.banda,
+        },
       }),
     });
     const d = await r.json();
@@ -143,6 +152,52 @@ export default function AdminNegocio() {
                 <input type="color" value={n.tema.accent} onChange={(e) => setTema("accent", e.target.value)} style={{ ...campo, padding: 4, height: 42 }} />
               </div>
             </div>
+
+            <label style={etiqueta}>Plantilla</label>
+            <select value={n.tema.estilo} onChange={(e) => cambiarPlantilla(e.target.value)} style={campo}>
+              {ESTILOS.map((x) => <option key={x} value={x}>{PLANTILLA[x] || x}</option>)}
+              {!ESTILOS.includes(n.tema.estilo) && <option value={n.tema.estilo}>{n.tema.estilo}</option>}
+            </select>
+            <p style={{ fontSize: 12, color: C.tenue, margin: "6px 0 0" }}>
+              Cambiarla vuelve a poner los colores de esa plantilla. Lo de abajo se retoca después.
+            </p>
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={etiqueta}>Marca</label>
+                <select value={n.tema.marca} onChange={(e) => setTema("marca", e.target.value)} style={campo}>
+                  {MARCAS.map((x) => <option key={x} value={x}>{ROTULO[x] || x}</option>)}
+                </select>
+              </div>
+              {n.tema.marca === "texto" && (
+                <div style={{ flex: 1 }}>
+                  <label style={etiqueta}>Letras o números</label>
+                  <input
+                    value={n.tema.texto || ""}
+                    onChange={(e) => setTema("texto", e.target.value.toUpperCase().slice(0, 4))}
+                    placeholder="68"
+                    style={{ ...campo, letterSpacing: 2 }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {n.tipo !== "descuento" && (
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={etiqueta}>Casilla del sello</label>
+                  <select value={n.tema.forma} onChange={(e) => setTema("forma", e.target.value)} style={campo}>
+                    {FORMAS.map((x) => <option key={x} value={x}>{ROTULO[x] || x}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={etiqueta}>Banda</label>
+                  <select value={n.tema.banda} onChange={(e) => setTema("banda", e.target.value)} style={campo}>
+                    {BANDAS.map((x) => <option key={x} value={x}>{ROTULO[x] || x}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <label style={etiqueta}>Texto del reverso</label>
             <input value={n.tema.atras} onChange={(e) => setTema("atras", e.target.value)} style={campo} />
@@ -246,6 +301,15 @@ export default function AdminNegocio() {
     </main>
   );
 }
+
+// Los valores del tema son en inglés/técnicos; en pantalla se leen en claro.
+// "coffee" es a la vez una plantilla y una marca, pero no se leen igual.
+const PLANTILLA = { coffee: "Cafetería", barber: "Barbería", pizza: "Pizzería", moderno: "Neutra (moderna)" };
+const ROTULO = {
+  coffee: "Taza de café", barber: "Tijeras", pizza: "Porción de pizza", texto: "Letras o números",
+  circulo: "Círculo", redondeado: "Cuadrado con esquinas", cuadrado: "Cuadrado",
+  clara: "Clara (color de la tienda)", oscura: "Oscura",
+};
 
 const volver = { fontSize: 13, color: C.suave, textDecoration: "none" };
 const toast = {
