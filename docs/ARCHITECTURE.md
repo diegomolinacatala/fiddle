@@ -20,6 +20,7 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 | **Pase** | Identidad del cliente. Su cara es un espejo del estado | [`apple/pase.js`](../src/lib/apple/pase.js), [`apple/imagenes.js`](../src/lib/apple/imagenes.js) |
 | **Caja** | Escanea → perfil → acción. PWA por negocio | [`[negocio]/caja`](../src/app/[negocio]/caja), [`w/[serial]`](../src/app/w/[serial]) |
 | **Manager** | Configura, lanza promos, emite, ve el estado de integración y cómo queda el pase (Apple/Google) | [`[negocio]/manager`](../src/app/[negocio]/manager) |
+| **Admin** | Crea, edita, archiva y borra tiendas; comenta campos del pase para Claude | [`admin/`](../src/app/admin) |
 | **Backend** | Guarda estado, aplica acciones, avisa al Wallet | [`src/lib`](../src/lib), `/api/*` |
 
 ## Proveedores de Wallet

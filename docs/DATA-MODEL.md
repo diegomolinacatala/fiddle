@@ -11,7 +11,12 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 |-------|------|-------|
 | `slug` | text PK | `nube`, `fade`, `forno` (el preset vive en `negocios.js`) |
 | `nombre`, `tipo` | text | copia informativa del preset |
-| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones: [{lat,lng,texto?}] }` |
+| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado }` |
+
+`tema` (colores, emoji, estilo), `brief` (texto libre para Claude), `notas`
+(`{"apple.premio": "esto debería ser X"}`, del modo comentarios del admin) y
+`archivado` los edita **/admin**. Las tiendas se crean y se borran ahí: `negocios.js`
+solo aporta las *semillas* y las plantillas de estilo.
 
 ### `clientes` — la identidad detrás de cada pase
 | Campo | Tipo | Notas |

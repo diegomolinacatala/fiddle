@@ -1,8 +1,11 @@
+import { RESERVADOS } from "./negocios";
+
 // ============================================================================
 // REGLAS DE ACCESO POR RUTA (función pura, la usa el middleware)
 // ----------------------------------------------------------------------------
 // Devuelve qué exige una petición antes de llegar a la página / API:
 //   { tipo: "publica" }                      -> pasa sin sesión
+//   { tipo: "admin" }                        -> solo el admin de la plataforma
 //   { tipo: "sesion" }                       -> cualquier sesión válida; el handler
 //                                               comprueba el negocio (p.ej. el
 //                                               negocio sale del cliente o del body)
@@ -32,8 +35,8 @@ const PUBLICAS = [
   /^\/api\/salud$/,
 ];
 
-// Segmentos de primer nivel que NO son un negocio.
-const RESERVADOS = new Set(["api", "login", "p", "w", "icons", "_next"]);
+// Qué primeros segmentos NO son un negocio: RESERVADOS vive en negocios.js para
+// que no se separe de la validación de slugs al crear una tienda.
 
 /**
  * @param {string} pathname
@@ -43,6 +46,11 @@ const RESERVADOS = new Set(["api", "login", "p", "w", "icons", "_next"]);
  */
 export function reglaDeRuta(pathname, params, method = "GET") {
   if (PUBLICAS.some((re) => re.test(pathname))) return { tipo: "publica" };
+
+  // El admin de la plataforma: su página y su API.
+  if (pathname === "/admin" || pathname.startsWith("/admin/") || pathname.startsWith("/api/admin/")) {
+    return { tipo: "admin" };
+  }
 
   // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager
   const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager))?\/?$/);

@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { construirPassJson, hexARgb, nivelDe, ubicacionesApple } from "@/lib/apple/pase";
-import { NEGOCIOS } from "@/lib/negocios";
+import { SEMILLAS } from "@/lib/negocios";
 
 const opciones = { passTypeId: "pass.dev.sellos", teamId: "ABCDE12345", appUrl: "https://sellos.app" };
-const negocio = (slug, extra = {}) => ({ ...NEGOCIOS[slug], promo: null, ubicaciones: [], ...extra });
+const negocio = (slug, extra = {}) => ({ ...SEMILLAS[slug], promo: null, ubicaciones: [], ...extra });
 const cliente = (extra = {}) => ({
   serial: "3f1c2b1a-1111-4222-8333-444455556666", sellos: 3, premios: 0, nombre: null,
   auth_token: "a".repeat(48), ...extra,
@@ -24,21 +24,39 @@ describe("construirPassJson", () => {
       backgroundColor: "rgb(255, 247, 242)",
     });
     expect(p.barcodes[0]).toMatchObject({ format: "PKBarcodeFormatQR", message: `https://sellos.app/w/${cliente().serial}` });
-    expect(p.storeCard.secondaryFields[0]).toMatchObject({ key: "sellos", value: "3 de 8", changeMessage: "Tienes %@ sellos" });
-    expect(p.storeCard.secondaryFields[1].value).toBe("Faltan 5 · café gratis");
+    // Sin campo "SELLOS": los círculos de la banda ya lo cuentan. El aviso de
+    // cada sello lo dispara PREMIO, que cambia con cada uno.
+    expect(p.storeCard.secondaryFields).toHaveLength(1);
+    expect(p.storeCard.secondaryFields[0]).toMatchObject({ key: "premio", value: "Faltan 5 · café gratis", changeMessage: "%@" });
     expect(p.coupon).toBeUndefined();
     expect(p.voided).toBeUndefined();
   });
 
   it("cartilla llena anuncia el premio", () => {
     const p = construirPassJson(cliente({ sellos: 9 }), negocio("nube"), opciones);
-    expect(p.storeCard.secondaryFields[0].value).toBe("8 de 8");
-    expect(p.storeCard.secondaryFields[1]).toMatchObject({ label: "PREMIO LISTO", value: "¡café gratis!" });
+    expect(p.storeCard.secondaryFields[0]).toMatchObject({ label: "PREMIO LISTO", value: "¡café gratis!" });
+  });
+
+  it("el premio cambia con cada sello (es lo que avisa en la pantalla de bloqueo)", () => {
+    const valor = (sellos) => construirPassJson(cliente({ sellos }), negocio("nube"), opciones).storeCard.secondaryFields[0].value;
+    expect(valor(3)).not.toBe(valor(4));
+    expect(valor(4)).not.toBe(valor(5));
   });
 
   it("barbería muestra nivel en la cabecera", () => {
     const p = construirPassJson(cliente({ premios: 3 }), negocio("fade"), opciones);
     expect(p.storeCard.headerFields[0]).toMatchObject({ key: "nivel", value: "Oro" });
+  });
+
+  it("como mucho dos campos bajo la banda (iOS los junta en una fila)", () => {
+    const con = (extra, slug = "nube") => {
+      const p = construirPassJson(cliente(extra), negocio(slug, { promo: "2x1 hoy" }), opciones);
+      const c = p.storeCard || p.coupon;
+      return c.secondaryFields.length + c.auxiliaryFields.length;
+    };
+    expect(con({ nombre: "Marta" })).toBeLessThanOrEqual(2);
+    expect(con({ nombre: "Marta", premios: 2 }, "fade")).toBeLessThanOrEqual(2);
+    expect(con({ nombre: "Marta", premios: 1 }, "forno")).toBeLessThanOrEqual(2);
   });
 
   it("cupón: coupon y se anula al usarse", () => {
@@ -60,8 +78,10 @@ describe("construirPassJson", () => {
     // muestre notificación en la pantalla de bloqueo.
     expect(p.storeCard.auxiliaryFields).toEqual([
       { key: "promo", label: "PROMO", value: "2x1 hoy", changeMessage: "%@" },
-      { key: "cliente", label: "CLIENTE", value: "Marta" },
     ]);
+    // El nombre no aparece en la cara del pase, en ningún sitio.
+    const cara = [...p.storeCard.headerFields, ...p.storeCard.primaryFields, ...p.storeCard.secondaryFields, ...p.storeCard.auxiliaryFields];
+    expect(cara.some((f) => String(f.value).includes("Marta"))).toBe(false);
     expect(p.storeCard.backFields.map((f) => f.key)).toEqual(["como", "codigo"]);
     expect(p.locations).toEqual([{ latitude: 40.4, longitude: -3.7, relevantText: expect.stringContaining("Nube Café") }]);
   });

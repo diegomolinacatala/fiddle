@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { emitirPase } from "@/lib/wallet";
 import { generarPkpass, MIME_PKPASS } from "@/lib/apple/firmar";
-import { esNegocio } from "@/lib/negocios";
+import { esSlug } from "@/lib/negocios";
 import { jsonError, errorInterno } from "@/lib/http";
 import { usoExcedido, ipDe } from "@/lib/limitador";
 
@@ -25,7 +25,7 @@ const respuestaPkpass = (buffer, slug) =>
 // que ofrece Apple / Google Wallet y muestra el QR.
 export async function GET(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  if (!esNegocio(slug)) return jsonError("Falta o no existe ?b=<negocio>", 400);
+  if (!esSlug(slug)) return jsonError("Falta o no existe ?b=<negocio>", 400);
 
   try {
     if (await usoExcedido("tap", ipDe(request))) {

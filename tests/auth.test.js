@@ -8,10 +8,13 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("usuarios", () => {
   it("el usuario dice negocio y rol", () => {
-    expect(resolverUsuario("nube")).toEqual({ negocio: "nube", rol: "manager" });
-    expect(resolverUsuario("NUBE ")).toEqual({ negocio: "nube", rol: "manager" });
-    expect(resolverUsuario("nube-caja")).toEqual({ negocio: "nube", rol: "caja" });
-    expect(resolverUsuario("fade-manager")).toEqual({ negocio: "fade", rol: "manager" });
+    expect(resolverUsuario("nube")).toMatchObject({ negocio: "nube", rol: "manager" });
+    expect(resolverUsuario("NUBE ")).toMatchObject({ negocio: "nube", rol: "manager" });
+    expect(resolverUsuario("nube-caja")).toMatchObject({ negocio: "nube", rol: "caja" });
+    expect(resolverUsuario("fade-manager")).toMatchObject({ negocio: "fade", rol: "manager" });
+    // Victor y Diego no son de ninguna tienda: son de la plataforma.
+    expect(resolverUsuario("victor")).toMatchObject({ negocio: "plataforma", rol: "admin", usuario: "victor" });
+    expect(resolverUsuario("Diego ")).toMatchObject({ rol: "admin", usuario: "diego" });
     expect(resolverUsuario("nube caja")).toBeNull();
     expect(resolverUsuario("")).toBeNull();
     expect(usuarioDe("nube", "caja")).toBe("nube-caja");
@@ -22,8 +25,8 @@ describe("usuarios", () => {
 describe("contraseñas", () => {
   it("en pruebas la contraseña puede ser igual que el usuario", () => {
     expect(usuariosDemo()).toBe(true);
-    expect(verificarAcceso("nube", "nube")).toEqual({ negocio: "nube", rol: "manager" });
-    expect(verificarAcceso("nube-caja", "nube-caja")).toEqual({ negocio: "nube", rol: "caja" });
+    expect(verificarAcceso("nube", "nube")).toMatchObject({ negocio: "nube", rol: "manager" });
+    expect(verificarAcceso("nube-caja", "nube-caja")).toMatchObject({ negocio: "nube", rol: "caja" });
     expect(verificarAcceso("nube", "otra")).toBeNull();
     expect(verificarAcceso("nube", "")).toBeNull();
   });
@@ -35,8 +38,8 @@ describe("contraseñas", () => {
     expect(varClave("fade-room", "manager")).toBe("CLAVE_FADE_ROOM_MANAGER");
     expect(varPin("fade-room", "manager")).toBe("PIN_FADE_ROOM_MANAGER");
     expect(claveDe("nube", "caja")).toBe("s3creta");
-    expect(verificarAcceso("nube-caja", "s3creta")).toEqual({ negocio: "nube", rol: "caja" });
-    expect(verificarAcceso("fade", "778899")).toEqual({ negocio: "fade", rol: "manager" });
+    expect(verificarAcceso("nube-caja", "s3creta")).toMatchObject({ negocio: "nube", rol: "caja" });
+    expect(verificarAcceso("fade", "778899")).toMatchObject({ negocio: "fade", rol: "manager" });
   });
 
   it("en producción no valen los accesos de prueba salvo con USUARIOS_DEMO=1", () => {
@@ -47,13 +50,13 @@ describe("contraseñas", () => {
 
     vi.stubEnv("USUARIOS_DEMO", "1");
     expect(usuariosDemo()).toBe(true);
-    expect(verificarAcceso("nube", "nube")).toEqual({ negocio: "nube", rol: "manager" });
+    expect(verificarAcceso("nube", "nube")).toMatchObject({ negocio: "nube", rol: "manager" });
   });
 
   it("la contraseña de un rol no sirve para el otro", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("CLAVE_FADE_CAJA", "abc123");
-    expect(verificarAcceso("fade-caja", "abc123")).toEqual({ negocio: "fade", rol: "caja" });
+    expect(verificarAcceso("fade-caja", "abc123")).toMatchObject({ negocio: "fade", rol: "caja" });
     expect(verificarAcceso("fade", "abc123")).toBeNull();
   });
 });
@@ -102,7 +105,7 @@ describe("sesión firmada", () => {
 
   it("no firma slugs o roles inválidos", async () => {
     await expect(firmarSesion("Nube.x", "caja")).rejects.toThrow();
-    await expect(firmarSesion("nube", "admin")).rejects.toThrow();
+    await expect(firmarSesion("nube", "jefe")).rejects.toThrow();
   });
 });
 

@@ -1,10 +1,10 @@
 import PwaRegister from "@/app/pwa-register";
-import { NEGOCIOS } from "@/lib/negocios";
+import { getNegocio } from "@/lib/store";
 
 // Cada negocio es su propia app instalable (manifest + icono propios).
 export async function generateMetadata({ params }) {
   const { negocio } = await params;
-  const n = NEGOCIOS[negocio];
+  const n = await getNegocio(negocio).catch(() => null);
   if (!n) return { title: "Sellos" };
   return {
     title: n.nombre,

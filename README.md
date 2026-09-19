@@ -17,9 +17,21 @@ En producción: **<https://fiddle-zeta.vercel.app>** (se despliega solo al fusio
 > [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
 > [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
 
-## Negocios de ejemplo
+## Admin de la plataforma
 
-Añadir uno = una entrada en [`src/lib/negocios.js`](src/lib/negocios.js).
+`victor` y `diego` entran en **`/admin`**: la lista de todas las tiendas, con botón
+para **crear** una nueva (cuatro datos + un *brief* en texto libre para Claude),
+**editar**la, **archivar**la y, desde la pestaña de archivadas, **borrarla del todo**
+escribiendo su identificador.
+
+Dentro de cada tienda hay un **modo comentarios**: se toca cualquier campo del pase
+(en Apple o en Google) y se escribe *"esto debería ser X"*. Las notas se guardan con
+la tienda, así Claude ve de golpe qué hay que cambiar y dónde.
+
+Las tiendas **viven en la base de datos**: [`negocios.js`](src/lib/negocios.js) ya solo
+trae las *semillas* (los tres de ejemplo) y las plantillas de estilo.
+
+## Negocios de ejemplo
 
 | Negocio | Tipo | URLs |
 |---------|------|------|
@@ -68,7 +80,8 @@ pendiente: **[NEXT-STEPS.md](NEXT-STEPS.md)**.
 
 ```
 src/app/
-├─ page.js                    redirige al login (o a tu negocio si ya hay sesión)
+├─ page.js                    redirige al login (o a tu sitio si ya hay sesión)
+├─ admin/                     plataforma: lista de tiendas · [slug]/ editar + comentar
 ├─ login/                     PRIMERA PANTALLA: usuario + contraseña
 ├─ ui.js                      colores y estilos compartidos (tema claro)
 ├─ PaseVista.js               vista previa del pase: Apple / Google
@@ -82,7 +95,7 @@ src/app/
    ├─ login · logout · manifest · negocios
    └─ wallet/v1/...                        web service de Apple Wallet
 src/lib/
-├─ negocios.js   ★ presets de cada negocio
+├─ negocios.js   ★ semillas y estilos (las tiendas viven en la base)
 ├─ codigo.js       clave corta de 3 caracteres del pase (única por negocio)
 ├─ resumen.js      "cuántos sellos lleva": lo comparten Google Wallet y la vista previa
 ├─ acciones.js   ★ registro modular de acciones

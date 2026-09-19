@@ -5,7 +5,7 @@ import forge from "node-forge";
 import { generarPkpass } from "@/lib/apple/firmar";
 import { configApple, leerPem, hayApple, faltanVariablesApple } from "@/lib/apple/config";
 import { imagenesDelPase, rejillaSellos } from "@/lib/apple/imagenes";
-import { NEGOCIOS } from "@/lib/negocios";
+import { SEMILLAS } from "@/lib/negocios";
 import { cadenaDePrueba, aBase64 } from "../scripts/lib/certs.mjs";
 
 // Lector mínimo de zip (entradas stored o deflate) para inspeccionar el .pkpass.
@@ -26,7 +26,7 @@ function leerZip(buffer) {
   return ficheros;
 }
 
-const negocio = (slug) => ({ ...NEGOCIOS[slug], promo: null, ubicaciones: [] });
+const negocio = (slug) => ({ ...SEMILLAS[slug], promo: null, ubicaciones: [] });
 const cliente = { serial: "3f1c2b1a-1111-4222-8333-444455556666", negocio: "nube", sellos: 4, premios: 0, nombre: "Marta", auth_token: "b".repeat(48) };
 
 let cadena;
@@ -81,7 +81,7 @@ describe("generarPkpass", () => {
     const pase = JSON.parse(f["pass.json"].toString("utf8"));
     expect(pase.serialNumber).toBe(cliente.serial);
     expect(pase.webServiceURL).toBe("https://sellos.app/api/wallet");
-    expect(pase.storeCard.auxiliaryFields[0].value).toBe("Marta");
+    expect(JSON.stringify(pase.storeCard)).not.toContain("Marta"); // el nombre no va en el pase
 
     // El manifest tiene el SHA-1 correcto de cada fichero.
     const manifest = JSON.parse(f["manifest.json"].toString("utf8"));

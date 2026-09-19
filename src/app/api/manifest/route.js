@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { NEGOCIOS } from "@/lib/negocios";
+import { getNegocio } from "@/lib/store";
 import { C } from "@/app/ui";
 
 export const runtime = "nodejs";
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 // GET /api/manifest?b=<slug>
 export async function GET(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  const n = NEGOCIOS[slug];
+  const n = await getNegocio(slug);
   if (!n) return NextResponse.json({ error: "negocio desconocido" }, { status: 404 });
 
   const manifest = {

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import {
-  verificarAcceso, resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS,
+  verificarAcceso, resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS, ADMINS,
 } from "@/lib/auth";
-import { esNegocio, LISTA_NEGOCIOS } from "@/lib/negocios";
+import { listNegocios, getNegocio } from "@/lib/store";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -13,15 +13,20 @@ export const dynamic = "force-dynamic";
 // mirar las variables de entorno. Vacío si no está activo el modo pruebas.
 export async function GET() {
   if (!usuariosDemo()) return NextResponse.json({ demo: false, accesos: [] });
-  const accesos = LISTA_NEGOCIOS.flatMap((n) =>
-    ["manager", "caja"].map((rol) => ({
-      negocio: n.nombre,
-      emoji: n.tema.emoji,
-      rol,
-      usuario: usuarioDe(n.slug, rol),
-      clave: usuarioDe(n.slug, rol),
-    })),
-  );
+  const negocios = await listNegocios().catch(() => []);
+  const accesos = [
+    // Admin de la plataforma: entra en /admin, no en una tienda concreta.
+    ...ADMINS.map((usuario) => ({ negocio: "Plataforma", emoji: "🛠️", rol: "admin", usuario, clave: usuario })),
+    ...negocios.flatMap((n) =>
+      ["manager", "caja"].map((rol) => ({
+        negocio: n.nombre,
+        emoji: n.tema.emoji,
+        rol,
+        usuario: usuarioDe(n.slug, rol),
+        clave: usuarioDe(n.slug, rol),
+      })),
+    ),
+  ];
   return NextResponse.json({ demo: true, accesos });
 }
 
@@ -31,7 +36,13 @@ export async function POST(request) {
   try {
     const { usuario, clave } = await request.json().catch(() => ({}));
     const quien = resolverUsuario(usuario);
-    if (!quien || !esNegocio(quien.negocio)) return jsonError("Usuario o contraseña incorrectos", 401);
+    if (!quien) return jsonError("Usuario o contraseña incorrectos", 401);
+    // Un usuario de tienda solo vale si la tienda existe (y no está archivada):
+    // en modo pruebas la contraseña es el propio usuario, así que sin esto
+    // cualquier slug inventado entraría.
+    if (quien.rol !== "admin" && !(await getNegocio(quien.negocio))) {
+      return jsonError("Usuario o contraseña incorrectos", 401);
+    }
     if (!secretoSesion()) return jsonError("Login desactivado: falta AUTH_SECRET en el servidor", 503);
 
     // El límite de intentos vive en la base de datos. Si falla, se deja entrar

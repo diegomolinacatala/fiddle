@@ -16,6 +16,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
 | `/<negocio>/caja`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `GET /api/clientes`, `GET /api/negocio` | **caja** o manager de ese negocio |
 | `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `GET /api/estado` | **manager** de ese negocio |
+| `/admin`, `/admin/<slug>`, `/api/admin/*` | **admin de la plataforma** (`victor`, `diego`) |
 
 Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
 
@@ -102,6 +103,34 @@ Guarda la promo (vacío la quita) y avisa a todos los pases del negocio.
 
 ### `GET /api/estado`
 Qué integraciones están activas (sin secretos): `proveedor`, `apple.{configurado, faltan, passTypeId, webServiceURL}`, `google`, `supabase`, `authSecret`, `appUrl`, `httpsPublico`.
+
+## Admin de la plataforma
+
+Todo bajo `/api/admin/` exige sesión de admin (`rol: "admin"`), que además vale para
+cualquier negocio.
+
+### `GET /api/admin/negocios?archivados=0|1`
+Lista de tiendas (activas o archivadas) con `clientes`, `brief` y `notas`.
+
+### `POST /api/admin/negocios`
+```json
+{ "slug": "panaderia-rosa", "nombre": "Panadería Rosa", "tipo": "sellos",
+  "estilo": "coffee", "emoji": "🥐", "accent": "#c98a3a", "meta": 10,
+  "premio": "croissant gratis", "brief": "para que Claude rellene el resto" }
+```
+`201` con la tienda · `400` datos no válidos · `409` ese identificador ya existe.
+Lo que no se envía se rellena solo a partir del estilo elegido.
+
+### `PUT /api/admin/negocios`
+Con `{ slug, nombre?, meta?, premio?, brief?, tema? }` edita la tienda y avisa a sus pases.
+Con `{ slug, nota: { clave, texto } }` guarda un comentario sobre un campo del pase
+(`texto` vacío lo borra). Las claves son las de la vista previa: `apple.premio`,
+`apple.banda`, `google.puntos`…
+
+### `DELETE /api/admin/negocios?slug=<slug>&modo=<modo>`
+`archivar` (por defecto) la esconde de todas partes sin borrar nada · `desarchivar` la
+devuelve · `borrar` la elimina para siempre **con sus clientes y su historial**, y exige
+`&confirmar=<slug>` exacto.
 
 ## Apple Wallet web service
 

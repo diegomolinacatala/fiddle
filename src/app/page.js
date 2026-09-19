@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 // abre el tag NFC), no hace falta un directorio que las liste.
 export default async function Home() {
   const sesion = await verificarSesion((await cookies()).get(COOKIE)?.value);
+  if (sesion?.rol === "admin") redirect("/admin");
   if (sesion) redirect(`/${sesion.negocio}/${sesion.rol === "manager" ? "manager" : "caja"}`);
   redirect("/login");
 }

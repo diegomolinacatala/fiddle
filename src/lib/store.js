@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
-import { NEGOCIOS, configDefault, esNegocio } from "./negocios";
+import { SEMILLAS, componerNegocio, configInicial, esSlug } from "./negocios";
 import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
 
 // ============================================================================
@@ -73,60 +73,151 @@ function enFila(fn) {
 const ahoraISO = () => new Date().toISOString();
 
 // ============================ NEGOCIOS ============================
-// Une el preset (nombre, tipo, tema) con la config editable guardada.
-function componer(slug, config) {
-  const preset = NEGOCIOS[slug];
-  const c = { ...configDefault(slug), ...(config || {}) };
-  return {
-    slug,
-    nombre: preset.nombre,
-    tipo: preset.tipo,
-    tema: preset.tema,
-    meta: c.meta,
-    premio: c.premio,
-    acciones: c.acciones,
-    promo: c.promo ?? null,
-    ubicaciones: Array.isArray(c.ubicaciones) ? c.ubicaciones : [],
-  };
+// Los negocios viven en la tabla `negocios` (slug, nombre, tipo, config). Las
+// SEMILLAS de negocios.js solo se usan para que una base vacía traiga los tres
+// de siempre: en cuanto hay fila, manda la fila.
+//
+// Un negocio archivado sigue en la base pero desaparece de todas partes: por
+// eso `getNegocio` lo esconde salvo que se pida explícitamente.
+
+// Fila guardada -> ficha completa. `null` si no hay fila ni semilla.
+function componer(slug, fila) {
+  if (!fila && !SEMILLAS[slug]) return null;
+  return componerNegocio(slug, fila);
 }
 
-export async function getNegocio(slug) {
-  if (!esNegocio(slug)) return null;
+const visible = (n, incluirArchivados) => (n && (incluirArchivados || !n.archivado) ? n : null);
+
+/**
+ * @param {string} slug
+ * @param {{incluirArchivados?: boolean}} [opciones] el admin sí quiere verlos
+ */
+export async function getNegocio(slug, { incluirArchivados = false } = {}) {
+  if (!esSlug(slug)) return null;
   if (hasSupabase()) {
-    const data = sinError(
-      await supa().from("negocios").select("config").eq("slug", slug).maybeSingle(),
+    const fila = sinError(
+      await supa().from("negocios").select("nombre, tipo, config, creado").eq("slug", slug).maybeSingle(),
       "leer negocio",
     );
-    return componer(slug, data?.config);
+    return visible(componer(slug, fila), incluirArchivados);
   }
-  return enFila(async () => componer(slug, (await leer("negocios", {}))[slug]));
+  return enFila(async () => visible(componer(slug, normalizarFila((await leer("negocios", {}))[slug])), incluirArchivados));
 }
 
-export async function listNegocios() {
-  return Promise.all(Object.keys(NEGOCIOS).map((slug) => getNegocio(slug)));
+// El fichero de demo guardaba antes solo la config. Si no trae `config`, es del
+// formato viejo y el objeto entero ES la config.
+const normalizarFila = (v) => (v && typeof v === "object" ? ("config" in v ? v : { config: v }) : null);
+
+export async function listNegocios({ incluirArchivados = false } = {}) {
+  const filas = hasSupabase()
+    ? Object.fromEntries(
+        (sinError(await supa().from("negocios").select("slug, nombre, tipo, config, creado"), "listar negocios") || [])
+          .map((f) => [f.slug, f]),
+      )
+    : Object.fromEntries(
+        Object.entries(await enFila(() => leer("negocios", {}))).map(([k, v]) => [k, normalizarFila(v)]),
+      );
+
+  // Semillas que aún no están en la base, para que un arranque limpio no salga vacío.
+  const slugs = [...new Set([...Object.keys(SEMILLAS), ...Object.keys(filas)])];
+  return slugs
+    .map((slug) => visible(componer(slug, filas[slug]), incluirArchivados))
+    .filter(Boolean)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
-const fusionarConfig = (actual, patch) => ({
-  meta: patch.meta ?? actual.meta,
-  premio: patch.premio ?? actual.premio,
-  acciones: patch.acciones ?? actual.acciones,
-  promo: patch.promo !== undefined ? patch.promo : actual.promo,
-  ubicaciones: patch.ubicaciones ?? actual.ubicaciones,
-});
+/** Crea un negocio. Devuelve `{error}` si el slug ya está cogido o no vale. */
+export async function crearNegocio({ slug, nombre, tipo, meta, premio, acciones, tema, brief }) {
+  if (!esSlug(slug)) return { error: "El identificador solo admite minúsculas, números y guiones" };
+  if (await getNegocio(slug, { incluirArchivados: true })) return { error: `Ya existe un negocio con el identificador "${slug}"` };
 
-export async function saveNegocio(slug, patch) {
-  if (!esNegocio(slug)) return null;
+  const config = configInicial({ meta, premio, acciones, tema, brief });
+  const fila = { slug, nombre, tipo, config, creado: ahoraISO() };
   if (hasSupabase()) {
-    const config = fusionarConfig(await getNegocio(slug), patch);
-    const { nombre, tipo } = NEGOCIOS[slug];
-    sinError(await supa().from("negocios").upsert({ slug, nombre, tipo, config }), "guardar negocio");
-    return componer(slug, config);
+    sinError(await supa().from("negocios").insert(fila), "crear negocio");
+  } else {
+    await enFila(async () => {
+      const all = await leer("negocios", {});
+      await escribir("negocios", { ...all, [slug]: fila });
+    });
+  }
+  return { negocio: componer(slug, fila) };
+}
+
+// Mezcla la config guardada con lo que llega del manager o del admin. Solo
+// toca las claves presentes en el patch: lo demás se queda como estaba.
+function fusionarConfig(actual, patch) {
+  const config = {
+    meta: patch.meta ?? actual.meta,
+    premio: patch.premio ?? actual.premio,
+    acciones: patch.acciones ?? actual.acciones,
+    promo: patch.promo !== undefined ? patch.promo : actual.promo,
+    ubicaciones: patch.ubicaciones ?? actual.ubicaciones,
+    tema: patch.tema ? { ...actual.tema, ...patch.tema } : actual.tema,
+    brief: patch.brief ?? actual.brief,
+    notas: patch.notas ?? actual.notas,
+    archivado: patch.archivado ?? actual.archivado,
+  };
+  return config;
+}
+
+/**
+ * Guarda cambios de un negocio. `patch` puede traer también `nombre` y `tipo`
+ * (los edita el admin) además de la config que toca el manager.
+ */
+export async function saveNegocio(slug, patch) {
+  const actual = await getNegocio(slug, { incluirArchivados: true });
+  if (!actual) return null;
+
+  const config = fusionarConfig(actual, patch);
+  const nombre = patch.nombre ?? actual.nombre;
+  const tipo = patch.tipo ?? actual.tipo;
+  const fila = { slug, nombre, tipo, config };
+
+  if (hasSupabase()) {
+    sinError(await supa().from("negocios").upsert(fila), "guardar negocio");
+    return componer(slug, fila);
   }
   return enFila(async () => {
     const all = await leer("negocios", {});
-    const config = fusionarConfig(componer(slug, all[slug]), patch);
-    await escribir("negocios", { ...all, [slug]: config });
-    return componer(slug, config);
+    const creado = normalizarFila(all[slug])?.creado ?? ahoraISO();
+    await escribir("negocios", { ...all, [slug]: { ...fila, creado } });
+    return componer(slug, { ...fila, creado });
+  });
+}
+
+/** Archiva (o desarchiva) un negocio: desaparece de todo, pero no se pierde nada. */
+export const archivarNegocio = (slug, archivado = true) => saveNegocio(slug, { archivado });
+
+/**
+ * Borra un negocio PARA SIEMPRE, con sus clientes y su historial. No se puede
+ * deshacer: los pases que ya estén en un teléfono dejan de actualizarse.
+ * @returns {Promise<{borrados:number}>} clientes eliminados
+ */
+export async function borrarNegocio(slug) {
+  const clientes = await listClientes(slug);
+  const seriales = clientes.map((c) => c.serial);
+
+  if (hasSupabase()) {
+    const db = supa();
+    // `registros` cae solo por la FK; los eventos van por serial, sin FK.
+    if (seriales.length) sinError(await db.from("eventos").delete().in("serial", seriales), "borrar eventos");
+    sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
+    sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
+    return { borrados: seriales.length };
+  }
+  return enFila(async () => {
+    const negocios = await leer("negocios", {});
+    delete negocios[slug];
+    await escribir("negocios", negocios);
+
+    const todos = await leer("clientes", {});
+    await escribir("clientes", Object.fromEntries(Object.entries(todos).filter(([, c]) => c.negocio !== slug)));
+    await escribir("eventos", (await leer("eventos", [])).filter((e) => !seriales.includes(e.serial)));
+
+    const registros = await leer("registros", []);
+    await escribir("registros", registros.filter((r) => !seriales.includes(r.serial)));
+    return { borrados: seriales.length };
   });
 }
 
@@ -195,7 +286,7 @@ export async function crearCliente({ serial, negocio, authToken, wwSerial = null
  */
 export async function getClientePorCodigo(negocio, codigo) {
   const cod = normalizarCodigo(codigo);
-  if (!cod || !esNegocio(negocio)) return null;
+  if (!cod || !esSlug(negocio)) return null;
   const lista = await listClientes(negocio);
   return lista.find((c) => c.codigo === cod) || null;
 }
