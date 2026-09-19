@@ -3,6 +3,7 @@ import { proveedorWallet } from "@/lib/wallet";
 import { googleSaveUrl } from "@/lib/googlewallet";
 import { urlCaja } from "@/lib/url";
 import ThemedPass from "./ThemedPass";
+import { C, paginaCentrada } from "@/app/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,8 +15,8 @@ export default async function Page({ params }) {
   const cliente = await getCliente(serial);
   if (!cliente) {
     return (
-      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#0b0b0c", color: "#fff" }}>
-        <div style={{ textAlign: "center" }}><div style={{ fontSize: 40 }}>🔍</div><p style={{ opacity: 0.7 }}>Pase no encontrado</p></div>
+      <main style={paginaCentrada}>
+        <div style={{ textAlign: "center" }}><div style={{ fontSize: 40 }}>🔍</div><p style={{ color: C.suave }}>Pase no encontrado</p></div>
       </main>
     );
   }

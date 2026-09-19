@@ -6,7 +6,9 @@
 backend.** Su QR lleva una sola cosa: `APP_URL/w/<serial>` ("este soy yo"). Qué
 significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 
-- **Escaneo** (pase → caja): solo un ID.
+- **Escaneo** (pase → caja): solo un ID. Si el QR no se deja leer, vale el
+  **código corto** de 3 caracteres del pase, que solo significa algo dentro de
+  su negocio ([`codigo.js`](../src/lib/codigo.js)).
 - **Actualización** (backend → pase): un aviso *después* del escaneo; el iPhone baja
   el pase nuevo. Ahí es cuando "se rellena el café".
 
@@ -17,7 +19,7 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 | **Negocio** | Preset (nombre, tipo, tema) + config editable (meta, premio, acciones, promo, ubicaciones) | [`negocios.js`](../src/lib/negocios.js), `store.getNegocio` |
 | **Pase** | Identidad del cliente. Su cara es un espejo del estado | [`apple/pase.js`](../src/lib/apple/pase.js), [`apple/imagenes.js`](../src/lib/apple/imagenes.js) |
 | **Caja** | Escanea → perfil → acción. PWA por negocio | [`[negocio]/caja`](../src/app/[negocio]/caja), [`w/[serial]`](../src/app/w/[serial]) |
-| **Manager** | Configura, lanza promos, emite, ve el estado de integración | [`[negocio]/manager`](../src/app/[negocio]/manager) |
+| **Manager** | Configura, lanza promos, emite, ve el estado de integración y cómo queda el pase (Apple/Google) | [`[negocio]/manager`](../src/app/[negocio]/manager) |
 | **Backend** | Guarda estado, aplica acciones, avisa al Wallet | [`src/lib`](../src/lib), `/api/*` |
 
 ## Proveedores de Wallet

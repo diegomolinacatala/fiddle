@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { NEGOCIOS } from "@/lib/negocios";
+import { C } from "@/app/ui";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ export async function GET(request) {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0b0b0c",
+    background_color: C.fondo, // mismo gris claro que la app
     theme_color: n.tema.accent,
     icons: [
       { src: `/icons/${slug}-192.png`, sizes: "192x192", type: "image/png" },

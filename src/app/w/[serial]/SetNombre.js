@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { C, campo, botonSecundario } from "@/app/ui";
 
 // Editor del nombre del cliente (personalización del pase). El trabajador lo
 // rellena en caja; al guardar, el pase se reconstruye y se empuja.
@@ -40,39 +41,15 @@ export default function SetNombre({ serial, nombre }) {
           onChange={(e) => setValor(e.target.value)}
           placeholder="p. ej. Marta"
           maxLength={48}
-          style={input}
+          style={campo}
         />
-        <button type="submit" disabled={busy} style={btn}>
+        <button type="submit" disabled={busy} style={botonSecundario}>
           {busy ? "…" : "Guardar"}
         </button>
       </div>
-      {toast && <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7 }}>{toast}</div>}
+      {toast && <div style={{ marginTop: 8, fontSize: 13, color: C.suave }}>{toast}</div>}
     </form>
   );
 }
 
-const cap = {
-  fontSize: 12,
-  opacity: 0.45,
-  textTransform: "uppercase",
-  letterSpacing: 1,
-  marginBottom: 8,
-};
-const input = {
-  flex: 1,
-  padding: "0.6rem 0.8rem",
-  borderRadius: 12,
-  border: "1px solid rgba(255,255,255,.18)",
-  background: "#141416",
-  color: "#fff",
-  fontSize: 15,
-};
-const btn = {
-  padding: "0.6rem 1rem",
-  borderRadius: 12,
-  border: 0,
-  background: "#fff",
-  color: "#000",
-  fontWeight: 500,
-  cursor: "pointer",
-};
+const cap = { fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 };

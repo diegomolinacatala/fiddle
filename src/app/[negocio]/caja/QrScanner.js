@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import jsQR from "jsqr";
+import { C, botonSecundario } from "@/app/ui";
 
 // Escáner de QR con la cámara. Al leer el pase (que codifica /w/<serial>) abre el
 // perfil del cliente. Necesita HTTPS o localhost (contexto seguro para la cámara).
-export default function QrScanner({ accent = "#fff" }) {
+export default function QrScanner({ accent = C.texto }) {
   const router = useRouter();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -66,18 +67,17 @@ export default function QrScanner({ accent = "#fff" }) {
       {!active ? (
         <button onClick={start} style={{ ...scanBtn, background: accent }}>📷 Escanear pase</button>
       ) : (
-        <button onClick={stop} style={stopBtn}>Cerrar cámara</button>
+        <button onClick={stop} style={{ ...botonSecundario, width: "100%" }}>Cerrar cámara</button>
       )}
       <div style={{ display: active ? "block" : "none", marginTop: 12, position: "relative" }}>
         <video ref={videoRef} style={{ width: "100%", borderRadius: 14, background: "#000" }} muted playsInline />
         <div style={frame} />
       </div>
       <canvas ref={canvasRef} style={{ display: "none" }} />
-      {error && <p style={{ color: "#ff6b6b", fontSize: 13, marginTop: 8 }}>{error}</p>}
+      {error && <p style={{ color: C.mal, fontSize: 13, marginTop: 8 }}>{error}</p>}
     </div>
   );
 }
 
-const scanBtn = { width: "100%", padding: "1rem", borderRadius: 14, border: 0, color: "#fff", fontWeight: 600, fontSize: "1.05rem", cursor: "pointer" };
-const stopBtn = { width: "100%", padding: "0.7rem", borderRadius: 14, border: "1px solid rgba(255,255,255,.3)", background: "transparent", color: "#fff", cursor: "pointer" };
+const scanBtn = { width: "100%", padding: "1rem", borderRadius: 12, border: 0, color: "#fff", fontWeight: 600, fontSize: "1.05rem", cursor: "pointer" };
 const frame = { position: "absolute", inset: "18%", border: "3px solid rgba(255,255,255,.85)", borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,.25)", pointerEvents: "none" };

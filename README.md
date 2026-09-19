@@ -52,9 +52,14 @@ npm test
 Sin variables = **modo demo** (datos en `.data/`, sin pases reales). Para probar la
 firma de Apple sin iPhone: `npm run apple:prueba` (ver [docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)).
 
-Entrar en `/login`: usuario **`nube`** (manager) o **`nube-caja`** (caja), contraseña
-igual que el usuario; lo mismo con `fade` y `forno`. En local siempre valen y se
-listan en la propia pantalla de login.
+La app abre directamente en `/login`: usuario **`nube`** (manager) o **`nube-caja`**
+(caja), contraseña igual que el usuario; lo mismo con `fade` y `forno`. En local
+siempre valen y se listan en la propia pantalla de login para tocarlos y entrar.
+
+Cada pase tiene, además de su serial, un **código de 3 caracteres** (`K7M`) que sale
+debajo del QR: identifica al cliente **dentro de su tienda** (dos negocios pueden
+tener el mismo código y son clientes distintos). La caja lo acepta a mano cuando el
+QR no se deja leer.
 
 Cómo ponerse a trabajar desde otro ordenador, qué tocar para cada cosa y qué queda
 pendiente: **[NEXT-STEPS.md](NEXT-STEPS.md)**.
@@ -63,8 +68,10 @@ pendiente: **[NEXT-STEPS.md](NEXT-STEPS.md)**.
 
 ```
 src/app/
-├─ page.js                    directorio de negocios
-├─ login/                     usuario + contraseña
+├─ page.js                    redirige al login (o a tu negocio si ya hay sesión)
+├─ login/                     PRIMERA PANTALLA: usuario + contraseña
+├─ ui.js                      colores y estilos compartidos (tema claro)
+├─ PaseVista.js               vista previa del pase: Apple / Google
 ├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/ (+ estado de integración)
 ├─ w/[serial]/                perfil del cliente + acciones + nombre (caja)
 ├─ p/[serial]/                página pública del pase + "Añadir a Apple Wallet"
@@ -76,6 +83,8 @@ src/app/
    └─ wallet/v1/...                        web service de Apple Wallet
 src/lib/
 ├─ negocios.js   ★ presets de cada negocio
+├─ codigo.js       clave corta de 3 caracteres del pase (única por negocio)
+├─ resumen.js      "cuántos sellos lleva": lo comparten Google Wallet y la vista previa
 ├─ acciones.js   ★ registro modular de acciones
 ├─ wallet.js       fachada: emitir + avisar (apple > walletwallet > demo)
 ├─ apple/          pase.js · imagenes.js · firmar.js · servicio.js · apns.js · config.js

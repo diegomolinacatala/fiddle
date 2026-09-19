@@ -8,7 +8,7 @@ import { nivelDe } from "@/lib/apple/pase";
 // `appleUrl` / `googleUrl`: enlaces para guardar el pase (null si no hay proveedor).
 export default function ThemedPass({ serial, cliente, negocio, qrTexto, appleUrl, googleUrl, demo }) {
   const t = negocio.tema;
-  const textoPagina = t.estilo === "barber" ? "#e6e6e6" : "#111"; // fondo oscuro -> texto claro
+  const textoPagina = t.pageInk; // el tema dice qué color se lee sobre su fondo
   const Body =
     t.estilo === "barber" ? <Barber n={negocio} c={cliente} />
     : t.estilo === "pizza" ? <Pizza n={negocio} c={cliente} />
@@ -30,11 +30,15 @@ export default function ThemedPass({ serial, cliente, negocio, qrTexto, appleUrl
 
         <div style={{ marginTop: 16, background: "#fff", borderRadius: 12, padding: 12, display: "inline-block" }}>
           <QrImagen texto={qrTexto} lado={170} />
+          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: 4, color: "#111", marginTop: 4, fontFamily: "ui-monospace, Menlo, monospace" }}>
+            {cliente.codigo}
+          </div>
         </div>
         <p style={{ opacity: 0.75, fontSize: 12, marginTop: 12, color: textoPagina }}>
           {appleUrl || googleUrl
             ? "Guárdalo en tu Wallet: se actualiza solo con cada sello."
             : "Este QR es lo que escanea la tienda. En real vive dentro de tu Wallet."}
+          <br />Si el QR no se deja leer, di tu código: <strong>{cliente.codigo}</strong>.
         </p>
         {demo && <a href={`/w/${serial}`} style={{ color: textoPagina, fontSize: 13, fontWeight: 600 }}>Abrir vista de caja (demo) →</a>}
       </div>

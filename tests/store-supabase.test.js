@@ -51,13 +51,17 @@ describe("store con Supabase", () => {
     await expect(store.getCliente("s1")).rejects.toThrow("Supabase leer cliente: boom");
   });
 
-  it("crearCliente inserta token y marcas de tiempo; saveCliente marca actualizado", async () => {
+  it("crearCliente mira los códigos del negocio e inserta; saveCliente marca actualizado", async () => {
     await store.crearCliente({ serial: "s1", negocio: "nube", authToken: "t".repeat(48) });
-    expect(llamadas[0].cadena[0][1]).toMatchObject({ serial: "s1", negocio: "nube", auth_token: "t".repeat(48), sellos: 0 });
+    // Antes de insertar pregunta qué códigos cortos tiene YA ese negocio (y solo ese).
+    expect(llamadas[0].cadena).toEqual([["select", "serial, codigo"], ["eq", "negocio", "nube"]]);
+    expect(llamadas[1].cadena[0][1]).toMatchObject({
+      serial: "s1", negocio: "nube", auth_token: "t".repeat(48), sellos: 0, codigo: expect.any(String),
+    });
 
     encolar("clientes", { data: [{ serial: "s1" }], error: null });
     expect(await store.saveCliente({ serial: "s1", sellos: 2, premios: 0 })).toBe(true);
-    const [update, eq, select] = llamadas[1].cadena;
+    const [update, eq, select] = llamadas[2].cadena;
     expect(update[1]).toMatchObject({ sellos: 2, premios: 0, actualizado: expect.any(String) });
     expect(update[1]).not.toHaveProperty("nombre");
     expect(eq).toEqual(["eq", "serial", "s1"]);

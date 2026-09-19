@@ -22,6 +22,7 @@ export const NEGOCIOS = {
       estilo: "coffee", // preview colorido
       preset: "purple", // colorPreset del pase real (WalletWallet)
       pageBg: "linear-gradient(135deg,#ffd1dc 0%,#c3f0e0 40%,#a1c4fd 100%)",
+      pageInk: "#2b2430", // color del texto sobre pageBg
       cardBg: "#fff7f2",
       ink: "#4a2c2a",
       accent: "#ff5c8a",
@@ -41,6 +42,7 @@ export const NEGOCIOS = {
       estilo: "barber", // sleek + animado, niveles atrás
       preset: "dark",
       pageBg: "linear-gradient(160deg,#0d0d0f,#17171c)",
+      pageInk: "#e9e9ec",
       cardBg: "#141416",
       ink: "#f2f2f2",
       accent: "#c9a24b", // oro
@@ -60,6 +62,7 @@ export const NEGOCIOS = {
       estilo: "pizza",
       preset: "red",
       pageBg: "radial-gradient(circle at 30% 20%,#ffd54a,#ff7a18 55%,#c1121f 100%)",
+      pageInk: "#ffffff",
       cardBg: "#fff3e0",
       ink: "#5a1a12",
       accent: "#c1121f",
