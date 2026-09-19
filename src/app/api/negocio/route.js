@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNegocio, saveNegocio } from "@/lib/store";
 import { ACCIONES } from "@/lib/acciones";
-import { esNegocio } from "@/lib/negocios";
+import { esSlug } from "@/lib/negocios";
 import { notificarNegocio } from "@/lib/wallet";
 import { patchNegocio } from "@/lib/validacion";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
@@ -12,11 +12,13 @@ export const dynamic = "force-dynamic";
 // GET /api/negocio?b=<slug>  -> config actual (con tema). Caja o manager.
 export async function GET(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  if (!esNegocio(slug)) return jsonError("negocio desconocido", 404);
+  if (!esSlug(slug)) return jsonError("negocio desconocido", 404);
   const { respuesta } = await exigirNegocio(request, slug, "caja");
   if (respuesta) return respuesta;
   try {
-    return NextResponse.json(await getNegocio(slug));
+    const negocio = await getNegocio(slug);
+    if (!negocio) return jsonError("negocio desconocido", 404);
+    return NextResponse.json(negocio);
   } catch (e) {
     return errorInterno("negocio GET", e);
   }
@@ -25,7 +27,7 @@ export async function GET(request) {
 // PUT /api/negocio?b=<slug>  -> guarda la config editable y actualiza todos los pases.
 export async function PUT(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  if (!esNegocio(slug)) return jsonError("negocio desconocido", 404);
+  if (!esSlug(slug)) return jsonError("negocio desconocido", 404);
   const { respuesta } = await exigirNegocio(request, slug, "manager");
   if (respuesta) return respuesta;
 
@@ -35,6 +37,7 @@ export async function PUT(request) {
     if (r.error) return jsonError(r.error, 400);
 
     const nuevo = await saveNegocio(slug, r.patch);
+    if (!nuevo) return jsonError("negocio desconocido", 404);
     const aviso = await notificarNegocio(nuevo);
     return NextResponse.json({ ...nuevo, aviso });
   } catch (e) {

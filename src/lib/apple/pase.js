@@ -31,25 +31,28 @@ export function nivelDe(premios) {
 }
 
 function camposSellos(cliente, negocio) {
-  const meta = negocio.meta;
-  const sellos = Math.min(cliente.sellos, meta);
-  const faltan = Math.max(0, meta - cliente.sellos);
+  const faltan = Math.max(0, negocio.meta - cliente.sellos);
   const completa = faltan === 0;
 
   const header = negocio.tema.estilo === "barber"
     ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@ ✨" }]
     : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@ 🎉" }];
 
-  const secundarios = [
-    { key: "sellos", label: "SELLOS", value: `${sellos} de ${meta}`, changeMessage: "Tienes %@ sellos" },
-    {
-      key: "premio",
-      label: completa ? "PREMIO LISTO" : "PREMIO",
-      value: completa ? `¡${negocio.premio}!` : `Faltan ${faltan} · ${negocio.premio}`,
-    },
-  ];
+  // NO hay campo "SELLOS 5 de 8": eso ya lo dicen los círculos de la banda, y
+  // gastaba una columna de las pocas que hay (ver camposDelPase).
+  //
+  // Ojo: el aviso en la pantalla de bloqueo lo dispara un CAMPO que cambia, no
+  // la banda (la imagen se actualiza en silencio). Como "PREMIO" cambia con
+  // cada sello —"Faltan 3 · café gratis" -> "Faltan 2 · café gratis"— es él
+  // quien lleva ahora el changeMessage, y de paso el aviso se lee mejor.
+  const premio = {
+    key: "premio",
+    label: completa ? "PREMIO LISTO" : "PREMIO",
+    value: completa ? `¡${negocio.premio}!` : `Faltan ${faltan} · ${negocio.premio}`,
+    changeMessage: "%@",
+  };
 
-  return { headerFields: header, primaryFields: [], secondaryFields: secundarios };
+  return { headerFields: header, primaryFields: [], secondaryFields: [premio] };
 }
 
 function camposCupon(cliente, negocio) {
@@ -85,12 +88,19 @@ export function camposDelPase(cliente, negocio) {
   const esCupon = negocio.tipo === "descuento";
   const campos = esCupon ? camposCupon(cliente, negocio) : camposSellos(cliente, negocio);
 
-  // La promo va en la CARA del pase: iOS solo avisa en la pantalla de bloqueo
-  // cuando cambia un campo visible. Un campo del reverso se actualiza en silencio.
-  const auxiliaryFields = [
-    ...(negocio.promo ? [{ key: "promo", label: "PROMO", value: negocio.promo, changeMessage: "%@" }] : []),
-    ...(cliente.nombre ? [{ key: "cliente", label: "CLIENTE", value: cliente.nombre }] : []),
-  ];
+  // CUÁNTOS CAMPOS CABEN. Cuando el pase lleva banda, iOS mete secundarios y
+  // auxiliares en UNA sola fila: con cuatro campos salen cuatro columnas
+  // apretadas y el texto se corta. Así que debajo de la banda va lo mínimo:
+  // el premio y, si la hay, la promo. Dos columnas como mucho.
+  //
+  // La promo tiene que estar en la CARA: iOS solo avisa en la pantalla de
+  // bloqueo cuando cambia un campo visible; uno del reverso cambia en silencio.
+  //
+  // El nombre del cliente NO va en el pase: él ya se lo sabe y la tienda lo ve
+  // en la caja. Ocupaba una columna de las dos que hay.
+  const auxiliaryFields = negocio.promo
+    ? [{ key: "promo", label: "PROMO", value: negocio.promo, changeMessage: "%@" }]
+    : [];
 
   const backFields = [
     { key: "como", label: "Cómo funciona", value: negocio.tema.atras },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listClientes, getClientePorCodigo, clientePublico } from "@/lib/store";
-import { esNegocio } from "@/lib/negocios";
+import { esSlug } from "@/lib/negocios";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("b");
   const codigo = searchParams.get("codigo");
-  if (!esNegocio(slug)) return jsonError("Falta o no existe ?b=<negocio>", 400);
+  if (!esSlug(slug)) return jsonError("Falta o no existe ?b=<negocio>", 400);
   const { respuesta } = await exigirNegocio(request, slug, "caja");
   if (respuesta) return respuesta;
   try {

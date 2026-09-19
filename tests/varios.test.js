@@ -6,7 +6,7 @@ import { normalizarUbicaciones, patchNegocio } from "@/lib/validacion";
 import { loginBloqueado, anotarFalloLogin, ipDe, MAX_POR_IP, usoExcedido, LIMITES } from "@/lib/limitador";
 import { buildPassBody } from "@/lib/walletwallet";
 import { googleSaveUrl, hayGoogle } from "@/lib/googlewallet";
-import { esNegocio, NEGOCIOS, configDefault } from "@/lib/negocios";
+import { esSlug, SEMILLAS, temaPorDefecto } from "@/lib/negocios";
 import { appUrl, urlCaja } from "@/lib/url";
 import { generarClave } from "../scripts/lib/certs.mjs";
 
@@ -64,11 +64,16 @@ describe("limitador de login", () => {
 });
 
 describe("negocios y url", () => {
-  it("esNegocio no acepta propiedades heredadas", () => {
-    expect(esNegocio("nube")).toBe(true);
-    expect(esNegocio("constructor")).toBe(false);
-    expect(esNegocio(null)).toBe(false);
-    expect(configDefault("fade").ubicaciones).toEqual([]);
+  it("esSlug acepta slugs de tienda y rechaza los reservados", () => {
+    expect(esSlug("nube")).toBe(true);
+    expect(esSlug("panaderia-2")).toBe(true);   // una tienda nueva cualquiera
+    expect(esSlug("admin")).toBe(false);        // reservado: es la ruta del admin
+    expect(esSlug("plataforma")).toBe(false);   // reservado: sesión del admin
+    expect(esSlug("Nube")).toBe(false);         // mayúsculas no
+    expect(esSlug("a")).toBe(false);            // demasiado corto
+    expect(esSlug(null)).toBe(false);
+    expect(temaPorDefecto({ estilo: "barber" }).accent).toBe("#c9a24b");
+    expect(temaPorDefecto({ estilo: "loquesea", accent: "#123456" })).toMatchObject({ estilo: "coffee", accent: "#123456" });
   });
 
   it("appUrl quita barras finales", () => {
@@ -79,7 +84,7 @@ describe("negocios y url", () => {
 });
 
 describe("walletwallet buildPassBody", () => {
-  const nube = { ...NEGOCIOS.nube, promo: "2x1" };
+  const nube = { ...SEMILLAS.nube, promo: "2x1" };
   it("sellos con nombre y promo", () => {
     const b = buildPassBody({ serial: "s", sellos: 9, premios: 2, nombre: "Ana" }, nube);
     expect(b.headerFields[0]).toEqual({ label: "Cliente", value: "Ana" });
@@ -88,7 +93,7 @@ describe("walletwallet buildPassBody", () => {
     expect(b.backFields.at(-1)).toEqual({ label: "Canjeados", value: "2" });
   });
   it("cupón usado", () => {
-    const b = buildPassBody({ serial: "s", sellos: 0, premios: 1 }, { ...NEGOCIOS.forno, promo: null });
+    const b = buildPassBody({ serial: "s", sellos: 0, premios: 1 }, { ...SEMILLAS.forno, promo: null });
     expect(b.secondaryFields[0].value).toBe("Ya usado");
   });
 });
@@ -96,14 +101,14 @@ describe("walletwallet buildPassBody", () => {
 describe("google wallet", () => {
   it("sin credenciales no hay enlace", () => {
     expect(hayGoogle()).toBe(false);
-    expect(googleSaveUrl({ serial: "s" }, NEGOCIOS.nube)).toBeNull();
+    expect(googleSaveUrl({ serial: "s" }, SEMILLAS.nube)).toBeNull();
   });
 
   it("con credenciales genera un JWT RS256 con el objeto del cliente", () => {
     vi.stubEnv("GOOGLE_WALLET_ISSUER_ID", "338800");
     vi.stubEnv("GOOGLE_WALLET_SA_EMAIL", "sa@x.iam.gserviceaccount.com");
     vi.stubEnv("GOOGLE_WALLET_SA_KEY", generarClave().keyPem.replace(/\n/g, "\\n"));
-    const url = googleSaveUrl({ serial: "s1", sellos: 3, premios: 0, nombre: "Ana" }, { ...NEGOCIOS.nube, meta: 8 });
+    const url = googleSaveUrl({ serial: "s1", sellos: 3, premios: 0, nombre: "Ana" }, { ...SEMILLAS.nube, meta: 8 });
     expect(url).toMatch(/^https:\/\/pay\.google\.com\/gp\/v\/save\//);
     const payload = JSON.parse(Buffer.from(url.split("/").pop().split(".")[1], "base64url").toString());
     expect(payload.payload.loyaltyObjects[0]).toMatchObject({

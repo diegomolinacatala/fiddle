@@ -17,7 +17,9 @@ export async function middleware(req) {
 
   const sesion = await verificarSesion(req.cookies.get(COOKIE)?.value);
   const permitido =
-    regla.tipo === "sesion" ? Boolean(sesion) : puedeAcceder(sesion, regla.slug, regla.rol);
+    regla.tipo === "admin" ? sesion?.rol === "admin"
+    : regla.tipo === "sesion" ? Boolean(sesion)
+    : puedeAcceder(sesion, regla.slug, regla.rol);
   if (permitido) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {

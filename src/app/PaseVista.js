@@ -23,8 +23,16 @@ import { C } from "@/app/ui";
 // auxiliares y código) pero con tipos del sistema.
 // ============================================================================
 
-export default function PaseVista({ negocio, cliente, qrTexto, pie = null }) {
+/**
+ * @param {object} props
+ * @param {object} [props.notas]       { "apple.premio": "esto debería ser X" }
+ * @param {Function} [props.onCampo]   (clave, etiqueta) => void. Si viene, cada
+ *                                     campo se puede tocar para comentarlo.
+ * @param {string} [props.campoActivo] clave del campo que se está comentando
+ */
+export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null }) {
   const [cual, setCual] = useState("apple");
+  const anota = { notas, onCampo, campoActivo };
 
   return (
     <div>
@@ -46,8 +54,8 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null }) {
       </div>
 
       {cual === "apple"
-        ? <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} />
-        : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} />}
+        ? <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />
+        : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />}
 
       <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>
         {pie || "Parecido, no idéntico: la banda y el logo son los del pase real; la tipografía la pone iOS."}
@@ -56,12 +64,55 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null }) {
   );
 }
 
+/**
+ * Envuelve un trozo del pase. Fuera del modo comentarios no pinta nada (un
+ * div normal); dentro, se vuelve un botón con marco de puntos y un punto de
+ * color si ya tiene nota. Así la vista previa es la misma en los dos modos.
+ */
+function Anotable({ clave, etiqueta, anota, children, estilo = {} }) {
+  const { notas, onCampo, campoActivo } = anota || {};
+  if (!onCampo) return <div style={estilo}>{children}</div>;
+
+  const tiene = Boolean(notas?.[clave]);
+  const activo = campoActivo === clave;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onCampo(clave, etiqueta); }}
+      title={tiene ? notas[clave] : `Comentar "${etiqueta}"`}
+      style={{
+        ...estilo,
+        position: "relative",
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        font: "inherit",
+        color: "inherit",
+        cursor: "pointer",
+        padding: 2,
+        margin: -2,
+        borderRadius: 6,
+        border: `1px dashed ${activo ? "#2563eb" : tiene ? "#16a34a" : "rgba(127,127,127,.45)"}`,
+        background: activo ? "rgba(37,99,235,.10)" : tiene ? "rgba(22,163,74,.08)" : "transparent",
+      }}
+    >
+      {children}
+      {tiene && <span style={puntoNota} aria-label="tiene comentario" />}
+    </button>
+  );
+}
+
+const puntoNota = {
+  position: "absolute", top: -4, right: -4, width: 9, height: 9,
+  borderRadius: "50%", background: "#16a34a", border: "2px solid #fff",
+};
+
 // ---------------------------------------------------------------- Apple
 // Orden real de un pase: cabecera (logo + nombre | headerFields), banda a
 // sangre, secundarios, auxiliares y el código abajo. En los cupones los
 // primaryFields van ENCIMA de la banda (por eso su dibujo deja hueco a la
 // izquierda); en las cartillas no hay primarios y la banda se ve entera.
-function TarjetaApple({ negocio, cliente, qrTexto }) {
+function TarjetaApple({ negocio, cliente, qrTexto, anota }) {
   const t = negocio.tema;
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields, backFields } =
     camposDelPase(cliente, negocio);
@@ -70,67 +121,83 @@ function TarjetaApple({ negocio, cliente, qrTexto }) {
   return (
     <div style={{ ...marco, background: t.cardBg, color: t.ink, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
-        <img src={comoDataUri(svgLogo(t))} alt="" width={26} height={26} style={{ display: "block", flexShrink: 0 }} />
-        <strong style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0 }}>{negocio.nombre}</strong>
+        <Anotable clave="apple.logo" etiqueta="Logo" anota={anota} estilo={{ width: "auto", flexShrink: 0 }}>
+          <img src={comoDataUri(svgLogo(t))} alt="" width={26} height={26} style={{ display: "block" }} />
+        </Anotable>
+        <Anotable clave="apple.nombre" etiqueta="Nombre del negocio" anota={anota} estilo={{ flex: 1, minWidth: 0 }}>
+          <strong style={{ fontSize: 13, fontWeight: 600, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {negocio.nombre}
+          </strong>
+        </Anotable>
         {headerFields.map((f) => (
-          <div key={f.key} style={{ textAlign: "right" }}>
+          <Anotable key={f.key} clave={`apple.${f.key}`} etiqueta={f.label} anota={anota} estilo={{ width: "auto", textAlign: "right", minWidth: 0 }}>
             <div style={etiquetaPase(t.accent)}>{f.label}</div>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>{f.value}</div>
-          </div>
+            <div style={{ fontSize: 15, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.value}</div>
+          </Anotable>
         ))}
       </div>
 
       <div style={{ position: "relative" }}>
-        <img
-          src={comoDataUri(strip.svg)}
-          alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`}
-          style={{ display: "block", width: "100%", height: "auto" }}
-        />
+        <Anotable clave="apple.banda" etiqueta="Banda (los sellos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
+          <img
+            src={comoDataUri(strip.svg)}
+            alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`}
+            style={{ display: "block", width: "100%", height: "auto" }}
+          />
+        </Anotable>
         {primaryFields.length > 0 && (
           <div style={sobreLaBanda}>
-            <div style={{ ...etiquetaPase("#ffffff"), opacity: 0.9 }}>{primaryFields[0].label}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", lineHeight: 1.1, maxWidth: "58%", textShadow: "0 1px 2px rgba(0,0,0,.25)" }}>
-              {primaryFields[0].value}
-            </div>
+            <Anotable clave={`apple.${primaryFields[0].key}`} etiqueta={primaryFields[0].label} anota={anota} estilo={{ width: "auto", maxWidth: "62%" }}>
+              <div style={{ ...etiquetaPase("#ffffff"), opacity: 0.9 }}>{primaryFields[0].label}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", lineHeight: 1.1, textShadow: "0 1px 2px rgba(0,0,0,.25)" }}>
+                {primaryFields[0].value}
+              </div>
+            </Anotable>
           </div>
         )}
       </div>
 
+      {/* Secundarios y auxiliares van en UNA fila, como los pinta iOS cuando el
+          pase lleva banda. Si algún día vuelven a ser cuatro, aquí se verá
+          igual de apretado que en el teléfono: esa es la gracia. */}
       <div style={{ padding: "12px 12px 0" }}>
-        <Fila campos={secondaryFields} accent={t.accent} />
-        <Fila campos={auxiliaryFields} accent={t.accent} margen={12} />
+        <Fila campos={[...secondaryFields, ...auxiliaryFields]} accent={t.accent} anota={anota} />
       </div>
 
       <div style={{ display: "grid", placeItems: "center", padding: "16px 12px 14px" }}>
-        <div style={{ background: "#fff", padding: 8, borderRadius: 6 }}>
-          <QrImagen texto={qrTexto} lado={104} />
-        </div>
-        <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 6, fontFamily: "ui-monospace, Menlo, monospace" }}>
-          {cliente.codigo || "—"}
-        </div>
+        <Anotable clave="apple.codigo" etiqueta="QR y código corto" anota={anota} estilo={{ width: "auto" }}>
+          <div style={{ background: "#fff", padding: 8, borderRadius: 6 }}>
+            <QrImagen texto={qrTexto} lado={104} />
+          </div>
+          <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 6, textAlign: "center", fontFamily: "ui-monospace, Menlo, monospace" }}>
+            {cliente.codigo || "—"}
+          </div>
+        </Anotable>
       </div>
 
       <div style={{ margin: "0 12px 12px", paddingTop: 10, borderTop: `1px solid ${t.accent}33`, opacity: 0.75 }}>
         <div style={{ ...etiquetaPase(t.accent), marginBottom: 4 }}>Reverso</div>
         {backFields.map((f) => (
-          <div key={f.key} style={{ fontSize: 11, marginTop: 2 }}>
-            <span style={{ opacity: 0.7 }}>{f.label}: </span>{f.value}
-          </div>
+          <Anotable key={f.key} clave={`apple.reverso.${f.key}`} etiqueta={`Reverso · ${f.label}`} anota={anota} estilo={{ marginTop: 2 }}>
+            <div style={{ fontSize: 11 }}>
+              <span style={{ opacity: 0.7 }}>{f.label}: </span>{f.value}
+            </div>
+          </Anotable>
         ))}
       </div>
     </div>
   );
 }
 
-function Fila({ campos, accent, margen = 0 }) {
+function Fila({ campos, accent, margen = 0, anota }) {
   if (!campos.length) return null;
   return (
     <div style={{ display: "flex", gap: 14, marginTop: margen }}>
       {campos.map((f) => (
-        <div key={f.key} style={{ flex: 1, minWidth: 0 }}>
+        <Anotable key={f.key} clave={`apple.${f.key}`} etiqueta={f.label} anota={anota} estilo={{ flex: 1, minWidth: 0 }}>
           <div style={etiquetaPase(accent)}>{f.label}</div>
           <div style={{ fontSize: 15, fontWeight: 500, marginTop: 1 }}>{f.value}</div>
-        </div>
+        </Anotable>
       ))}
     </div>
   );
@@ -140,7 +207,7 @@ function Fila({ campos, accent, margen = 0 }) {
 // LoyaltyObject: cabecera de color, titular, contador de puntos y el código
 // abajo. Sin banda: el objeto que manda `googlewallet.js` no lleva imagen, así
 // que dibujarla aquí sería enseñar algo que el cliente no va a ver.
-function TarjetaGoogle({ negocio, cliente, qrTexto }) {
+function TarjetaGoogle({ negocio, cliente, qrTexto, anota }) {
   const t = negocio.tema;
   const puntos = puntosDe(cliente, negocio);
   const e = estadoDe(cliente, negocio);
@@ -148,35 +215,47 @@ function TarjetaGoogle({ negocio, cliente, qrTexto }) {
   return (
     <div style={{ ...marco, background: "#fff", color: "#202124", overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif" }}>
       <div style={{ background: t.accent, color: "#fff", padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 22 }}>{t.emoji}</span>
-        <strong style={{ fontSize: 15, fontWeight: 500 }}>{negocio.nombre}</strong>
+        <Anotable clave="google.cabecera" etiqueta="Cabecera (emoji y nombre)" anota={anota}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>{t.emoji}</span>
+            <strong style={{ fontSize: 15, fontWeight: 500 }}>{negocio.nombre}</strong>
+          </div>
+        </Anotable>
       </div>
 
       <div style={{ padding: "16px 18px" }}>
-        <div style={etiquetaGoogle}>Titular</div>
-        <div style={{ fontSize: 16 }}>{cliente.nombre || "Cliente"}</div>
+        <Anotable clave="google.titular" etiqueta="Titular" anota={anota}>
+          <div style={etiquetaGoogle}>Titular</div>
+          <div style={{ fontSize: 16 }}>{cliente.nombre || "Cliente"}</div>
+        </Anotable>
 
-        <div style={{ ...etiquetaGoogle, marginTop: 14 }}>{puntos.label}</div>
-        <div style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.2 }}>{puntos.balance}</div>
-        <div style={{ fontSize: 13, color: "#5f6368", marginTop: 4 }}>
-          {e.esCupon
-            ? negocio.premio
-            : e.completa ? `Premio listo: ${negocio.premio}` : `Faltan ${e.faltan} para ${negocio.premio}`}
-        </div>
+        <Anotable clave="google.puntos" etiqueta={puntos.label} anota={anota} estilo={{ marginTop: 14 }}>
+          <div style={etiquetaGoogle}>{puntos.label}</div>
+          <div style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.2 }}>{puntos.balance}</div>
+          <div style={{ fontSize: 13, color: "#5f6368", marginTop: 4 }}>
+            {e.esCupon
+              ? negocio.premio
+              : e.completa ? `Premio listo: ${negocio.premio}` : `Faltan ${e.faltan} para ${negocio.premio}`}
+          </div>
+        </Anotable>
 
         {negocio.promo && (
-          <div style={{ marginTop: 14, padding: "10px 12px", background: "#f1f3f4", borderRadius: 8 }}>
-            <div style={etiquetaGoogle}>Promoción</div>
-            <div style={{ fontSize: 14 }}>{negocio.promo}</div>
-          </div>
+          <Anotable clave="google.promo" etiqueta="Promoción" anota={anota} estilo={{ marginTop: 14 }}>
+            <div style={{ padding: "10px 12px", background: "#f1f3f4", borderRadius: 8 }}>
+              <div style={etiquetaGoogle}>Promoción</div>
+              <div style={{ fontSize: 14 }}>{negocio.promo}</div>
+            </div>
+          </Anotable>
         )}
       </div>
 
       <div style={{ borderTop: "1px solid #e8eaed", padding: "16px", display: "grid", placeItems: "center" }}>
-        <QrImagen texto={qrTexto} lado={104} />
-        <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 6, color: "#5f6368", fontFamily: "ui-monospace, Menlo, monospace" }}>
-          {cliente.codigo || "—"}
-        </div>
+        <Anotable clave="google.codigo" etiqueta="QR y código corto" anota={anota} estilo={{ width: "auto" }}>
+          <QrImagen texto={qrTexto} lado={104} />
+          <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 6, textAlign: "center", color: "#5f6368", fontFamily: "ui-monospace, Menlo, monospace" }}>
+            {cliente.codigo || "—"}
+          </div>
+        </Anotable>
       </div>
     </div>
   );

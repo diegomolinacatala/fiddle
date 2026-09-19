@@ -24,9 +24,15 @@
 const enc = new TextEncoder();
 
 export const COOKIE = "sesion";
-export const ROLES = ["caja", "manager"];
-// La caja vive en un móvil de la tienda: sesión larga. El manager, corta.
-export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 12 };
+export const ROLES = ["caja", "manager", "admin"];
+// La caja vive en un móvil de la tienda: sesión larga. El manager y el admin, cortas.
+export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 12, admin: 60 * 60 * 12 };
+
+// ADMIN DE LA PLATAFORMA: no es de ningún negocio, es de todos. Entra en /admin,
+// donde se crean, editan y archivan las tiendas. Su sesión lleva este negocio
+// de mentira en el hueco del slug (por eso "plataforma" es un slug reservado).
+export const ADMINS = ["victor", "diego"];
+export const PLATAFORMA = "plataforma";
 
 const SECRETO_DEMO = "demo-secret-cambia-en-produccion";
 
@@ -42,15 +48,21 @@ export function secretoSesion() {
   return esProduccion() ? null : SECRETO_DEMO;
 }
 
-/** Nombre de la variable de entorno de la contraseña. `fade` -> CLAVE_FADE_CAJA */
-export const varClave = (slug, rol) =>
-  `CLAVE_${String(slug).toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${rol.toUpperCase()}`;
+/**
+ * Variable de entorno de la contraseña.
+ *   negocio:  `fade` + caja  -> CLAVE_FADE_CAJA
+ *   admin:    `victor`       -> CLAVE_ADMIN_VICTOR
+ */
+export const varClave = (nombre, rol) => {
+  const limpio = String(nombre).toUpperCase().replace(/[^A-Z0-9]/g, "_");
+  return rol === "admin" ? `CLAVE_ADMIN_${limpio}` : `CLAVE_${limpio}_${rol.toUpperCase()}`;
+};
 /** Nombre antiguo, que sigue valiendo: PIN_FADE_CAJA */
 export const varPin = (slug, rol) => varClave(slug, rol).replace(/^CLAVE_/, "PIN_");
 
-/** Contraseña configurada para un negocio y rol, o null si no hay ninguna. */
-export function claveDe(slug, rol) {
-  return process.env[varClave(slug, rol)]?.trim() || process.env[varPin(slug, rol)]?.trim() || null;
+/** Contraseña configurada, o null si no hay ninguna. */
+export function claveDe(nombre, rol) {
+  return process.env[varClave(nombre, rol)]?.trim() || process.env[varPin(nombre, rol)]?.trim() || null;
 }
 
 /** Usuario de acceso de un negocio y rol: `nube` (manager) · `nube-caja`. */
@@ -58,13 +70,14 @@ export const usuarioDe = (slug, rol) => (rol === "manager" ? slug : `${slug}-caj
 
 /**
  * A qué negocio y rol corresponde un usuario. No comprueba la contraseña.
- * @returns {{negocio:string, rol:"caja"|"manager"}|null}
+ * @returns {{negocio:string, rol:"caja"|"manager"|"admin", usuario:string}|null}
  */
 export function resolverUsuario(usuario) {
   const limpio = String(usuario ?? "").trim().toLowerCase();
+  if (ADMINS.includes(limpio)) return { negocio: PLATAFORMA, rol: "admin", usuario: limpio };
   const m = /^([a-z0-9-]+?)(?:-(caja|manager))?$/.exec(limpio);
   if (!m) return null;
-  return { negocio: m[1], rol: m[2] === "caja" ? "caja" : "manager" };
+  return { negocio: m[1], rol: m[2] === "caja" ? "caja" : "manager", usuario: limpio };
 }
 
 /**
@@ -75,9 +88,9 @@ export function verificarAcceso(usuario, clave) {
   const quien = resolverUsuario(usuario);
   if (!quien || !clave) return null;
 
-  const valida = [claveDe(quien.negocio, quien.rol)];
-  // En pruebas vale además "contraseña = usuario" (nube/nube, nube-caja/nube-caja).
-  if (usuariosDemo()) valida.push(usuarioDe(quien.negocio, quien.rol));
+  const valida = [claveDe(quien.rol === "admin" ? quien.usuario : quien.negocio, quien.rol)];
+  // En pruebas vale además "contraseña = usuario" (nube/nube, victor/victor).
+  if (usuariosDemo()) valida.push(quien.usuario);
 
   return valida.some((esperada) => esperada && igualSeguro(String(clave), esperada)) ? quien : null;
 }
@@ -87,7 +100,9 @@ export function verificarAcceso(usuario, clave) {
  * El manager hereda todo lo de la caja de SU negocio.
  */
 export function puedeAcceder(sesion, slug, rol) {
-  if (!sesion || sesion.negocio !== slug) return false;
+  if (!sesion) return false;
+  if (sesion.rol === "admin") return true; // el admin de la plataforma entra en todos
+  if (sesion.negocio !== slug) return false;
   if (rol === "caja") return sesion.rol === "caja" || sesion.rol === "manager";
   return sesion.rol === rol;
 }

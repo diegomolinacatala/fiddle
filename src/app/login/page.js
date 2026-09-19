@@ -43,9 +43,11 @@ function LoginForm() {
         setClave("");
         return;
       }
+      // El admin de la plataforma no tiene tienda: su sitio es /admin.
       // `next` solo se respeta si es del mismo negocio (o no es de ninguno, como /w/...).
       const nextNegocio = negocioDeRuta(next);
-      const destino = next && (!nextNegocio || nextNegocio === data.negocio) ? next : `/${data.negocio}/${data.rol === "manager" ? "manager" : "caja"}`;
+      const suSitio = data.rol === "admin" ? "/admin" : `/${data.negocio}/${data.rol === "manager" ? "manager" : "caja"}`;
+      const destino = next && (data.rol === "admin" || !nextNegocio || nextNegocio === data.negocio) ? next : suSitio;
       router.push(destino);
       router.refresh();
     } catch (err) {
