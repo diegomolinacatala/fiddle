@@ -8,19 +8,17 @@
 //
 //   SEMILLAS  los tres negocios de siempre, para que una base vacía arranque
 //             con algo dentro. Una vez en la base, mandan los datos, no esto.
-//   ESTILOS   las plantillas de diseño que puede elegir un negocio nuevo. El
-//             dibujo del pase (lib/apple/dibujo.js) solo sabe de estos estilos.
+//   ESTILOS   las plantillas de partida que puede elegir un negocio nuevo. No
+//             son moldes cerrados: cada una es una combinación de las piezas de
+//             lib/apple/dibujo.js, y desde /admin se cambian una a una.
 // ============================================================================
 
 // El dibujo del pase se arma con piezas sueltas (ver lib/apple/dibujo.js): qué
 // marca, con qué forma de casilla y sobre qué banda. Un ESTILO no es más que
 // una combinación de partida con nombre; a partir de ahí cada tienda cambia lo
 // que quiera sin tocar código.
-export { MARCAS, FORMAS, BANDAS } from "./apple/dibujo";
-import { MARCAS, FORMAS, BANDAS } from "./apple/dibujo";
-
-/** Combinaciones de partida al crear una tienda. */
-export const ESTILOS = ["coffee", "barber", "pizza", "moderno"];
+export { MARCAS, FORMAS, BANDAS, MODOS } from "./apple/dibujo";
+import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
 // de uno de estos y se le cambia el emoji y el color de acento.
@@ -83,7 +81,97 @@ const TEMA_DE_ESTILO = {
     accent: "#a98963",
     atras: "Un sello por visita. Al completar la cartilla, invita la casa.",
   },
+  // La taza que se llena: un solo vaso grande que sube con cada sello.
+  iced: {
+    estilo: "iced",
+    emoji: "\u{1F964}",
+    marca: "vaso",
+    forma: "circulo",
+    banda: "degradado",
+    modo: "relleno",
+    preset: "purple",
+    pageBg: "linear-gradient(135deg,#f7f1e8 0%,#e9dcc9 55%,#cbb79b 100%)",
+    pageInk: "#3a2f26",
+    cardBg: "#fdfaf5",
+    ink: "#3a2f26",
+    accent: "#b08968",
+    atras: "Cada consumición llena un poco más el vaso. Lleno = invita la casa.",
+  },
+  panaderia: {
+    estilo: "panaderia",
+    emoji: "\u{1F950}",
+    marca: "croissant",
+    forma: "circulo",
+    banda: "clara",
+    preset: "purple",
+    pageBg: "linear-gradient(135deg,#fff3dd 0%,#ffe0b8 55%,#f6c98a 100%)",
+    pageInk: "#4a3319",
+    cardBg: "#fff8ec",
+    ink: "#4a3319",
+    accent: "#d98d3f",
+    atras: "Un sello por compra. Al completar la cartilla, te invitamos.",
+  },
+  bar: {
+    estilo: "bar",
+    emoji: "\u{1F37A}",
+    marca: "jarra",
+    forma: "redondeado",
+    banda: "oscura",
+    modo: "relleno",
+    preset: "dark",
+    pageBg: "linear-gradient(160deg,#101015,#1c1a16)",
+    pageInk: "#ece7dc",
+    cardBg: "#17161a",
+    ink: "#f3efe6",
+    accent: "#e0b25c",
+    atras: "Cada ronda llena la jarra. Llena = la siguiente la ponemos nosotros.",
+  },
+  mascotas: {
+    estilo: "mascotas",
+    emoji: "\u{1F43E}",
+    marca: "huella",
+    forma: "hexagono",
+    banda: "clara",
+    preset: "purple",
+    pageBg: "linear-gradient(135deg,#e7f8f1 0%,#c9ece0 55%,#9fd8c6 100%)",
+    pageInk: "#14352c",
+    cardBg: "#f2fbf7",
+    ink: "#14352c",
+    accent: "#3f8f7a",
+    atras: "Un sello por visita. Al completar la cartilla, baño o premio gratis.",
+  },
+  gym: {
+    estilo: "gym",
+    emoji: "\u{1F3CB}️",
+    marca: "pesa",
+    forma: "cuadrado",
+    banda: "oscura",
+    preset: "dark",
+    pageBg: "linear-gradient(160deg,#0e0e10,#1a1614)",
+    pageInk: "#eaeaea",
+    cardBg: "#141416",
+    ink: "#f2f2f2",
+    accent: "#ff5f1f",
+    atras: "Una sesión, un sello. Al completar la cartilla, semana gratis.",
+  },
+  belleza: {
+    estilo: "belleza",
+    emoji: "\u{1F338}",
+    marca: "flor",
+    forma: "rombo",
+    banda: "rayas",
+    preset: "purple",
+    pageBg: "linear-gradient(135deg,#ffeaf4 0%,#ffd6e8 55%,#e7b7d6 100%)",
+    pageInk: "#43203a",
+    cardBg: "#fff5fa",
+    ink: "#43203a",
+    accent: "#c46a9b",
+    atras: "Un sello por cita. Al completar la cartilla, tratamiento de regalo.",
+  },
 };
+
+/** Combinaciones de partida al crear una tienda (el orden es el del selector). */
+export const ESTILOS = Object.keys(TEMA_DE_ESTILO);
 
 /**
  * Rellena las piezas de dibujo que falten. Los temas viejos solo tenían
@@ -91,17 +179,19 @@ const TEMA_DE_ESTILO = {
  * seguir pintándose igual que antes.
  */
 export function completarTema(tema = {}) {
-  const marca = MARCAS.includes(tema.marca) ? tema.marca : (MARCAS.includes(tema.estilo) ? tema.estilo : "coffee");
-  const forma = FORMAS.includes(tema.forma) ? tema.forma : (tema.estilo === "barber" ? "redondeado" : "circulo");
-  const banda = BANDAS.includes(tema.banda) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara");
-  return { ...tema, marca, forma, banda, texto: typeof tema.texto === "string" ? tema.texto : "" };
+  return { ...tema, ...piezasDeTema(tema) };
 }
 
 /** Tema completo para un negocio nuevo: plantilla del estilo + sus retoques. */
-export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, texto } = {}) {
+export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, modo, texto } = {}) {
   const base = TEMA_DE_ESTILO[estilo] || TEMA_DE_ESTILO.coffee;
-  const retoques = { emoji, accent, texto, marca: MARCAS.includes(marca) ? marca : undefined,
-    forma: FORMAS.includes(forma) ? forma : undefined, banda: BANDAS.includes(banda) ? banda : undefined };
+  const retoques = {
+    emoji, accent, texto,
+    marca: resolverMarca(marca) || undefined,
+    forma: FORMAS.includes(forma) ? forma : undefined,
+    banda: BANDAS.includes(banda) ? banda : undefined,
+    modo: MODOS.includes(modo) ? modo : undefined,
+  };
   for (const k of Object.keys(retoques)) if (retoques[k] === undefined || retoques[k] === "") delete retoques[k];
   return completarTema({ ...base, ...retoques });
 }

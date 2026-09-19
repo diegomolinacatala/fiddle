@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { normalizarTextoMarca, svgTextoCuadrado, hayGlifo } from "@/lib/apple/glifos";
-import { svgLogo, svgIcono, svgStripSellos, svgCasilla, MARCAS, FORMAS } from "@/lib/apple/dibujo";
+import { svgLogo, svgIcono, svgStripSellos, svgCasilla, MARCAS, FORMAS, BANDAS, MODOS } from "@/lib/apple/dibujo";
 import { temaPorDefecto, completarTema } from "@/lib/negocios";
 import { piezasDeDibujo } from "@/lib/validacion";
 
@@ -63,11 +63,57 @@ describe("piezas del dibujo", () => {
   });
 });
 
+describe("modo relleno (la taza que se llena)", () => {
+  const tema = (extra) => temaPorDefecto({ estilo: "coffee", modo: "relleno", ...extra });
+
+  it("vacío no recorta nada; a medias y lleno sí", () => {
+    expect(svgStripSellos(tema(), 8, 0)).not.toContain("clip-path");
+    expect(svgStripSellos(tema(), 8, 4)).toContain("clip-path");
+    expect(svgStripSellos(tema(), 8, 8)).toContain("clip-path");
+  });
+
+  it("la marca se dibuja dos veces: fantasma y recortada", () => {
+    const svg = svgStripSellos(tema(), 8, 4);
+    expect(contar(svg, "<clipPath")).toBe(1);
+    expect(contar(svg, "opacity=\"0.16\"")).toBe(1); // el fantasma de debajo
+  });
+
+  it("el nivel sube con cada sello y llega al tope", () => {
+    const altoDe = (sellos) => Number(/<clipPath[^>]*><rect[^>]*height="([\d.]+)"/.exec(svgStripSellos(tema(), 8, sellos))?.[1] || 0);
+    const alturas = [0, 1, 4, 7, 8].map(altoDe);
+    expect(alturas).toEqual([...alturas].sort((a, b) => a - b)); // siempre hacia arriba
+    expect(alturas[0]).toBe(0);
+    expect(alturas.at(-1)).toBeGreaterThan(alturas[3]);
+  });
+
+  it("no hace falta ninguna imagen a medida: vale con cualquier marca", () => {
+    for (const marca of MARCAS) {
+      const svg = svgStripSellos(tema({ marca, texto: "68" }), 6, 3);
+      expect(svg).toContain("clip-path");
+      expect(svg.length).toBeGreaterThan(200);
+    }
+  });
+
+  it("y con cualquier banda y cualquier cartilla", () => {
+    for (const banda of BANDAS) expect(svgStripSellos(tema({ banda }), 1, 1)).toContain("<svg");
+    expect(svgStripSellos(tema(), 0, 0)).toContain("<svg"); // sin meta no se divide por cero
+  });
+});
+
 describe("temas de antes", () => {
   it("un tema viejo (solo `estilo`) se sigue pintando igual", () => {
-    expect(completarTema({ estilo: "barber" })).toMatchObject({ marca: "barber", forma: "redondeado", banda: "oscura" });
-    expect(completarTema({ estilo: "coffee" })).toMatchObject({ marca: "coffee", forma: "circulo", banda: "clara" });
-    expect(completarTema({})).toMatchObject({ marca: "coffee", forma: "circulo", banda: "clara" });
+    // Las marcas se renombraron (coffee -> taza, barber -> tijeras); lo guardado sigue valiendo.
+    expect(completarTema({ estilo: "barber" })).toMatchObject({ marca: "tijeras", forma: "redondeado", banda: "oscura", modo: "casillas" });
+    expect(completarTema({ estilo: "coffee" })).toMatchObject({ marca: "taza", forma: "circulo", banda: "clara" });
+    expect(completarTema({ marca: "coffee" })).toMatchObject({ marca: "taza" });
+    expect(completarTema({})).toMatchObject({ marca: "taza", forma: "circulo", banda: "clara" });
+  });
+
+  it("y se DIBUJA igual: un tema de antes y su versión completa son el mismo SVG", () => {
+    for (const estilo of ["coffee", "barber"]) {
+      const antiguo = { estilo, accent: estilo === "barber" ? "#c9a24b" : "#ff5c8a" };
+      expect(svgStripSellos(completarTema(antiguo), 8, 5)).toBe(svgStripSellos(antiguo, 8, 5));
+    }
   });
 
   it("los tres estilos de siempre traen sus piezas puestas", () => {
@@ -80,7 +126,9 @@ describe("temas de antes", () => {
   });
 
   it("no se cuelan piezas inventadas", () => {
-    expect(piezasDeDibujo({ marca: "dragon", forma: "triangulo", banda: "fucsia" })).toEqual({});
+    expect(piezasDeDibujo({ marca: "dragon", forma: "triangulo", banda: "fucsia", modo: "3d" })).toEqual({});
+    expect(piezasDeDibujo({ modo: "relleno" })).toEqual({ modo: "relleno" });
+    expect(MODOS).toEqual(["casillas", "relleno"]);
     expect(piezasDeDibujo({ marca: "texto", texto: " 68 " })).toEqual({ marca: "texto", texto: "68" });
     expect(temaPorDefecto({ estilo: "coffee", forma: "triangulo" }).forma).toBe("circulo");
   });

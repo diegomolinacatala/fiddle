@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
-import { MARCAS, FORMAS, BANDAS, ESTILOS, temaPorDefecto } from "@/lib/negocios";
+import { MARCAS, FORMAS, BANDAS, MODOS, ESTILOS, temaPorDefecto } from "@/lib/negocios";
+import Selector from "@/app/admin/Selector";
+import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
 // ============================================================================
@@ -67,7 +69,8 @@ export default function AdminNegocio() {
         brief: n.brief,
         tema: {
           estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
-          marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma, banda: n.tema.banda,
+          marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma,
+          banda: n.tema.banda, modo: n.tema.modo,
         },
       }),
     });
@@ -153,24 +156,32 @@ export default function AdminNegocio() {
               </div>
             </div>
 
-            <label style={etiqueta}>Plantilla</label>
-            <select value={n.tema.estilo} onChange={(e) => cambiarPlantilla(e.target.value)} style={campo}>
-              {ESTILOS.map((x) => <option key={x} value={x}>{PLANTILLA[x] || x}</option>)}
-              {!ESTILOS.includes(n.tema.estilo) && <option value={n.tema.estilo}>{n.tema.estilo}</option>}
-            </select>
+            <Selector
+              titulo="Plantilla"
+              valor={ESTILOS.includes(n.tema.estilo) ? n.tema.estilo : ESTILOS[0]}
+              opciones={ESTILOS}
+              rotulos={ROTULO_PLANTILLA}
+              vista={vistaPlantilla}
+              onChange={cambiarPlantilla}
+              ancho={132}
+            />
             <p style={{ fontSize: 12, color: C.tenue, margin: "6px 0 0" }}>
               Cambiarla vuelve a poner los colores de esa plantilla. Lo de abajo se retoca después.
             </p>
 
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label style={etiqueta}>Marca</label>
-                <select value={n.tema.marca} onChange={(e) => setTema("marca", e.target.value)} style={campo}>
-                  {MARCAS.map((x) => <option key={x} value={x}>{ROTULO[x] || x}</option>)}
-                </select>
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Selector
+                  titulo="Marca"
+                  valor={n.tema.marca}
+                  opciones={MARCAS}
+                  rotulos={ROTULO}
+                  vista={(m) => vistaMarca(n.tema, m)}
+                  onChange={(m) => setTema("marca", m)}
+                />
               </div>
               {n.tema.marca === "texto" && (
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <label style={etiqueta}>Letras o números</label>
                   <input
                     value={n.tema.texto || ""}
@@ -183,20 +194,43 @@ export default function AdminNegocio() {
             </div>
 
             {n.tipo !== "descuento" && (
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={etiqueta}>Casilla del sello</label>
-                  <select value={n.tema.forma} onChange={(e) => setTema("forma", e.target.value)} style={campo}>
-                    {FORMAS.map((x) => <option key={x} value={x}>{ROTULO[x] || x}</option>)}
-                  </select>
+              <>
+                <Selector
+                  titulo="Cómo se cuentan los sellos"
+                  valor={n.tema.modo}
+                  opciones={MODOS}
+                  rotulos={ROTULO}
+                  vista={(m) => vistaModo(n.tema, m, n.meta)}
+                  onChange={(m) => setTema("modo", m)}
+                  ancho={150}
+                />
+                <div style={{ display: "flex", gap: 12 }}>
+                  {n.tema.modo !== "relleno" && (
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Selector
+                        titulo="Casilla del sello"
+                        valor={n.tema.forma}
+                        opciones={FORMAS}
+                        rotulos={ROTULO}
+                        vista={(f) => vistaForma(n.tema, f)}
+                        onChange={(f) => setTema("forma", f)}
+                        ancho={120}
+                      />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Selector
+                      titulo="Banda"
+                      valor={n.tema.banda}
+                      opciones={BANDAS}
+                      rotulos={ROTULO}
+                      vista={(b) => vistaBanda(n.tema, b)}
+                      onChange={(b) => setTema("banda", b)}
+                      ancho={150}
+                    />
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={etiqueta}>Banda</label>
-                  <select value={n.tema.banda} onChange={(e) => setTema("banda", e.target.value)} style={campo}>
-                    {BANDAS.map((x) => <option key={x} value={x}>{ROTULO[x] || x}</option>)}
-                  </select>
-                </div>
-              </div>
+              </>
             )}
 
             <label style={etiqueta}>Texto del reverso</label>
@@ -301,15 +335,6 @@ export default function AdminNegocio() {
     </main>
   );
 }
-
-// Los valores del tema son en inglés/técnicos; en pantalla se leen en claro.
-// "coffee" es a la vez una plantilla y una marca, pero no se leen igual.
-const PLANTILLA = { coffee: "Cafetería", barber: "Barbería", pizza: "Pizzería", moderno: "Neutra (moderna)" };
-const ROTULO = {
-  coffee: "Taza de café", barber: "Tijeras", pizza: "Porción de pizza", texto: "Letras o números",
-  circulo: "Círculo", redondeado: "Cuadrado con esquinas", cuadrado: "Cuadrado",
-  clara: "Clara (color de la tienda)", oscura: "Oscura",
-};
 
 const volver = { fontSize: 13, color: C.suave, textDecoration: "none" };
 const toast = {

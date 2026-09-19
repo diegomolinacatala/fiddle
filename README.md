@@ -84,6 +84,7 @@ src/app/
 ├─ admin/                     plataforma: lista de tiendas · [slug]/ editar + comentar
 ├─ login/                     PRIMERA PANTALLA: usuario + contraseña
 ├─ ui.js                      colores y estilos compartidos (tema claro)
+├─ admin/Selector.js · vistas.js   selector de piezas con miniaturas dibujadas
 ├─ PaseVista.js               vista previa del pase: Apple / Google
 ├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/ (+ estado de integración)
 ├─ w/[serial]/                perfil del cliente + acciones + nombre (caja)

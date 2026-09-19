@@ -119,11 +119,23 @@ Lista de tiendas (activas o archivadas) con `clientes`, `brief` y `notas`.
   "premio": "croissant gratis", "brief": "para que Claude rellene el resto" }
 ```
 `201` con la tienda · `400` datos no válidos · `409` ese identificador ya existe.
-Lo que no se envía se rellena solo a partir del estilo elegido. El `tema` del
-PUT admite además las piezas del dibujo: `marca` (`coffee`·`barber`·`pizza`·`texto`),
-`texto` (las letras si `marca` es `texto`), `forma` (`circulo`·`redondeado`·`cuadrado`)
-y `banda` (`clara`·`oscura`). Si el `tema` trae un `estilo` válido se entiende como
-cambio de plantilla: se vuelve a sembrar la paleta entera y encima van los retoques.
+Lo que no se envía se rellena solo a partir del estilo elegido. Tanto el POST
+(en la raíz del cuerpo) como el PUT (dentro de `tema`) admiten las piezas del
+dibujo, que se combinan libremente:
+
+| Pieza | Valores |
+|---|---|
+| `marca` | `taza` `vaso` `grano` `tijeras` `peine` `poste` `pizza` `burger` `croissant` `helado` `copa` `jarra` `corazon` `estrella` `huella` `pesa` `flor` `libro` `texto` |
+| `texto` | hasta 4 caracteres, si `marca` es `texto` (`"68"`, `"NC"`) |
+| `forma` | `circulo` `redondeado` `cuadrado` `rombo` `hexagono` |
+| `banda` | `clara` `oscura` `blanca` `degradado` `rayas` |
+| `modo` | `casillas` (una por sello) · `relleno` (la marca se llena de abajo arriba) |
+
+Los nombres viejos siguen valiendo (`coffee` → `taza`, `barber` → `tijeras`).
+La lista real está en [`dibujo.js`](../src/lib/apple/dibujo.js); lo que no
+aparezca ahí se descarta sin error. Si el `tema` del PUT trae un `estilo`
+válido se entiende como cambio de plantilla: se vuelve a sembrar la paleta
+entera y encima van los retoques.
 
 ### `PUT /api/admin/negocios`
 Con `{ slug, nombre?, meta?, premio?, brief?, tema? }` edita la tienda y avisa a sus pases.
