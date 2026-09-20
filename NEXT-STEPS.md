@@ -101,6 +101,9 @@ Documentación: [Apple Wallet](docs/APPLE-WALLET.md) · [Arquitectura](docs/ARCH
 
 ## Pendiente
 
+> Las tareas sueltas van aquí; el orden y el porqué, en
+> [docs/ROADMAP.md](docs/ROADMAP.md).
+
 ### Ahora
 - [ ] Confirmar en el iPhone la notificación de **promo** y la de **sello**.
 - [ ] Grabar los tags NFC (manager → *Tag NFC / emitir* → Copiar URL → app NFC Tools).

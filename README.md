@@ -13,7 +13,8 @@ Stack: **Next.js 15 (App Router) + Supabase + Vercel**.
 
 En producción: **<https://fiddle-zeta.vercel.app>** (se despliega solo al fusionar en `main`).
 
-> 📚 [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
+> 📚 [Roadmap hasta el MVP](docs/ROADMAP.md) ·
+> [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
 > [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
 > [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
 
