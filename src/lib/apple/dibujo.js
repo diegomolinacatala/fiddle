@@ -176,6 +176,35 @@ export const MODOS = [
   "camino", "torre", "planta", "luna", "aguja", "constelacion", "escalera", "mosaico", "pulso", "cifra",
 ];
 
+/**
+ * Los modos, agrupados por LO QUE HACEN. Diecisiete opciones de golpe no se
+ * eligen, se sufren: primero se escoge la idea (se llena, se cierra, es un
+ * camino…) y dentro de ella la variante. El orden de cada familia importa: el
+ * primero es el que representa a la familia en el selector.
+ *
+ * Lo que se guarda en el tema sigue siendo SOLO `modo`. La familia se deduce,
+ * así que las tiendas de antes no tienen que cambiar nada.
+ */
+export const FAMILIAS = {
+  casillas: ["casillas"],
+  llenar: ["relleno", "mosaico"],
+  cerrar: ["anillos", "porciones", "pizza", "luna"],
+  fila: ["barra", "escalera", "pesas", "pulso"],
+  ruta: ["camino", "constelacion"],
+  crecer: ["planta", "torre"],
+  marcador: ["aguja", "cifra"],
+};
+
+/** Nombres de familia, en el orden del selector. */
+export const NOMBRES_FAMILIA = Object.keys(FAMILIAS);
+
+/** A qué familia pertenece un modo (los desconocidos caen en casillas). */
+export const familiaDeModo = (modo) =>
+  NOMBRES_FAMILIA.find((f) => FAMILIAS[f].includes(modo)) || "casillas";
+
+/** Las variantes de una familia, o las de casillas si no existe. */
+export const modosDeFamilia = (familia) => FAMILIAS[familia] || FAMILIAS.casillas;
+
 // Nombres viejos: antes la marca se llamaba como el estilo que la usaba.
 const ALIAS = { coffee: "taza", barber: "tijeras" };
 
@@ -278,24 +307,62 @@ export function svgCasilla(nombre, cx, cy, lado, atributos) {
   return `<rect x="${cx - r}" y="${cy - r}" width="${lado}" height="${lado}" rx="${rx}" ${atributos}/>`;
 }
 
+const n2 = (v) => Number(v.toFixed(1));
+
+// ------------------------- ids y degradados -------------------------
+/**
+ * Prefijo de id propio de ESTE dibujo, para sus degradados y recortes. En el
+ * .pkpass cada SVG es un fichero aparte y daría igual, pero el admin pinta
+ * muchas bandas en la misma página: sin esto, el degradado de la primera se
+ * quedaría con el id y las demás saldrían con su color.
+ */
+function idDe(tema, meta, sellos) {
+  const p = piezasDeTema(tema);
+  const color = String(tema.accent || "").replace(/[^0-9a-z]/gi, "");
+  return `${p.modo}-${p.marca}-${p.forma}-${p.banda}-${meta}-${sellos}-${color}`;
+}
+
+/** Degradado vertical del mismo color: quita la sensación de recorte plano. */
+const brillo = (id, color) =>
+  `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">`
+  + `<stop offset="0" stop-color="${color}" stop-opacity="1"/>`
+  + `<stop offset="1" stop-color="${color}" stop-opacity="0.74"/></linearGradient>`;
+
+/** Resplandor que se apaga hacia fuera, para lo que tiene que "brillar". */
+const halo = (id, color) =>
+  `<radialGradient id="${id}">`
+  + `<stop offset="0.5" stop-color="${color}" stop-opacity="0.38"/>`
+  + `<stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>`;
+
+/**
+ * Luz que viene de arriba a la izquierda, en coordenadas del lienzo (no de cada
+ * figura): así todas las porciones de una tarta comparten el mismo foco en vez
+ * de tener cada una el suyo, que es lo que delata a un dibujo plano.
+ */
+const foco = (id, color, cx, cy, r) =>
+  `<radialGradient id="${id}" gradientUnits="userSpaceOnUse"`
+  + ` cx="${n2(cx - r * 0.3)}" cy="${n2(cy - r * 0.35)}" r="${n2(r * 1.7)}">`
+  + `<stop offset="0" stop-color="${color}" stop-opacity="1"/>`
+  + `<stop offset="1" stop-color="${color}" stop-opacity="0.7"/></radialGradient>`;
+
 /** El fondo de la banda: lo de detrás de los sellos. */
-function fondoDeBanda(tema, w, h) {
+function fondoDeBanda(tema, w, h, id) {
   const a = tema.accent;
   switch (banda(tema)) {
     case "oscura":
-      return `<defs><pattern id="poste" width="36" height="36" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      return `<defs><pattern id="${id}-poste" width="36" height="36" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect width="18" height="36" fill="${a}"/></pattern></defs>
-        <rect width="${w}" height="${h}" fill="#101013"/><rect width="18" height="${h}" fill="url(#poste)"/>`;
+        <rect width="${w}" height="${h}" fill="#101013"/><rect width="18" height="${h}" fill="url(#${id}-poste)"/>`;
     case "blanca":
       return `<rect width="${w}" height="${h}" fill="#ffffff"/>`;
     case "degradado":
-      return `<defs><linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      return `<defs><linearGradient id="${id}-fondo" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="${a}" stop-opacity="0.28"/><stop offset="1" stop-color="${a}" stop-opacity="0.06"/>
-        </linearGradient></defs><rect width="${w}" height="${h}" fill="url(#fondo)"/>`;
+        </linearGradient></defs><rect width="${w}" height="${h}" fill="url(#${id}-fondo)"/>`;
     case "rayas":
-      return `<defs><pattern id="rayas" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      return `<defs><pattern id="${id}-rayas" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect width="44" height="44" fill="${a}" fill-opacity="0.07"/><rect width="22" height="44" fill="${a}" fill-opacity="0.16"/>
-        </pattern></defs><rect width="${w}" height="${h}" fill="url(#rayas)"/>`;
+        </pattern></defs><rect width="${w}" height="${h}" fill="url(#${id}-rayas)"/>`;
     default:
       return `<rect width="${w}" height="${h}" fill="${a}" opacity="0.10"/>`;
   }
@@ -349,7 +416,7 @@ function bandaRelleno(tema, meta, sellos, w, h) {
 
   // Un id por dibujo: en un <img> cada SVG es un documento aparte, pero la
   // vista previa los mete en la misma página y se pisarían entre ellos.
-  const id = `${nombre}-${meta}-${sellos}`;
+  const id = idDe(tema, meta, sellos);
   const recorte = `<clipPath id="${id}"><rect x="${cx - lado / 2}" y="${suelo - alto}" width="${lado}" height="${alto}"/></clipPath>`;
   const fantasma = `<g opacity="${oscura ? 0.22 : 0.16}">${colocar(tema, color, cx, cy, lado)}</g>`;
   const lleno = alto > 0 ? `<g clip-path="url(#${id})">${colocar(tema, color, cx, cy, lado)}</g>` : "";
@@ -364,7 +431,6 @@ function bandaRelleno(tema, meta, sellos, w, h) {
 // reloj: así la primera porción y el primer tramo del anillo salen donde la
 // gente espera que salgan.
 const RAD = (i, n) => -Math.PI / 2 + (i / n) * Math.PI * 2;
-const n2 = (v) => Number(v.toFixed(1));
 const punto = (cx, cy, r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
 
 /** Un trozo de tarta, con el vértice en el centro. */
@@ -412,18 +478,22 @@ function bandaPorciones(tema, meta, sellos, w, h) {
   const n = Math.max(1, meta);
   const color = tema.accent;
   const cx = w * 0.33, cy = h / 2, r = h * 0.4;
+  const id = idDe(tema, meta, sellos);
   // Separación angular entre porciones: los cortes de la tarta.
   const sep = n === 1 ? 0 : Math.min(((Math.PI * 2) / n) * 0.07, 0.05);
 
   const trozos = Array.from({ length: n }, (_, i) => {
     const d = n === 1 ? disco(cx, cy, r) : sector(cx, cy, r, RAD(i, n) + sep, RAD(i + 1, n) - sep);
     return i < sellos
-      ? `<path d="${d}" fill="${color}"/>`
+      ? `<path d="${d}" fill="url(#${id}-tarta)"/>`
       : `<path d="${d}" fill="${color}" fill-opacity="${esOscura(tema) ? 0.1 : 0.12}"`
         + ` stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="4"/>`;
   }).join("");
 
-  return trozos + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+  // El aro de fuera cierra la figura: sin él las porciones flotan sueltas.
+  const aro = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 1.06)}" fill="none" stroke="${tenue(tema)}" stroke-opacity="0.22" stroke-width="3"/>`;
+  return `<defs>${foco(`${id}-tarta`, color, cx, cy, r)}</defs>` + aro + trozos
+    + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
 }
 
 // Una pizza de verdad no sale del color de la tienda: una pizza verde no es una
@@ -484,16 +554,17 @@ function bandaBarra(tema, meta, sellos, w, h) {
   const hueco = Math.min(10, ((x1 - x0) / n) * 0.22);
   const ancho = (x1 - x0 - hueco * (n - 1)) / n;
   const rx = Math.min(ancho, alto) * 0.28;
+  const id = idDe(tema, meta, sellos);
 
   const tramos = Array.from({ length: n }, (_, i) => {
     const pinta = i < sellos
-      ? `fill="${color}"`
+      ? `fill="url(#${id}-br)"`
       : `fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.16 : 0.14}"`;
     return `<rect x="${n2(x0 + i * (ancho + hueco))}" y="${n2(y)}" width="${n2(ancho)}"`
       + ` height="${n2(alto)}" rx="${n2(rx)}" ${pinta}/>`;
   }).join("");
 
-  return colocar(tema, color, w * 0.105, h / 2, h * 0.56)
+  return `<defs>${brillo(`${id}-br`, color)}</defs>` + colocar(tema, color, w * 0.105, h / 2, h * 0.56)
     + tramos
     + cuenta(sellos, n, color, w * 0.855, h / 2, h * 0.3, w * 0.28);
 }
@@ -513,13 +584,14 @@ function bandaPesas(tema, meta, sellos, w, h) {
   const agarre = w * 0.075;                 // media barra central, sin discos
   const paso = (w * 0.42 - agarre) / ranuras;
   const ancho = Math.min(paso * 0.62, h * 0.15);
+  const id = idDe(tema, meta, sellos);
 
   const disco = (i) => {
     const j = Math.floor(i / 2);            // qué ranura, de dentro hacia fuera
     const x = cx + (i % 2 === 0 ? 1 : -1) * (agarre + paso * (j + 0.5));
     const alto = h * 0.56 * (1 - j * 0.07); // los de fuera, un poco menores
     const pinta = i < sellos
-      ? `fill="${color}"`
+      ? `fill="url(#${id}-br)"`
       : `fill="none" stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="4" stroke-dasharray="12 9"`;
     return `<rect x="${n2(x - ancho / 2)}" y="${n2(cy - alto / 2)}" width="${n2(ancho)}"`
       + ` height="${n2(alto)}" rx="${n2(ancho * 0.3)}" ${pinta}/>`;
@@ -532,7 +604,7 @@ function bandaPesas(tema, meta, sellos, w, h) {
       + ` height="${n2(h * 0.24)}" rx="${n2(w * 0.007)}" fill="${tenue(tema)}" fill-opacity="0.55"/>`)
     .join("");
 
-  return barra + topes
+  return `<defs>${brillo(`${id}-br`, color)}</defs>` + barra + topes
     + Array.from({ length: n }, (_, i) => disco(i)).join("")
     + cuenta(sellos, n, color, cx, h * 0.15, h * 0.17, w * 0.3);
 }
@@ -549,6 +621,7 @@ function bandaAnillos(tema, meta, sellos, w, h) {
   const cx = w * 0.32, cy = h / 2;
   const r = h * 0.34, grosor = h * 0.13;
   const parte = Math.min(1, Math.max(0, sellos / n));
+  const id = idDe(tema, meta, sellos);
 
   const pista = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="none"`
     + ` stroke="${tenue(tema)}" stroke-opacity="0.18" stroke-width="${n2(grosor)}"/>`;
@@ -556,10 +629,10 @@ function bandaAnillos(tema, meta, sellos, w, h) {
   // Un arco de 360° empieza y acaba en el mismo punto, así que no se dibuja:
   // cerrado del todo es un círculo entero.
   const avance = parte >= 1
-    ? `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="none" stroke="${color}" stroke-width="${n2(grosor)}"/>`
+    ? `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="none" stroke="url(#${id}-aro)" stroke-width="${n2(grosor)}"/>`
     : parte > 0
       ? `<path d="${arco(cx, cy, r, RAD(0, 1), RAD(0, 1) + parte * Math.PI * 2)}" fill="none"`
-        + ` stroke="${color}" stroke-width="${n2(grosor)}" stroke-linecap="round"/>`
+        + ` stroke="url(#${id}-aro)" stroke-width="${n2(grosor)}" stroke-linecap="round"/>`
       : "";
 
   const muescas = n <= 12
@@ -570,7 +643,14 @@ function bandaAnillos(tema, meta, sellos, w, h) {
       }).join("")
     : "";
 
-  return pista + avance + muescas
+  const defs = `<defs>${halo(`${id}-luz`, color)}`
+    + `<linearGradient id="${id}-aro" x1="0" y1="0" x2="1" y2="1">`
+    + `<stop offset="0" stop-color="${color}" stop-opacity="0.68"/>`
+    + `<stop offset="1" stop-color="${color}" stop-opacity="1"/></linearGradient></defs>`;
+  const brilla = parte > 0
+    ? `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 1.85)}" fill="url(#${id}-luz)" opacity="${n2(0.25 + parte * 0.5)}"/>`
+    : "";
+  return defs + brilla + pista + avance + muescas
     + colocar(tema, color, cx, cy, r * 1.05)
     + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
 }
@@ -642,13 +722,14 @@ function bandaTorre(tema, meta, sellos, w, h) {
   const total = (columnas - 1) * ancho * 1.15 + ancho;
   const centro = Math.min(w * 0.36, w * 0.68 - total / 2);
   const x0 = centro - total / 2 + ancho / 2;
+  const id = idDe(tema, meta, sellos);
 
   const pieza = (i) => {
     const c = Math.floor(i / filas), f = i % filas;
     const cx = x0 + c * ancho * 1.15;
     const y = suelo - (f + 1) * altoPieza;
     const pinta = i < sellos
-      ? `fill="${color}"`
+      ? `fill="url(#${id}-br)"`
       : `fill="none" stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="3" stroke-dasharray="10 8"`;
     return `<rect x="${n2(cx - ancho / 2)}" y="${n2(y + altoPieza * 0.11)}" width="${n2(ancho)}"`
       + ` height="${n2(altoPieza * 0.78)}" rx="${n2(Math.min(altoPieza * 0.22, 10))}" ${pinta}/>`;
@@ -657,7 +738,7 @@ function bandaTorre(tema, meta, sellos, w, h) {
   const base = `<rect x="${n2(x0 - ancho * 0.82)}" y="${n2(suelo)}" width="${n2(total + ancho * 0.64)}"`
     + ` height="${n2(h * 0.035)}" rx="${n2(h * 0.017)}" fill="${tenue(tema)}" fill-opacity="0.45"/>`;
 
-  return base + Array.from({ length: n }, (_, i) => pieza(i)).join("")
+  return `<defs>${brillo(`${id}-br`, color)}</defs>` + base + Array.from({ length: n }, (_, i) => pieza(i)).join("")
     + cuenta(sellos, n, color, w * 0.86, h / 2, h * 0.3, w * 0.24);
 }
 
@@ -713,27 +794,53 @@ function bandaLuna(tema, meta, sellos, w, h) {
   const color = tema.accent;
   const parte = Math.min(1, Math.max(0, sellos / n));
   const cx = w * 0.32, cy = h / 2, r = h * 0.36;
-
-  const oscura = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="${tenue(tema)}" fill-opacity="0.13"`
-    + ` stroke="${tenue(tema)}" stroke-opacity="0.28" stroke-width="3"/>`;
+  const id = idDe(tema, meta, sellos);
 
   // El terminador es una elipse: su semieje va de r (nueva) a 0 (media) y vuelve
   // a r (llena), y el sentido del arco se da la vuelta al pasar la mitad.
   const rx = r * Math.abs(1 - 2 * parte);
-  const luz = parte <= 0
-    ? ""
-    : `<path d="M ${n2(cx)} ${n2(cy - r)} A ${n2(r)} ${n2(r)} 0 0 1 ${n2(cx)} ${n2(cy + r)}`
-      + ` A ${n2(rx)} ${n2(r)} 0 0 ${parte < 0.5 ? 0 : 1} ${n2(cx)} ${n2(cy - r)} Z" fill="${color}"/>`;
+  const dLuz = `M ${n2(cx)} ${n2(cy - r)} A ${n2(r)} ${n2(r)} 0 0 1 ${n2(cx)} ${n2(cy + r)}`
+    + ` A ${n2(rx)} ${n2(r)} 0 0 ${parte < 0.5 ? 0 : 1} ${n2(cx)} ${n2(cy - r)} Z`;
+
+  const defs = `<defs>${halo(`${id}-halo`, color)}${foco(`${id}-luz`, color, cx, cy, r)}`
+    + `<clipPath id="${id}-luna"><path d="${dLuz}"/></clipPath></defs>`;
+
+  // El resplandor crece con la luna: llena, se nota; nueva, no hay nada que brille.
+  const brilla = parte > 0
+    ? `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 2)}" fill="url(#${id}-halo)" opacity="${n2(0.3 + parte * 0.7)}"/>`
+    : "";
+  const cara = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="${tenue(tema)}" fill-opacity="0.13"`
+    + ` stroke="${tenue(tema)}" stroke-opacity="0.28" stroke-width="3"/>`;
+  const luz = parte > 0 ? `<path d="${dLuz}" fill="url(#${id}-luz)"/>` : "";
+
+  // Cráteres: siempre los mismos y recortados a la parte iluminada, que es la
+  // única donde se verían. Un negro muy flojo vale sobre cualquier color.
+  const CRATERES = [[0.3, -0.3, 0.17], [-0.24, 0.28, 0.13], [0.1, 0.44, 0.09], [0.5, 0.2, 0.1], [-0.06, -0.08, 0.12], [0.34, 0.5, 0.07]];
+  const relieve = parte > 0
+    ? `<g clip-path="url(#${id}-luna)">`
+      + CRATERES.map(([dx, dy, rr]) =>
+        `<circle cx="${n2(cx + dx * r)}" cy="${n2(cy + dy * r)}" r="${n2(rr * r)}" fill="#000" fill-opacity="0.12"/>`
+        + `<circle cx="${n2(cx + dx * r)}" cy="${n2(cy + dy * r - rr * r * 0.16)}" r="${n2(rr * r * 0.86)}" fill="#fff" fill-opacity="0.07"/>`).join("")
+      + `</g>`
+    : "";
 
   const estrellas = Array.from({ length: 14 }, (_, k) => {
     const a = azar(k), b = azar(k + 40);
     const x = w * 0.03 + a * w * 0.62, y = h * 0.07 + b * h * 0.86;
-    if (Math.hypot(x - cx, y - cy) < r * 1.18) return "";
-    return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.014 + a * h * 0.012)}"`
-      + ` fill="${tenue(tema)}" fill-opacity="${n2(0.25 + b * 0.35)}"/>`;
+    if (Math.hypot(x - cx, y - cy) < r * 1.25) return "";
+    const rr = h * 0.012 + a * h * 0.011;
+    // Las más gordas llevan destello en cruz; las demás son puntos y ya.
+    const punta = a > 0.55
+      ? `<path d="M ${n2(x)} ${n2(y - rr * 3)} L ${n2(x + rr * 0.55)} ${n2(y - rr * 0.55)} L ${n2(x + rr * 3)} ${n2(y)}`
+        + ` L ${n2(x + rr * 0.55)} ${n2(y + rr * 0.55)} L ${n2(x)} ${n2(y + rr * 3)} L ${n2(x - rr * 0.55)} ${n2(y + rr * 0.55)}`
+        + ` L ${n2(x - rr * 3)} ${n2(y)} L ${n2(x - rr * 0.55)} ${n2(y - rr * 0.55)} Z"`
+        + ` fill="${tenue(tema)}" fill-opacity="${n2(0.3 + b * 0.4)}"/>`
+      : `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(rr)}" fill="${tenue(tema)}" fill-opacity="${n2(0.25 + b * 0.35)}"/>`;
+    return punta;
   }).join("");
 
-  return oscura + luz + estrellas + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+  return defs + brilla + estrellas + cara + luz + relieve
+    + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
 }
 
 /**
@@ -813,18 +920,20 @@ function bandaEscalera(tema, meta, sellos, w, h) {
   const color = tema.accent;
   const x0 = w * 0.06, x1 = w * 0.72;
   const suelo = h * 0.9, subida = (h * 0.74) / n, ancho = (x1 - x0) / n;
+  const id = idDe(tema, meta, sellos);
 
   const escalon = (i) => {
     const alto = subida * (i + 1);
     const pinta = i < sellos
-      ? `fill="${color}"`
+      ? `fill="url(#${id}-br)"`
       : `fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.12 : 0.11}"`
         + ` stroke="${tenue(tema)}" stroke-opacity="${n2(opacoHueco(tema) * 0.6)}" stroke-width="2"`;
     return `<rect x="${n2(x0 + i * ancho + ancho * 0.09)}" y="${n2(suelo - alto)}" width="${n2(ancho * 0.82)}"`
       + ` height="${n2(alto)}" rx="${n2(Math.min(ancho * 0.16, 8))}" ${pinta}/>`;
   };
 
-  return Array.from({ length: n }, (_, i) => escalon(i)).join("")
+  return `<defs>${brillo(`${id}-br`, color)}</defs>`
+    + Array.from({ length: n }, (_, i) => escalon(i)).join("")
     + cuenta(sellos, n, color, w * 0.86, h * 0.36, h * 0.28, w * 0.24);
 }
 
@@ -851,7 +960,7 @@ function bandaMosaico(tema, meta, sellos, w, h) {
   // Al completar se destapa TODO: la rejilla puede tener más casillas que sellos.
   const abiertas = sellos >= n ? orden : orden.slice(0, sellos);
 
-  const id = `mosaico-${n}-${sellos}`;
+  const id = idDe(tema, meta, sellos);
   const fantasma = `<g opacity="${esOscura(tema) ? 0.14 : 0.12}">${colocar(tema, color, cx, cy, lado)}</g>`;
   const visible = abiertas.length
     ? `<clipPath id="${id}">${abiertas.map((i) => `${casilla(i)}/>`).join("")}</clipPath>`
@@ -954,7 +1063,8 @@ export function svgStripSellos(tema, meta, sellos) {
   const [w, h] = TAM.strip.storeCard.map((v) => v * 3);
   const llenos = Math.min(Math.max(0, sellos), meta);
   const pintar = PINTAR_BANDA[modo(tema)] || bandaCasillas;
-  return svg(w, h, fondoDeBanda(tema, w, h) + pintar(tema, meta, llenos, w, h));
+  const id = idDe(tema, meta, llenos);
+  return svg(w, h, fondoDeBanda(tema, w, h, id) + pintar(tema, meta, llenos, w, h));
 }
 
 export function svgStripCupon(tema, usado) {

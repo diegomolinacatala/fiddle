@@ -17,7 +17,7 @@
 // marca, con qué forma de casilla y sobre qué banda. Un ESTILO no es más que
 // una combinación de partida con nombre; a partir de ahí cada tienda cambia lo
 // que quiera sin tocar código.
-export { MARCAS, FORMAS, BANDAS, MODOS } from "./apple/dibujo";
+export { MARCAS, FORMAS, BANDAS, MODOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
 import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte

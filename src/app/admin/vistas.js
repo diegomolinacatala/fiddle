@@ -1,6 +1,6 @@
 "use client";
 
-import { svgLogo, svgStripSellos, svgCasilla, comoDataUri } from "@/lib/apple/dibujo";
+import { svgLogo, svgStripSellos, svgCasilla, comoDataUri, modosDeFamilia } from "@/lib/apple/dibujo";
 import { temaPorDefecto } from "@/lib/negocios";
 
 // ============================================================================
@@ -33,9 +33,15 @@ export const vistaForma = (tema, forma) => {
 /** El fondo de la banda, con una cartilla corta encima. */
 export const vistaBanda = (tema, banda) => svgStripSellos({ ...tema, banda, modo: "casillas" }, 4, 2);
 
-/** Casillas o relleno, con la cartilla de esta tienda a medias. */
+/** Un modo suelto, con la cartilla de esta tienda a medias. */
 export const vistaModo = (tema, modo, meta = 6) =>
   svgStripSellos({ ...tema, modo }, meta, Math.max(1, Math.round(meta * 0.6)));
+
+/**
+ * Una FAMILIA se enseña con su primera variante, que es la que mejor la
+ * representa: "se cierra" sale como un aro y "un camino" como una senda.
+ */
+export const vistaFamilia = (tema, familia, meta = 6) => vistaModo(tema, modosDeFamilia(familia)[0], meta);
 
 /** La plantilla entera: sus colores, su marca y sus casillas de una tacada. */
 export const vistaPlantilla = (estilo) => {
@@ -66,6 +72,17 @@ export const ROTULO = {
  * Los modos van APARTE del resto: `pizza` es una marca (la porción suelta) y
  * también un modo (la pizza entera), y en un mapa plano uno pisaría al otro.
  */
+/** Las familias: la idea, en dos palabras. */
+export const ROTULO_FAMILIA = {
+  casillas: "Casillas",
+  llenar: "Se llena",
+  cerrar: "Se cierra",
+  fila: "En fila",
+  ruta: "Un camino",
+  crecer: "Crece",
+  marcador: "Marcador",
+};
+
 export const ROTULO_MODO = {
   casillas: "Una casilla por sello", relleno: "Se va llenando",
   porciones: "Porciones de una tarta", pizza: "Pizza de verdad", barra: "Barra de progreso",

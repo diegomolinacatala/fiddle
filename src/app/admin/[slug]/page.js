@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
-import { MARCAS, FORMAS, BANDAS, MODOS, ESTILOS, temaPorDefecto } from "@/lib/negocios";
+import { MARCAS, FORMAS, BANDAS, ESTILOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
-import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_MODO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
+import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
 // ============================================================================
@@ -197,13 +197,24 @@ export default function AdminNegocio() {
               <>
                 <Selector
                   titulo="Cómo se cuentan los sellos"
-                  valor={n.tema.modo}
-                  opciones={MODOS}
-                  rotulos={ROTULO_MODO}
-                  vista={(m) => vistaModo(n.tema, m, n.meta)}
-                  onChange={(m) => setTema("modo", m)}
+                  valor={familiaDeModo(n.tema.modo)}
+                  opciones={NOMBRES_FAMILIA}
+                  rotulos={ROTULO_FAMILIA}
+                  vista={(f) => vistaFamilia(n.tema, f, n.meta)}
+                  onChange={(f) => setTema("modo", modosDeFamilia(f)[0])}
                   ancho={150}
                 />
+                {modosDeFamilia(familiaDeModo(n.tema.modo)).length > 1 && (
+                  <Selector
+                    titulo="Variante"
+                    valor={n.tema.modo}
+                    opciones={modosDeFamilia(familiaDeModo(n.tema.modo))}
+                    rotulos={ROTULO_MODO}
+                    vista={(m) => vistaModo(n.tema, m, n.meta)}
+                    onChange={(m) => setTema("modo", m)}
+                    ancho={150}
+                  />
+                )}
                 <div style={{ display: "flex", gap: 12 }}>
                   {n.tema.modo === "casillas" && (
                     <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { normalizarTextoMarca, svgTextoCuadrado, hayGlifo } from "@/lib/apple/glifos";
-import { svgLogo, svgIcono, svgStripSellos, svgCasilla, MARCAS, FORMAS, BANDAS, MODOS } from "@/lib/apple/dibujo";
+import { svgLogo, svgIcono, svgStripSellos, svgCasilla, MARCAS, FORMAS, BANDAS, MODOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "@/lib/apple/dibujo";
 import { temaPorDefecto, completarTema } from "@/lib/negocios";
 import { piezasDeDibujo } from "@/lib/validacion";
 
@@ -177,7 +177,8 @@ describe("modos de banda", () => {
     // Con 6 discos puestos, tres quedan a la derecha del centro y tres a la izquierda.
     const svg = svgStripSellos(tema("pesas"), 6, 6);
     const centro = (375 * 3) / 2;
-    const xs = [...svg.matchAll(/<rect x="([\d.-]+)"[^>]*fill="#[0-9a-f]{6}"\/>/g)].map((m) => Number(m[1]));
+    // Los puestos se pintan con el degradado; los que faltan van a trazos.
+    const xs = [...svg.matchAll(/<rect x="([\d.-]+)"[^>]*fill="url\(#[^)]*-br\)"\/>/g)].map((m) => Number(m[1]));
     expect(xs.filter((x) => x > centro).length).toBe(3);
     expect(xs.filter((x) => x < centro).length).toBe(3);
   });
@@ -190,5 +191,23 @@ describe("modos de banda", () => {
     };
     // Misma banda, cartilla corta vs larga: la larga usa una escala menor.
     expect(anchoCifra(svgStripSellos(tema("barra"), 20, 20))).toBeLessThan(anchoCifra(svgStripSellos(tema("barra"), 8, 3)));
+  });
+});
+
+describe("familias de modos", () => {
+  it("cubren TODOS los modos, sin repetir ni inventarse ninguno", () => {
+    const dentro = NOMBRES_FAMILIA.flatMap((f) => modosDeFamilia(f));
+    expect([...dentro].sort()).toEqual([...MODOS].sort()); // ni sobra ni falta
+    expect(new Set(dentro).size).toBe(dentro.length); // ninguno en dos familias
+  });
+
+  it("cada modo sabe volver a su familia", () => {
+    for (const modo of MODOS) expect(modosDeFamilia(familiaDeModo(modo))).toContain(modo);
+    expect(familiaDeModo("inventado")).toBe("casillas"); // lo desconocido no rompe
+  });
+
+  it("la familia de casillas es la primera: es la cartilla por defecto", () => {
+    expect(NOMBRES_FAMILIA[0]).toBe("casillas");
+    expect(modosDeFamilia("casillas")).toEqual(["casillas"]);
   });
 });
