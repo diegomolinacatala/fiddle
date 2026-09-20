@@ -128,14 +128,16 @@ describe("temas de antes", () => {
   it("no se cuelan piezas inventadas", () => {
     expect(piezasDeDibujo({ marca: "dragon", forma: "triangulo", banda: "fucsia", modo: "3d" })).toEqual({});
     expect(piezasDeDibujo({ modo: "relleno" })).toEqual({ modo: "relleno" });
-    expect(MODOS).toEqual(["casillas", "relleno", "porciones", "pizza", "barra", "pesas", "anillos"]);
+    expect(MODOS).toHaveLength(17);
+    expect(MODOS.slice(0, 2)).toEqual(["casillas", "relleno"]); // los dos de siempre, primeros
     expect(piezasDeDibujo({ marca: "texto", texto: " 68 " })).toEqual({ marca: "texto", texto: "68" });
     expect(temaPorDefecto({ estilo: "coffee", forma: "triangulo" }).forma).toBe("circulo");
   });
 });
 
-describe("modos nuevos (porciones, pizza, barra, pesas, anillos)", () => {
-  const NUEVOS = ["porciones", "pizza", "barra", "pesas", "anillos"];
+describe("modos de banda", () => {
+  // TODOS, no una lista a mano: un modo nuevo entra solo en estas pruebas.
+  const NUEVOS = MODOS;
   const tema = (modo, extra) => temaPorDefecto({ estilo: "coffee", modo, ...extra });
 
   it("todos dibujan algo con cualquier meta, cualquier banda y cualquier marca", () => {

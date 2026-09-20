@@ -70,6 +70,10 @@ export const ROTULO_MODO = {
   casillas: "Una casilla por sello", relleno: "Se va llenando",
   porciones: "Porciones de una tarta", pizza: "Pizza de verdad", barra: "Barra de progreso",
   pesas: "Discos en la barra", anillos: "Aro que se cierra",
+  camino: "Camino con paradas", torre: "Torre que se apila", planta: "Planta que crece",
+  luna: "Fases de la luna", aguja: "Marcador con aguja", constelacion: "Constelación",
+  escalera: "Escalones que suben", mosaico: "Mosaico que se destapa", pulso: "Línea de pulso",
+  cifra: "Solo la cifra, enorme",
 };
 
 /** Las plantillas se leen distinto que las marcas ("taza" vs "Cafetería"). */
@@ -79,4 +83,6 @@ export const ROTULO_PLANTILLA = {
   gym: "Gimnasio", belleza: "Belleza",
   nutricion: "Nutrición / suplementos", pizzeria: "Pizzería (porciones)", heladeria: "Heladería",
   estudio: "Estudio (yoga/pilates)", club: "Club de socios",
+  floristeria: "Floristería", nocturno: "Bar de noche", taller: "Taller / lavadero",
+  academia: "Academia", clinica: "Clínica / fisio",
 };
