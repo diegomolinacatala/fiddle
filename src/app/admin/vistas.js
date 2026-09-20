@@ -53,14 +53,23 @@ export const ROTULO = {
   pizza: "Porción de pizza", burger: "Hamburguesa", croissant: "Croissant", helado: "Helado",
   copa: "Copa", jarra: "Jarra de cerveza",
   corazon: "Corazón", estrella: "Estrella", huella: "Huella", pesa: "Pesa", flor: "Flor", libro: "Libro",
+  bote: "Bote de proteína", shaker: "Shaker", manzana: "Manzana", rayo: "Rayo",
   texto: "Letras o números",
   // formas
   circulo: "Círculo", redondeado: "Cuadrado con esquinas", cuadrado: "Cuadrado",
   rombo: "Rombo", hexagono: "Hexágono",
   // bandas
   clara: "Clara", oscura: "Oscura", blanca: "Blanca", degradado: "Degradado", rayas: "Rayas",
-  // modos
+};
+
+/**
+ * Los modos van APARTE del resto: `pizza` es una marca (la porción suelta) y
+ * también un modo (la pizza entera), y en un mapa plano uno pisaría al otro.
+ */
+export const ROTULO_MODO = {
   casillas: "Una casilla por sello", relleno: "Se va llenando",
+  porciones: "Porciones de una tarta", pizza: "Pizza de verdad", barra: "Barra de progreso",
+  pesas: "Discos en la barra", anillos: "Aro que se cierra",
 };
 
 /** Las plantillas se leen distinto que las marcas ("taza" vs "Cafetería"). */
@@ -68,4 +77,6 @@ export const ROTULO_PLANTILLA = {
   coffee: "Cafetería", barber: "Barbería", pizza: "Pizzería", moderno: "Neutra (moderna)",
   iced: "Vaso que se llena", panaderia: "Panadería", bar: "Bar", mascotas: "Mascotas",
   gym: "Gimnasio", belleza: "Belleza",
+  nutricion: "Nutrición / suplementos", pizzeria: "Pizzería (porciones)", heladeria: "Heladería",
+  estudio: "Estudio (yoga/pilates)", club: "Club de socios",
 };

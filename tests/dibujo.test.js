@@ -128,8 +128,65 @@ describe("temas de antes", () => {
   it("no se cuelan piezas inventadas", () => {
     expect(piezasDeDibujo({ marca: "dragon", forma: "triangulo", banda: "fucsia", modo: "3d" })).toEqual({});
     expect(piezasDeDibujo({ modo: "relleno" })).toEqual({ modo: "relleno" });
-    expect(MODOS).toEqual(["casillas", "relleno"]);
+    expect(MODOS).toEqual(["casillas", "relleno", "porciones", "pizza", "barra", "pesas", "anillos"]);
     expect(piezasDeDibujo({ marca: "texto", texto: " 68 " })).toEqual({ marca: "texto", texto: "68" });
     expect(temaPorDefecto({ estilo: "coffee", forma: "triangulo" }).forma).toBe("circulo");
+  });
+});
+
+describe("modos nuevos (porciones, pizza, barra, pesas, anillos)", () => {
+  const NUEVOS = ["porciones", "pizza", "barra", "pesas", "anillos"];
+  const tema = (modo, extra) => temaPorDefecto({ estilo: "coffee", modo, ...extra });
+
+  it("todos dibujan algo con cualquier meta, cualquier banda y cualquier marca", () => {
+    for (const modo of NUEVOS) {
+      for (const meta of [1, 2, 5, 8, 20, 50]) {
+        for (const sellos of [0, 1, Math.floor(meta / 2), meta]) {
+          const svg = svgStripSellos(tema(modo), meta, sellos);
+          expect(svg).toContain("<svg");
+          expect(svg).not.toContain("NaN");
+          expect(svg).not.toContain("undefined");
+        }
+      }
+      for (const banda of BANDAS) expect(svgStripSellos(tema(modo, { banda }), 6, 3)).toContain("<svg");
+      for (const marca of MARCAS) expect(svgStripSellos(tema(modo, { marca, texto: "68" }), 6, 3)).toContain("<svg");
+    }
+  });
+
+  it("sin meta no se divide por cero", () => {
+    for (const modo of NUEVOS) expect(svgStripSellos(tema(modo), 0, 0)).not.toContain("NaN");
+  });
+
+  it("las porciones ganadas crecen con los sellos", () => {
+    const llenas = (n) => contar(svgStripSellos(tema("porciones"), 8, n), 'fill-opacity="0.12"'); // las que FALTAN
+    expect(llenas(0)).toBe(8);
+    expect(llenas(3)).toBe(5);
+    expect(llenas(8)).toBe(0);
+  });
+
+  it("el aro cerrado es un círculo, no un arco de 360° (que no se ve)", () => {
+    const medio = svgStripSellos(tema("anillos"), 8, 4);
+    const lleno = svgStripSellos(tema("anillos"), 8, 8);
+    expect(medio).toContain("<path d=\"M");
+    expect(contar(lleno, "<circle")).toBeGreaterThan(contar(medio, "<circle"));
+  });
+
+  it("los discos de la barra se reparten a los dos lados", () => {
+    // Con 6 discos puestos, tres quedan a la derecha del centro y tres a la izquierda.
+    const svg = svgStripSellos(tema("pesas"), 6, 6);
+    const centro = (375 * 3) / 2;
+    const xs = [...svg.matchAll(/<rect x="([\d.-]+)"[^>]*fill="#[0-9a-f]{6}"\/>/g)].map((m) => Number(m[1]));
+    expect(xs.filter((x) => x > centro).length).toBe(3);
+    expect(xs.filter((x) => x < centro).length).toBe(3);
+  });
+
+  it("la cifra se encoge para no salirse: 20/20 no ocupa más que 3/8", () => {
+    const anchoCifra = (svg) => {
+      // La cifra es el único grupo con trazo y sin relleno; la marca va rellena.
+      const m = /scale\(([\d.]+)\)" fill="none" stroke=/.exec(svg);
+      return Number(m?.[1] || 0);
+    };
+    // Misma banda, cartilla corta vs larga: la larga usa una escala menor.
+    expect(anchoCifra(svgStripSellos(tema("barra"), 20, 20))).toBeLessThan(anchoCifra(svgStripSellos(tema("barra"), 8, 3)));
   });
 });

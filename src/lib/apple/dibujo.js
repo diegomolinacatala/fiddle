@@ -31,7 +31,7 @@
 // dibujan (glifos.js).
 // ============================================================================
 
-import { svgTextoCuadrado } from "./glifos";
+import { svgTextoCuadrado, anchoDeTexto, ALTO as ALTO_GLIFO, GROSOR } from "./glifos";
 
 export const TAM = {
   icon: 29, // + @2x 58, @3x 87 (obligatorio)
@@ -127,6 +127,28 @@ const DIBUJOS = {
   libro: (c) => `
     <path d="M92 124 q78 -32 154 10 v296 q-76 -40 -154 -10 z" fill="${c}"/>
     <path d="M420 124 q-78 -32 -154 10 v296 q76 -40 154 -10 z" fill="${c}"/>`,
+  // ---- nutrición / suplementos
+  bote: (c) => `
+    <rect x="150" y="86" width="212" height="62" rx="20" fill="${c}"/>
+    <rect x="186" y="148" width="140" height="26" fill="${c}"/>
+    <rect x="140" y="174" width="232" height="268" rx="38" fill="none" stroke="${c}" stroke-width="26"/>
+    <rect x="168" y="250" width="176" height="92" rx="12" fill="${c}"/>`,
+  shaker: (c) => `
+    <rect x="200" y="62" width="112" height="30" rx="14" fill="${c}"/>
+    <rect x="176" y="92" width="160" height="56" rx="18" fill="${c}"/>
+    <path d="M170 158 h172 l22 232 a46 46 0 0 1 -46 50 h-124 a46 46 0 0 1 -46 -50 z" fill="none" stroke="${c}" stroke-width="26"/>
+    <g fill="${c}">
+      <rect x="208" y="252" width="94" height="18" rx="9"/>
+      <rect x="208" y="306" width="64" height="18" rx="9"/>
+      <rect x="208" y="360" width="94" height="18" rx="9"/>
+    </g>`,
+  manzana: (c) => `
+    <path d="M256 104 q-10 -42 -74 -48 q6 52 62 64" fill="${c}"/>
+    <path d="M258 164 q-4 -48 24 -72" fill="none" stroke="${c}" stroke-width="20" stroke-linecap="round"/>
+    <path d="M256 198 C 214 152 130 166 120 252 C 110 338 166 452 224 452 C 242 452 244 442 256 442
+             C 268 442 270 452 288 452 C 346 452 402 338 392 252 C 382 166 298 152 256 198 Z" fill="${c}"/>`,
+  rayo: (c) => `
+    <polygon points="296,52 132,286 232,286 200,460 380,214 274,214" fill="${c}"/>`,
   // ---- letras (glifos.js)
   texto: (c, texto) => svgTextoCuadrado(texto, { cx: 256, cy: 256, alto: 300, color: c }),
 };
@@ -138,6 +160,7 @@ const DIBUJOS = {
 const CAJA = {
   taza: [100, 378], vaso: [40, 478], jarra: [134, 434], copa: [98, 418],
   helado: [140, 470], corazon: [110, 436], burger: [126, 400], grano: [90, 422],
+  bote: [86, 455], shaker: [62, 455], manzana: [56, 452], rayo: [52, 460],
 };
 const CAJA_POR_DEFECTO = [40, 472];
 
@@ -148,7 +171,7 @@ export const FORMAS = ["circulo", "redondeado", "cuadrado", "rombo", "hexagono"]
 /** Fondos de la banda. */
 export const BANDAS = ["clara", "oscura", "blanca", "degradado", "rayas"];
 /** Cómo se cuentan los sellos en la banda. */
-export const MODOS = ["casillas", "relleno"];
+export const MODOS = ["casillas", "relleno", "porciones", "pizza", "barra", "pesas", "anillos"];
 
 // Nombres viejos: antes la marca se llamaba como el estilo que la usaba.
 const ALIAS = { coffee: "taza", barber: "tijeras" };
@@ -333,13 +356,240 @@ function bandaRelleno(tema, meta, sellos, w, h) {
   return recorte + fantasma + lleno + cuenta;
 }
 
+// --------------------------- geometría circular ---------------------------
+// Ángulos en radianes, empezando ARRIBA (-90°) y girando como las agujas del
+// reloj: así la primera porción y el primer tramo del anillo salen donde la
+// gente espera que salgan.
+const RAD = (i, n) => -Math.PI / 2 + (i / n) * Math.PI * 2;
+const n2 = (v) => Number(v.toFixed(1));
+const punto = (cx, cy, r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+
+/** Un trozo de tarta, con el vértice en el centro. */
+function sector(cx, cy, r, a0, a1) {
+  const [x0, y0] = punto(cx, cy, r, a0).map(n2);
+  const [x1, y1] = punto(cx, cy, r, a1).map(n2);
+  return `M ${n2(cx)} ${n2(cy)} L ${x0} ${y0} A ${n2(r)} ${n2(r)} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1} Z`;
+}
+
+/** Un arco suelto, sin cerrar (el avance del anillo). */
+function arco(cx, cy, r, a0, a1) {
+  const [x0, y0] = punto(cx, cy, r, a0).map(n2);
+  const [x1, y1] = punto(cx, cy, r, a1).map(n2);
+  return `M ${x0} ${y0} A ${n2(r)} ${n2(r)} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1}`;
+}
+
+/** Círculo entero como `path`: una tarta de una sola porción es la tarta. */
+const disco = (cx, cy, r) =>
+  `M ${n2(cx - r)} ${n2(cy)} a ${n2(r)} ${n2(r)} 0 1 0 ${n2(r * 2)} 0 a ${n2(r)} ${n2(r)} 0 1 0 ${n2(-r * 2)} 0 Z`;
+
+// Lo que FALTA se pinta con el color del tema sobre banda clara y con blanco
+// sobre banda oscura: es la misma regla que ya usaban las casillas.
+const tenue = (tema) => (esOscura(tema) ? "#ffffff" : tema.accent);
+const opacoHueco = (tema) => (esOscura(tema) ? 0.26 : 0.38);
+
+/**
+ * La cuenta ("3/8"), en la tipografía dibujada de siempre. La tipografía es de
+ * ancho fijo, así que "12/30" ocupa casi el doble que "3/8": con `ancho` se le
+ * da el hueco que tiene y se encoge sola hasta caber. Sin eso, una cartilla de
+ * 20 se sale de la banda.
+ */
+const cuenta = (sellos, meta, color, cx, cy, alto, ancho) => {
+  const texto = `${sellos}/${meta}`;
+  const cabe = (ancho / anchoDeTexto(texto.length)) * (ALTO_GLIFO + GROSOR);
+  return svgTextoCuadrado(texto, { cx, cy, alto: Math.min(alto, cabe), color, max: 6 });
+};
+
+/**
+ * PORCIONES — una tarta partida en `meta` trozos que se van ganando.
+ * A diferencia de las casillas, se ve de un vistazo cuánto falta para CERRAR la
+ * figura, que es un gancho distinto: no cuentas sellos, completas algo. Vale
+ * para pizza, tarta, helado o menús, y funciona con cualquier `meta`.
+ */
+function bandaPorciones(tema, meta, sellos, w, h) {
+  const n = Math.max(1, meta);
+  const color = tema.accent;
+  const cx = w * 0.33, cy = h / 2, r = h * 0.4;
+  // Separación angular entre porciones: los cortes de la tarta.
+  const sep = n === 1 ? 0 : Math.min(((Math.PI * 2) / n) * 0.07, 0.05);
+
+  const trozos = Array.from({ length: n }, (_, i) => {
+    const d = n === 1 ? disco(cx, cy, r) : sector(cx, cy, r, RAD(i, n) + sep, RAD(i + 1, n) - sep);
+    return i < sellos
+      ? `<path d="${d}" fill="${color}"/>`
+      : `<path d="${d}" fill="${color}" fill-opacity="${esOscura(tema) ? 0.1 : 0.12}"`
+        + ` stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="4"/>`;
+  }).join("");
+
+  return trozos + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+}
+
+// Una pizza de verdad no sale del color de la tienda: una pizza verde no es una
+// pizza. Igual que la marca `pizza`, estos colores son fijos.
+const PIZZA = { masa: "#e8a44a", queso: "#ffd54a", pepperoni: "#c1121f" };
+
+/**
+ * PIZZA — lo mismo que `porciones` pero dibujado como una pizza de verdad:
+ * masa, queso y pepperoni en las porciones ganadas, y la silueta punteada de
+ * las que faltan. Lo que se ve es una pizza a la que le faltan trozos, que es
+ * exactamente lo que le pasa a la cartilla.
+ */
+function bandaPizza(tema, meta, sellos, w, h) {
+  const n = Math.max(1, meta);
+  const cx = w * 0.33, cy = h / 2, r = h * 0.42;
+  const sep = n === 1 ? 0 : Math.min(((Math.PI * 2) / n) * 0.06, 0.045);
+  const corte = (rr, i, extra = 0) =>
+    n === 1 ? disco(cx, cy, rr) : sector(cx, cy, rr, RAD(i, n) + sep + extra, RAD(i + 1, n) - sep - extra);
+
+  const porcion = (i) => {
+    const am = (RAD(i, n) + RAD(i + 1, n)) / 2;
+    // Los pepperonis van SIEMPRE en el mismo sitio: el dibujo del manager y el
+    // del .pkpass tienen que salir idénticos, así que nada de aleatorio.
+    const giro = Math.min(0.22, Math.PI / n / 2.4);
+    const topping = [[0.46, -giro], [0.7, giro]]
+      .map(([f, g]) => {
+        const [x, y] = punto(cx, cy, r * f, am + g);
+        return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.085)}" fill="${PIZZA.pepperoni}"/>`;
+      })
+      .join("");
+    return `<path d="${corte(r, i)}" fill="${PIZZA.masa}"/>`
+      + `<path d="${corte(r * 0.84, i, sep * 0.4)}" fill="${PIZZA.queso}"/>`
+      + topping;
+  };
+
+  const trozos = Array.from({ length: n }, (_, i) =>
+    i < sellos
+      ? porcion(i)
+      : `<g opacity="${esOscura(tema) ? 0.13 : 0.15}">${porcion(i)}</g>`
+        + `<path d="${corte(r, i)}" fill="none" stroke="${tenue(tema)}"`
+        + ` stroke-opacity="${opacoHueco(tema)}" stroke-width="3" stroke-dasharray="14 10"/>`,
+  ).join("");
+
+  return trozos + cuenta(sellos, n, tema.accent, w * 0.74, cy, h * 0.32, w * 0.46);
+}
+
+/**
+ * BARRA — un tramo por sello, en fila. Es el único modo que aguanta bien una
+ * cartilla larga (20, 30 visitas): las casillas a esas alturas se convierten en
+ * confeti y la barra se sigue leyendo. Lleva la marca de la tienda a la
+ * izquierda para que no sea una barra de carga genérica.
+ */
+function bandaBarra(tema, meta, sellos, w, h) {
+  const n = Math.max(1, meta);
+  const color = tema.accent;
+  const x0 = w * 0.19, x1 = w * 0.7;
+  const alto = h * 0.3, y = h / 2 - alto / 2;
+  const hueco = Math.min(10, ((x1 - x0) / n) * 0.22);
+  const ancho = (x1 - x0 - hueco * (n - 1)) / n;
+  const rx = Math.min(ancho, alto) * 0.28;
+
+  const tramos = Array.from({ length: n }, (_, i) => {
+    const pinta = i < sellos
+      ? `fill="${color}"`
+      : `fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.16 : 0.14}"`;
+    return `<rect x="${n2(x0 + i * (ancho + hueco))}" y="${n2(y)}" width="${n2(ancho)}"`
+      + ` height="${n2(alto)}" rx="${n2(rx)}" ${pinta}/>`;
+  }).join("");
+
+  return colocar(tema, color, w * 0.105, h / 2, h * 0.56)
+    + tramos
+    + cuenta(sellos, n, color, w * 0.855, h / 2, h * 0.3, w * 0.28);
+}
+
+/**
+ * PESAS — la barra se va cargando de discos, uno por compra, alternando lado
+ * para que no quede coja. Pensado para tiendas de NUTRICIÓN y gimnasios, donde
+ * la cartilla es de pocas compras grandes (un bote al mes) y no de muchos
+ * cafés: ocho círculos vacíos ahí dan sensación de no acabar nunca, y una
+ * barra a medio cargar da justo la contraria.
+ */
+function bandaPesas(tema, meta, sellos, w, h) {
+  const n = Math.max(1, meta);
+  const color = tema.accent;
+  const cx = w / 2, cy = h / 2;
+  const ranuras = Math.ceil(n / 2);
+  const agarre = w * 0.075;                 // media barra central, sin discos
+  const paso = (w * 0.42 - agarre) / ranuras;
+  const ancho = Math.min(paso * 0.62, h * 0.15);
+
+  const disco = (i) => {
+    const j = Math.floor(i / 2);            // qué ranura, de dentro hacia fuera
+    const x = cx + (i % 2 === 0 ? 1 : -1) * (agarre + paso * (j + 0.5));
+    const alto = h * 0.56 * (1 - j * 0.07); // los de fuera, un poco menores
+    const pinta = i < sellos
+      ? `fill="${color}"`
+      : `fill="none" stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="4" stroke-dasharray="12 9"`;
+    return `<rect x="${n2(x - ancho / 2)}" y="${n2(cy - alto / 2)}" width="${n2(ancho)}"`
+      + ` height="${n2(alto)}" rx="${n2(ancho * 0.3)}" ${pinta}/>`;
+  };
+
+  const barra = `<rect x="${n2(w * 0.06)}" y="${n2(cy - h * 0.033)}" width="${n2(w * 0.88)}"`
+    + ` height="${n2(h * 0.066)}" rx="${n2(h * 0.033)}" fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.4 : 0.42}"/>`;
+  const topes = [-1, 1]
+    .map((s) => `<rect x="${n2(cx + s * agarre - w * 0.007)}" y="${n2(cy - h * 0.12)}" width="${n2(w * 0.014)}"`
+      + ` height="${n2(h * 0.24)}" rx="${n2(w * 0.007)}" fill="${tenue(tema)}" fill-opacity="0.55"/>`)
+    .join("");
+
+  return barra + topes
+    + Array.from({ length: n }, (_, i) => disco(i)).join("")
+    + cuenta(sellos, n, color, cx, h * 0.15, h * 0.17, w * 0.3);
+}
+
+/**
+ * ANILLOS — un aro que se cierra. Es el modo que aguanta CUALQUIER meta (de 3 a
+ * 50) sin cambiar de aspecto, y el único que enseña el progreso como proporción
+ * y no como cuenta. Las muescas de fuera dejan contar los sellos cuando son
+ * pocos; dentro va la marca de la tienda.
+ */
+function bandaAnillos(tema, meta, sellos, w, h) {
+  const n = Math.max(1, meta);
+  const color = tema.accent;
+  const cx = w * 0.32, cy = h / 2;
+  const r = h * 0.34, grosor = h * 0.13;
+  const parte = Math.min(1, Math.max(0, sellos / n));
+
+  const pista = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="none"`
+    + ` stroke="${tenue(tema)}" stroke-opacity="0.18" stroke-width="${n2(grosor)}"/>`;
+
+  // Un arco de 360° empieza y acaba en el mismo punto, así que no se dibuja:
+  // cerrado del todo es un círculo entero.
+  const avance = parte >= 1
+    ? `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="none" stroke="${color}" stroke-width="${n2(grosor)}"/>`
+    : parte > 0
+      ? `<path d="${arco(cx, cy, r, RAD(0, 1), RAD(0, 1) + parte * Math.PI * 2)}" fill="none"`
+        + ` stroke="${color}" stroke-width="${n2(grosor)}" stroke-linecap="round"/>`
+      : "";
+
+  const muescas = n <= 12
+    ? Array.from({ length: n }, (_, i) => {
+        const [x, y] = punto(cx, cy, r + grosor * 0.92, RAD(i, n));
+        return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.022)}" fill="${tenue(tema)}"`
+          + ` fill-opacity="${i < sellos ? 0.7 : 0.28}"/>`;
+      }).join("")
+    : "";
+
+  return pista + avance + muescas
+    + colocar(tema, color, cx, cy, r * 1.05)
+    + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+}
+
+// Cada modo es una función con la MISMA firma. Añadir uno son dos líneas: una
+// entrada aquí y su nombre en MODOS; sale solo en el selector del admin, en la
+// vista previa del manager y en el .pkpass.
+const PINTAR_BANDA = {
+  casillas: bandaCasillas,
+  relleno: bandaRelleno,
+  porciones: bandaPorciones,
+  pizza: bandaPizza,
+  barra: bandaBarra,
+  pesas: bandaPesas,
+  anillos: bandaAnillos,
+};
+
 export function svgStripSellos(tema, meta, sellos) {
   const [w, h] = TAM.strip.storeCard.map((v) => v * 3);
   const llenos = Math.min(Math.max(0, sellos), meta);
-  const dentro = modo(tema) === "relleno"
-    ? bandaRelleno(tema, meta, llenos, w, h)
-    : bandaCasillas(tema, meta, llenos, w, h);
-  return svg(w, h, fondoDeBanda(tema, w, h) + dentro);
+  const pintar = PINTAR_BANDA[modo(tema)] || bandaCasillas;
+  return svg(w, h, fondoDeBanda(tema, w, h) + pintar(tema, meta, llenos, w, h));
 }
 
 export function svgStripCupon(tema, usado) {

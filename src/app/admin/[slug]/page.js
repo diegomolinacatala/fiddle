@@ -6,7 +6,7 @@ import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
 import { MARCAS, FORMAS, BANDAS, MODOS, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
-import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
+import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_MODO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
 // ============================================================================
@@ -199,13 +199,13 @@ export default function AdminNegocio() {
                   titulo="Cómo se cuentan los sellos"
                   valor={n.tema.modo}
                   opciones={MODOS}
-                  rotulos={ROTULO}
+                  rotulos={ROTULO_MODO}
                   vista={(m) => vistaModo(n.tema, m, n.meta)}
                   onChange={(m) => setTema("modo", m)}
                   ancho={150}
                 />
                 <div style={{ display: "flex", gap: 12 }}>
-                  {n.tema.modo !== "relleno" && (
+                  {n.tema.modo === "casillas" && (
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Selector
                         titulo="Casilla del sello"
