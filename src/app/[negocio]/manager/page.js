@@ -128,7 +128,12 @@ export default function Manager() {
             <h1 style={titulo}>{n.tema.emoji} {n.nombre}</h1>
             <p style={subtitulo}>Manager · define qué hace la caja. Los pases se actualizan solos.</p>
           </div>
-          <LogoutButton negocio={negocio} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <a href={`/${negocio}/crm`} style={{ ...botonSecundario, textDecoration: "none", padding: "0.5rem 0.9rem", fontSize: 13 }}>
+              📊 Clientes
+            </a>
+            <LogoutButton negocio={negocio} />
+          </div>
         </header>
 
         <EstadoIntegracion accent={accent} />
@@ -219,6 +224,7 @@ export default function Manager() {
             <h2 style={{ ...h2, marginTop: 26 }}>Clientes ({clientes.length})</h2>
             <p style={{ color: C.suave, fontSize: 13, margin: "-6px 0 10px" }}>
               El código de 3 caracteres identifica al cliente dentro de esta tienda. Tócalo para ver su pase.
+              Quién viene, quién dejó de venir y a quién avisar está en <a href={`/${negocio}/crm`} style={{ color: accent }}>Clientes</a>.
             </p>
             <div style={{ maxHeight: 260, overflow: "auto" }}>
               {clientes.map((c) => (

@@ -15,6 +15,7 @@ function crearDeps() {
   const registros = [];
   return {
     registros,
+    clientes,
     config: { passTypeId: PASS },
     getCliente: async (s) => clientes[s] ?? null,
     getNegocio: async (slug) => (slug === "nube" ? { slug } : null),
@@ -23,7 +24,18 @@ function crearDeps() {
       registros.push(r);
       return true;
     }),
-    borrarRegistro: vi.fn(async () => {}),
+    borrarRegistro: vi.fn(async ({ dispositivo, serial }) => {
+      const i = registros.findIndex((r) => r.dispositivo === dispositivo && r.serial === serial);
+      if (i >= 0) registros.splice(i, 1);
+      return { ultimo: !registros.some((r) => r.serial === serial) };
+    }),
+    marcarInstalacion: vi.fn(async (serial, dentro) => {
+      const c = clientes[serial];
+      if (!c) return;
+      if (dentro) { c.instalado = c.instalado || "2026-09-10T10:00:00.000Z"; c.desinstalado = null; }
+      else c.desinstalado = "2026-09-20T10:00:00.000Z";
+    }),
+    addEvento: vi.fn(async () => {}),
     pasesDeDispositivo: async ({ dispositivo }) =>
       registros.filter((r) => r.dispositivo === dispositivo).map((r) => ({ serial: r.serial, actualizado: clientes[r.serial].actualizado })),
     generarPkpass: vi.fn(async () => Buffer.from("PKPASS")),
@@ -68,6 +80,42 @@ describe("desregistrar", () => {
     expect(deps.borrarRegistro).toHaveBeenCalledWith(base);
     expect((await desregistrar(deps, { ...base, authorization: "ApplePass x" })).status).toBe(401);
     expect((await desregistrar(deps, { ...base, dispositivo: "" })).status).toBe(400);
+  });
+});
+
+// El CRM se entera aquí de las dos fechas que no puede saber de ninguna otra
+// forma: cuándo el pase entró en un Wallet y cuándo salió del último.
+describe("instalación del pase (CRM)", () => {
+  const reg = (dispositivo) => ({ dispositivo, passType: PASS, serial: "s1", authorization: AUTH, cuerpo: { pushToken: PUSH } });
+
+  it("apunta el alta una sola vez, aunque el pase esté en dos iPhone", async () => {
+    await registrar(deps, reg("dev1"));
+    expect(deps.clientes.s1.instalado).toBe("2026-09-10T10:00:00.000Z");
+    expect(deps.addEvento).toHaveBeenCalledWith("s1", "instalado", expect.any(String), { negocio: "nube", actor: "apple" });
+
+    deps.addEvento.mockClear();
+    await registrar(deps, reg("dev2"));
+    expect(deps.addEvento).not.toHaveBeenCalled(); // ya estaba instalado: no es noticia
+  });
+
+  it("la baja solo cuenta al salir del ÚLTIMO iPhone", async () => {
+    await registrar(deps, reg("dev1"));
+    await registrar(deps, reg("dev2"));
+
+    await desregistrar(deps, { dispositivo: "dev1", passType: PASS, serial: "s1", authorization: AUTH });
+    expect(deps.clientes.s1.desinstalado).toBeFalsy(); // le queda otro teléfono
+
+    await desregistrar(deps, { dispositivo: "dev2", passType: PASS, serial: "s1", authorization: AUTH });
+    expect(deps.clientes.s1.desinstalado).toBe("2026-09-20T10:00:00.000Z");
+    expect(deps.addEvento).toHaveBeenCalledWith("s1", "desinstalado", expect.any(String), { negocio: "nube", actor: "apple" });
+  });
+
+  it("volver a añadirlo borra la fecha de baja y conserva la del alta", async () => {
+    await registrar(deps, reg("dev1"));
+    await desregistrar(deps, { dispositivo: "dev1", passType: PASS, serial: "s1", authorization: AUTH });
+    await registrar(deps, reg("dev1"));
+    expect(deps.clientes.s1.desinstalado).toBeNull();
+    expect(deps.clientes.s1.instalado).toBe("2026-09-10T10:00:00.000Z");
   });
 });
 

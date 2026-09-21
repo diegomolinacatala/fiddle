@@ -97,16 +97,18 @@ describe("store con Supabase", () => {
     expect(await store.registrarPase({ dispositivo: "d1", pushToken: "ab", passType: "p", serial: "s1", negocio: "nube" })).toBe(false);
   });
 
-  it("borrarRegistro borra el dispositivo si no le quedan pases", async () => {
-    encolar("registros", { data: null, error: null }, { data: null, count: 0, error: null });
+  it("borrarRegistro borra el dispositivo si no le quedan pases y avisa si fue el último", async () => {
+    // borrar · contar los del dispositivo (0 -> se borra) · contar los del pase (0 -> era el último)
+    encolar("registros", { data: null, error: null }, { data: null, count: 0, error: null }, { data: null, count: 0, error: null });
     encolar("dispositivos", { data: null, error: null });
-    await store.borrarRegistro({ dispositivo: "d1", passType: "p", serial: "s1" });
-    expect(llamadas.map((l) => l.tabla)).toEqual(["registros", "registros", "dispositivos"]);
+    expect(await store.borrarRegistro({ dispositivo: "d1", passType: "p", serial: "s1" })).toEqual({ ultimo: true });
+    expect(llamadas.map((l) => l.tabla)).toEqual(["registros", "registros", "dispositivos", "registros"]);
 
     llamadas.length = 0;
-    encolar("registros", { data: null, error: null }, { data: null, count: 2, error: null });
-    await store.borrarRegistro({ dispositivo: "d1", passType: "p", serial: "s1" });
-    expect(llamadas.map((l) => l.tabla)).toEqual(["registros", "registros"]);
+    // Al dispositivo le quedan pases y al pase le quedan teléfonos: no se borra nada más.
+    encolar("registros", { data: null, error: null }, { data: null, count: 2, error: null }, { data: null, count: 1, error: null });
+    expect(await store.borrarRegistro({ dispositivo: "d1", passType: "p", serial: "s1" })).toEqual({ ultimo: false });
+    expect(llamadas.map((l) => l.tabla)).toEqual(["registros", "registros", "registros"]);
   });
 
   it("pasesDeDispositivo y pushTokens usan los joins por FK", async () => {

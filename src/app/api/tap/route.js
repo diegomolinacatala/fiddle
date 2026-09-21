@@ -31,7 +31,7 @@ export async function GET(request) {
     if (await usoExcedido("tap", ipDe(request))) {
       return jsonError("Demasiados pases desde esta conexión. Prueba en unos minutos.", 429);
     }
-    const r = await emitirPase(slug);
+    const r = await emitirPase(slug, { origen: "tap" });
     if (esIOS(request.headers.get("user-agent"))) {
       if (r.proveedor === "apple") return respuestaPkpass(await generarPkpass(r.cliente, r.negocio), slug);
       if (r.pkpassWalletWallet) return respuestaPkpass(r.pkpassWalletWallet, slug);

@@ -48,6 +48,27 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
 
+## El CRM agrupa por RITMO, no por calendario
+
+Ver [`src/lib/crm.js`](src/lib/crm.js). Quien viene a diario y lleva una semana
+sin aparecer está tan perdido como quien viene una vez al mes y lleva cuatro: casi
+nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadencia.
+
+- **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
+  solo en el panel, en el selector de campañas y en la exportación.
+- `ESTADOS` son EXCLUYENTES (cada cliente está en uno) y `GRUPOS` SE SOLAPAN a
+  propósito: estar a un sello del premio y llevar semanas sin venir es la misma
+  persona, y las dos cosas merecen un aviso.
+- **Apple no tiene mensajes propios.** El aviso lo dispara un CAMPO del pase que
+  cambia, así que una campaña escribe `clientes.mensaje` a cada uno y ese texto
+  ocupa el sitio de la promo. Consecuencia: **solo se puede avisar a quien
+  instaló el pase**; la pantalla lo dice antes de enviar.
+- Una campaña **recalcula el grupo en el servidor**. Del navegador llega su
+  clave, nunca la lista de a quién.
+- El reloj: lo que dependa de la hora local (a qué hora viene la gente) se
+  calcula **en el navegador**. El servidor vive en UTC y sacaría el café de las 9
+  a las 7.
+
 ## Datos y permisos
 
 - Las tiendas **viven en la base**, se crean y se borran desde `/admin`.

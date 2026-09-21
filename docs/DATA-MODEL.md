@@ -33,9 +33,34 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 | `actualizado` | timestamptz | se marca en cada cambio; Apple pregunta "¿qué cambió desde…?" |
 | `ww_serial` | text? | solo plan B WalletWallet |
 | `creado` | timestamptz | |
+| `visitas`, `ultima_visita` | int · timestamptz? | **resumen del historial**, mantenido al vuelo por `registrarVisita`. Sin esto, agrupar clientes por comportamiento obligaría a recorrer `eventos` entero en cada pantalla |
+| `instalado`, `desinstalado` | timestamptz? | cuándo entró el pase en un Wallet y cuándo salió del último iPhone. Lo apunta el web service de Apple, que es el único que se entera |
+| `origen` | text? | `tap` (tag NFC) · `manager` (mostrador) |
+| `mensaje` | text? | aviso personal que sale EN el pase (campañas). Gana a `promo` del negocio |
+| `nota` | text? | lo que la tienda apunta a mano. **No** sale en el pase |
 
 ### `eventos` — historial
-`id` · `serial` · `tipo` (clave de acción) · `mensaje` · `ts`
+`id` · `serial` · `negocio` · `tipo` · `mensaje` · `actor` · `ts`
+
+`tipo` es una clave de acción (`sellar`, `canjear`…) o uno de los que pasan solos:
+`alta` (pase emitido), `instalado` / `desinstalado` (Wallet) y `campana`.
+`actor` dice desde dónde: `caja`, `manager`, `admin`, `tap`, `apple`.
+
+`negocio` va **desnormalizado**: el CRM siempre pregunta por tienda ("toda la
+actividad de nube") y sin esa columna habría que leer antes sus miles de seriales
+solo para poder filtrar por ellos.
+
+### `campanas` — envíos a un grupo
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `negocio` · `grupo` | text | el grupo es una clave de [`crm.js`](../src/lib/crm.js) |
+| `texto` | text | lo que se escribió en el pase |
+| `destinatarios` · `avisados` | int | a cuántos y a cuántos les llegó el empujón |
+| `seriales` | jsonb | a quién, para poder medir después quién volvió |
+| `creado` | timestamptz | |
+
+Se guarda con la lista porque si no, no hay forma de responder a la única
+pregunta que importa: ¿volvió alguno?
 
 ### `dispositivos` — iPhones con algún pase
 | Campo | Tipo | Notas |
@@ -68,7 +93,14 @@ Clientes:     crearCliente({serial, negocio, authToken, wwSerial?}) · getClient
               guardarNombre(serial, nombre) -> guardado?
               tocarClientesDeNegocio(slug) · listClientes(negocio?, {limite?}) · clientePublico(c)
               getClientePorCodigo(negocio, "K7M")  (busca solo dentro de ese negocio)
-Eventos:      addEvento(serial, tipo, mensaje) · listEventos(serial, limit=8)
+Eventos:      addEvento(serial, tipo, mensaje, {negocio?, actor?}) · addEventos(filas)
+              listEventos(serial, limit=8) · listEventosDeNegocio(slug, {dias=120, limite=5000})
+CRM:          registrarVisita(serial) -> bool     (suma visita y pone la fecha)
+              marcarInstalacion(serial, dentro)   (el alta solo se escribe una vez)
+              guardarMensajes(seriales, texto) -> n   (una campaña, en lotes de 200)
+              guardarNota(serial, nota) -> bool
+              crearCampana({negocio, grupo, texto, seriales, avisados}) · listCampanas(slug)
+              serialesRegistrados(slug) -> Set    (a quién se puede avisar)
 Apple Wallet: registrarPase({dispositivo, pushToken, passType, serial, negocio}) -> nuevo?
               borrarRegistro({dispositivo, passType, serial})
               pasesDeDispositivo({dispositivo, passType}) -> [{serial, actualizado}]
@@ -77,7 +109,7 @@ Límites:      registrarIntento(clave) · contarIntentos(clave, desdeMs)
 ```
 
 ## Backend demo (ficheros)
-`.data/{negocios,clientes,eventos,dispositivos,registros,intentos}.json`. En `.gitignore`.
+`.data/{negocios,clientes,eventos,dispositivos,registros,intentos,campanas}.json`. En `.gitignore`.
 (`.data/` de la versión anterior de un solo negocio no es compatible: bórrala si ves clientes raros.)
 Todas las operaciones van en fila dentro del proceso. Vale para local; **no** para
 Vercel (el sistema de ficheros no persiste). La carpeta se cambia con `DATA_DIR` (tests).

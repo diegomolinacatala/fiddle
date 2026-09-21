@@ -81,6 +81,7 @@ export default function Admin() {
           {[["activas", "Tiendas"], ["archivadas", "Archivadas"]].map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
           ))}
+          <a href="/admin/crm" style={{ ...botonSecundario, textDecoration: "none" }}>📊 Clientes</a>
           <div style={{ flex: 1 }} />
           {pestana === "activas" && (
             <button type="button" onClick={() => setAbriendo((v) => !v)} style={botonPrimario(AZUL)}>

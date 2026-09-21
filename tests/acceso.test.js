@@ -20,6 +20,18 @@ describe("reglaDeRuta", () => {
     expect(regla("/fade/manager")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });
   });
 
+  it("el CRM es del manager: pantalla y APIs", () => {
+    expect(regla("/nube/crm")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/crm?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/crm/export?b=fade")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });
+    // Estas dos no llevan ?b=: el negocio va en el cuerpo (campaña) o sale del
+    // propio cliente (ficha), así que las comprueba su handler.
+    expect(regla("/api/crm/campana", "POST")).toEqual({ tipo: "sesion" });
+    expect(regla("/api/crm/cliente/abc")).toEqual({ tipo: "sesion" });
+    // "crm" está reservado: nunca puede ser una tienda.
+    expect(regla("/crm")).toEqual({ tipo: "sesion" });
+  });
+
   it("APIs con ?b= exigen el negocio indicado", () => {
     expect(regla("/api/negocio?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "caja" });
     expect(regla("/api/negocio?b=nube", "PUT")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });

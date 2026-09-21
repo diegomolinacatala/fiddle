@@ -16,7 +16,8 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
 | `/<negocio>/caja`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `GET /api/clientes`, `GET /api/negocio` | **caja** o manager de ese negocio |
 | `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `GET /api/estado` | **manager** de ese negocio |
-| `/admin`, `/admin/<slug>`, `/api/admin/*` | **admin de la plataforma** (`victor`, `diego`) |
+| `/<negocio>/crm`, `GET /api/crm`, `GET /api/crm/export`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>` | **manager** de ese negocio |
+| `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*` | **admin de la plataforma** (`victor`, `diego`) |
 
 Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
 
@@ -163,3 +164,51 @@ protocolo de Apple. Detalle en [APPLE-WALLET.md](APPLE-WALLET.md).
 
 Autenticación: `Authorization: ApplePass <authenticationToken>` (el `auth_token` del
 cliente). Si Apple no está configurado, todas devuelven `404`.
+
+## CRM
+
+Quién es cada cliente y a quién conviene decirle algo. Las cuentas son las de
+[`src/lib/crm.js`](../src/lib/crm.js) — la API no calcula nada por su cuenta.
+
+### `GET /api/crm?b=<negocio>` · manager
+Todo el panel en una petición.
+```json
+{
+  "negocio":  { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
+  "metricas": { "total": 33, "activos": 11, "enRiesgo": 10, "porEstado": { "activo": 11, … },
+                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
+                "instalados": 28, "tasaInstalacion": 85, "tasaVuelta": 79, "cadenciaMedia": 7.1 },
+  "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
+  "cohortes": [ { "mes": "2026-08", "altas": 5, "repiten": 3, "vivos": 2, "retencion": 40 } ],
+  "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
+  "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
+  "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Sello 5/8", "actor": "caja", "ts": "…" } ]
+}
+```
+Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen de
+la hora local —a qué hora viene la gente— se hacen **en el navegador**: el
+servidor vive en UTC y sacaría el café de las 9 a las 7.
+
+### `POST /api/crm/campana` · manager
+Manda un mensaje a un GRUPO. El negocio va en el cuerpo (como en `/api/promo`).
+```json
+// request                                          // response
+{ "b": "nube", "grupo": "fieles_frios",             { "ok": true, "campana": { "id": 1, … }, "enGrupo": 9,
+  "texto": "Hace tiempo que no te vemos" }            "destinatarios": 9, "avisados": 9, "proveedor": "apple" }
+```
+El grupo se **recalcula en el servidor**: del navegador solo llega su clave, nunca
+la lista de a quién. `texto` vacío quita el mensaje (`{ "quitado": n }`).
+`400` grupo desconocido · `409` nadie del grupo tiene el pase instalado.
+Tope de 400 por envío; el texto se recorta a 120 caracteres.
+
+### `GET /api/crm/cliente/<serial>` · manager
+Ficha completa: `{ cliente, perfil, eventos }` (hasta 100 eventos, del más nuevo al más viejo).
+
+### `PUT /api/crm/cliente/<serial>` · manager
+`{ "nota": "sin lactosa" }` → nota interna de la tienda. **No** sale en el pase.
+
+### `GET /api/crm/export?b=<negocio>[&grupo=<clave>]` · manager
+CSV (con BOM, para que Excel abra bien los acentos). Sin `grupo`, la tienda entera.
+
+### `GET /api/admin/crm` · admin
+Las mismas cuentas de todas las tiendas juntas: `{ tiendas: [...], totales: {...} }`.
