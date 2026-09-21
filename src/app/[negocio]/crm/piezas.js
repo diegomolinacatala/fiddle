@@ -1,5 +1,6 @@
 "use client";
 
+import Icono from "@/app/Icono";
 import { C, panel } from "@/app/ui";
 
 // ============================================================================
@@ -161,7 +162,7 @@ export function Chip({ estado, estados }) {
         background: `${e.color}18`, color: e.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
       }}
     >
-      {e.icon} {e.label}
+      <Icono nombre={e.icon} tam={13} grosor={2.2} /> {e.label}
     </span>
   );
 }

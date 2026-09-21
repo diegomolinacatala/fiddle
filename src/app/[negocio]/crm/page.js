@@ -1,5 +1,6 @@
 "use client";
 
+import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import LogoutButton from "@/app/LogoutButton";
@@ -107,7 +108,7 @@ export default function CRM() {
         {pestana === "resumen" && (
           <div style={{ display: "grid", gap: 18 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-              <Cifra label="Clientes" valor={m.total} pie={`${m.instalados} con el pase instalado`} accent={accent} />
+              <Cifra label="Clientes" valor={m.total} pie={`${m.instalados} con la tarjeta en el teléfono`} accent={accent} />
               <Cifra label="Activos" valor={m.activos} pie="vienen a su ritmo" accent={C.ok} />
               <Cifra label="Enfriándose" valor={m.enRiesgo} pie="han roto su ritmo" accent={m.enRiesgo ? "#c26b04" : C.texto} />
               <Cifra label="Visitas (30 d)" valor={m.visitas30} variacion={tendencia(m.visitas30, m.visitas30Previas)} pie="vs. los 30 anteriores" />
@@ -190,7 +191,7 @@ export default function CRM() {
                   style={tarjetaGrupo(g.key === grupo, accent, g.total)}
                 >
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>{g.icon}</span>
+                    <span style={{ color: accent, alignSelf: "center" }}><Icono nombre={g.icon} tam={18} /></span>
                     <strong style={{ fontSize: 14, fontWeight: 650 }}>{g.label}</strong>
                     <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}>{g.total}</span>
                   </div>
@@ -281,9 +282,9 @@ export default function CRM() {
                       <td style={td}><span style={chipCodigo(accent)}>{c.codigo}</span></td>
                       <td style={td}>
                         {c.nombre || <span style={{ color: C.tenue }}>sin nombre</span>}
-                        {c.nota && <span title={c.nota}> 📝</span>}
-                        {c.mensaje && <span title={`Mensaje en su pase: ${c.mensaje}`}> 📣</span>}
-                        {!c.perfil.contactable && <span title="No tiene el pase en el teléfono"> 🔕</span>}
+                        {c.nota && <span title={c.nota} style={marcaFila}><Icono nombre="nota" tam={14} titulo={`Nota: ${c.nota}`} /></span>}
+                        {c.mensaje && <span title={`Mensaje en su pase: ${c.mensaje}`} style={marcaFila}><Icono nombre="megafono" tam={14} titulo="Tiene un mensaje en su tarjeta" /></span>}
+                        {!c.perfil.contactable && <span title="No tiene la tarjeta en el teléfono" style={marcaFila}><Icono nombre="campanaNo" tam={14} titulo="No le llegan avisos" /></span>}
                       </td>
                       <td style={td}><Chip estado={c.perfil.estado} estados={estados} /></td>
                       <td style={td}>{c.perfil.visitas}</td>
@@ -292,7 +293,7 @@ export default function CRM() {
                       <td style={td}>
                         {n.tipo === "descuento"
                           ? (c.premios ? "usado" : "sin usar")
-                          : `${c.sellos}/${n.meta}${c.premios ? ` · ${c.premios}🎁` : ""}`}
+                          : `${c.sellos}/${n.meta}${c.premios ? ` · ${c.premios} premio${c.premios === 1 ? "" : "s"}` : ""}`}
                       </td>
                     </tr>
                   ))}
@@ -336,6 +337,7 @@ const tarjetaGrupo = (activa, accent, hay) => ({
   font: "inherit", color: C.texto,
 });
 const tabla = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
+const marcaFila = { display: "inline-flex", verticalAlign: "-2px", marginLeft: 6, color: C.suave };
 const th = {
   textAlign: "left", fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase",
   letterSpacing: 0.6, padding: "0 10px 8px 0", borderBottom: `1px solid ${C.borde}`, whiteSpace: "nowrap",

@@ -21,6 +21,11 @@ import { RESERVADOS } from "./negocios";
 //   /api/wallet/...                        web service de Apple Wallet (se
 //                                          autentica con el token del pase)
 //   /api/manifest  /api/negocios           manifest PWA y directorio
+//   /api/tarjeta/<serial>                  la tarjeta web se pone al día sola
+//   /api/push/<serial>                     el cliente activa los avisos en Android
+//   /api/google/guardar/<serial>           "Añadir a Google Wallet"
+//   /api/imagen/<tipo>                     iconos y banda: los descargan Google
+//                                          Wallet y Android, sin sesión
 const PUBLICAS = [
   /^\/$/,
   /^\/login$/,
@@ -33,6 +38,10 @@ const PUBLICAS = [
   /^\/api\/manifest$/,
   /^\/api\/negocios$/,
   /^\/api\/salud$/,
+  /^\/api\/tarjeta\/[^/]+$/,
+  /^\/api\/push\/[^/]+$/,
+  /^\/api\/google\/guardar\/[^/]+$/,
+  /^\/api\/imagen\/[^/]+$/,
 ];
 
 // Qué primeros segmentos NO son un negocio: RESERVADOS vive en negocios.js para

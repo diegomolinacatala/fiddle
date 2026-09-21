@@ -7,6 +7,9 @@ import LogoutButton from "@/app/LogoutButton";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import EstadoIntegracion from "./EstadoIntegracion";
+import GrabarTag from "./GrabarTag";
+import MarcaTienda from "@/app/MarcaTienda";
+import Icono from "@/app/Icono";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo } from "@/app/ui";
 
 // Manager de un negocio. Controla su cartilla, sus acciones, sus promos y dónde
@@ -53,7 +56,15 @@ export default function Manager() {
     });
   }
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3000); }
-  const resumenAviso = (a) => (a?.proveedor === "apple" ? ` · ${a.enviadas}/${a.total} iPhone avisados` : "");
+  // Cuántos teléfonos se enteraron: iPhone (APNs) y Android (avisos web + Google Wallet).
+  const resumenAviso = (a) => {
+    if (!a) return "";
+    const partes = [];
+    if (a.proveedor === "apple") partes.push(`${a.enviadas}/${a.total} iPhone`);
+    const android = (a.web || 0) + (a.google || 0);
+    if (android) partes.push(`${android} Android`);
+    return partes.length ? ` · avisados: ${partes.join(", ")}` : "";
+  };
 
   // Cliente de la vista previa: uno real o uno inventado a medida de la cartilla
   // que se está editando (para ver el aspecto antes de tener clientes).
@@ -80,7 +91,7 @@ export default function Manager() {
     const data = await res.json();
     if (!res.ok) return flash(data.error || "Error al guardar");
     setN(data);
-    flash(`Guardado ✔${resumenAviso(data.aviso)}`);
+    flash(`Guardado${resumenAviso(data.aviso)}`);
   }
 
   function usarMiUbicacion() {
@@ -97,20 +108,20 @@ export default function Manager() {
     if (!res.ok) return flash(data.error || "Error");
     setPromoTexto(texto);
     setN((p) => ({ ...p, promo: data.promo }));
-    flash(data.proveedor === "apple"
-      ? `Promo enviada · ${data.enviadas}/${data.total} iPhone avisados`
-      : `Promo guardada (${data.total} pases)`);
+    if (!texto) return flash("Promo retirada de todas las tarjetas");
+    const avisados = resumenAviso(data);
+    flash(avisados ? `Promo enviada${avisados}` : `Promo puesta en ${data.total} tarjetas`);
   }
 
   async function emitir() {
     const res = await fetch(`/api/crear?b=${negocio}`, { method: "POST" });
     const data = await res.json();
-    flash(res.ok ? `Pase emitido ✔ · código ${data.codigo}` : data.error);
+    flash(res.ok ? `Tarjeta emitida · código ${data.codigo}` : data.error);
     cargar();
   }
 
   async function copiarTap() {
-    try { await navigator.clipboard.writeText(`${origin}/api/tap?b=${negocio}`); flash("URL del tag copiada ✔"); }
+    try { await navigator.clipboard.writeText(`${origin}/api/tap?b=${negocio}`); flash("URL del tag copiada"); }
     catch { flash(`${origin}/api/tap?b=${negocio}`); }
   }
 
@@ -124,13 +135,16 @@ export default function Manager() {
     <main style={pagina}>
       <div style={{ width: "min(1080px, 96vw)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div>
-            <h1 style={titulo}>{n.tema.emoji} {n.nombre}</h1>
-            <p style={subtitulo}>Manager · define qué hace la caja. Los pases se actualizan solos.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+            <MarcaTienda tema={n.tema} tam={42} icono />
+            <div style={{ minWidth: 0 }}>
+              <h1 style={titulo}>{n.nombre}</h1>
+              <p style={subtitulo}>Manager · lo que cambies aquí llega solo a las tarjetas de iPhone y Android.</p>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <a href={`/${negocio}/crm`} style={{ ...botonSecundario, textDecoration: "none", padding: "0.5rem 0.9rem", fontSize: 13 }}>
-              📊 Clientes
+            <a href={`/${negocio}/crm`} style={{ ...botonSecundario, textDecoration: "none", padding: "0.5rem 0.9rem", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icono nombre="clientes" tam={16} /> Clientes
             </a>
             <LogoutButton negocio={negocio} />
           </div>
@@ -158,7 +172,7 @@ export default function Manager() {
               {LISTA_ACCIONES.map((a) => (
                 <label key={a.key} style={accionRow(n.acciones.includes(a.key), accent)}>
                   <input type="checkbox" checked={n.acciones.includes(a.key)} onChange={() => toggleAccion(a.key)} />
-                  <span style={{ fontSize: 20 }}>{a.icon}</span>
+                  <span style={{ color: accent }}><Icono nombre={a.icon} tam={20} /></span>
                   <span>
                     <strong style={{ fontWeight: 600, fontSize: 14 }}>{a.label}</strong><br />
                     <span style={{ color: C.suave, fontSize: 13 }}>{a.descripcion}</span>
@@ -172,7 +186,9 @@ export default function Manager() {
               <input value={ubicacion.lat} onChange={(e) => setUbicacion((u) => ({ ...u, lat: e.target.value }))} placeholder="Latitud" inputMode="decimal" style={campo} />
               <input value={ubicacion.lng} onChange={(e) => setUbicacion((u) => ({ ...u, lng: e.target.value }))} placeholder="Longitud" inputMode="decimal" style={campo} />
             </div>
-            <button onClick={usarMiUbicacion} style={{ ...botonSecundario, marginTop: 8, fontSize: 13, padding: "0.45rem 0.8rem" }}>📍 Usar mi ubicación</button>
+            <button onClick={usarMiUbicacion} style={{ ...botonSecundario, marginTop: 8, fontSize: 13, padding: "0.45rem 0.8rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icono nombre="ubicacion" tam={16} /> Usar mi ubicación
+            </button>
 
             <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar y actualizar pases</button></div>
           </section>
@@ -200,15 +216,19 @@ export default function Manager() {
           {/* ------------------------------------- promo · tag · clientes */}
           <section style={panel}>
             <h2 style={h2}>Promo (aviso a todos)</h2>
+            <p style={{ color: C.suave, fontSize: 13, margin: "-6px 0 10px" }}>
+              Sale en la tarjeta de todos tus clientes y les suena en el móvil: iPhone y Android.
+            </p>
             <input value={promoTexto} onChange={(e) => setPromoTexto(e.target.value)} placeholder="Hoy 2x1…" maxLength={200} style={campo} />
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <button onClick={() => lanzarPromo(promoTexto)} style={botonPrimario(accent)}>Lanzar</button>
               <button onClick={() => lanzarPromo("")} style={botonSecundario}>Quitar</button>
             </div>
 
-            <h2 style={{ ...h2, marginTop: 26 }}>Tag NFC / emitir</h2>
+            <h2 style={{ ...h2, marginTop: 26 }}>Tag NFC y QR del mostrador</h2>
             <p style={{ color: C.suave, fontSize: 13, margin: "0 0 10px" }}>
-              Graba esta URL en el tag (NFC Tools → Write → URL) o imprime el QR para el mostrador.
+              Quien toque el tag o escanee este QR se lleva su tarjeta: en iPhone va a Apple Wallet y en
+              Android se queda en el móvil. Si vuelve a tocarlo, se le abre la suya, no una nueva.
             </p>
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
               {origin && <QrImagen texto={tapUrl} lado={104} style={{ border: `1px solid ${C.borde}`, borderRadius: 10, padding: 6 }} />}
@@ -220,6 +240,7 @@ export default function Manager() {
                 </div>
               </div>
             </div>
+            <GrabarTag url={origin ? tapUrl : null} accent={accent} />
 
             <h2 style={{ ...h2, marginTop: 26 }}>Clientes ({clientes.length})</h2>
             <p style={{ color: C.suave, fontSize: 13, margin: "-6px 0 10px" }}>
@@ -235,7 +256,9 @@ export default function Manager() {
                   <span style={{ fontSize: 13, color: C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.nombre || "sin nombre"}
                   </span>
-                  <span style={{ fontSize: 13 }}>{c.sellos} · {c.premios || 0} 🎁</span>
+                  <span style={{ fontSize: 13, color: C.suave, whiteSpace: "nowrap" }}>
+                    {n.tipo === "descuento" ? (c.premios ? "usado" : "válido") : `${c.sellos}/${n.meta}${c.premios ? ` · ${c.premios} premio${c.premios === 1 ? "" : "s"}` : ""}`}
+                  </span>
                   <span style={{ display: "flex", gap: 8 }}>
                     <a href={`/p/${c.serial}`} style={{ ...enlace, color: accent }}>pase</a>
                     <a href={`/w/${c.serial}`} style={{ ...enlace, color: accent }}>caja</a>

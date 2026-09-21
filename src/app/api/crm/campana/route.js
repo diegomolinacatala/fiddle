@@ -44,12 +44,12 @@ export async function POST(request) {
     // límite de avisar por Wallet, y la pantalla ya lo cuenta antes de enviar.
     const destino = delGrupo.filter((c) => registrados.has(c.serial)).slice(0, MAX_DESTINO);
     if (!destino.length) {
-      return jsonError(`Nadie de "${GRUPOS[grupo].label}" tiene el pase instalado: no hay a quién avisar.`, 409);
+      return jsonError(`Nadie de "${GRUPOS[grupo].label}" tiene la tarjeta en el teléfono: no hay a quién avisar.`, 409);
     }
 
     const seriales = destino.map((c) => c.serial);
     await guardarMensajes(seriales, mensaje);
-    const aviso = await avisarSeriales(seriales);
+    const aviso = await avisarSeriales(seriales, { negocio, texto: mensaje });
 
     // Quitar el mensaje no es una campaña: es recoger la anterior.
     if (!mensaje) {

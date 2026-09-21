@@ -84,7 +84,7 @@ describe("notificar", () => {
     vi.mocked(enviarAvisos).mockResolvedValue({ enviados: 1, invalidos: ["bb22"], errores: [] });
 
     const r = await wallet.notificarCliente(cliente, negocio);
-    expect(r).toEqual({ proveedor: "apple", avisados: 1 });
+    expect(r).toEqual({ proveedor: "apple", avisados: 1, web: 0, google: 0 });
     expect(vi.mocked(enviarAvisos).mock.calls[0][0].sort()).toEqual(["aa11", "bb22"]);
     expect(vi.mocked(enviarAvisos).mock.calls[0][1].passTypeId).toBe(cadena.passTypeId);
     expect(await store.pushTokens({ seriales: [cliente.serial] })).toEqual(["aa11"]);
@@ -109,19 +109,19 @@ describe("notificar", () => {
     await new Promise((r) => setTimeout(r, 5));
 
     const r = await wallet.notificarNegocio(negocio);
-    expect(r).toEqual({ proveedor: "apple", total: 1, enviadas: 1, fallidas: [] });
+    expect(r).toEqual({ proveedor: "apple", total: 1, enviadas: 1, fallidas: [], web: 0, google: 0 });
     expect(Date.parse((await store.getCliente(cliente.serial)).actualizado)).toBeGreaterThan(Date.parse(antes));
   });
 
   it("walletwallet: PUT por cliente; demo: no hace nada", async () => {
     vi.stubEnv("WALLETWALLET_API_KEY", "ww_live_x");
     const { cliente, negocio } = await wallet.emitirPase("nube");
-    expect(await wallet.notificarCliente(cliente, negocio)).toEqual({ proveedor: "walletwallet", avisados: 1 });
+    expect(await wallet.notificarCliente(cliente, negocio)).toEqual({ proveedor: "walletwallet", avisados: 1, web: 0, google: 0 });
     expect(await wallet.notificarNegocio(negocio)).toMatchObject({ proveedor: "walletwallet", total: 1, enviadas: 1 });
 
     vi.stubEnv("WALLETWALLET_API_KEY", "");
     ww.updatePass.mockClear();
-    expect(await wallet.notificarCliente(cliente, negocio)).toEqual({ proveedor: "demo", avisados: 0 });
+    expect(await wallet.notificarCliente(cliente, negocio)).toEqual({ proveedor: "demo", avisados: 0, web: 0, google: 0 });
     expect(await wallet.notificarNegocio(negocio)).toMatchObject({ proveedor: "demo", enviadas: 0 });
     expect(ww.updatePass).not.toHaveBeenCalled();
   });

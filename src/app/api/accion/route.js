@@ -44,7 +44,8 @@ export async function POST(request) {
     if (r.evento) await addEvento(serial, accion, r.evento, { negocio: cliente.negocio, actor: sesion.rol });
     // El cliente estuvo aquí: cuenta como visita. Una corrección, no (ver crm.js).
     if (TIPOS_VISITA.includes(accion)) await registrarVisita(serial);
-    const aviso = await notificarCliente(r.cliente, negocio);
+    // Con el estado de antes se sabe qué pasó (un sello, un canje) y si Android debe sonar.
+    const aviso = await notificarCliente(r.cliente, negocio, { antes: cliente });
 
     return NextResponse.json({ ok: true, mensaje: r.mensaje, cliente: clientePublico(r.cliente), aviso });
   } catch (e) {

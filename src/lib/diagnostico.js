@@ -1,6 +1,9 @@
 import { X509Certificate, createPrivateKey } from "node:crypto";
 import { configApple, faltanVariablesApple } from "./apple/config";
 import { hasSupabase, comprobarTablas } from "./store";
+import { clavesPush } from "./push/vapid";
+import { configGoogle, faltanVariablesGoogle } from "./google/config";
+import { tokenDeAcceso } from "./google/api";
 
 // ============================================================================
 // DIAGNÓSTICO (panel "Estado de la integración" del manager)
@@ -117,5 +120,62 @@ export async function diagnosticoSupabase(comprobar = comprobarTablas) {
       : { ok: false, detalle: explicarErrorSupabase(r.error, r.tabla) };
   } catch (e) {
     return { ok: false, detalle: explicarErrorSupabase(e?.message || e, "conexión") };
+  }
+}
+
+// ============================== ANDROID ==============================
+
+/**
+ * Avisos del navegador (la tarjeta web de Android). Funcionan en cuanto hay
+ * claves VAPID: fijas en variables o derivadas de AUTH_SECRET.
+ * @returns {{ok:boolean, detalle:string}}
+ */
+export function diagnosticoPush(claves = clavesPush()) {
+  if (!claves) {
+    return { ok: false, detalle: "Sin AUTH_SECRET ni VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY: la tarjeta de Android no puede avisar" };
+  }
+  const publica = Buffer.from(claves.publica, "base64url");
+  const privada = Buffer.from(claves.privada, "base64url");
+  if (publica.length !== 65 || publica[0] !== 0x04 || privada.length !== 32) {
+    return { ok: false, detalle: "VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY no tienen el formato de web-push (base64url, 65 y 32 bytes)" };
+  }
+  return claves.origen === "variables"
+    ? { ok: true, detalle: "Activos, con claves VAPID propias" }
+    : { ok: true, detalle: "Activos (claves derivadas de AUTH_SECRET: si cambias AUTH_SECRET, los clientes tendrán que reactivarlos)" };
+}
+
+/**
+ * Google Wallet: ¿están las credenciales, se pueden leer y las acepta Google?
+ * `comprobar` pide un token de verdad (la prueba de que la cuenta de servicio vale).
+ * @returns {Promise<{ok:boolean, configurado:boolean, detalle:string}>}
+ */
+export async function diagnosticoGoogle({ comprobar = (config) => tokenDeAcceso(config) } = {}) {
+  const faltan = faltanVariablesGoogle();
+  const algunaPuesta = ["GOOGLE_WALLET_ISSUER_ID", "GOOGLE_WALLET_SA_JSON", "GOOGLE_WALLET_SA_EMAIL", "GOOGLE_WALLET_SA_KEY"]
+    .some((v) => process.env[v]?.trim());
+  if (!algunaPuesta) {
+    return {
+      ok: false,
+      configurado: false,
+      detalle: "Sin configurar. Android usa la tarjeta web con avisos; para Google Wallet sigue docs/GOOGLE-WALLET.md",
+    };
+  }
+  if (faltan.length) return { ok: false, configurado: true, detalle: `Faltan variables: ${faltan.join(", ")}` };
+
+  let config;
+  try {
+    config = configGoogle();
+    createPrivateKey(config.key);
+  } catch (e) {
+    return { ok: false, configurado: true, detalle: `La clave de la cuenta de servicio no se puede leer (${String(e.message).slice(0, 80)})` };
+  }
+  if (!/^\d{10,25}$/.test(config.issuerId)) {
+    return { ok: false, configurado: true, detalle: "GOOGLE_WALLET_ISSUER_ID debe ser el número largo de la consola de Google Pay & Wallet" };
+  }
+  try {
+    await conTimeout(comprobar(config), TIMEOUT_SUPABASE_MS);
+    return { ok: true, configurado: true, detalle: `Emisor ${config.issuerId} · cuenta ${config.email}` };
+  } catch (e) {
+    return { ok: false, configurado: true, detalle: `Google rechaza la cuenta de servicio: ${String(e?.message || e).slice(0, 160)}` };
   }
 }

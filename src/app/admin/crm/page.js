@@ -1,5 +1,6 @@
 "use client";
 
+import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
 import { cadenciaTexto } from "@/lib/crm";
@@ -36,7 +37,7 @@ export default function AdminCRM() {
       <div style={{ width: "min(1060px, 96vw)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <h1 style={titulo}>📊 Clientes de la plataforma</h1>
+            <h1 style={titulo}>Clientes de la plataforma</h1>
             <p style={subtitulo}>Las {t.tiendas} tiendas, una al lado de otra.</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -69,8 +70,10 @@ export default function AdminCRM() {
                 {d.tiendas.map((s) => (
                   <tr key={s.slug}>
                     <td style={td}>
-                      <span style={{ marginRight: 6 }}>{s.emoji}</span>
-                      <strong style={{ fontWeight: 600 }}>{s.nombre}</strong>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        {s.tema && <MarcaTienda tema={s.tema} tam={22} icono />}
+                        <strong style={{ fontWeight: 600 }}>{s.nombre}</strong>
+                      </span>
                       <div style={{ fontSize: 11, color: C.tenue }}>/{s.slug}</div>
                     </td>
                     <td style={td}>{s.metricas.total}</td>

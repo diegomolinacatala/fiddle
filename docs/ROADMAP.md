@@ -28,37 +28,26 @@ entorno se quedan como respaldo solo para los admins de la plataforma. Toca
 [`auth.js`](../src/lib/auth.js), [`store.js`](../src/lib/store.js),
 [`schema.sql`](../supabase/schema.sql) y el alta del admin. **~5 h**
 
-### 2. Cada tap crea un pase nuevo
+### 2. Cada tap crea un pase nuevo — resuelto a medias (21-09-2026)
 
-`emitirPase()` en [`src/lib/wallet.js`](../src/lib/wallet.js) hace `randomUUID()`
-siempre. El cliente toca el tag dos veces y acaba con dos cartillas y los sellos
-partidos; pierde el móvil y pierde los sellos, sin forma de recuperarlos. En una
-cafetería de verdad este es el fallo número uno.
+El tap ya deja una cookie por tienda y el mismo teléfono recupera SU tarjeta al
+volver a tocar el tag (en iPhone, iOS actualiza el pase en vez de duplicarlo).
+Falta la otra mitad: quien **pierde el móvil** o borra las cookies no puede
+recuperar sus sellos. Buscar cliente por nombre o código desde la caja y
+reenviarle el enlace. **~4 h**
 
-**Arreglo:** cookie en el tap que devuelve el pase que ya tenía ese teléfono, y
-buscar cliente por nombre o código desde la caja para reenviarle el enlace.
-Reusar el mismo serial hace que iOS actualice el pase en vez de añadir otro.
-**~7 h**
+### 3. Android no tiene pase — resuelto (21-09-2026)
 
-### 3. Android no tiene pase
+- **Tarjeta web** (`/p/<serial>`) armada con las mismas piezas que el pase de Apple
+  (se acabó la maqueta paralela de tres estilos), instalable como app, que se pone
+  al día sola y **avisa con notificaciones del navegador** (web push, probado
+  contra FCM). Funciona sin credenciales nuevas.
+- **Google Wallet** completo en el código: falta sacar las credenciales
+  ([guía](GOOGLE-WALLET.md)). Mientras, el botón no sale.
+- Caja con el lector nativo de Android, linterna y vibración; el manager graba tags
+  NFC desde Chrome.
 
-Google Wallet está aparcado a propósito, así que un Android acaba en
-`/p/<serial>`: una web que hay que guardar en favoritos, que no se actualiza sola
-y que no notifica nada. En España eso son tres de cada cuatro clientes.
-
-Además [`src/app/p/[serial]/ThemedPass.js`](../src/app/p/%5Bserial%5D/ThemedPass.js)
-tiene tres estilos escritos a mano (`coffee`, `barber`, `pizza`): una tienda con
-el estilo moderno se pinta como Coffee. Es exactamente la maqueta paralela que
-prohíbe [`CLAUDE.md`](../CLAUDE.md) — el pase de Apple ya se arma con piezas y
-esta pantalla no.
-
-Esto hay que decidirlo, no arreglarlo. Tres salidas:
-
-| Salida | Coste | Qué implica |
-|---|---|---|
-| iPhone-first declarado | 0 | Se dice en la venta. Android usa el QR de la web |
-| Web card decente (PWA + piezas reales) | ~4 h | Sin notificaciones, pero deja de mentir y se instala |
-| Google Wallet de verdad | ~6-10 h + papeleo | Ver la tabla de [NEXT-STEPS.md](../NEXT-STEPS.md#google-wallet--aparcado-a-propósito-20-sep-2026) |
+Detalle: [ANDROID.md](ANDROID.md).
 
 ### 4. Cero legal
 
@@ -117,7 +106,8 @@ Si el piloto va bien, las métricas suben de prioridad por encima del resto.
 
 ### Fase 3 — después
 
-Google Wallet completo, QR rotativo anti-fraude, alta autoservicio y facturación.
+Credenciales de Google Wallet y aprobación de Google (el código ya está), QR
+rotativo anti-fraude, alta autoservicio y facturación.
 Nada de esto bloquea cobrar a cinco tiendas a mano.
 
 ---

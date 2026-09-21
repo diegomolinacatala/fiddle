@@ -14,7 +14,8 @@ Plantilla completa: [`.env.example`](../.env.example).
 | `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_PASS_CERT`, `APPLE_PASS_KEY`, `APPLE_WWDR_CERT` | firma y avisos de Apple Wallet ([guía](APPLE-WALLET.md)) | para pases reales |
 | `APPLE_PASS_KEY_PASSPHRASE` | si la clave está cifrada | opcional |
 | `WALLETWALLET_API_KEY` | plan B sin Apple Developer (solo si no hay `APPLE_*`) | opcional |
-| `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_EMAIL`, `GOOGLE_WALLET_SA_KEY` | botón "Guardar en Google Wallet" | opcional |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | avisos del navegador en Android. Sin ellas se derivan de `AUTH_SECRET` ([Android](ANDROID.md)) | opcional |
+| `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_SA_JSON` (o `_SA_EMAIL` + `_SA_KEY`) | Google Wallet: guardar, actualizar y avisar ([guía](GOOGLE-WALLET.md)) | opcional |
 
 Cada integración se detecta por separado; lo que falte cae a modo demo. El manager
 de cada negocio muestra **Estado de la integración** con lo que está activo.

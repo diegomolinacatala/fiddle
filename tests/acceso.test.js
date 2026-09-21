@@ -15,6 +15,14 @@ describe("reglaDeRuta", () => {
     }
   });
 
+  it("lo que usa la tarjeta de Android es público (el serial es la llave)", () => {
+    for (const r of ["/api/tarjeta/abc", "/api/push/abc", "/api/google/guardar/abc", "/api/imagen/icono?b=nube", "/api/imagen/banda?b=nube&s=3"]) {
+      expect(regla(r, r.startsWith("/api/push") ? "POST" : "GET"), r).toEqual({ tipo: "publica" });
+    }
+    // Solo el segmento exacto: nada colgando por debajo.
+    expect(regla("/api/push/abc/otra")).toEqual({ tipo: "sesion" });
+  });
+
   it("páginas de caja y manager exigen su negocio y rol", () => {
     expect(regla("/nube/caja")).toEqual({ tipo: "negocio", slug: "nube", rol: "caja" });
     expect(regla("/fade/manager")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });

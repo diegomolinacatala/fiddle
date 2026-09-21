@@ -90,12 +90,12 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
 
 // ------------------------------------------------------ la escalera (excluyentes)
 export const ESTADOS = {
-  fantasma: { label: "Fantasma", icon: "👻", color: "#8b929e", descripcion: "Se llevó el pase y no volvió a usarlo nunca." },
-  nuevo:    { label: "Nuevo",    icon: "🌱", color: "#2563eb", descripcion: "Llegó hace poco y todavía no tiene costumbre." },
-  activo:   { label: "Activo",   icon: "🔥", color: "#136f3a", descripcion: "Viene a su ritmo, sin retraso." },
-  riesgo:   { label: "Enfriándose", icon: "🧊", color: "#c26b04", descripcion: "Ha roto su ritmo: lleva más de lo suyo sin aparecer." },
-  dormido:  { label: "Dormido",  icon: "😴", color: "#8a5cf6", descripcion: "Un par de meses sin pasar." },
-  perdido:  { label: "Perdido",  icon: "🚪", color: "#b42318", descripcion: "Tanto tiempo fuera que ya no cuenta como cliente." },
+  fantasma: { label: "Fantasma", icon: "fantasma", color: "#8b929e", descripcion: "Se llevó el pase y no volvió a usarlo nunca." },
+  nuevo:    { label: "Nuevo",    icon: "brote", color: "#2563eb", descripcion: "Llegó hace poco y todavía no tiene costumbre." },
+  activo:   { label: "Activo",   icon: "llama", color: "#136f3a", descripcion: "Viene a su ritmo, sin retraso." },
+  riesgo:   { label: "Enfriándose", icon: "copo", color: "#c26b04", descripcion: "Ha roto su ritmo: lleva más de lo suyo sin aparecer." },
+  dormido:  { label: "Dormido",  icon: "luna", color: "#8a5cf6", descripcion: "Un par de meses sin pasar." },
+  perdido:  { label: "Perdido",  icon: "puerta", color: "#b42318", descripcion: "Tanto tiempo fuera que ya no cuenta como cliente." },
 };
 
 export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, ...v }));
@@ -125,63 +125,63 @@ export function estadoDe(p) {
 export const GRUPOS = {
   a_punto: {
     label: "A un paso del premio",
-    icon: "🎯",
+    icon: "diana",
     descripcion: "Les falta poco para completar la cartilla. El empujón que mejor funciona.",
-    idea: "Te falta 1 para tu {premio} ☕",
+    idea: "Te falta 1 para tu {premio}",
     incluye: (p) => !p.esCupon && p.visitas > 0 && !p.completa && p.faltan <= UMBRALES.aPuntoFaltan,
   },
   premio_listo: {
     label: "Premio sin recoger",
-    icon: "🎁",
+    icon: "regalo",
     descripcion: "Tienen la cartilla llena y no han venido a por el premio.",
     idea: "Tu {premio} te está esperando",
     incluye: (p) => p.completa,
   },
   fieles_frios: {
     label: "Fieles que se enfriaron",
-    icon: "💔",
+    icon: "corazonRoto",
     descripcion: "Venían seguido y llevan semanas sin aparecer. El grupo que más duele y el que más vale recuperar.",
     idea: "Hace tiempo que no te vemos. Tu próximo café, invita la casa",
     incluye: (p) => p.visitas >= UMBRALES.fielVisitas && ["riesgo", "dormido", "perdido"].includes(p.estado),
   },
   riesgo: {
     label: "Se están enfriando",
-    icon: "🧊",
+    icon: "copo",
     descripcion: "Han roto su propio ritmo: llevan más tiempo del suyo sin venir.",
     idea: "¿Te vienes esta semana? Te guardamos algo",
     incluye: (p) => p.estado === "riesgo",
   },
   habituales: {
     label: "Habituales",
-    icon: "🔥",
+    icon: "llama",
     descripcion: "Vienen a su ritmo y ya llevan unas cuantas. Los de casa.",
     idea: "Gracias por estar siempre. Hoy, algo extra",
     incluye: (p) => p.estado === "activo" && p.visitas >= UMBRALES.nuevoVisitas,
   },
   nuevos: {
     label: "Recién llegados",
-    icon: "🌱",
+    icon: "brote",
     descripcion: "Se dieron de alta hace poco. Aún no son clientes: hay que convertirlos.",
     idea: "Bienvenido. Tu segunda visita lleva regalo",
     incluye: (p) => p.estado === "nuevo",
   },
   dormidos: {
     label: "Dormidos",
-    icon: "😴",
+    icon: "luna",
     descripcion: "Llevan dos meses o más sin pasar por la tienda.",
     idea: "Te echamos de menos. Vuelve y te invitamos",
     incluye: (p) => ["dormido", "perdido"].includes(p.estado),
   },
   fantasmas: {
     label: "Nunca lo usaron",
-    icon: "👻",
+    icon: "fantasma",
     descripcion: "Se llevaron el pase y jamás lo enseñaron. O no entendieron para qué era.",
     idea: "Enseña esta tarjeta en caja y empieza a sumar",
     incluye: (p) => p.visitas === 0,
   },
   campeones: {
     label: "Campeones",
-    icon: "🏆",
+    icon: "trofeo",
     descripcion: "Los que más han canjeado. Merecen que se les trate distinto.",
     idea: "Eres de los nuestros. Pásate: tenemos algo para ti",
     incluye: (p) => p.premios >= 2,

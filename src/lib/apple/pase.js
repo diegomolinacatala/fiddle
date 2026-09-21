@@ -35,8 +35,8 @@ function camposSellos(cliente, negocio) {
   const completa = faltan === 0;
 
   const header = negocio.tema.estilo === "barber"
-    ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@ ✨" }]
-    : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@ 🎉" }];
+    ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
+    : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@" }];
 
   // NO hay campo "SELLOS 5 de 8": eso ya lo dicen los círculos de la banda, y
   // gastaba una columna de las pocas que hay (ver camposDelPase).

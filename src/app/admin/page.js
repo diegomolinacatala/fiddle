@@ -1,5 +1,7 @@
 "use client";
 
+import Icono from "@/app/Icono";
+import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
 import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
@@ -71,7 +73,7 @@ export default function Admin() {
       <div style={{ width: "min(960px, 96vw)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div>
-            <h1 style={titulo}>🛠️ Plataforma</h1>
+            <h1 style={titulo}>Plataforma</h1>
             <p style={subtitulo}>Todas las tiendas: crear, editar, archivar.</p>
           </div>
           <LogoutButton />
@@ -81,7 +83,7 @@ export default function Admin() {
           {[["activas", "Tiendas"], ["archivadas", "Archivadas"]].map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
           ))}
-          <a href="/admin/crm" style={{ ...botonSecundario, textDecoration: "none" }}>📊 Clientes</a>
+          <a href="/admin/crm" style={{ ...botonSecundario, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><Icono nombre="clientes" tam={16} /> Clientes</a>
           <div style={{ flex: 1 }} />
           {pestana === "activas" && (
             <button type="button" onClick={() => setAbriendo((v) => !v)} style={botonPrimario(AZUL)}>
@@ -107,7 +109,7 @@ export default function Admin() {
         <div style={{ display: "grid", gap: 12 }}>
           {negocios?.map((n) => (
             <div key={n.slug} style={{ ...panel, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 30 }}>{n.tema.emoji}</span>
+              <MarcaTienda tema={n.tema} tam={40} icono />
               <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ fontWeight: 650 }}>{n.nombre}</div>
                 <div style={{ fontSize: 13, color: C.suave }}>
@@ -248,10 +250,6 @@ function NuevaTienda({ onCreada }) {
             <option value="sellos">Cartilla de sellos</option>
             <option value="descuento">Cupón de un uso</option>
           </select>
-        </div>
-        <div>
-          <label style={{ ...etiqueta, marginTop: 0 }}>Emoji</label>
-          <input value={f.tema.emoji} onChange={(e) => setTema("emoji", e.target.value)} placeholder="🥐" style={campo} />
         </div>
         <div>
           <label style={{ ...etiqueta, marginTop: 0 }}>Color</label>

@@ -78,7 +78,7 @@ export async function PUT(request) {
     const nuevo = await saveNegocio(slug, r.patch);
 
     // Si cambió algo que se ve en el pase, los teléfonos tienen que enterarse.
-    const aviso = nuevo.archivado ? null : await notificarNegocio(nuevo);
+    const aviso = nuevo.archivado ? null : await notificarNegocio(nuevo, { cartilla: true });
     return NextResponse.json({ ...nuevo, aviso });
   } catch (e) {
     return errorInterno("admin negocios PUT", e);

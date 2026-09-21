@@ -1,21 +1,32 @@
 import { randomBytes, randomUUID } from "crypto";
 import {
   getNegocio, crearCliente, listClientes, tocarClientesDeNegocio,
-  pushTokens, borrarDispositivosPorToken, addEvento,
+  pushTokens, destinosDeAviso, borrarDispositivosPorToken, borrarDispositivos, addEvento,
 } from "./store";
 import { hayApple, configApple } from "./apple/config";
 import { enviarAvisos } from "./apple/apns";
 import { hayWalletWallet, createPass, updatePass, buildPassBody } from "./walletwallet";
-import { googleSaveUrl } from "./googlewallet";
+import { hayGoogle, rutaGuardarGoogle, actualizarEnGoogle, mensajeEnGoogle, tiendaEnGoogle } from "./googlewallet";
+import { enviarPush } from "./push/enviar";
+import { TIPO_WEB } from "./push/suscripcion";
+import { avisoDeCambio, avisoDePromo, avisoDeMensaje, avisoPush } from "./avisos";
 import { appUrl } from "./url";
 
 // ============================================================================
 // WALLET — fachada única para emitir pases y avisar de cambios
 // ----------------------------------------------------------------------------
-// Las rutas NO saben qué proveedor hay debajo. Se elige solo según las variables:
+// Las rutas NO saben qué hay debajo. El PASE (lo que se descarga en el iPhone)
+// se elige solo según las variables:
 //   "apple"        firma propia + web service + APNs (cuenta Apple Developer)
 //   "walletwallet" servicio externo (plan B, sin cuenta de Apple)
 //   "demo"         nada configurado: el estado vive en el store, sin pase real
+//
+// Y los AVISOS van por todos los canales a la vez, cada uno a quien lo tenga:
+//   iPhone        APNs -> el iPhone baja el pase nuevo (y avisa si cambia un campo)
+//   Android web   aviso del navegador a quien lo activó en su tarjeta (/p/<serial>)
+//   Google Wallet se reescribe el objeto; Google avisa y lo empuja al teléfono
+//
+// Ningún canal tumba la acción: el estado ya está guardado cuando se avisa.
 // ============================================================================
 
 const LOTE_WALLETWALLET = 10;
@@ -59,6 +70,7 @@ export async function emitirPase(slug, { origen = null } = {}) {
     actor: origen || "cliente",
   });
   const urlPase = `${appUrl()}/p/${serial}`;
+  const rutaGoogle = rutaGuardarGoogle(serial);
 
   return {
     cliente,
@@ -67,7 +79,7 @@ export async function emitirPase(slug, { origen = null } = {}) {
     urlPase,
     shareUrl: shareUrl || urlPase,
     pkpassWalletWallet,
-    googleSaveUrl: googleSaveUrl(cliente, negocio),
+    googleSaveUrl: rutaGoogle ? `${appUrl()}${rutaGoogle}` : null,
   };
 }
 
@@ -81,27 +93,66 @@ async function avisarApple(tokens) {
   return r;
 }
 
+const tokensApple = (filtro) => pushTokens({ ...filtro, passType: configApple().passTypeId });
+
 /**
- * Avisa al Wallet de que el pase de UN cliente cambió. Llamar DESPUÉS de guardar
- * (saveCliente marca `actualizado`). Nunca lanza: el estado ya está guardado y el
- * pase se pondrá al día en la próxima sincronización aunque el aviso falle.
- * @returns {Promise<{proveedor:string, avisados:number, error?:string}>}
+ * Avisos del navegador. `aviso(serial)` da el texto de cada uno (o null para
+ * saltarlo). Nunca lanza.
+ * @returns {Promise<number>} cuántos navegadores lo recibieron
  */
-export async function notificarCliente(cliente, negocio) {
+async function avisarNavegadores(filtro, negocio, aviso) {
+  try {
+    const registrados = await destinosDeAviso({ ...filtro, passType: TIPO_WEB });
+    const destinos = registrados
+      .map((d) => ({ token: d.token, a: aviso(d.serial), serial: d.serial }))
+      .filter((d) => d.a)
+      .map((d) => ({ token: d.token, payload: avisoPush(d.a, negocio, d.serial) }));
+    if (!destinos.length) return 0;
+    const r = await enviarPush(destinos);
+    if (r.errores.length) console.error("[push] avisos con error:", JSON.stringify(r.errores.slice(0, 5)));
+    // El navegador ya no quiere avisos (desinstaló, borró datos): fuera, por id.
+    const muertos = new Set(r.caducados);
+    await borrarDispositivos([...new Set(registrados.filter((d) => muertos.has(d.token)).map((d) => d.dispositivo))])
+      .catch((e) => console.error("[push] no se pudieron borrar suscripciones caducadas:", e));
+    return r.enviados;
+  } catch (e) {
+    console.error("[push] avisos fallidos:", e);
+    return 0;
+  }
+}
+
+/**
+ * Avisa a los teléfonos de que la tarjeta de UN cliente cambió. Llamar DESPUÉS
+ * de guardar (saveCliente marca `actualizado`). Nunca lanza.
+ *
+ * `antes`: el estado previo. Con él se sabe QUÉ pasó (un sello, un canje) y se
+ * decide si merece sonar en Android; sin él (un cambio de nombre), la tarjeta
+ * se pone al día en silencio.
+ *
+ * @returns {Promise<{proveedor:string, avisados:number, web:number, google:number, error?:string}>}
+ */
+export async function notificarCliente(cliente, negocio, { antes = null } = {}) {
   const proveedor = proveedorWallet();
+  const aviso = avisoDeCambio(antes, cliente, negocio);
+
+  const [web, google] = await Promise.all([
+    aviso ? avisarNavegadores({ seriales: [cliente.serial] }, negocio, () => aviso) : 0,
+    actualizarEnGoogle(cliente, negocio, { notificar: Boolean(aviso) }),
+  ]);
+
   try {
     if (proveedor === "apple") {
-      const r = await avisarApple(await pushTokens({ seriales: [cliente.serial] }));
-      return { proveedor, avisados: r.enviados };
+      const r = await avisarApple(await tokensApple({ seriales: [cliente.serial] }));
+      return { proveedor, avisados: r.enviados, web, google };
     }
     if (proveedor === "walletwallet") {
       await updatePass(cliente.ww_serial, buildPassBody(cliente, negocio));
-      return { proveedor, avisados: 1 };
+      return { proveedor, avisados: 1, web, google };
     }
-    return { proveedor, avisados: 0 };
+    return { proveedor, avisados: 0, web, google };
   } catch (e) {
     console.error(`[wallet] aviso fallido para ${cliente.serial}:`, e);
-    return { proveedor, avisados: 0, error: String(e?.message || e) };
+    return { proveedor, avisados: 0, web, google, error: String(e?.message || e) };
   }
 }
 
@@ -110,50 +161,86 @@ export async function notificarCliente(cliente, negocio) {
  * `notificarNegocio`, aquí no se toca a nadie más: el resto de la tienda ni se
  * entera. Llamar DESPUÉS de escribir el mensaje (eso marca `actualizado`).
  *
+ * `negocio` y `texto` hacen falta para Android: Apple pinta el mensaje desde el
+ * pase, pero al navegador y a Google hay que decirles qué poner. Sin texto (se
+ * retira la campaña) Android no suena: solo se limpia la tarjeta de Google.
+ *
  * Nunca lanza: el mensaje ya está guardado y el pase lo recogerá en la próxima
  * sincronización aunque el empujón falle.
  *
  * @param {string[]} seriales
- * @returns {Promise<{proveedor:string, avisados:number, total:number, error?:string}>}
+ * @param {{negocio?:object, texto?:string|null}} [opciones]
+ * @returns {Promise<{proveedor:string, avisados:number, total:number, web:number, google:number, error?:string}>}
  */
-export async function avisarSeriales(seriales) {
+export async function avisarSeriales(seriales, { negocio = null, texto = null } = {}) {
   const proveedor = proveedorWallet();
-  if (!seriales.length) return { proveedor, avisados: 0, total: 0 };
+  if (!seriales.length) return { proveedor, avisados: 0, total: 0, web: 0, google: 0 };
+
+  let web = 0;
+  let google = 0;
+  if (negocio) {
+    const lista = new Set(seriales);
+    // Los clientes enteros solo hacen falta para reescribir sus tarjetas de Google.
+    const clientes = hayGoogle()
+      ? (await listClientes(negocio.slug).catch(() => [])).filter((c) => lista.has(c.serial))
+      : [];
+    [web, google] = await Promise.all([
+      texto ? avisarNavegadores({ seriales }, negocio, () => avisoDeMensaje(negocio, texto)) : 0,
+      mensajeEnGoogle(clientes, negocio, texto),
+    ]);
+  }
+
   try {
     if (proveedor === "apple") {
-      const tokens = await pushTokens({ seriales });
+      const tokens = await tokensApple({ seriales });
       const r = await avisarApple(tokens);
-      return { proveedor, avisados: r.enviados, total: tokens.length };
+      return { proveedor, avisados: r.enviados, total: tokens.length, web, google };
     }
     // Sin Apple no hay empujón por cliente: el pase se pondrá al día al abrirlo.
-    return { proveedor, avisados: 0, total: seriales.length };
+    return { proveedor, avisados: 0, total: seriales.length, web, google };
   } catch (e) {
     console.error("[wallet] avisos de campaña fallidos:", e);
-    return { proveedor, avisados: 0, total: seriales.length, error: String(e?.message || e) };
+    return { proveedor, avisados: 0, total: seriales.length, web, google, error: String(e?.message || e) };
   }
 }
 
 /**
  * Avisa a TODOS los pases de un negocio (promo, cambio de premio/meta/ubicación).
- * @returns {Promise<{proveedor:string, total:number, enviadas:number, fallidas:object[]}>}
+ *
+ * `promoNueva`: el texto de una promo recién lanzada. Es lo único que hace sonar
+ * Android (en iPhone suena solo, porque cambia un campo del pase). Guardar la
+ * cartilla o retirar una promo pone las tarjetas al día sin molestar a nadie.
+ * `cartilla`: cambiaron sellos o premio, así que las tarjetas de Google se
+ * reescriben una a una (su "5/8" pasa a "5/10").
+ *
+ * @param {{promoNueva?:string|null, cartilla?:boolean}} [opciones]
+ * @returns {Promise<{proveedor:string, total:number, enviadas:number, fallidas:object[], web:number, google:number}>}
  */
-export async function notificarNegocio(negocio) {
+export async function notificarNegocio(negocio, { promoNueva = null, cartilla = false } = {}) {
   const proveedor = proveedorWallet();
+
+  const android = async () => {
+    const clientes = cartilla && hayGoogle() ? await listClientes(negocio.slug).catch(() => []) : null;
+    return Promise.all([
+      promoNueva ? avisarNavegadores({ negocio: negocio.slug }, negocio, () => avisoDePromo(negocio, promoNueva)) : 0,
+      tiendaEnGoogle(negocio, { promoNueva, clientes }),
+    ]);
+  };
 
   if (proveedor === "apple") {
     await tocarClientesDeNegocio(negocio.slug);
-    const tokens = await pushTokens({ negocio: negocio.slug });
+    const [tokens, [web, google]] = await Promise.all([tokensApple({ negocio: negocio.slug }), android()]);
     try {
       const r = await avisarApple(tokens);
-      return { proveedor, total: tokens.length, enviadas: r.enviados, fallidas: r.errores };
+      return { proveedor, total: tokens.length, enviadas: r.enviados, fallidas: r.errores, web, google };
     } catch (e) {
       console.error(`[wallet] avisos del negocio ${negocio.slug} fallidos:`, e);
-      return { proveedor, total: tokens.length, enviadas: 0, fallidas: [{ error: String(e?.message || e) }] };
+      return { proveedor, total: tokens.length, enviadas: 0, fallidas: [{ error: String(e?.message || e) }], web, google };
     }
   }
 
-  const clientes = await listClientes(negocio.slug);
-  if (proveedor === "demo") return { proveedor, total: clientes.length, enviadas: 0, fallidas: [] };
+  const [clientes, [web, google]] = await Promise.all([listClientes(negocio.slug), android()]);
+  if (proveedor === "demo") return { proveedor, total: clientes.length, enviadas: 0, fallidas: [], web, google };
 
   // En lotes concurrentes: uno a uno, una promo a cientos de clientes agotaría el
   // tiempo máximo de la función serverless.
@@ -165,5 +252,5 @@ export async function notificarNegocio(negocio) {
   const fallidas = resultados
     .map((r, i) => (r.status === "rejected" ? { serial: clientes[i].serial, error: String(r.reason?.message || r.reason) } : null))
     .filter(Boolean);
-  return { proveedor, total: clientes.length, enviadas: clientes.length - fallidas.length, fallidas };
+  return { proveedor, total: clientes.length, enviadas: clientes.length - fallidas.length, fallidas, web, google };
 }
