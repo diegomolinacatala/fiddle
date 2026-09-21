@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { haceTexto, cadenciaTexto } from "@/lib/crm";
 import { Chip } from "./piezas";
+import Icono from "@/app/Icono";
 import { C, campo, etiqueta, botonPequeno, chipCodigo } from "@/app/ui";
 
 // ============================================================================
@@ -16,14 +17,14 @@ import { C, campo, etiqueta, botonPequeno, chipCodigo } from "@/app/ui";
 // Cómo se lee cada tipo de evento. Los de la caja ya traen su texto montado;
 // estos son los que pasan solos y merecen destacarse.
 const ICONO = {
-  alta: "✨",
-  instalado: "📲",
-  desinstalado: "🗑️",
-  campana: "📣",
-  sellar: "➕",
-  restar: "➖",
-  canjear: "🎁",
-  confirmar: "✅",
+  alta: "estrella",
+  instalado: "movil",
+  desinstalado: "papelera",
+  campana: "megafono",
+  sellar: "mas",
+  restar: "menos",
+  canjear: "regalo",
+  confirmar: "check",
 };
 
 const fecha = (iso) =>
@@ -51,13 +52,13 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nota }),
     });
-    flash(r.ok ? "Nota guardada ✔" : "No se pudo guardar la nota");
+    flash(r.ok ? "Nota guardada" : "No se pudo guardar la nota");
   }
 
   return (
     <div style={fondo} onClick={onCerrar}>
       <aside style={cajon} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onCerrar} style={cerrar} aria-label="Cerrar">✕</button>
+        <button onClick={onCerrar} style={cerrar} aria-label="Cerrar"><Icono nombre="cerrar" tam={18} /></button>
 
         {error && <p style={{ color: C.mal }}>{error}</p>}
         {!datos && !error && <p style={{ color: C.suave }}>Cargando…</p>}
@@ -81,10 +82,10 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
 
             <p style={{ fontSize: 13, color: C.suave, margin: "0 0 14px" }}>
               {datos.perfil.contactable
-                ? "📲 Tiene el pase en el teléfono: le llegan los avisos."
+                ? "Tiene la tarjeta en el teléfono (Wallet o avisos de Android): le llegan los avisos."
                 : datos.cliente.desinstalado
-                  ? "🗑️ Quitó el pase del teléfono: ya no le llega nada."
-                  : "· Nunca llegó a meter el pase en el Wallet: no le llegan avisos."}
+                  ? "Quitó la tarjeta del teléfono: ya no le llega nada."
+                  : "Nunca guardó la tarjeta en el teléfono: no le llegan avisos."}
               {datos.cliente.origen && ` · Llegó por ${datos.cliente.origen === "tap" ? "el tag NFC" : "el mostrador"}.`}
             </p>
 
@@ -108,7 +109,7 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
             <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {datos.eventos.map((e, i) => (
                 <li key={i} style={linea}>
-                  <span style={{ fontSize: 15 }}>{ICONO[e.tipo] || "·"}</span>
+                  <span style={{ color: C.suave, paddingTop: 2 }}>{ICONO[e.tipo] ? <Icono nombre={ICONO[e.tipo]} tam={16} /> : <span style={{ display: "block", width: 16, textAlign: "center" }}>·</span>}</span>
                   <span style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14 }}>{e.mensaje}</div>
                     <div style={{ fontSize: 11, color: C.tenue }}>

@@ -10,7 +10,8 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
   **código corto** de 3 caracteres del pase, que solo significa algo dentro de
   su negocio ([`codigo.js`](../src/lib/codigo.js)).
 - **Actualización** (backend → pase): un aviso *después* del escaneo; el iPhone baja
-  el pase nuevo. Ahí es cuando "se rellena el café".
+  el pase nuevo, Google empuja el suyo y la tarjeta web de Android se refresca y
+  suena. Ahí es cuando "se rellena el café".
 
 ## Piezas
 
@@ -18,6 +19,8 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 |-------|-----|--------|
 | **Negocio** | Preset (nombre, tipo, tema) + config editable (meta, premio, acciones, promo, ubicaciones) | [`negocios.js`](../src/lib/negocios.js), `store.getNegocio` |
 | **Pase** | Identidad del cliente. Su cara es un espejo del estado | [`apple/pase.js`](../src/lib/apple/pase.js), [`apple/imagenes.js`](../src/lib/apple/imagenes.js) |
+| **Tarjeta web** | El pase en Android: misma cara que el de Apple, instalable, en vivo y con avisos | [`p/[serial]`](../src/app/p/[serial]), [`lib/push`](../src/lib/push), [ANDROID.md](ANDROID.md) |
+| **Google Wallet** | Clase por tienda + objeto por cliente, reescritos con cada cambio | [`lib/google`](../src/lib/google), [GOOGLE-WALLET.md](GOOGLE-WALLET.md) |
 | **Caja** | Escanea → perfil → acción. PWA por negocio | [`[negocio]/caja`](../src/app/[negocio]/caja), [`w/[serial]`](../src/app/w/[serial]) |
 | **Manager** | Configura, lanza promos, emite, ve el estado de integración y cómo queda el pase (Apple/Google) | [`[negocio]/manager`](../src/app/[negocio]/manager) |
 | **CRM** | Quién viene, quién dejó de venir, grupos de clientes y avisos a un grupo | [`[negocio]/crm`](../src/app/[negocio]/crm), [`lib/crm.js`](../src/lib/crm.js) |
@@ -37,13 +40,26 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 
 Las rutas no saben cuál hay debajo.
 
+Los **avisos** van por todos los canales a la vez, cada uno a quien lo tenga
+(tabla `registros`, columna `pass_type`):
+
+| Canal | Quién | Cómo |
+|-------|-------|------|
+| iPhone | añadió el pase a Apple Wallet | APNs vacío → el iPhone baja el pase |
+| Android (web) | activó los avisos en su tarjeta | web push firmado con VAPID → aviso del navegador |
+| Google Wallet | guardó la tarjeta en Google | PUT del objeto (+ `notifyPreference`) o `addMessage` |
+
+Qué texto suena en Android lo decide [`avisos.js`](../src/lib/avisos.js) comparando
+el estado de antes y el de después (un sello sí; una corrección, no).
+
 ## Los bucles
 
 ### 1. Emitir (tap NFC)
 ```
 tag NFC → GET /api/tap?b=nube → emitirPase(): cliente {serial uuid, auth_token aleatorio}
         → iPhone: generarPkpass() → .pkpass → "Añadir a Wallet"
-        → otros:  302 /p/<serial>
+        → otros:  302 /p/<serial>   (Google Wallet · avisos · instalar)
+cookie tarjeta_<negocio>: el siguiente tap del mismo teléfono devuelve SU tarjeta
 ```
 
 ### 2. Registrar (automático, al añadir el pase)
@@ -57,7 +73,9 @@ iPhone → POST /api/wallet/v1/devices/<id>/registrations/<passType>/<serial>
 ```
 caja escanea QR → /w/<serial> (sesión de caja de ESE negocio)
   → POST /api/accion → acciones.js (lógica pura) → saveCliente (marca `actualizado`)
-  → notificarCliente → APNs push vacío a los push tokens del serial
+  → notificarCliente(antes, después) → APNs push vacío a los push tokens del serial
+                                      → web push "Sello 5 de 8…" a sus navegadores
+                                      → PUT del objeto de Google (con aviso)
   → iPhone: GET …/registrations/<passType>?passesUpdatedSince=<tag>  → [serial]
             GET /api/wallet/v1/passes/<passType>/<serial>          → pase nuevo
   → notificación en pantalla de bloqueo (campos con changeMessage)
@@ -75,7 +93,8 @@ Cada dependencia se detecta por separado:
 - **Almacenamiento**: `hasSupabase()` → Supabase; si no, JSON en `.data/` (operaciones
   en fila para que las peticiones simultáneas no se pisen).
 - **Wallet**: `proveedorWallet()` (tabla de arriba).
-- **Google Wallet**: `hayGoogle()` → enlace "Guardar en Google Wallet".
+- **Google Wallet**: `hayGoogle()` → botón "Añadir a Google Wallet" y actualizaciones.
+- **Avisos web**: `hayPush()` → hay claves VAPID (propias o derivadas de `AUTH_SECRET`).
 
 ## <a name="seguridad"></a>Seguridad
 
@@ -99,7 +118,11 @@ Cada dependencia se detecta por separado:
   Nunca sale hacia el navegador (`clientePublico`). Comparaciones en tiempo constante.
 - **Redirecciones.** El `next` del login solo acepta rutas internas del mismo negocio.
 - **Privacidad.** El QR se genera en el navegador (antes se enviaba el serial a un
-  servicio externo de QR).
+  servicio externo de QR). La página pública de la tarjeta solo recibe los campos que
+  pinta (`lib/tarjeta.js`): ni la nota interna de la tienda, ni el token, ni el brief.
+- **Avisos web.** El servidor solo manda avisos a endpoints de servicios de push reales
+  (FCM, Mozilla, Apple, Windows) por https: una suscripción inventada no puede hacerle
+  pegar a una URL interna. Máximo 5 navegadores por tarjeta, 20 altas por IP cada 10 min.
 - **Supabase.** `service_role` solo en backend; RLS activado sin políticas (la anon key
   no puede leer nada).
 - **Certificados.** Clave privada y `.cer` en `certs/` (ignorado por git); en Vercel,

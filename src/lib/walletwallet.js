@@ -47,7 +47,7 @@ export function buildPassBody(cliente, negocio) {
       cliente.nombre ? { label: "Cliente", value: cliente.nombre } : { label: "Sellos", value: `${sellos}/${meta}` },
     ];
     body.primaryFields = [{ label: "Sellos", value: `${sellos} / ${meta}`, changeMessage: "Ya tienes %@ sellos" }];
-    body.secondaryFields = [{ label: "Premio", value: completa ? `¡${negocio.premio}! 🎉` : `Faltan ${meta - cliente.sellos}` }];
+    body.secondaryFields = [{ label: "Premio", value: completa ? `¡${negocio.premio}!` : `Faltan ${meta - cliente.sellos}` }];
     if ((cliente.premios || 0) > 0) body.backFields.push({ label: "Canjeados", value: String(cliente.premios) });
   }
 

@@ -16,11 +16,10 @@ export async function GET() {
   const negocios = await listNegocios().catch(() => []);
   const accesos = [
     // Admin de la plataforma: entra en /admin, no en una tienda concreta.
-    ...ADMINS.map((usuario) => ({ negocio: "Plataforma", emoji: "🛠️", rol: "admin", usuario, clave: usuario })),
+    ...ADMINS.map((usuario) => ({ negocio: "Plataforma", rol: "admin", usuario, clave: usuario })),
     ...negocios.flatMap((n) =>
       ["manager", "caja"].map((rol) => ({
         negocio: n.nombre,
-        emoji: n.tema.emoji,
         rol,
         usuario: usuarioDe(n.slug, rol),
         clave: usuarioDe(n.slug, rol),

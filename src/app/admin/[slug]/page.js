@@ -1,5 +1,6 @@
 "use client";
 
+import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
@@ -77,7 +78,7 @@ export default function AdminNegocio() {
     const d = await r.json();
     if (!r.ok) return flash(d.error || "Error al guardar");
     setN((p) => ({ ...d, clientes: p.clientes }));
-    flash(`Guardado ✔${d.aviso?.proveedor === "apple" ? ` · ${d.aviso.enviadas}/${d.aviso.total} iPhone avisados` : ""}`);
+    flash(`Guardado${d.aviso?.proveedor === "apple" ? ` · ${d.aviso.enviadas}/${d.aviso.total} iPhone avisados` : ""}${d.aviso?.google ? ` · ${d.aviso.google} en Google Wallet` : ""}`);
   }
 
   // --------- comentarios sobre campos del pase ---------
@@ -119,7 +120,7 @@ export default function AdminNegocio() {
         <a href="/admin" style={volver}>← Plataforma</a>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 6 }}>
           <div>
-            <h1 style={titulo}>{n.tema.emoji} {n.nombre}</h1>
+            <h1 style={{ ...titulo, display: "flex", alignItems: "center", gap: 10 }}><MarcaTienda tema={n.tema} tam={34} icono /> {n.nombre}</h1>
             <p style={subtitulo}>/{n.slug} · {n.clientes} cliente{n.clientes === 1 ? "" : "s"}</p>
           </div>
           <LogoutButton />
@@ -146,10 +147,6 @@ export default function AdminNegocio() {
             </div>
 
             <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label style={etiqueta}>Emoji</label>
-                <input value={n.tema.emoji} onChange={(e) => setTema("emoji", e.target.value)} style={campo} />
-              </div>
               <div style={{ flex: 1 }}>
                 <label style={etiqueta}>Color</label>
                 <input type="color" value={n.tema.accent} onChange={(e) => setTema("accent", e.target.value)} style={{ ...campo, padding: 4, height: 42 }} />

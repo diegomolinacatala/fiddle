@@ -69,10 +69,9 @@ function LoginForm() {
     <main style={paginaCentrada}>
       <div style={{ width: "min(400px, 94vw)" }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <div style={{ fontSize: 34 }}>🎟️</div>
-          <h1 style={{ fontSize: "1.5rem", margin: "6px 0 2px" }}>Sellos</h1>
+          <h1 style={{ fontSize: "1.6rem", margin: "0 0 2px", letterSpacing: "-0.01em" }}>Sellos</h1>
           <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>
-            Fidelización en Wallet. Entra con el usuario de tu negocio.
+            Tarjetas de fidelización para iPhone y Android. Entra con el usuario de tu negocio.
           </p>
         </div>
 
@@ -117,8 +116,8 @@ function LoginForm() {
             <div style={{ display: "grid", gap: 6 }}>
               {accesos.map((a) => (
                 <button key={a.usuario} type="button" onClick={() => usar(a)} style={fila}>
-                  <span>{a.emoji} {a.negocio}</span>
-                  <span style={{ color: C.suave, fontSize: 12 }}>{a.rol === "manager" ? "manager" : "caja"}</span>
+                  <span>{a.negocio}</span>
+                  <span style={{ color: C.suave, fontSize: 12 }}>{a.rol}</span>
                   <code style={{ fontSize: 12, color: C.suave }}>{a.usuario} / {a.clave}</code>
                 </button>
               ))}

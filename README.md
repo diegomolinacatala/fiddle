@@ -1,6 +1,6 @@
-# Sellos — fidelización en Apple Wallet (multi-negocio)
+# Sellos — tarjetas de fidelización para iPhone y Android (multi-negocio)
 
-> 🌅 ¿Retomas el proyecto? Abre **[NEXT-STEPS.md](NEXT-STEPS.md)**.
+> ¿Retomas el proyecto? Abre **[NEXT-STEPS.md](NEXT-STEPS.md)**.
 
 Plataforma donde **el pase del cliente es solo un QR con su identidad**. Toda la lógica
 vive en el backend. Cada negocio tiene su tarjeta (diseño propio), su **caja** (app
@@ -9,11 +9,17 @@ instalable que escanea), su **manager** y su **tag NFC**.
 Con la cuenta de **Apple Developer** firmamos los pases y los **actualizamos solos**
 (web service de Apple + avisos APNs): cada sello llega al iPhone con notificación.
 
+En **Android** la tarjeta vive en el navegador con la misma cara que el pase de
+Apple: se instala en la pantalla de inicio, se actualiza sola y avisa de cada sello
+con notificaciones del navegador. Con credenciales de Google, además se guarda en
+**Google Wallet** y se actualiza igual. Todo en [docs/ANDROID.md](docs/ANDROID.md).
+
 Stack: **Next.js 15 (App Router) + Supabase + Vercel**.
 
 En producción: **<https://fiddle-zeta.vercel.app>** (se despliega solo al fusionar en `main`).
 
-> 📚 [Roadmap hasta el MVP](docs/ROADMAP.md) ·
+> [Roadmap hasta el MVP](docs/ROADMAP.md) · [Android](docs/ANDROID.md) ·
+> [Google Wallet](docs/GOOGLE-WALLET.md) ·
 > [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
 > [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
 > [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
@@ -36,20 +42,23 @@ trae las *semillas* (los tres de ejemplo) y las plantillas de estilo.
 
 | Negocio | Tipo | URLs |
 |---------|------|------|
-| ☕ **Nube Café** (`nube`) | cartilla de sellos | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
-| 💈 **Fade Room** (`fade`) | sellos + niveles | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
-| 🍕 **Forno Nostro** (`forno`) | cupón de un uso | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
+| **Nube Café** (`nube`) | cartilla de sellos | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
+| **Fade Room** (`fade`) | sellos + niveles | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
+| **Forno Nostro** (`forno`) | cupón de un uso | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
 
 ## Cómo funciona
 
 ```
 Tag NFC ─▶ /api/tap?b=<negocio> ─▶ iPhone: .pkpass firmado directo ─▶ "Añadir a Wallet"
-                                    Android/otros: /p/<serial>
+                                    Android: /p/<serial> ─▶ Google Wallet · avisos · instalar
+           (si ese teléfono ya tenía tarjeta, se le devuelve la suya)
 
-Pase (QR = /w/<serial>)
-   │ la caja lo escanea (/<negocio>/caja, con login)
+Tarjeta (QR = /w/<serial>)
+   │ la caja la escanea (/<negocio>/caja, con login)
    ▼
-Perfil + botones ─▶ /api/accion ─▶ guarda ─▶ aviso APNs ─▶ el iPhone baja el pase nuevo
+Perfil + botones ─▶ /api/accion ─▶ guarda ─▶ APNs ─▶ el iPhone baja el pase nuevo
+                                          ├▶ web push ─▶ "Sello 5 de 8" en el Android
+                                          └▶ Google Wallet ─▶ su tarjeta se actualiza
 ```
 
 El pase **nunca cambia de identidad**: qué hace un escaneo lo decide el manager.
@@ -89,23 +98,28 @@ src/app/
 ├─ PaseVista.js               vista previa del pase: Apple / Google
 ├─ [negocio]/                 landing · caja/ (PWA + escáner) · manager/ (+ estado de integración)
 ├─ w/[serial]/                perfil del cliente + acciones + nombre (caja)
-├─ p/[serial]/                página pública del pase + "Añadir a Apple Wallet"
+├─ p/[serial]/                la tarjeta del cliente: Apple Wallet en iPhone; en Android,
+│                             instalable, en vivo, con avisos y Google Wallet
 └─ api/
    ├─ tap · crear · pase/[serial]          emitir / descargar pase
    ├─ accion · cliente/[serial] · clientes caja
    ├─ negocio · promo · estado             manager
    ├─ login · logout · manifest · negocios
+   ├─ tarjeta · push · google/guardar · imagen   Android (tarjeta web, avisos, Google)
    └─ wallet/v1/...                        web service de Apple Wallet
 src/lib/
 ├─ negocios.js   ★ semillas y plantillas (las tiendas viven en la base)
 ├─ codigo.js       clave corta de 3 caracteres del pase (única por negocio)
 ├─ resumen.js      "cuántos sellos lleva": lo comparten Google Wallet y la vista previa
 ├─ acciones.js   ★ registro modular de acciones
-├─ wallet.js       fachada: emitir + avisar (apple > walletwallet > demo)
+├─ wallet.js       fachada: emitir + avisar por todos los canales (iPhone, Android, Google)
+├─ avisos.js       qué texto suena en Android tras cada cambio
 ├─ apple/          pase.js · dibujo.js · glifos.js · imagenes.js · firmar.js · servicio.js · apns.js · config.js
+├─ google/         config.js · pase.js (clase y objeto) · api.js (REST de Google)
+├─ push/           vapid.js · suscripcion.js · enviar.js   avisos del navegador
 ├─ auth.js · acceso.js · limitador.js · http.js   login y permisos
 ├─ store.js        Supabase o ficheros locales
-└─ walletwallet.js · googlewallet.js · validacion.js · url.js
+└─ walletwallet.js · googlewallet.js · validacion.js · url.js · tarjeta.js · recordar.js
 scripts/apple-setup.mjs   CSR + certificado de Apple -> variables (sin Mac)
 supabase/schema.sql       esquema idempotente
 tests/                    vitest
@@ -116,3 +130,5 @@ tests/                    vitest
 - iOS no permite instalar un pase en silencio: el cliente toca "Añadir".
 - El escáner de la caja necesita HTTPS (o localhost) para la cámara.
 - El QR es estático: una captura se puede enseñar, pero no se puede actuar sin sesión de caja.
+- En Android, los avisos del navegador solo llegan si el cliente los activa en su tarjeta
+  (un toque). Google Wallet los manda solo, pero limita a 3 por tarjeta y día.

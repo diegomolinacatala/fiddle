@@ -27,7 +27,7 @@ export async function GET() {
       return {
         slug: n.slug,
         nombre: n.nombre,
-        emoji: n.tema.emoji,
+        tema: n.tema,
         accent: n.tema.accent,
         tipo: n.tipo,
         metricas: metricas(perfiles, eventos, clientes),

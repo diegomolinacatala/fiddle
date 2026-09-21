@@ -38,7 +38,7 @@ export async function PUT(request) {
 
     const nuevo = await saveNegocio(slug, r.patch);
     if (!nuevo) return jsonError("negocio desconocido", 404);
-    const aviso = await notificarNegocio(nuevo);
+    const aviso = await notificarNegocio(nuevo, { cartilla: true });
     return NextResponse.json({ ...nuevo, aviso });
   } catch (e) {
     return errorInterno("negocio PUT", e);

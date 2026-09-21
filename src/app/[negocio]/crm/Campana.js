@@ -1,5 +1,6 @@
 "use client";
 
+import Icono from "@/app/Icono";
 import { useEffect, useState } from "react";
 import PaseVista from "@/app/PaseVista";
 import { C, campo, etiqueta, h2, botonPrimario, botonSecundario } from "@/app/ui";
@@ -51,13 +52,12 @@ export default function Campana({ negocio, grupo, catalogo, onEnviada, flash }) 
       const d = await r.json();
       if (!r.ok) return flash(d.error || "No se pudo enviar");
       if (!cuerpo) {
-        flash(`Mensaje quitado de ${d.quitado} pase(s)`);
+        flash(`Mensaje quitado de ${d.quitado} ${d.quitado === 1 ? "tarjeta" : "tarjetas"}`);
       } else {
-        flash(
-          d.proveedor === "apple"
-            ? `Enviado a ${d.destinatarios} · ${d.avisados} aviso(s) en pantalla`
-            : `Guardado en ${d.destinatarios} pase(s) · sin Apple no hay empujón`,
-        );
+        // Cuántos teléfonos sonaron, por canal: iPhone (Wallet) y Android (avisos + Google Wallet).
+        const android = (d.web || 0) + (d.google || 0);
+        const sonaron = [d.proveedor === "apple" && `${d.avisados} iPhone`, android && `${android} Android`].filter(Boolean);
+        flash(`Enviado a ${d.destinatarios}${sonaron.length ? ` · avisados: ${sonaron.join(", ")}` : ""}`);
       }
       onEnviada();
     } finally {
@@ -70,11 +70,11 @@ export default function Campana({ negocio, grupo, catalogo, onEnviada, flash }) 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, alignItems: "start" }}>
       <div>
-        <h2 style={h2}>{def.icon} {def.label}</h2>
+        <h2 style={{ ...h2, display: "flex", alignItems: "center", gap: 8 }}><Icono nombre={def.icon} tam={18} /> {def.label}</h2>
         <p style={{ fontSize: 13, color: C.suave, margin: "0 0 4px" }}>{def.descripcion}</p>
         <p style={{ fontSize: 13, margin: "0 0 14px" }}>
           <strong>{def.total}</strong> cliente{def.total === 1 ? "" : "s"} ·{" "}
-          <strong style={{ color: def.contactables ? C.ok : C.mal }}>{def.contactables}</strong> con el pase instalado
+          <strong style={{ color: def.contactables ? C.ok : C.mal }}>{def.contactables}</strong> con la tarjeta en el teléfono
           {def.total !== def.contactables && (
             <span style={{ color: C.tenue }}>
               {" "}· a {def.total - def.contactables} no se les puede avisar
@@ -112,7 +112,7 @@ export default function Campana({ negocio, grupo, catalogo, onEnviada, flash }) 
 
         {sinNadie && (
           <p style={{ fontSize: 13, color: C.mal, marginTop: 12 }}>
-            Nadie de este grupo tiene el pase en el teléfono, así que no hay a dónde mandarlo.
+            Nadie de este grupo tiene la tarjeta en el teléfono (Wallet o avisos de Android), así que no hay a dónde mandarlo.
           </p>
         )}
       </div>

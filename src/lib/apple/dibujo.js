@@ -273,6 +273,43 @@ export function svgLogo(tema) {
   return svg(lado, lado, colocar(tema, tema.accent, lado / 2, lado / 2, lado));
 }
 
+/**
+ * La marca sobre un fondo liso, para lo que no es el pase de Apple: el icono de
+ * la tarjeta instalada en Android, el logo de Google Wallet (que lo recorta en
+ * círculo) y la insignia de las notificaciones. Mismo dibujo, otro marco.
+ *
+ * @param {object} tema
+ * @param {number} lado  lienzo cuadrado
+ * @param {{fondo?:string|null, color?:string, escala?:number, radio?:number}} [opciones]
+ *   `fondo` null = transparente; `escala` = qué parte del lado ocupa la marca
+ *   (Android recorta los iconos adaptables y Google el logo: hay que dejar aire).
+ */
+export function svgMarca(tema, lado, { fondo, color, escala = 0.9, radio = 0 } = {}) {
+  const oscura = esOscura(tema);
+  const relleno = fondo === undefined ? (oscura ? "#17171c" : tema.accent) : fondo;
+  const tinta = color || (oscura ? tema.accent : "#ffffff");
+  const rect = relleno ? `<rect width="${lado}" height="${lado}" rx="${radio}" fill="${relleno}"/>` : "";
+  return svg(lado, lado, rect + colocar(tema, tinta, lado / 2, lado / 2, lado * escala));
+}
+
+/**
+ * Logo para Google Wallet: la marca en el color de la tienda sobre el fondo de
+ * su tarjeta. Google lo recorta en círculo y lo pone ENCIMA de su color de
+ * acento: con fondo de acento (como el icono) el círculo desaparecería.
+ */
+export const svgLogoGoogle = (tema, lado = 660) =>
+  svgMarca(tema, lado, { fondo: tema.cardBg || "#ffffff", color: tema.accent, escala: 0.6 });
+
+/**
+ * La misma banda pero opaca, sobre el fondo de la tarjeta. En Apple la banda se
+ * pinta sobre `cardBg`; en Google va sobre su color de acento, y una banda
+ * "clara" (acento al 10 %) dejaría los sellos del mismo color que el fondo.
+ */
+export function svgBandaOpaca(svgTexto, fondo) {
+  const fin = svgTexto.indexOf(">") + 1;
+  return `${svgTexto.slice(0, fin)}<rect width="100%" height="100%" fill="${fondo || "#ffffff"}"/>${svgTexto.slice(fin)}`;
+}
+
 // ------------------------------- banda -------------------------------
 /** Posiciones de `n` sellos repartidos en filas dentro de w x h. Pura (testeada). */
 export function rejillaSellos(n, w, h, margen) {

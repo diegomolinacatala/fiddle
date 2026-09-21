@@ -679,7 +679,7 @@ export async function listCampanas(negocio, { limite = 20 } = {}) {
     .slice(0, limite);
 }
 
-/** Seriales de la tienda que tienen el pase metido en algún iPhone (= avisables). */
+/** Seriales de la tienda que tienen la tarjeta en algún teléfono, por cualquier canal (= avisables). */
 export async function serialesRegistrados(negocio) {
   if (hasSupabase()) {
     const data = sinError(
@@ -692,9 +692,15 @@ export async function serialesRegistrados(negocio) {
   return new Set(registros.filter((r) => r.negocio === negocio).map((r) => r.serial));
 }
 
-// ================= APPLE WALLET: dispositivos y registros =================
-// Un iPhone (deviceLibraryIdentifier) se registra para recibir avisos de un pase.
-// Guardamos su push token y qué pases tiene, para avisarle cuando cambien.
+// ================= DISPOSITIVOS Y REGISTROS (a quién avisar) =================
+// Quién tiene cada tarjeta y cómo llegarle. Tres canales comparten las tablas y
+// se distinguen por `pass_type`:
+//   <Pass Type ID de Apple>  un iPhone (deviceLibraryIdentifier + push token APNs)
+//   "web"                    un navegador Android con los avisos activados
+//                            (id = hash del endpoint, token = la suscripción en JSON)
+//   "google"                 el pase guardado en Google Wallet (token = id del objeto)
+// Así "tiene la tarjeta en el teléfono" es una sola pregunta para el CRM, sin
+// tablas nuevas que migrar.
 
 /**
  * @returns {Promise<boolean>} true si el registro es nuevo, false si ya existía.
@@ -790,29 +796,48 @@ export async function pasesDeDispositivo({ dispositivo, passType }) {
 }
 
 /**
- * Push tokens (únicos) a avisar. Filtra por seriales concretos o por negocio.
- * @param {{seriales?: string[], negocio?: string}} filtro
- * @returns {Promise<string[]>}
+ * A quién avisar: cada registro con el token de su dispositivo. Filtra por
+ * seriales concretos, por negocio y por tipo de pase.
+ *
+ * `passType` separa los canales que comparten estas tablas: el Pass Type ID de
+ * Apple (iPhone), "web" (avisos del navegador en Android) y "google" (Google
+ * Wallet). Sin él salen todos, que es lo que quiere el CRM ("¿a quién le llega
+ * algo?") y nunca lo que quiere un envío.
+ *
+ * @param {{seriales?: string[], negocio?: string, passType?: string}} filtro
+ * @returns {Promise<{serial:string, dispositivo:string, token:string}[]>}
  */
-export async function pushTokens({ seriales, negocio }) {
+export async function destinosDeAviso({ seriales, negocio, passType }) {
   if (hasSupabase()) {
     const consulta = async (lote) => {
-      let q = supa().from("registros").select("dispositivos(push_token)");
+      let q = supa().from("registros").select("serial, dispositivo, dispositivos(push_token)");
       if (lote) q = q.in("serial", lote);
       if (negocio) q = q.eq("negocio", negocio);
+      if (passType) q = q.eq("pass_type", passType);
       return sinError(await q, "leer push tokens") || [];
     };
     const filas = [];
     if (seriales) for (const lote of enLotes(seriales)) filas.push(...await consulta(lote));
     else filas.push(...await consulta(null));
-    return [...new Set(filas.map((r) => r.dispositivos?.push_token).filter(Boolean))];
+    return filas
+      .map((r) => ({ serial: r.serial, dispositivo: r.dispositivo, token: r.dispositivos?.push_token }))
+      .filter((d) => d.token);
   }
   const [registros, dispositivos] = await enFila(() => Promise.all([leer("registros", []), leer("dispositivos", {})]));
-  const tokens = registros
+  return registros
     .filter((r) => (!seriales || seriales.includes(r.serial)) && (!negocio || r.negocio === negocio))
-    .map((r) => dispositivos[r.dispositivo]?.push_token)
-    .filter(Boolean);
-  return [...new Set(tokens)];
+    .filter((r) => !passType || r.pass_type === passType)
+    .map((r) => ({ serial: r.serial, dispositivo: r.dispositivo, token: dispositivos[r.dispositivo]?.push_token }))
+    .filter((d) => d.token);
+}
+
+/**
+ * Push tokens (únicos) a avisar. Filtra por seriales concretos, negocio y tipo.
+ * @param {{seriales?: string[], negocio?: string, passType?: string}} filtro
+ * @returns {Promise<string[]>}
+ */
+export async function pushTokens(filtro) {
+  return [...new Set((await destinosDeAviso(filtro)).map((d) => d.token))];
 }
 
 /** Borra dispositivos cuyo token Apple ya no acepta (410 / BadDeviceToken). */
@@ -831,6 +856,28 @@ export async function borrarDispositivosPorToken(tokens) {
     ));
     const registros = await leer("registros", []);
     await escribir("registros", registros.filter((r) => !muertos.includes(r.dispositivo)));
+  });
+}
+
+/**
+ * Borra dispositivos por su id (y sus registros, en cascada). Es lo que usan los
+ * avisos del navegador: su token es la suscripción en JSON, con comillas, y un
+ * `in (...)` por token no sobrevive a eso. El id (`web-<hex>`) sí.
+ */
+export async function borrarDispositivos(ids) {
+  if (!ids.length) return;
+  if (hasSupabase()) {
+    for (const lote of enLotes(ids)) {
+      sinError(await supa().from("dispositivos").delete().in("id", lote), "borrar dispositivos por id");
+    }
+    return;
+  }
+  return enFila(async () => {
+    const fuera = new Set(ids);
+    const dispositivos = await leer("dispositivos", {});
+    await escribir("dispositivos", Object.fromEntries(Object.entries(dispositivos).filter(([id]) => !fuera.has(id))));
+    const registros = await leer("registros", []);
+    await escribir("registros", registros.filter((r) => !fuera.has(r.dispositivo)));
   });
 }
 

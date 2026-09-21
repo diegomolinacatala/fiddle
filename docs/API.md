@@ -13,6 +13,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 |------|--------|
 | `/`, `/<negocio>`, `/login`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios` | público |
 | `GET /api/tap`, `/p/<serial>`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
+| `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>` | público (la tarjeta de Android: el serial es la llave) |
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
 | `/<negocio>/caja`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `GET /api/clientes`, `GET /api/negocio` | **caja** o manager de ese negocio |
 | `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `GET /api/estado` | **manager** de ese negocio |
@@ -37,11 +38,12 @@ Borra la cookie. `{ "ok": true }`.
 
 ## Emitir
 
-### `GET /api/tap?b=<negocio>`
-El "tap NFC". Crea cliente y pase.
+### `GET /api/tap?b=<negocio>[&nuevo=1]`
+El "tap NFC". Crea cliente y pase, o **devuelve el que ya tenía ese teléfono**
+(cookie `tarjeta_<negocio>`, 1 año). `nuevo=1` fuerza uno nuevo.
 - iPhone + Apple configurado → responde el **`.pkpass`** (`application/vnd.apple.pkpass`).
-- Resto → `302` a `/p/<serial>` (o a la página de WalletWallet en el plan B).
-- `429` si una misma IP emite más de 30 pases en 10 min.
+- Resto → `302` a `/p/<serial>` en el mismo dominio (o a la página de WalletWallet en el plan B).
+- `429` si una misma IP emite más de 30 pases en 10 min (reabrir el suyo no cuenta).
 
 ### `POST /api/crear?b=<negocio>` · manager
 ```json
@@ -59,7 +61,7 @@ Descarga el `.pkpass` actual (botón "Añadir a Apple Wallet"). `404` si Apple n
   "cliente":  { "serial": "…", "negocio": "nube", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
   "negocio":  { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null, "ubicaciones": [], "tema": { … } },
   "eventos":  [ { "tipo": "sellar", "mensaje": "Sello 5/8", "ts": "…" } ],
-  "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "➕", "descripcion": "…" } ]
+  "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "mas", "descripcion": "…", "correccion": false } ]
 }
 ```
 
@@ -69,7 +71,7 @@ Respuesta: `{ ok, cliente, aviso }`.
 
 ### `POST /api/accion` — `{ "serial": "uuid", "accion": "sellar" }`
 ```json
-{ "ok": true, "mensaje": "Sello añadido · 6/8", "cliente": { … }, "aviso": { "proveedor": "apple", "avisados": 1 } }
+{ "ok": true, "mensaje": "Sello añadido · 6/8", "cliente": { … }, "aviso": { "proveedor": "apple", "avisados": 1, "web": 1, "google": 0 } }
 { "ok": false, "mensaje": "Aún no llega · 3/8", "cliente": { … } }   // rechazada por la lógica
 ```
 `400` falta serial/acción o acción desconocida · `403` acción desactivada u otro negocio · `404` cliente ·
@@ -212,3 +214,41 @@ CSV (con BOM, para que Excel abra bien los acentos). Sin `grupo`, la tienda ente
 
 ### `GET /api/admin/crm` · admin
 Las mismas cuentas de todas las tiendas juntas: `{ tiendas: [...], totales: {...} }`.
+
+## Android
+
+Detalle en [ANDROID.md](ANDROID.md) y [GOOGLE-WALLET.md](GOOGLE-WALLET.md).
+
+`aviso` en las respuestas de acción, promo y campaña cuenta por canal:
+`avisados`/`enviadas` (iPhone, APNs), `web` (avisos del navegador) y `google`
+(tarjetas de Google Wallet actualizadas o avisadas).
+
+### `GET /api/tarjeta/<serial>`
+Estado de la tarjeta para que `/p/<serial>` se ponga al día sola. Sin nada interno
+(ni nota de la tienda, ni token, ni brief).
+```json
+{ "cliente": { "serial": "…", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": null, "mensaje": null },
+  "negocio": { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "café gratis", "promo": null, "tema": { … } } }
+```
+
+### `POST /api/push/<serial>` — `{ "suscripcion": PushSubscription.toJSON() }`
+Activa los avisos del navegador para esa tarjeta y manda un aviso de bienvenida.
+`{ ok, nuevo, probado }`. `400` suscripción no válida (solo servicios de push
+reales, por https) · `409` ya hay 5 navegadores · `410` el navegador la rechazó ·
+`429` más de 20 altas por IP en 10 min · `503` sin claves VAPID.
+
+### `DELETE /api/push/<serial>` — `{ "endpoint": "https://fcm.googleapis.com/…" }`
+Quita los avisos de esa tarjeta en ese navegador (las de otras tiendas siguen).
+
+### `GET /api/google/guardar/<serial>`
+Crea o pone al día el objeto en Google Wallet y `302` a `pay.google.com/gp/v/save/<jwt>`.
+`404` si Google no está configurado.
+
+### `GET /api/imagen/<tipo>?b=<negocio>&v=<huella>`
+PNG dibujado con la marca de la tienda. `tipo`: `icono` (`t=` lado, `m=1`
+adaptable), `insignia` (barra de avisos), `logo` (Google, 660x660), `banda`
+(`s=` sellos o `u=0|1` en cupones, 1032x336). Con la huella vigente se cachea un año.
+
+### `GET /api/manifest?p=<serial>`
+Manifest de la tarjeta como app instalable (abre en `/p/<serial>`). Con `?b=` sigue
+siendo el de la caja.

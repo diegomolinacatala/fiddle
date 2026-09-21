@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import QrScanner from "./QrScanner";
 import LogoutButton from "@/app/LogoutButton";
+import MarcaTienda from "@/app/MarcaTienda";
+import Icono from "@/app/Icono";
+import { useInstalar } from "@/app/instalable";
 import { normalizarCodigo } from "@/lib/codigo";
 import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso } from "@/app/ui";
 
@@ -17,6 +20,7 @@ export default function Caja() {
   const [valor, setValor] = useState("");
   const [manual, setManual] = useState(false);
   const [error, setError] = useState(null);
+  const instalar = useInstalar();
 
   useEffect(() => {
     if (!negocio) return;
@@ -56,9 +60,12 @@ export default function Caja() {
     <main style={pagina}>
       <div style={{ width: "min(430px, 94vw)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div>
-            <h1 style={titulo}>{n?.tema?.emoji || "📱"} {n?.nombre || "Caja"}</h1>
-            <p style={subtitulo}>Escanea el QR del pase del cliente.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+            {n?.tema && <MarcaTienda tema={n.tema} tam={40} icono />}
+            <div style={{ minWidth: 0 }}>
+              <h1 style={titulo}>{n?.nombre || "Caja"}</h1>
+              <p style={subtitulo}>Escanea la tarjeta del cliente.</p>
+            </div>
           </div>
           <LogoutButton negocio={negocio} />
         </header>
@@ -99,13 +106,26 @@ export default function Caja() {
             <span style={{ fontSize: 14, color: c.nombre ? C.texto : C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {c.nombre || "sin nombre"}
             </span>
-            <span style={{ fontSize: 14 }}>{c.sellos} · {c.premios || 0} 🎁</span>
+            <span style={{ fontSize: 14, color: C.suave, whiteSpace: "nowrap" }}>{resumenCliente(c, n)}</span>
           </a>
         ))}
         {clientes.length === 0 && <p style={{ color: C.suave, fontSize: 14 }}>Aún no hay clientes.</p>}
+
+        {instalar.puede && !instalar.instalada && (
+          <button onClick={instalar.instalar} style={{ ...botonSecundario, width: "100%", marginTop: 22, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Icono nombre="instalar" tam={18} /> Instalar la caja en este móvil
+          </button>
+        )}
       </div>
     </main>
   );
+}
+
+// "3/8 · 1 premio" o, en un cupón, si está usado. Sin emojis: se lee igual en todos los móviles.
+function resumenCliente(c, n) {
+  if (n?.tipo === "descuento") return (c.premios || 0) > 0 ? "usado" : "válido";
+  const premios = c.premios ? ` · ${c.premios} ${c.premios === 1 ? "premio" : "premios"}` : "";
+  return `${c.sellos}${n?.meta ? `/${n.meta}` : ""}${premios}`;
 }
 
 const fila = {

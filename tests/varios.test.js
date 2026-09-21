@@ -5,7 +5,7 @@ import path from "node:path";
 import { normalizarUbicaciones, patchNegocio } from "@/lib/validacion";
 import { loginBloqueado, anotarFalloLogin, ipDe, MAX_POR_IP, usoExcedido, LIMITES } from "@/lib/limitador";
 import { buildPassBody } from "@/lib/walletwallet";
-import { googleSaveUrl, hayGoogle } from "@/lib/googlewallet";
+import { rutaGuardarGoogle, hayGoogle } from "@/lib/googlewallet";
 import { esSlug, SEMILLAS, temaPorDefecto } from "@/lib/negocios";
 import { appUrl, urlCaja } from "@/lib/url";
 import { generarClave } from "../scripts/lib/certs.mjs";
@@ -99,20 +99,13 @@ describe("walletwallet buildPassBody", () => {
 });
 
 describe("google wallet", () => {
-  it("sin credenciales no hay enlace", () => {
+  it("sin credenciales no hay botón; con ellas pasa por nuestra ruta", () => {
     expect(hayGoogle()).toBe(false);
-    expect(googleSaveUrl({ serial: "s" }, SEMILLAS.nube)).toBeNull();
-  });
-
-  it("con credenciales genera un JWT RS256 con el objeto del cliente", () => {
-    vi.stubEnv("GOOGLE_WALLET_ISSUER_ID", "338800");
+    expect(rutaGuardarGoogle("s1")).toBeNull();
+    vi.stubEnv("GOOGLE_WALLET_ISSUER_ID", "3388000000022");
     vi.stubEnv("GOOGLE_WALLET_SA_EMAIL", "sa@x.iam.gserviceaccount.com");
     vi.stubEnv("GOOGLE_WALLET_SA_KEY", generarClave().keyPem.replace(/\n/g, "\\n"));
-    const url = googleSaveUrl({ serial: "s1", sellos: 3, premios: 0, nombre: "Ana" }, { ...SEMILLAS.nube, meta: 8 });
-    expect(url).toMatch(/^https:\/\/pay\.google\.com\/gp\/v\/save\//);
-    const payload = JSON.parse(Buffer.from(url.split("/").pop().split(".")[1], "base64url").toString());
-    expect(payload.payload.loyaltyObjects[0]).toMatchObject({
-      id: "338800.s1", classId: "338800.nube", accountName: "Ana", loyaltyPoints: { balance: { string: "3/8" } },
-    });
+    expect(hayGoogle()).toBe(true);
+    expect(rutaGuardarGoogle("s1")).toBe("/api/google/guardar/s1");
   });
 });

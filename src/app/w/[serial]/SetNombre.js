@@ -23,7 +23,7 @@ export default function SetNombre({ serial, nombre }) {
         body: JSON.stringify({ nombre: valor }),
       });
       const data = await res.json();
-      setToast(res.ok ? "Nombre guardado ✔" : data.error || "Error");
+      setToast(res.ok ? "Nombre guardado" : data.error || "Error");
       router.refresh();
     } catch (err) {
       setToast(String(err?.message || err));

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import QrImagen from "@/app/QrImagen";
 import { camposDelPase } from "@/lib/apple/pase";
-import { svgLogo, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
-import { puntosDe, estadoDe } from "@/lib/resumen";
+import { svgLogo, svgLogoGoogle, svgBandaOpaca, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { construirClase, construirObjeto } from "@/lib/google/pase";
 import { C } from "@/app/ui";
 
 // ============================================================================
@@ -16,7 +16,7 @@ import { C } from "@/app/ui";
 //
 //   texto  -> camposDelPase()             (el mismo que llena pass.json)
 //   dibujo -> stripDelPase() y svgLogo()  (el mismo SVG que va dentro del .pkpass)
-//   Google -> puntosDe()                  (el mismo contador del loyaltyObject)
+//   Google -> construirClase() y construirObjeto() (lo mismo que se manda a Google)
 //
 // Lo que no se puede copiar es la tipografía de iOS y su espaciado exacto, así
 // que la disposición es la de Apple (cabecera, banda a sangre, secundarios,
@@ -204,61 +204,96 @@ function Fila({ campos, accent, margen = 0, anota }) {
 }
 
 // ---------------------------------------------------------------- Google
-// LoyaltyObject: cabecera de color, titular, contador de puntos y el código
-// abajo. Sin banda: el objeto que manda `googlewallet.js` no lleva imagen, así
-// que dibujarla aquí sería enseñar algo que el cliente no va a ver.
+// Lo que manda googlewallet.js: la clase (color, logo, nombre) y el objeto del
+// cliente (puntos, código, banda, texto del premio, mensajes). Se pinta a partir
+// de construirClase() y construirObjeto(), los mismos que viajan a Google, y la
+// banda es la misma imagen que la de Apple en el formato ancho de Google.
+const OPCIONES_VISTA = { issuerId: "vista", appUrl: "" };
+
 function TarjetaGoogle({ negocio, cliente, qrTexto, anota }) {
-  const t = negocio.tema;
-  const puntos = puntosDe(cliente, negocio);
-  const e = estadoDe(cliente, negocio);
+  const clase = construirClase(negocio, OPCIONES_VISTA);
+  const objeto = construirObjeto(cliente, negocio, OPCIONES_VISTA);
+  const banda = stripDelPase(negocio, cliente);
+  const mensajes = [...(clase.messages || []), ...(objeto.messages || [])];
+  const fondo = clase.hexBackgroundColor;
+  const tinta = textoSobre(fondo);
 
   return (
-    <div style={{ ...marco, background: "#fff", color: "#202124", overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif" }}>
-      <div style={{ background: t.accent, color: "#fff", padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-        <Anotable clave="google.cabecera" etiqueta="Cabecera (emoji y nombre)" anota={anota}>
+    <div style={{ ...marco, overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif" }}>
+      <div style={{ background: fondo, color: tinta, opacity: objeto.state === "INACTIVE" ? 0.55 : 1 }}>
+        <Anotable clave="google.cabecera" etiqueta="Logo y nombre" anota={anota} estilo={{ padding: "14px 16px 6px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 22 }}>{t.emoji}</span>
-            <strong style={{ fontSize: 15, fontWeight: 500 }}>{negocio.nombre}</strong>
+            <img src={comoDataUri(svgLogoGoogle(negocio.tema, 96))} alt="" width={32} height={32} style={{ borderRadius: "50%", display: "block" }} />
+            <strong style={{ fontSize: 15, fontWeight: 500 }}>{clase.programName}</strong>
           </div>
+        </Anotable>
+
+        <div style={{ display: "flex", gap: 16, padding: "10px 16px 4px" }}>
+          <Anotable clave="google.puntos" etiqueta={objeto.loyaltyPoints.label} anota={anota} estilo={{ flex: 1 }}>
+            <div style={etiquetaGoogle(tinta)}>{objeto.loyaltyPoints.label}</div>
+            <div style={{ fontSize: 24, lineHeight: 1.2 }}>{objeto.loyaltyPoints.balance.string}</div>
+          </Anotable>
+          {objeto.secondaryLoyaltyPoints && (
+            <div style={{ flex: 1 }}>
+              <div style={etiquetaGoogle(tinta)}>{objeto.secondaryLoyaltyPoints.label}</div>
+              <div style={{ fontSize: 24, lineHeight: 1.2 }}>{objeto.secondaryLoyaltyPoints.balance.int}</div>
+            </div>
+          )}
+        </div>
+
+        <Anotable clave="google.titular" etiqueta="Titular y código" anota={anota} estilo={{ padding: "6px 16px 10px" }}>
+          <div style={{ display: "flex", gap: 16 }}>
+            {objeto.accountName && (
+              <div style={{ flex: 1 }}>
+                <div style={etiquetaGoogle(tinta)}>{clase.accountNameLabel}</div>
+                <div style={{ fontSize: 15 }}>{objeto.accountName}</div>
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={etiquetaGoogle(tinta)}>{clase.accountIdLabel}</div>
+              <div style={{ fontSize: 15, letterSpacing: 1 }}>{objeto.accountId}</div>
+            </div>
+          </div>
+        </Anotable>
+
+        <Anotable clave="google.codigo" etiqueta="QR y código corto" anota={anota} estilo={{ display: "grid", placeItems: "center", padding: "6px 16px 14px" }}>
+          <div style={{ background: "#fff", padding: 8, borderRadius: 10 }}>
+            <QrImagen texto={qrTexto} lado={104} />
+            <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 4, textAlign: "center", color: "#3c4043" }}>{objeto.barcode.alternateText}</div>
+          </div>
+        </Anotable>
+
+        <Anotable clave="google.banda" etiqueta="Banda (los sellos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
+          <img src={comoDataUri(svgBandaOpaca(banda.svg, negocio.tema.cardBg))} alt={objeto.heroImage.contentDescription.defaultValue.value} style={{ display: "block", width: "100%", height: "auto" }} />
         </Anotable>
       </div>
 
-      <div style={{ padding: "16px 18px" }}>
-        <Anotable clave="google.titular" etiqueta="Titular" anota={anota}>
-          <div style={etiquetaGoogle}>Titular</div>
-          <div style={{ fontSize: 16 }}>{cliente.nombre || "Cliente"}</div>
-        </Anotable>
-
-        <Anotable clave="google.puntos" etiqueta={puntos.label} anota={anota} estilo={{ marginTop: 14 }}>
-          <div style={etiquetaGoogle}>{puntos.label}</div>
-          <div style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.2 }}>{puntos.balance}</div>
-          <div style={{ fontSize: 13, color: "#5f6368", marginTop: 4 }}>
-            {e.esCupon
-              ? negocio.premio
-              : e.completa ? `Premio listo: ${negocio.premio}` : `Faltan ${e.faltan} para ${negocio.premio}`}
-          </div>
-        </Anotable>
-
-        {negocio.promo && (
-          <Anotable clave="google.promo" etiqueta="Promoción" anota={anota} estilo={{ marginTop: 14 }}>
-            <div style={{ padding: "10px 12px", background: "#f1f3f4", borderRadius: 8 }}>
-              <div style={etiquetaGoogle}>Promoción</div>
-              <div style={{ fontSize: 14 }}>{negocio.promo}</div>
+      <div style={{ background: "#fff", color: "#202124", padding: "12px 16px 14px", display: "grid", gap: 10 }}>
+        {mensajes.map((m) => (
+          <Anotable key={m.id} clave={`google.mensaje.${m.id}`} etiqueta={m.header} anota={anota}>
+            <div style={{ padding: "8px 10px", background: "#f1f3f4", borderRadius: 8 }}>
+              <div style={etiquetaGoogle("#5f6368")}>{m.header}</div>
+              <div style={{ fontSize: 14 }}>{m.body}</div>
             </div>
           </Anotable>
-        )}
-      </div>
-
-      <div style={{ borderTop: "1px solid #e8eaed", padding: "16px", display: "grid", placeItems: "center" }}>
-        <Anotable clave="google.codigo" etiqueta="QR y código corto" anota={anota} estilo={{ width: "auto" }}>
-          <QrImagen texto={qrTexto} lado={104} />
-          <div style={{ fontSize: 12, letterSpacing: 2, marginTop: 6, textAlign: "center", color: "#5f6368", fontFamily: "ui-monospace, Menlo, monospace" }}>
-            {cliente.codigo || "—"}
-          </div>
-        </Anotable>
+        ))}
+        {[...objeto.textModulesData, ...clase.textModulesData].map((t) => (
+          <Anotable key={t.id} clave={`google.${t.id}`} etiqueta={t.header} anota={anota}>
+            <div style={etiquetaGoogle("#5f6368")}>{t.header}</div>
+            <div style={{ fontSize: 14 }}>{t.body}</div>
+          </Anotable>
+        ))}
       </div>
     </div>
   );
+}
+
+// Google elige solo el color del texto según el fondo; aquí, la misma idea.
+function textoSobre(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || "");
+  if (!m) return "#fff";
+  const [r, g, b] = m.slice(1).map((x) => parseInt(x, 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? "#202124" : "#fff";
 }
 
 const marco = {
@@ -287,7 +322,7 @@ const etiquetaPase = (accent) => ({
   color: accent,
 });
 
-const etiquetaGoogle = { fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", color: "#5f6368" };
+const etiquetaGoogle = (color) => ({ fontSize: 11, letterSpacing: 0.4, color, opacity: 0.85 });
 
 const conmutador = {
   display: "flex",

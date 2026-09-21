@@ -7,7 +7,8 @@ Para ponerse en marcha (instalar, arrancar, desplegar): [NEXT-STEPS.md](NEXT-STE
 
 ## Qué es esto
 
-Tarjetas de fidelización en Apple Wallet y Google Wallet, multi-tienda, en
+Tarjetas de fidelización en Apple Wallet y Android (tarjeta web con avisos, y
+Google Wallet cuando haya credenciales), multi-tienda, en
 Next.js 15 + Supabase, desplegado en Vercel desde `main`
 (<https://fiddle-zeta.vercel.app>). Los dueños son Victor y Diego.
 
@@ -35,6 +36,29 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   PREMIO, cuyo valor cambia con cada sello.
 - El QR lleva el `serial`; debajo va el **código de 3 caracteres**, único dentro
   de su tienda (`lib/codigo.js`).
+
+## Android
+
+Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WALLET.md).
+
+- **La tarjeta web (`/p/<serial>`) es el pase de Android** y sigue la misma regla que
+  la vista previa: `camposDelPase()`, `stripDelPase()`, `svgLogo()`. Nada de estilos
+  dibujados a mano por tienda. Lo mismo el objeto de Google (`lib/google/pase.js`).
+- **Al navegador del cliente solo va `clienteDeTarjeta()` / `negocioDeTarjeta()`**
+  (`lib/tarjeta.js`). Nunca `clientePublico()` ni el negocio entero: llevan la nota
+  interna de la tienda, el brief y los comentarios del admin.
+- **Los avisos van por canales** en la tabla `registros` (`pass_type`): Pass Type ID
+  de Apple, `"web"` y `"google"`. Todo envío filtra por su canal; sin filtro solo
+  para "¿le llega algo?" (CRM). No hacen falta tablas nuevas para un canal nuevo.
+- **Qué suena en Android lo decide `avisoDeCambio(antes, después)`** en `lib/avisos.js`.
+  Por eso `notificarCliente` recibe `{ antes }`: sin él no se sabe si fue un sello o
+  una corrección, y no suena.
+- **Ningún canal tumba la acción.** Apple, web push y Google se llaman después de
+  guardar y nunca lanzan hacia fuera.
+- **Endpoints de push**: solo servicios reales (`push/suscripcion.js`). Aflojar esa
+  lista convierte el servidor en un proxy para pegar a URLs internas.
+- **Emojis fuera de la interfaz.** Iconos con `app/Icono.js` y la marca de la tienda
+  con `app/MarcaTienda.js`.
 
 ## El aspecto se arma con piezas
 
@@ -82,5 +106,6 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
 ## Antes de dar algo por terminado
 
 Mirarlo. Para el dibujo, rasterizar el SVG con sharp y abrir el PNG; para las
-pantallas, levantar el preview y navegar. Los tests no ven si una taza parece
-una taza.
+pantallas, levantar el preview y navegar (con User-Agent de Android para la
+tarjeta: lo que se ofrece depende del teléfono). Los tests no ven si una taza
+parece una taza.

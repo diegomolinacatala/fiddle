@@ -118,7 +118,27 @@ describe("store con Supabase", () => {
 
     encolar("registros", { data: [{ dispositivos: { push_token: "a" } }, { dispositivos: { push_token: "a" } }, { dispositivos: null }], error: null });
     expect(await store.pushTokens({ negocio: "nube" })).toEqual(["a"]);
-    expect(llamadas[1].cadena).toEqual([["select", "dispositivos(push_token)"], ["eq", "negocio", "nube"]]);
+    expect(llamadas[1].cadena).toEqual([["select", "serial, dispositivo, dispositivos(push_token)"], ["eq", "negocio", "nube"]]);
+  });
+
+  it("borrarDispositivos borra por id (los registros caen en cascada)", async () => {
+    await store.borrarDispositivos(["web-1", "web-2"]);
+    expect(llamadas[0]).toEqual({ tabla: "dispositivos", cadena: [["delete"], ["in", "id", ["web-1", "web-2"]]] });
+    llamadas.length = 0;
+    await store.borrarDispositivos([]);
+    expect(llamadas).toHaveLength(0);
+  });
+
+  it("destinosDeAviso filtra por canal (Apple, web, Google) y devuelve serial y dispositivo", async () => {
+    encolar("registros", {
+      data: [{ serial: "s1", dispositivo: "web-1", dispositivos: { push_token: "{}" } }, { serial: "s2", dispositivo: "web-2", dispositivos: null }],
+      error: null,
+    });
+    expect(await store.destinosDeAviso({ seriales: ["s1", "s2"], passType: "web" }))
+      .toEqual([{ serial: "s1", dispositivo: "web-1", token: "{}" }]);
+    expect(llamadas[0].cadena).toEqual([
+      ["select", "serial, dispositivo, dispositivos(push_token)"], ["in", "serial", ["s1", "s2"]], ["eq", "pass_type", "web"],
+    ]);
   });
 
   it("contarIntentos devuelve count (0 si no hay)", async () => {

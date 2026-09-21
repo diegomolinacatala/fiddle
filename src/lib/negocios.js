@@ -377,7 +377,7 @@ export const SEMILLAS = {
     meta: 8,
     premio: "café gratis",
     acciones: ["sellar", "canjear", "restar"],
-    tema: { ...TEMA_DE_ESTILO.coffee, atras: "Un sello por café. Al 8º invita la casa ☕ · L–V." },
+    tema: { ...TEMA_DE_ESTILO.coffee, atras: "Un sello por café. Al 8º invita la casa. De lunes a viernes." },
   },
   fade: {
     slug: "fade",
@@ -395,7 +395,7 @@ export const SEMILLAS = {
     meta: 1,
     premio: "20% en la Diavola",
     acciones: ["canjear"],
-    tema: { ...TEMA_DE_ESTILO.pizza, atras: "Cupón 20% en tu Diavola 🍕 · un solo uso · enséñalo en caja." },
+    tema: { ...TEMA_DE_ESTILO.pizza, atras: "20 % en tu Diavola. Un solo uso: enséñalo en caja." },
   },
 };
 

@@ -62,17 +62,17 @@ solo para poder filtrar por ellos.
 Se guarda con la lista porque si no, no hay forma de responder a la única
 pregunta que importa: ¿volvió alguno?
 
-### `dispositivos` — iPhones con algún pase
+### `dispositivos` — teléfonos a los que avisar (iPhone, navegador Android, Google Wallet)
 | Campo | Tipo | Notas |
 |-------|------|-------|
-| `id` | text PK | `deviceLibraryIdentifier` de Apple |
-| `push_token` | text | destino de los avisos APNs |
+| `id` | text PK | iPhone: `deviceLibraryIdentifier` · navegador: `web-<sha256 del endpoint>` · Google: `google-<serial>` |
+| `push_token` | text | iPhone: token APNs · navegador: la suscripción push en JSON · Google: id del objeto |
 
-### `registros` — qué pases tiene cada iPhone
+### `registros` — qué tarjetas tiene cada teléfono
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `dispositivo` | text FK → dispositivos (cascade) | |
-| `pass_type` | text | `APPLE_PASS_TYPE_ID` |
+| `pass_type` | text | el canal: `APPLE_PASS_TYPE_ID` (iPhone) · `web` (avisos del navegador) · `google` (Google Wallet) |
 | `serial` | text FK → clientes (cascade) | |
 | `negocio` | text | desnormalizado para avisar a todo un negocio |
 PK (`dispositivo`, `pass_type`, `serial`).
