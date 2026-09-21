@@ -52,11 +52,12 @@ export function reglaDeRuta(pathname, params, method = "GET") {
     return { tipo: "admin" };
   }
 
-  // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager
-  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager))?\/?$/);
+  // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager,
+  // /<slug>/crm. El CRM es del manager: ve a todos los clientes y manda avisos.
+  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm))?\/?$/);
   if (pagina && !RESERVADOS.has(pagina[1])) {
     if (!pagina[2]) return { tipo: "publica" };
-    return { tipo: "negocio", slug: pagina[1], rol: pagina[2] };
+    return { tipo: "negocio", slug: pagina[1], rol: pagina[2] === "caja" ? "caja" : "manager" };
   }
 
   const b = params.get("b");
@@ -65,6 +66,13 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
   if (pathname === "/api/clientes") return { tipo: "negocio", slug: b, rol: "caja" };
   if (pathname === "/api/crear") return { tipo: "negocio", slug: b, rol: "manager" };
+  // CRM: quién es quién, en bloque o cliente a cliente. Solo el manager.
+  // Las dos que llevan ?b= se comprueban aquí; /api/crm/campana (el negocio va
+  // en el cuerpo, como en /api/promo) y /api/crm/cliente/<serial> (sale del
+  // propio cliente) caen abajo, en "sesión", y las valida su handler.
+  if (pathname === "/api/crm" || pathname === "/api/crm/export") {
+    return { tipo: "negocio", slug: b, rol: "manager" };
+  }
 
   // /w/<serial>, /api/accion, /api/cliente/<serial>, /api/promo, /api/estado y
   // cualquier otra: sesión válida; el handler valida el negocio concreto.

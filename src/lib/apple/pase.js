@@ -98,8 +98,18 @@ export function camposDelPase(cliente, negocio) {
   //
   // El nombre del cliente NO va en el pase: él ya se lo sabe y la tienda lo ve
   // en la caja. Ocupaba una columna de las dos que hay.
-  const auxiliaryFields = negocio.promo
-    ? [{ key: "promo", label: "PROMO", value: negocio.promo, changeMessage: "%@" }]
+  //
+  // El MENSAJE del cliente gana a la promo de la tienda: una campaña va dirigida
+  // a un grupo ("hace tiempo que no te vemos") y no tendría sentido que la tapara
+  // el 2x1 de todos. Es la misma columna del pase, así que solo cabe uno.
+  const avisoPersonal = cliente.mensaje || null;
+  const auxiliaryFields = avisoPersonal || negocio.promo
+    ? [{
+        key: "promo",
+        label: avisoPersonal ? "PARA TI" : "PROMO",
+        value: avisoPersonal || negocio.promo,
+        changeMessage: "%@",
+      }]
     : [];
 
   const backFields = [

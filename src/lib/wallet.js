@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "crypto";
 import {
   getNegocio, crearCliente, listClientes, tocarClientesDeNegocio,
-  pushTokens, borrarDispositivosPorToken,
+  pushTokens, borrarDispositivosPorToken, addEvento,
 } from "./store";
 import { hayApple, configApple } from "./apple/config";
 import { enviarAvisos } from "./apple/apns";
@@ -30,9 +30,11 @@ export function proveedorWallet() {
 /**
  * Crea un cliente nuevo con su pase (el "tap NFC").
  * El serial es NUESTRO (uuid): va en el QR desde el primer momento.
+ * `origen` ("tap" | "manager") queda guardado: el CRM lo usa para saber por
+ * dónde entra la gente.
  * @returns {Promise<{cliente:object, negocio:object, proveedor:string, urlPase:string, shareUrl:string, pkpassWalletWallet:Buffer|null, googleSaveUrl:string|null}>}
  */
-export async function emitirPase(slug) {
+export async function emitirPase(slug, { origen = null } = {}) {
   const negocio = await getNegocio(slug);
   if (!negocio) throw new Error(`Negocio desconocido: ${slug}`);
 
@@ -50,7 +52,12 @@ export async function emitirPase(slug) {
     pkpassWalletWallet = creado.applePass ? Buffer.from(creado.applePass, "base64") : null;
   }
 
-  const cliente = await crearCliente({ serial, negocio: slug, authToken, wwSerial });
+  const cliente = await crearCliente({ serial, negocio: slug, authToken, wwSerial, origen });
+  // El alta abre el historial del cliente: sin ella, su ficha empieza en el aire.
+  await addEvento(serial, "alta", origen === "manager" ? "Pase emitido en el mostrador" : "Pase emitido", {
+    negocio: slug,
+    actor: origen || "cliente",
+  });
   const urlPase = `${appUrl()}/p/${serial}`;
 
   return {
@@ -95,6 +102,34 @@ export async function notificarCliente(cliente, negocio) {
   } catch (e) {
     console.error(`[wallet] aviso fallido para ${cliente.serial}:`, e);
     return { proveedor, avisados: 0, error: String(e?.message || e) };
+  }
+}
+
+/**
+ * Avisa a una LISTA de clientes (una campaña a un grupo). A diferencia de
+ * `notificarNegocio`, aquí no se toca a nadie más: el resto de la tienda ni se
+ * entera. Llamar DESPUÉS de escribir el mensaje (eso marca `actualizado`).
+ *
+ * Nunca lanza: el mensaje ya está guardado y el pase lo recogerá en la próxima
+ * sincronización aunque el empujón falle.
+ *
+ * @param {string[]} seriales
+ * @returns {Promise<{proveedor:string, avisados:number, total:number, error?:string}>}
+ */
+export async function avisarSeriales(seriales) {
+  const proveedor = proveedorWallet();
+  if (!seriales.length) return { proveedor, avisados: 0, total: 0 };
+  try {
+    if (proveedor === "apple") {
+      const tokens = await pushTokens({ seriales });
+      const r = await avisarApple(tokens);
+      return { proveedor, avisados: r.enviados, total: tokens.length };
+    }
+    // Sin Apple no hay empujón por cliente: el pase se pondrá al día al abrirlo.
+    return { proveedor, avisados: 0, total: seriales.length };
+  } catch (e) {
+    console.error("[wallet] avisos de campaña fallidos:", e);
+    return { proveedor, avisados: 0, total: seriales.length, error: String(e?.message || e) };
   }
 }
 

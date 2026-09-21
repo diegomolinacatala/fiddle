@@ -55,6 +55,16 @@ export async function registrar(deps, { dispositivo, passType, serial, authoriza
   const nuevo = await deps.registrarPase({
     dispositivo, pushToken, passType, serial, negocio: cliente.negocio,
   });
+  // Aquí es donde se sabe que el pase ENTRÓ de verdad en un Wallet: emitirlo y
+  // que alguien lo añada son dos cosas distintas, y el CRM mide las dos.
+  // `marcarInstalacion` es idempotente: guarda la primera fecha y borra la de baja.
+  const primeraVez = !cliente.instalado; // antes de escribir: después ya está puesta
+  if (nuevo) {
+    await deps.marcarInstalacion(serial, true);
+    if (primeraVez) {
+      await deps.addEvento(serial, "instalado", "Añadió el pase al Wallet", { negocio: cliente.negocio, actor: "apple" });
+    }
+  }
   return { status: nuevo ? 201 : 200, json: {} };
 }
 
@@ -63,7 +73,14 @@ export async function desregistrar(deps, { dispositivo, passType, serial, author
   if (!dispositivoValido(dispositivo)) return dispositivoInvalido();
   const cliente = await clienteAutenticado(deps, passType, serial, authorization);
   if (!cliente) return noAutorizado();
-  await deps.borrarRegistro({ dispositivo, passType, serial });
+  const { ultimo } = await deps.borrarRegistro({ dispositivo, passType, serial });
+  // Borrar la tarjeta del teléfono es la renuncia más explícita que hay. Solo
+  // cuenta cuando sale del ÚLTIMO iPhone: quien la tiene en dos y quita uno no
+  // se ha ido a ninguna parte.
+  if (ultimo) {
+    await deps.marcarInstalacion(serial, false);
+    await deps.addEvento(serial, "desinstalado", "Quitó el pase del Wallet", { negocio: cliente.negocio, actor: "apple" });
+  }
   return { status: 200, json: {} };
 }
 

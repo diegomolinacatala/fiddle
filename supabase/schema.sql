@@ -31,6 +31,17 @@ alter table clientes add column if not exists ww_serial text;
 alter table clientes add column if not exists nombre text;
 alter table clientes add column if not exists auth_token text;
 alter table clientes add column if not exists actualizado timestamptz not null default now();
+
+-- CRM: lo que hace falta para agrupar clientes por comportamiento sin recorrer
+-- el historial entero en cada pantalla. `visitas` y `ultima_visita` son un
+-- resumen de `eventos` que se mantiene al vuelo (ver store.registrarVisita).
+alter table clientes add column if not exists visitas       int not null default 0;
+alter table clientes add column if not exists ultima_visita timestamptz;
+alter table clientes add column if not exists instalado     timestamptz;  -- primera vez que el pase entró en un Wallet
+alter table clientes add column if not exists desinstalado  timestamptz;  -- y la última vez que salió de todos
+alter table clientes add column if not exists origen        text;         -- "tap" | "manager" | null (los de antes)
+alter table clientes add column if not exists mensaje       text;         -- aviso personal que sale EN el pase (campañas)
+alter table clientes add column if not exists nota          text;         -- lo que la tienda apunta del cliente
 -- Clientes antiguos sin token: se les genera uno (32 hex) para poder actualizar su pase.
 update clientes set auth_token = replace(gen_random_uuid()::text, '-', '') where auth_token is null;
 create index if not exists clientes_negocio on clientes (negocio);
@@ -49,6 +60,47 @@ create table if not exists eventos (
   ts      timestamptz not null default now()
 );
 create index if not exists eventos_serial_ts on eventos (serial, ts desc);
+
+-- CRM: `negocio` desnormalizado. Sin él, "toda la actividad de esta tienda"
+-- obliga a leer antes sus miles de seriales para filtrar por ellos. `actor` dice
+-- desde dónde se hizo (caja, manager, admin, el propio cliente o Apple).
+alter table eventos add column if not exists negocio text;
+alter table eventos add column if not exists actor   text;
+update eventos e set negocio = c.negocio from clientes c
+ where e.negocio is null and c.serial = e.serial;
+create index if not exists eventos_negocio_ts on eventos (negocio, ts desc);
+
+-- Relleno del resumen de visitas para los clientes que ya existían. Cuenta como
+-- visita lo que la caja hace con el cliente delante (ver TIPOS_VISITA en crm.js).
+update clientes c set
+  visitas       = v.n,
+  ultima_visita = v.ultima
+from (
+  select serial, count(*) as n, max(ts) as ultima
+    from eventos where tipo in ('sellar', 'canjear', 'confirmar') group by serial
+) v
+where v.serial = c.serial and c.visitas = 0;
+
+-- Instalación: la fecha del registro más antiguo de cada pase.
+update clientes c set instalado = r.primera
+from (select serial, min(creado) as primera from registros group by serial) r
+where r.serial = c.serial and c.instalado is null;
+
+-- ===================== CRM: CAMPAÑAS =====================
+-- Un envío a un GRUPO de clientes (los que iban seguido y dejaron de venir, los
+-- que están a un sello del premio...). Se guarda para poder mirar después si
+-- sirvió de algo: a cuántos llegó y cuántos volvieron.
+create table if not exists campanas (
+  id            bigint generated always as identity primary key,
+  negocio       text not null,
+  grupo         text not null,              -- clave del grupo (ver lib/crm.js)
+  texto         text not null,              -- lo que se ve en el pase
+  destinatarios int  not null default 0,    -- clientes del grupo en ese momento
+  avisados      int  not null default 0,    -- a cuántos les llegó el aviso al teléfono
+  seriales      jsonb not null default '[]'::jsonb,  -- a quién, para medir quién volvió
+  creado        timestamptz not null default now()
+);
+create index if not exists campanas_negocio_creado on campanas (negocio, creado desc);
 
 -- ===================== APPLE WALLET: actualizaciones =====================
 -- Cada iPhone que añade un pase se registra con su push token.
@@ -91,3 +143,4 @@ alter table eventos        enable row level security;
 alter table dispositivos   enable row level security;
 alter table registros      enable row level security;
 alter table intentos       enable row level security;
+alter table campanas       enable row level security;

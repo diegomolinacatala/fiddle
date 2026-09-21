@@ -17,7 +17,7 @@ export async function POST(request) {
   if (!(await getNegocio(slug))) return jsonError("Ese negocio no existe", 404);
 
   try {
-    const r = await emitirPase(slug);
+    const r = await emitirPase(slug, { origen: "manager" });
     return NextResponse.json({
       serial: r.cliente.serial,
       codigo: r.cliente.codigo,

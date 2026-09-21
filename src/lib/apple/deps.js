@@ -1,5 +1,6 @@
 import {
   getCliente, getNegocio, registrarPase, borrarRegistro, pasesDeDispositivo,
+  marcarInstalacion, addEvento,
 } from "../store";
 import { configApple } from "./config";
 import { generarPkpass } from "./firmar";
@@ -18,6 +19,8 @@ export function depsServicio() {
     registrarPase,
     borrarRegistro,
     pasesDeDispositivo,
+    marcarInstalacion,
+    addEvento,
     generarPkpass: (cliente, negocio) => generarPkpass(cliente, negocio, config),
     log: (mensaje) => console.warn(mensaje),
   };

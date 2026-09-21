@@ -141,6 +141,107 @@ describe("registros de Apple Wallet", () => {
   });
 });
 
+describe("CRM", () => {
+  it("registrarVisita suma y pone la fecha; el alta guarda el origen", async () => {
+    const c = await store.crearCliente({ serial: "s1", negocio: "nube", authToken: "t".repeat(20), origen: "tap" });
+    expect(c).toMatchObject({ visitas: 0, ultima_visita: null, origen: "tap" });
+
+    expect(await store.registrarVisita("s1")).toBe(true);
+    await store.registrarVisita("s1");
+    const leido = await store.getCliente("s1");
+    expect(leido.visitas).toBe(2);
+    expect(Date.parse(leido.ultima_visita)).toBeGreaterThan(0);
+    expect(await store.registrarVisita("nope")).toBe(false);
+  });
+
+  it("venir retira el mensaje de la campaña: ya cumplió", async () => {
+    await nuevo("s1");
+    await store.guardarMensajes(["s1"], "Hace tiempo que no te vemos");
+    await store.registrarVisita("s1");
+    expect((await store.getCliente("s1")).mensaje).toBeNull();
+  });
+
+  it("la instalación se apunta una vez y la baja se puede deshacer", async () => {
+    await nuevo("s1");
+    await store.marcarInstalacion("s1", true);
+    const primera = (await store.getCliente("s1")).instalado;
+    expect(primera).toBeTruthy();
+
+    await store.marcarInstalacion("s1", false);
+    expect((await store.getCliente("s1")).desinstalado).toBeTruthy();
+
+    // Vuelve a añadirlo: la fecha del alta NO se reescribe, la de baja se limpia.
+    await store.marcarInstalacion("s1", true);
+    const ahora = await store.getCliente("s1");
+    expect(ahora.instalado).toBe(primera);
+    expect(ahora.desinstalado).toBeNull();
+    await store.marcarInstalacion("nope", true); // no revienta
+  });
+
+  it("guardarMensajes escribe a varios a la vez y no toca a los demás", async () => {
+    await nuevo("s1");
+    await nuevo("s2");
+    await nuevo("s3");
+    expect(await store.guardarMensajes(["s1", "s2", "nope"], "Vuelve y te invitamos")).toBe(2);
+    expect((await store.getCliente("s1")).mensaje).toBe("Vuelve y te invitamos");
+    expect((await store.getCliente("s3")).mensaje).toBeNull();
+
+    // Y quitarlo lo deja como estaba.
+    expect(await store.guardarMensajes(["s1"], null)).toBe(1);
+    expect((await store.getCliente("s1")).mensaje).toBeNull();
+    expect(await store.guardarMensajes([], "x")).toBe(0);
+  });
+
+  it("la nota de la tienda es aparte del mensaje del pase", async () => {
+    await nuevo("s1");
+    expect(await store.guardarNota("s1", "  sin lactosa  ")).toBe(true);
+    expect((await store.getCliente("s1")).nota).toBe("  sin lactosa  ");
+    expect(await store.guardarNota("nope", "x")).toBe(false);
+  });
+
+  it("los eventos llevan negocio y actor, y se pueden leer por tienda", async () => {
+    await nuevo("s1");
+    await nuevo("s2", "fade");
+    await store.addEvento("s1", "sellar", "Sello 1/8", { negocio: "nube", actor: "caja" });
+    await store.addEventos([
+      { serial: "s1", tipo: "campana", mensaje: "Campaña «vuelve»", negocio: "nube", actor: "manager" },
+      { serial: "s2", tipo: "sellar", mensaje: "Sello 1/6", negocio: "fade", actor: "caja" },
+    ]);
+
+    const deNube = await store.listEventosDeNegocio("nube");
+    expect(deNube).toHaveLength(2);
+    expect(deNube.every((e) => e.serial === "s1")).toBe(true);
+    expect((await store.listEventos("s1"))[0]).toMatchObject({ actor: expect.any(String) });
+    expect(await store.listEventosDeNegocio("fade")).toHaveLength(1);
+    await store.addEventos([]); // no revienta
+  });
+
+  it("las campañas se guardan con a quién fueron", async () => {
+    await store.crearCampana({ negocio: "nube", grupo: "riesgo", texto: "Vuelve", seriales: ["s1", "s2"], avisados: 2 });
+    await store.crearCampana({ negocio: "fade", grupo: "nuevos", texto: "Hola", seriales: ["s9"] });
+    const c = await store.listCampanas("nube");
+    expect(c).toHaveLength(1);
+    expect(c[0]).toMatchObject({ grupo: "riesgo", destinatarios: 2, avisados: 2, seriales: ["s1", "s2"] });
+    expect(await store.listCampanas("forno")).toHaveLength(0);
+  });
+
+  it("serialesRegistrados dice a quién se puede avisar", async () => {
+    await nuevo("s1");
+    await nuevo("s2");
+    await store.registrarPase({ dispositivo: "d1", pushToken: "pt", passType: "p", serial: "s1", negocio: "nube" });
+    const puestos = await store.serialesRegistrados("nube");
+    expect(puestos.has("s1")).toBe(true);
+    expect(puestos.has("s2")).toBe(false);
+  });
+
+  it("borrar un negocio se lleva también sus campañas", async () => {
+    await nuevo("s1");
+    await store.crearCampana({ negocio: "nube", grupo: "riesgo", texto: "Vuelve", seriales: ["s1"] });
+    await store.borrarNegocio("nube");
+    expect(await store.listCampanas("nube")).toHaveLength(0);
+  });
+});
+
 describe("intentos (límites de uso)", () => {
   it("cuenta intentos por clave dentro de la ventana", async () => {
     const inicio = Date.now() - 1;

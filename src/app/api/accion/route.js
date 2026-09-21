@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCliente, saveCliente, getNegocio, addEvento, clientePublico } from "@/lib/store";
+import { getCliente, saveCliente, getNegocio, addEvento, registrarVisita, clientePublico } from "@/lib/store";
+import { TIPOS_VISITA } from "@/lib/crm";
 import { ACCIONES } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
@@ -21,7 +22,7 @@ export async function POST(request) {
     const cliente = await getCliente(serial);
     if (!cliente) return jsonError("Cliente no encontrado", 404);
 
-    const { respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
+    const { sesion, respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
     if (respuesta) return respuesta;
 
     const negocio = await getNegocio(cliente.negocio);
@@ -40,7 +41,9 @@ export async function POST(request) {
         { status: 409 },
       );
     }
-    if (r.evento) await addEvento(serial, accion, r.evento);
+    if (r.evento) await addEvento(serial, accion, r.evento, { negocio: cliente.negocio, actor: sesion.rol });
+    // El cliente estuvo aquí: cuenta como visita. Una corrección, no (ver crm.js).
+    if (TIPOS_VISITA.includes(accion)) await registrarVisita(serial);
     const aviso = await notificarCliente(r.cliente, negocio);
 
     return NextResponse.json({ ok: true, mensaje: r.mensaje, cliente: clientePublico(r.cliente), aviso });
