@@ -42,6 +42,8 @@ alter table clientes add column if not exists desinstalado  timestamptz;  -- y l
 alter table clientes add column if not exists origen        text;         -- "tap" | "manager" | null (los de antes)
 alter table clientes add column if not exists mensaje       text;         -- aviso personal que sale EN el pase (campañas)
 alter table clientes add column if not exists nota          text;         -- lo que la tienda apunta del cliente
+-- Segunda cartilla en el mismo pase (galletas y cafés): la primera sigue en `sellos`.
+alter table clientes add column if not exists sellos2       int not null default 0;
 -- Clientes antiguos sin token: se les genera uno (32 hex) para poder actualizar su pase.
 update clientes set auth_token = replace(gen_random_uuid()::text, '-', '') where auth_token is null;
 create index if not exists clientes_negocio on clientes (negocio);
@@ -77,7 +79,7 @@ update clientes c set
   ultima_visita = v.ultima
 from (
   select serial, count(*) as n, max(ts) as ultima
-    from eventos where tipo in ('sellar', 'canjear', 'confirmar') group by serial
+    from eventos where tipo in ('sellar', 'canjear', 'confirmar', 'sellar2', 'canjear2') group by serial
 ) v
 where v.serial = c.serial and c.visitas = 0;
 

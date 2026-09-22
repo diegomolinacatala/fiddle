@@ -7,6 +7,7 @@ import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
 import { MARCAS, FORMAS, BANDAS, ESTILOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
+import Cartillas from "@/app/admin/Cartillas";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
@@ -67,6 +68,7 @@ export default function AdminNegocio() {
         nombre: n.nombre,
         meta: n.meta,
         premio: n.premio,
+        cartillas: n.cartillas ?? null,
         brief: n.brief,
         tema: {
           estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
@@ -106,8 +108,9 @@ export default function AdminNegocio() {
     codigo: "ABC",
     nombre: "Cliente",
     sellos: Math.max(1, Math.round((n?.meta || 1) * 0.6)),
+    sellos2: Math.max(1, Math.round((n?.cartillas?.[1]?.meta || 1) * 0.3)),
     premios: 0,
-  }), [n?.meta]);
+  }), [n?.meta, n?.cartillas]);
 
   if (error) return <main style={pagina}><div style={{ width: "min(700px,94vw)" }}><a href="/admin" style={volver}>← Plataforma</a><div style={{ ...aviso(false), marginTop: 12 }}>{error}</div></div></main>;
   if (!n) return <main style={pagina}><p style={{ color: C.suave }}>Cargando…</p></main>;
@@ -133,7 +136,7 @@ export default function AdminNegocio() {
             <label style={{ ...etiqueta, marginTop: 0 }}>Nombre</label>
             <input value={n.nombre} onChange={(e) => set("nombre", e.target.value)} style={campo} />
 
-            <div style={{ display: "flex", gap: 12 }}>
+            {!n.cartillas && <div style={{ display: "flex", gap: 12 }}>
               {n.tipo !== "descuento" && (
                 <div style={{ flex: 1 }}>
                   <label style={etiqueta}>Sellos</label>
@@ -144,7 +147,15 @@ export default function AdminNegocio() {
                 <label style={etiqueta}>{n.tipo === "descuento" ? "Descuento" : "Premio"}</label>
                 <input value={n.premio} onChange={(e) => set("premio", e.target.value)} style={campo} />
               </div>
-            </div>
+            </div>}
+
+            {n.tipo !== "descuento" && (
+              <Cartillas
+                negocio={n}
+                // La primera cartilla es la de siempre: meta y premio la siguen, y la vista previa también.
+                onChange={(cartillas) => setN((p) => ({ ...p, cartillas, ...(cartillas ? { meta: cartillas[0].meta, premio: cartillas[0].premio } : {}) }))}
+              />
+            )}
 
             <div style={{ display: "flex", gap: 12 }}>
               <div style={{ flex: 1 }}>
@@ -192,7 +203,8 @@ export default function AdminNegocio() {
 
             {n.tipo !== "descuento" && (
               <>
-                <Selector
+                {/* Con dos cartillas siempre son casillas: una fila por cartilla. */}
+                {!n.cartillas && <Selector
                   titulo="Cómo se cuentan los sellos"
                   valor={familiaDeModo(n.tema.modo)}
                   opciones={NOMBRES_FAMILIA}
@@ -200,8 +212,8 @@ export default function AdminNegocio() {
                   vista={(f) => vistaFamilia(n.tema, f, n.meta)}
                   onChange={(f) => setTema("modo", modosDeFamilia(f)[0])}
                   ancho={150}
-                />
-                {modosDeFamilia(familiaDeModo(n.tema.modo)).length > 1 && (
+                />}
+                {!n.cartillas && modosDeFamilia(familiaDeModo(n.tema.modo)).length > 1 && (
                   <Selector
                     titulo="Variante"
                     valor={n.tema.modo}
@@ -213,7 +225,7 @@ export default function AdminNegocio() {
                   />
                 )}
                 <div style={{ display: "flex", gap: 12 }}>
-                  {n.tema.modo === "casillas" && (
+                  {(n.tema.modo === "casillas" || n.cartillas) && (
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Selector
                         titulo="Casilla del sello"

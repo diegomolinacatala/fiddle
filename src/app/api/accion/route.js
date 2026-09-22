@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCliente, saveCliente, getNegocio, addEvento, registrarVisita, clientePublico } from "@/lib/store";
 import { TIPOS_VISITA } from "@/lib/crm";
-import { ACCIONES } from "@/lib/acciones";
+import { ACCIONES, accionPermitida } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
@@ -27,7 +27,7 @@ export async function POST(request) {
 
     const negocio = await getNegocio(cliente.negocio);
     if (!negocio) return jsonError("Negocio no encontrado", 404);
-    if (!negocio.acciones.includes(accion)) return jsonError("Esa acción no está activada por el manager", 403);
+    if (!accionPermitida(negocio, accion)) return jsonError("Esa acción no está activada por el manager", 403);
 
     const r = def.aplicar(cliente, negocio);
     if (r.ok === false) return NextResponse.json({ ok: false, mensaje: r.mensaje, cliente: clientePublico(cliente) });

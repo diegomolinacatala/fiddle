@@ -20,6 +20,7 @@ const PRISA_MS = 3 * 60 * 1000;
 
 const cambio = (a, b) =>
   a.cliente.sellos !== b.cliente.sellos ||
+  a.cliente.sellos2 !== b.cliente.sellos2 ||
   a.cliente.premios !== b.cliente.premios ||
   a.cliente.mensaje !== b.cliente.mensaje ||
   a.cliente.nombre !== b.cliente.nombre ||

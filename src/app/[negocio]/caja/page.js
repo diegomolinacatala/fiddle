@@ -8,6 +8,7 @@ import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
 import { useInstalar } from "@/app/instalable";
 import { normalizarCodigo } from "@/lib/codigo";
+import { cuentaCorta } from "@/lib/cartillas";
 import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso } from "@/app/ui";
 
 // App de CAJA de un negocio (móvil, instalable). Escanea el pase; si el QR no se
@@ -125,6 +126,7 @@ export default function Caja() {
 function resumenCliente(c, n) {
   if (n?.tipo === "descuento") return (c.premios || 0) > 0 ? "usado" : "válido";
   const premios = c.premios ? ` · ${c.premios} ${c.premios === 1 ? "premio" : "premios"}` : "";
+  if (n?.cartillas) return `${cuentaCorta(c, n)}${premios}`;
   return `${c.sellos}${n?.meta ? `/${n.meta}` : ""}${premios}`;
 }
 

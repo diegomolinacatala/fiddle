@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { TAM, svgIcono, svgLogo, svgStripSellos, svgStripCupon } from "./dibujo";
+import { TAM, svgIcono, svgLogo, stripDelPase } from "./dibujo";
 
 // ============================================================================
 // APPLE WALLET — imágenes del pase (icon, logo, strip)
@@ -58,14 +58,15 @@ function strip(negocio, cliente) {
   const esCupon = negocio.tipo === "descuento";
   const usado = (cliente.premios || 0) > 0;
   const sellos = Math.min(cliente.sellos, negocio.meta);
-  const clave = esCupon ? `${negocio.slug}:cupon:${usado}` : `${negocio.slug}:${negocio.meta}:${sellos}`;
+  // Con dos cartillas la banda depende de las dos cuentas (y de sus metas).
+  const segunda = negocio.cartillas ? `:${negocio.cartillas[1].meta}:${cliente.sellos2 || 0}` : "";
+  const clave = esCupon ? `${negocio.slug}:cupon:${usado}` : `${negocio.slug}:${negocio.meta}:${sellos}${segunda}`;
   if (!cacheStrips.has(clave) && cacheStrips.size >= MAX_STRIPS) {
     cacheStrips.delete(cacheStrips.keys().next().value); // la menos usada recientemente
   }
   return cachear(cacheStrips, clave, () => {
     const [w, h] = esCupon ? TAM.strip.coupon : TAM.strip.storeCard;
-    const dibujo = esCupon ? svgStripCupon(negocio.tema, usado) : svgStripSellos(negocio.tema, negocio.meta, sellos);
-    return escalas("strip", dibujo, w, h);
+    return escalas("strip", stripDelPase(negocio, cliente).svg, w, h);
   });
 }
 

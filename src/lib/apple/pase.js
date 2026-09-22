@@ -12,6 +12,8 @@
 // pantalla de bloqueo cuando cambian (p.ej. "Tienes 5 de 8 sellos").
 // ============================================================================
 
+import { cartillasDe } from "../cartillas";
+
 const MAX_UBICACIONES = 10; // límite de Apple
 
 /** "#ff5c8a" -> "rgb(255, 92, 138)" (formato que exige pass.json). */
@@ -52,7 +54,23 @@ function camposSellos(cliente, negocio) {
     changeMessage: "%@",
   };
 
+  if (negocio.cartillas) return { headerFields: header, primaryFields: [], secondaryFields: camposCartillas(cliente, negocio) };
   return { headerFields: header, primaryFields: [], secondaryFields: [premio] };
+}
+
+/**
+ * Con dos cartillas, un campo por cartilla: "COOKIES · Faltan 3". El premio
+ * entero ("cookie gratis") no cabe dos veces en la fila; va en el reverso y
+ * sale en cuanto la cartilla se completa. Cada campo lleva su changeMessage
+ * con el nombre delante, para que el aviso diga de qué cartilla es.
+ */
+function camposCartillas(cliente, negocio) {
+  return cartillasDe(cliente, negocio).map((c) => ({
+    key: c.indice === 0 ? "premio" : `premio${c.indice + 1}`,
+    label: c.nombre.toUpperCase(),
+    value: c.completa ? `¡${c.premio}!` : `Faltan ${c.faltan}`,
+    changeMessage: `${c.nombre}: %@`,
+  }));
 }
 
 function camposCupon(cliente, negocio) {
@@ -112,8 +130,13 @@ export function camposDelPase(cliente, negocio) {
       }]
     : [];
 
+  // Con dos cartillas la cara solo dice cuánto falta: qué se gana, aquí.
+  const premios = negocio.cartillas && !esCupon
+    ? [{ key: "premios", label: "Premios", value: negocio.cartillas.map((c) => `${c.meta} ${c.nombre.toLowerCase()}: ${c.premio}`).join("\n") }]
+    : [];
   const backFields = [
     { key: "como", label: "Cómo funciona", value: negocio.tema.atras },
+    ...premios,
     { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
   ];
 

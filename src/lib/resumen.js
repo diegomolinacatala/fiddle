@@ -7,6 +7,8 @@
 // nunca entre sí.
 // ============================================================================
 
+import { cuentaCorta } from "./cartillas";
+
 /** @param {{sellos:number, premios:number}} cliente @param {{tipo:string, meta:number}} negocio */
 export function estadoDe(cliente, negocio) {
   const esCupon = negocio.tipo === "descuento";
@@ -26,6 +28,10 @@ export function estadoDe(cliente, negocio) {
 /** Etiqueta + valor del contador, tal cual sale en Google Wallet ("Sellos 5/8"). */
 export function puntosDe(cliente, negocio) {
   const e = estadoDe(cliente, negocio);
+  // Dos cartillas: "Cookies · Cafés" / "3/8 · 5/8", en el mismo orden que la banda.
+  if (negocio.cartillas && !e.esCupon) {
+    return { label: negocio.cartillas.map((c) => c.nombre).join(" · "), balance: cuentaCorta(cliente, negocio) };
+  }
   return {
     label: e.esCupon ? "Cupón" : "Sellos",
     balance: e.esCupon ? (e.usado ? "Usado" : "Válido") : `${e.sellos}/${e.meta}`,

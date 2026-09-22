@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { getCliente, getNegocio, listEventos } from "@/lib/store";
-import { LISTA_ACCIONES } from "@/lib/acciones";
+import { accionesDe } from "@/lib/acciones";
 import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
+import { cartillasDe, describirBanda } from "@/lib/cartillas";
 import WorkerActions from "./WorkerActions";
 import SetNombre from "./SetNombre";
 import MarcaTienda from "@/app/MarcaTienda";
@@ -41,7 +42,7 @@ export default async function Page({ params }) {
 
   const n = await getNegocio(cliente.negocio);
   const eventos = await listEventos(serial);
-  const acciones = LISTA_ACCIONES.filter((a) => n.acciones.includes(a.key));
+  const acciones = accionesDe(n);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
   const banda = stripDelPase(n, cliente);
@@ -69,10 +70,19 @@ export default async function Page({ params }) {
         <div style={{ ...panel, padding: 0, overflow: "hidden", borderColor: `${accent}66` }}>
           <img
             src={comoDataUri(banda.svg)}
-            alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : `${e.sellos} de ${e.meta} sellos`}
+            alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, n)}
             style={{ display: "block", width: "100%", height: "auto", aspectRatio: `${banda.ancho} / ${banda.alto}` }}
           />
-          <div style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+          {!e.esCupon && n.cartillas ? cartillasDe(cliente, n).map((c) => (
+            <div key={c.clave} style={{ ...cuentaFila, borderTop: c.indice ? `1px solid ${C.borde}` : 0 }}>
+              <span style={{ fontSize: 15, color: c.completa ? accent : C.suave, fontWeight: c.completa ? 650 : 400 }}>
+                <strong style={{ color: C.texto, fontWeight: 600 }}>{c.nombre}</strong>
+                {" · "}{c.completa ? `premio listo: ${c.premio}` : `faltan ${c.faltan} para ${c.premio}`}
+              </span>
+              <span style={{ fontSize: 20, fontWeight: 650 }}>{c.sellos}/{c.meta}</span>
+            </div>
+          )) : (
+          <div style={cuentaFila}>
             {e.esCupon ? (
               <>
                 <span style={{ fontSize: 16, fontWeight: 600, color: e.usado ? C.tenue : accent }}>{e.usado ? "Ya usado" : "Válido, un solo uso"}</span>
@@ -87,6 +97,7 @@ export default async function Page({ params }) {
               </>
             )}
           </div>
+          )}
         </div>
 
         <WorkerActions serial={serial} acciones={acciones} accent={accent} />
@@ -121,6 +132,7 @@ function Aviso({ titulo, texto, children }) {
 }
 
 const volver = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: C.suave, textDecoration: "none", fontWeight: 500 };
+const cuentaFila = { padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 };
 const cap = { fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 };
 const siguiente = {
   ...botonSecundario,

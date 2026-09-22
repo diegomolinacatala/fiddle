@@ -5,7 +5,7 @@ import forge from "node-forge";
 import { generarPkpass } from "@/lib/apple/firmar";
 import { configApple, leerPem, hayApple, faltanVariablesApple } from "@/lib/apple/config";
 import { imagenesDelPase, rejillaSellos } from "@/lib/apple/imagenes";
-import { SEMILLAS } from "@/lib/negocios";
+import { SEMILLAS, componerNegocio } from "@/lib/negocios";
 import { cadenaDePrueba, aBase64 } from "../scripts/lib/certs.mjs";
 
 // Lector mínimo de zip (entradas stored o deflate) para inspeccionar el .pkpass.
@@ -122,6 +122,17 @@ describe("imágenes", () => {
     const c = await imagenesDelPase(negocio("nube"), { sellos: 1, premios: 0 });
     expect(a["strip.png"].equals(b["strip.png"])).toBe(false);
     expect(a["strip.png"]).toBe(c["strip.png"]);
+  });
+
+  it("con dos cartillas, la strip cambia también con la segunda", async () => {
+    const cartillas = [
+      { nombre: "Cookies", marca: "galleta", meta: 8, premio: "cookie gratis" },
+      { nombre: "Cafés", marca: "taza", meta: 8, premio: "café gratis" },
+    ];
+    const deli = componerNegocio("delicanteria", { nombre: "La Delicantería", tipo: "sellos", config: { cartillas, tema: { estilo: "galletas" } } });
+    const a = await imagenesDelPase(deli, { sellos: 3, sellos2: 1, premios: 0 });
+    const b = await imagenesDelPase(deli, { sellos: 3, sellos2: 2, premios: 0 });
+    expect(a["strip.png"].equals(b["strip.png"])).toBe(false);
   });
 
   it("rejillaSellos reparte en filas según la meta", () => {

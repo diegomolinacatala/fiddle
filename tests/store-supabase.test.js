@@ -72,7 +72,7 @@ describe("store con Supabase", () => {
     encolar("clientes", { data: [], error: null });
     const ok = await store.saveCliente({ serial: "s1", sellos: 0, premios: 1 }, { esperado: { sellos: 8, premios: 0 } });
     expect(ok).toBe(false);
-    expect(llamadas[0].cadena.slice(1)).toEqual([["eq", "serial", "s1"], ["eq", "sellos", 8], ["eq", "premios", 0], ["select", "serial"]]);
+    expect(llamadas[0].cadena.slice(1)).toEqual([["eq", "serial", "s1"], ["eq", "sellos", 8], ["eq", "sellos2", 0], ["eq", "premios", 0], ["select", "serial"]]);
 
     encolar("clientes", { data: [{ serial: "s1" }], error: null });
     expect(await store.guardarNombre("s1", "Ana")).toBe(true);

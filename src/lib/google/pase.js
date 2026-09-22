@@ -1,5 +1,6 @@
 import { camposDelPase } from "../apple/pase";
 import { puntosDe, estadoDe } from "../resumen";
+import { describirBanda } from "../cartillas";
 import { rutaLogo, rutaBanda } from "../rutasImagen";
 
 // ============================================================================
@@ -77,7 +78,9 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl }, { conMen
   const puntos = puntosDe(cliente, negocio);
   const codigo = cliente.codigo || String(cliente.serial).slice(0, 3).toUpperCase();
   // El texto del premio es el mismo campo que sale bajo la banda en Apple.
-  const [principal] = camposDelPase(cliente, negocio).secondaryFields;
+  // Con dos cartillas son dos campos ("Cookies", "Cafés") y van los dos.
+  const { secondaryFields } = camposDelPase(cliente, negocio);
+  const principales = negocio.cartillas ? secondaryFields : secondaryFields.slice(0, 1);
 
   const objeto = {
     id: idObjeto(issuerId, cliente.serial),
@@ -93,11 +96,9 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl }, { conMen
     barcode: { type: "QR_CODE", value: `${appUrl}/w/${cliente.serial}`, alternateText: codigo },
     heroImage: imagen(
       `${appUrl}${rutaBanda(negocio, cliente)}`,
-      e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : `${e.sellos} de ${e.meta} sellos`,
+      e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio),
     ),
-    textModulesData: principal
-      ? [{ id: "premio", header: capitalizar(principal.label), body: String(principal.value) }]
-      : [],
+    textModulesData: principales.map((f) => ({ id: f.key, header: capitalizar(f.label), body: String(f.value) })),
     linksModuleData: {
       uris: [{ id: "tarjeta", uri: `${appUrl}/p/${cliente.serial}`, description: "Ver la tarjeta en el navegador" }],
     },
