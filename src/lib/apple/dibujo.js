@@ -1134,12 +1134,17 @@ export function svgStripCupon(tema, usado) {
  * Siempre en casillas, sea cual sea el `modo` del tema: una taza que se llena
  * no cabe dos veces en 123 puntos de alto.
  *
+ * Margen lateral ancho a propósito: en el iPhone la tarjeta es más estrecha que
+ * los 375 puntos de la banda y Wallet recorta los lados. Con ocho casillas por
+ * fila pegadas al borde, la primera y la última salían cortadas.
+ *
  * @param {object} tema
  * @param {{marca:string, meta:number, sellos:number}[]} filas
  */
 export function svgStripCartillas(tema, filas) {
   const [w, h] = TAM.strip.storeCard.map((v) => v * 3);
-  const margen = 24;
+  const margen = 24; // arriba y abajo
+  const lateral = w * 0.09; // ~34 pt por lado: lo que el iPhone puede recortar, y aire
   const altoFila = (h - margen * 2) / filas.length;
   const oscura = esOscura(tema);
   const casilla = forma(tema);
@@ -1148,11 +1153,11 @@ export function svgStripCartillas(tema, filas) {
 
   const cuerpo = filas.map((f, fila) => {
     const conMarca = { ...tema, marca: f.marca };
-    const ancho = (w - margen * 2) / f.meta;
+    const ancho = (w - lateral * 2) / f.meta;
     const d = Math.min(ancho, altoFila) * 0.8;
     const cy = margen + altoFila * (fila + 0.5);
     return Array.from({ length: f.meta }, (_, i) => {
-      const cx = margen + ancho * (i + 0.5);
+      const cx = lateral + ancho * (i + 0.5);
       if (i < Math.min(f.sellos, f.meta)) {
         return oscura
           ? svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}" fill-opacity="0.18" stroke="${tema.accent}" stroke-width="4"`)
