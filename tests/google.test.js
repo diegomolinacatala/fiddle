@@ -279,3 +279,26 @@ describe("fachada googlewallet (store en ficheros)", () => {
     expect(f).not.toHaveBeenCalled();
   });
 });
+
+describe("destinoDelTap", () => {
+  const serial = "55d5c71d-109d-48a7-91f1-6b3fc322e4b9";
+  const conGoogle = () => {
+    vi.stubEnv("GOOGLE_WALLET_ISSUER_ID", ISSUER);
+    vi.stubEnv("GOOGLE_WALLET_SA_EMAIL", CONFIG.email);
+    vi.stubEnv("GOOGLE_WALLET_SA_KEY", keyPem);
+  };
+
+  it("Android con Google activo va directo a guardar en Google Wallet, como el iPhone al .pkpass", async () => {
+    conGoogle();
+    const { destinoDelTap } = await import("@/lib/googlewallet");
+    expect(destinoDelTap("android", serial)).toBe(`/api/google/guardar/${serial}`);
+  });
+
+  it("sin Google, o fuera de Android, a la tarjeta web", async () => {
+    const { destinoDelTap } = await import("@/lib/googlewallet");
+    vi.stubEnv("GOOGLE_WALLET_ISSUER_ID", "");
+    expect(destinoDelTap("android", serial)).toBe(`/p/${serial}`);
+    conGoogle();
+    expect(destinoDelTap("otro", serial)).toBe(`/p/${serial}`);
+  });
+});

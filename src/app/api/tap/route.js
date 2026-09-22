@@ -3,6 +3,7 @@ import { emitirPase } from "@/lib/wallet";
 import { getCliente, getNegocio } from "@/lib/store";
 import { generarPkpass, MIME_PKPASS } from "@/lib/apple/firmar";
 import { hayApple } from "@/lib/apple/config";
+import { destinoDelTap } from "@/lib/googlewallet";
 import { esSlug } from "@/lib/negocios";
 import { plataformaDe } from "@/lib/plataforma";
 import { cookieDeTarjeta, serialRecordado, opcionesCookieTarjeta } from "@/lib/recordar";
@@ -30,8 +31,9 @@ const respuestaPkpass = (buffer, slug) =>
 //
 // iPhone + pase real -> el .pkpass directo: sale "Añadir a Wallet" al instante
 // (si ya lo tenía, iOS lo reconoce por el serial y lo actualiza en vez de
-// duplicarlo). Resto -> la página de la tarjeta (/p/<serial>), que en Android
-// ofrece Google Wallet, instalarla en la pantalla de inicio y los avisos.
+// duplicarlo). Android + Google Wallet activo -> directo a guardarla en Google
+// Wallet, lo mismo que el iPhone. Resto -> la tarjeta web (/p/<serial>), que
+// ofrece instalarla en la pantalla de inicio y los avisos.
 export async function GET(request) {
   const url = new URL(request.url);
   const slug = url.searchParams.get("b");
@@ -49,7 +51,7 @@ export async function GET(request) {
       cliente = suyo;
       respuesta = plataforma === "ios" && hayApple()
         ? respuestaPkpass(await generarPkpass(cliente, negocio), slug)
-        : NextResponse.redirect(new URL(`/p/${cliente.serial}`, request.url), 302);
+        : NextResponse.redirect(new URL(destinoDelTap(plataforma, cliente.serial), request.url), 302);
     } else {
       if (await usoExcedido("tap", ipDe(request))) {
         return jsonError("Demasiados pases desde esta conexión. Prueba en unos minutos.", 429);
@@ -60,7 +62,7 @@ export async function GET(request) {
       else if (plataforma === "ios" && r.pkpassWalletWallet) respuesta = respuestaPkpass(r.pkpassWalletWallet, slug);
       // A la tarjeta en el MISMO dominio por el que entró (un deploy de prueba no
       // debe mandar al cliente a producción).
-      else respuesta = NextResponse.redirect(r.proveedor === "walletwallet" ? r.shareUrl : new URL(`/p/${r.cliente.serial}`, request.url), 302);
+      else respuesta = NextResponse.redirect(r.proveedor === "walletwallet" ? r.shareUrl : new URL(destinoDelTap(plataforma, r.cliente.serial), request.url), 302);
     }
 
     respuesta.cookies.set(cookieDeTarjeta(slug), cliente.serial, opcionesCookieTarjeta(url.protocol === "https:"));
