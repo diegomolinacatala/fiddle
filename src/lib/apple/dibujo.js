@@ -32,6 +32,7 @@
 // ============================================================================
 
 import { svgTextoCuadrado, anchoDeTexto, ALTO as ALTO_GLIFO, GROSOR } from "./glifos";
+import { cartillasDe } from "../cartillas";
 
 export const TAM = {
   icon: 29, // + @2x 58, @3x 87 (obligatorio)
@@ -91,6 +92,12 @@ const DIBUJOS = {
     <path d="M104 312 h304 v26 a62 62 0 0 1 -62 62 h-180 a62 62 0 0 1 -62 -62 z" fill="${c}"/>`,
   croissant: (c) => `
     <path d="M92 344 A164 164 0 0 1 420 344 Q404 404 356 352 A100 100 0 0 0 156 352 Q108 404 92 344 z" fill="${c}"/>`,
+  // Mordida arriba a la derecha y pepitas huecas (evenodd): con un solo color, sin
+  // el mordisco sería un círculo con puntos y no se leería como galleta.
+  galleta: (c) => `
+    <path fill-rule="evenodd" fill="${c}" d="M444 236 A190 190 0 1 1 249 72 A50 50 0 0 0 339 91 A50 50 0 0 0 410 150 A50 50 0 0 0 444 236 z
+      ${[[178, 196, 26], [290, 206, 22], [212, 300, 25], [328, 296, 28], [146, 318, 18], [262, 384, 23], [352, 372, 18]]
+        .map(([x, y, r]) => `M${x - r} ${y} a${r} ${r} 0 1 0 ${r * 2} 0 a${r} ${r} 0 1 0 ${-r * 2} 0 z`).join(" ")}"/>`,
   helado: (c) => `
     <path d="M152 244 a104 104 0 0 1 208 0 z" fill="${c}"/>
     <path d="M168 268 L256 470 L344 268 z" fill="${c}"/>`,
@@ -159,7 +166,7 @@ const DIBUJOS = {
 // usan el margen de siempre.
 const CAJA = {
   taza: [100, 378], vaso: [40, 478], jarra: [134, 434], copa: [98, 418],
-  helado: [140, 470], corazon: [110, 436], burger: [126, 400], grano: [90, 422],
+  helado: [140, 470], galleta: [72, 452], corazon: [110, 436], burger: [126, 400], grano: [90, 422],
   bote: [86, 455], shaker: [62, 455], manzana: [56, 452], rayo: [52, 460],
 };
 const CAJA_POR_DEFECTO = [40, 472];
@@ -1118,13 +1125,57 @@ export function svgStripCupon(tema, usado) {
     <g opacity="${usado ? 0.35 : 1}">${adornos}</g>`);
 }
 
+/**
+ * Dos cartillas en la misma banda, una por fila y cada una con su marca: la
+ * tarjeta de papel con ocho galletas arriba y ocho cafés abajo. Las casillas
+ * vacías llevan la marca en fantasma, como la tarjeta impresa antes de sellar:
+ * sin ella no se sabría qué fila es cuál hasta el primer sello.
+ *
+ * Siempre en casillas, sea cual sea el `modo` del tema: una taza que se llena
+ * no cabe dos veces en 123 puntos de alto.
+ *
+ * @param {object} tema
+ * @param {{marca:string, meta:number, sellos:number}[]} filas
+ */
+export function svgStripCartillas(tema, filas) {
+  const [w, h] = TAM.strip.storeCard.map((v) => v * 3);
+  const margen = 24;
+  const altoFila = (h - margen * 2) / filas.length;
+  const oscura = esOscura(tema);
+  const casilla = forma(tema);
+  const color = String(tema.accent || "").replace(/[^0-9a-z]/gi, "");
+  const id = `cartillas-${banda(tema)}-${color}-${filas.map((f) => `${f.marca}${f.meta}-${f.sellos}`).join("-")}`;
+
+  const cuerpo = filas.map((f, fila) => {
+    const conMarca = { ...tema, marca: f.marca };
+    const ancho = (w - margen * 2) / f.meta;
+    const d = Math.min(ancho, altoFila) * 0.8;
+    const cy = margen + altoFila * (fila + 0.5);
+    return Array.from({ length: f.meta }, (_, i) => {
+      const cx = margen + ancho * (i + 0.5);
+      if (i < Math.min(f.sellos, f.meta)) {
+        return oscura
+          ? svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}" fill-opacity="0.18" stroke="${tema.accent}" stroke-width="4"`)
+            + colocar(conMarca, tema.accent, cx, cy, d * 0.8)
+          : svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}"`) + colocar(conMarca, "#ffffff", cx, cy, d * 0.78);
+      }
+      const trazo = oscura ? "#ffffff" : tema.accent;
+      return svgCasilla(casilla, cx, cy, d - 6, `fill="none" stroke="${trazo}" stroke-opacity="${oscura ? 0.2 : 0.45}" stroke-width="4" stroke-dasharray="12 9"`)
+        + `<g opacity="${oscura ? 0.16 : 0.2}">${colocar(conMarca, trazo, cx, cy, d * 0.62)}</g>`;
+    }).join("");
+  }).join("");
+
+  return svg(w, h, fondoDeBanda(tema, w, h, id) + cuerpo);
+}
+
 /** La banda que le toca a este cliente, con su tamaño en puntos. */
 export function stripDelPase(negocio, cliente) {
   const esCupon = negocio.tipo === "descuento";
   const [ancho, alto] = esCupon ? TAM.strip.coupon : TAM.strip.storeCard;
-  const svgTexto = esCupon
-    ? svgStripCupon(negocio.tema, (cliente.premios || 0) > 0)
-    : svgStripSellos(negocio.tema, negocio.meta, Math.min(cliente.sellos ?? 0, negocio.meta));
+  let svgTexto;
+  if (esCupon) svgTexto = svgStripCupon(negocio.tema, (cliente.premios || 0) > 0);
+  else if (negocio.cartillas) svgTexto = svgStripCartillas(negocio.tema, cartillasDe(cliente, negocio));
+  else svgTexto = svgStripSellos(negocio.tema, negocio.meta, Math.min(cliente.sellos ?? 0, negocio.meta));
   return { svg: svgTexto, ancho, alto };
 }
 

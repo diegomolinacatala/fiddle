@@ -187,7 +187,7 @@ describe("tarjeta pública", () => {
       serial: SERIAL, codigo: "K7M", sellos: 3, premios: 1, nombre: "Ana", mensaje: "Te echamos de menos",
       nota: "el del perro", auth_token: "x".repeat(48), visitas: 9, origen: "tap",
     });
-    expect(c).toEqual({ serial: SERIAL, codigo: "K7M", sellos: 3, premios: 1, nombre: "Ana", mensaje: "Te echamos de menos" });
+    expect(c).toEqual({ serial: SERIAL, codigo: "K7M", sellos: 3, sellos2: 0, premios: 1, nombre: "Ana", mensaje: "Te echamos de menos" });
     const n = negocioDeTarjeta({ ...nube, brief: "secreto", notas: { "apple.premio": "cambiar" } });
     expect(n).not.toHaveProperty("brief");
     expect(n).not.toHaveProperty("notas");

@@ -8,12 +8,13 @@
 // comentarios del admin.
 // ============================================================================
 
-/** @returns {{serial:string, codigo:string, sellos:number, premios:number, nombre:string|null, mensaje:string|null}|null} */
+/** @returns {{serial:string, codigo:string, sellos:number, sellos2:number, premios:number, nombre:string|null, mensaje:string|null}|null} */
 export const clienteDeTarjeta = (c) =>
   c && {
     serial: c.serial,
     codigo: c.codigo,
     sellos: c.sellos ?? 0,
+    sellos2: c.sellos2 ?? 0,
     premios: c.premios ?? 0,
     nombre: c.nombre ?? null,
     mensaje: c.mensaje ?? null,
@@ -27,6 +28,7 @@ export const negocioDeTarjeta = (n) =>
     tipo: n.tipo,
     meta: n.meta,
     premio: n.premio,
+    cartillas: n.cartillas ?? null,
     promo: n.promo ?? null,
     tema: n.tema,
   };

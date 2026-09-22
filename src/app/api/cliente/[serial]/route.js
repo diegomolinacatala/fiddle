@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCliente, getNegocio, listEventos, guardarNombre, clientePublico } from "@/lib/store";
-import { LISTA_ACCIONES } from "@/lib/acciones";
+import { accionesDe } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
 
     const negocio = await getNegocio(cliente.negocio);
     const eventos = await listEventos(serial);
-    const acciones = LISTA_ACCIONES.filter((a) => negocio.acciones.includes(a.key));
+    const acciones = accionesDe(negocio);
     return NextResponse.json({ cliente: clientePublico(cliente), negocio, eventos, acciones });
   } catch (e) {
     return errorInterno("cliente GET", e);

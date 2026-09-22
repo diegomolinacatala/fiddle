@@ -17,7 +17,7 @@ export const TIPOS_IMAGEN = ["icono", "insignia", "logo", "banda"];
 
 /** Huella corta del aspecto de la tienda (FNV-1a en base 36). */
 export function versionDe(negocio) {
-  const s = JSON.stringify([negocio?.nombre, negocio?.tipo, negocio?.meta, negocio?.tema]);
+  const s = JSON.stringify([negocio?.nombre, negocio?.tipo, negocio?.meta, negocio?.tema, negocio?.cartillas]);
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
@@ -44,7 +44,9 @@ export const rutaLogo = (negocio) => ruta("logo", negocio);
 /** Banda de sellos (la misma que la del pase de Apple) en el formato ancho de Google. */
 export function rutaBanda(negocio, cliente) {
   if (negocio.tipo === "descuento") return ruta("banda", negocio, { u: (cliente?.premios || 0) > 0 ? "1" : "0" });
-  return ruta("banda", negocio, { s: String(Math.min(cliente?.sellos ?? 0, negocio.meta)) });
+  const s = String(Math.min(cliente?.sellos ?? 0, negocio.meta));
+  if (!negocio.cartillas) return ruta("banda", negocio, { s });
+  return ruta("banda", negocio, { s, s2: String(Math.min(cliente?.sellos2 ?? 0, negocio.cartillas[1].meta)) });
 }
 
 /** Absoluta: Google Wallet descarga las imágenes desde sus servidores. */

@@ -1,4 +1,5 @@
 import { estadoDe } from "./resumen";
+import { cartillasDe } from "./cartillas";
 import { rutaIcono, rutaInsignia } from "./rutasImagen";
 
 // ============================================================================
@@ -29,6 +30,7 @@ export function avisoDeCambio(antes, despues, negocio) {
   const titulo = negocio.nombre;
   const e = estadoDe(despues, negocio);
 
+  if (negocio.cartillas && !e.esCupon) return avisoDeCartillas(antes, despues, negocio);
   if ((despues.premios || 0) > (antes.premios || 0)) {
     return e.esCupon
       ? { titulo, cuerpo: `Cupón usado: ${negocio.premio}. Gracias por venir.`, tipo: "canje" }
@@ -38,6 +40,28 @@ export function avisoDeCambio(antes, despues, negocio) {
     return e.completa
       ? { titulo, cuerpo: `Cartilla completa. Tu ${negocio.premio} te espera en caja.`, tipo: "completa" }
       : { titulo, cuerpo: `Sello ${e.sellos} de ${e.meta}. ${faltanPara(e.faltan, negocio.premio)}`, tipo: "sello" };
+  }
+  return null;
+}
+
+/**
+ * Lo mismo con dos cartillas: el aviso dice de cuál es ("Cafés: 3 de 8"), y un
+ * canje se reconoce porque su cartilla vuelve a cero.
+ */
+function avisoDeCartillas(antes, despues, negocio) {
+  const titulo = negocio.nombre;
+  const previas = cartillasDe(antes, negocio);
+  for (const c of cartillasDe(despues, negocio)) {
+    const antesN = antes[c.clave] || 0;
+    const ahora = despues[c.clave] || 0;
+    if ((despues.premios || 0) > (antes.premios || 0) && ahora < antesN && previas[c.indice].completa) {
+      return { titulo, cuerpo: `Premio canjeado: ${c.premio}. Empiezas otra cartilla de ${c.nombre.toLowerCase()}.`, tipo: "canje" };
+    }
+    if (ahora > antesN) {
+      return c.completa
+        ? { titulo, cuerpo: `Cartilla de ${c.nombre.toLowerCase()} completa. Tu ${c.premio} te espera en caja.`, tipo: "completa" }
+        : { titulo, cuerpo: `${c.nombre}: ${c.sellos} de ${c.meta}. ${faltanPara(c.faltan, c.premio)}`, tipo: "sello" };
+    }
   }
   return null;
 }

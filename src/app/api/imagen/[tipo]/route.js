@@ -29,7 +29,11 @@ const ladoValido = (t) => LADOS.reduce((mejor, l) => (Math.abs(l - t) < Math.abs
 function clienteDeBanda(negocio, q) {
   return negocio.tipo === "descuento"
     ? { premios: q.get("u") === "1" ? 1 : 0, sellos: 0 }
-    : { sellos: Math.max(0, Math.min(Math.floor(Number(q.get("s"))) || 0, negocio.meta)), premios: 0 };
+    : {
+        sellos: Math.max(0, Math.min(Math.floor(Number(q.get("s"))) || 0, negocio.meta)),
+        sellos2: negocio.cartillas ? Math.max(0, Math.min(Math.floor(Number(q.get("s2"))) || 0, negocio.cartillas[1].meta)) : 0,
+        premios: 0,
+      };
 }
 
 /** La URL canónica de lo que se pide: la única que se dibuja. */

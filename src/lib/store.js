@@ -162,6 +162,7 @@ function fusionarConfig(actual, patch) {
     ubicaciones: patch.ubicaciones ?? actual.ubicaciones,
     tema: patch.tema ? { ...actual.tema, ...patch.tema } : actual.tema,
     brief: patch.brief ?? actual.brief,
+    cartillas: patch.cartillas !== undefined ? patch.cartillas : actual.cartillas,
     notas: patch.notas ?? actual.notas,
     archivado: patch.archivado ?? actual.archivado,
   };
@@ -232,7 +233,7 @@ export async function borrarNegocio(slug) {
 
 // ============================ CLIENTES ============================
 const CAMPOS_CLIENTE =
-  "serial, negocio, codigo, ww_serial, sellos, premios, nombre, auth_token, actualizado, creado, " +
+  "serial, negocio, codigo, ww_serial, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
   "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota";
 
 function normalizarCliente(c) {
@@ -244,6 +245,8 @@ function normalizarCliente(c) {
         codigo: c.codigo || codigoDesdeSerial(c.serial),
         ww_serial: c.ww_serial ?? null,
         sellos: c.sellos ?? 0,
+        // La segunda cartilla, en las tiendas que llevan dos (ver lib/cartillas.js).
+        sellos2: c.sellos2 ?? 0,
         premios: c.premios ?? 0,
         nombre: c.nombre ?? null,
         auth_token: c.auth_token ?? null,
@@ -264,7 +267,7 @@ function normalizarCliente(c) {
 /** Lo que puede salir hacia el navegador: sin auth_token ni ww_serial. */
 export const clientePublico = (c) =>
   c && {
-    serial: c.serial, negocio: c.negocio, codigo: c.codigo, sellos: c.sellos, premios: c.premios,
+    serial: c.serial, negocio: c.negocio, codigo: c.codigo, sellos: c.sellos, sellos2: c.sellos2 ?? 0, premios: c.premios,
     nombre: c.nombre ?? null, creado: c.creado ?? null,
     // El CRM no es secreto para quien ya puede ver al cliente: la caja también
     // agradece saber que este viene cada tres días y lleva dos semanas sin pasar.
@@ -282,7 +285,7 @@ export async function crearCliente({ serial, negocio, authToken, wwSerial = null
   const ts = ahoraISO();
   const base = {
     serial, negocio, ww_serial: wwSerial, auth_token: authToken,
-    sellos: 0, premios: 0, nombre: null, actualizado: ts, creado: ts,
+    sellos: 0, sellos2: 0, premios: 0, nombre: null, actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
     origen, mensaje: null, nota: null,
   };
@@ -339,16 +342,16 @@ export async function getCliente(serial) {
  * estado que se leyó. Así dos cajas que canjean a la vez no entregan el premio
  * dos veces: la segunda recibe `false` y debe reintentar con el estado nuevo.
  *
- * @param {{serial:string, sellos:number, premios:number}} cliente
- * @param {{esperado?: {sellos:number, premios:number}}} [opciones]
+ * @param {{serial:string, sellos:number, sellos2?:number, premios:number}} cliente
+ * @param {{esperado?: {sellos:number, sellos2?:number, premios:number}}} [opciones]
  * @returns {Promise<boolean>} true si se guardó
  */
 export async function saveCliente(cliente, { esperado } = {}) {
-  const patch = { sellos: cliente.sellos, premios: cliente.premios || 0, actualizado: ahoraISO() };
+  const patch = { sellos: cliente.sellos, sellos2: cliente.sellos2 || 0, premios: cliente.premios || 0, actualizado: ahoraISO() };
 
   if (hasSupabase()) {
     let q = supa().from("clientes").update(patch).eq("serial", cliente.serial);
-    if (esperado) q = q.eq("sellos", esperado.sellos).eq("premios", esperado.premios || 0);
+    if (esperado) q = q.eq("sellos", esperado.sellos).eq("sellos2", esperado.sellos2 || 0).eq("premios", esperado.premios || 0);
     const filas = sinError(await q.select("serial"), "guardar cliente");
     return (filas?.length ?? 0) > 0;
   }
@@ -356,7 +359,8 @@ export async function saveCliente(cliente, { esperado } = {}) {
     const all = await leer("clientes", {});
     const actual = all[cliente.serial];
     if (!actual) return false;
-    if (esperado && (actual.sellos !== esperado.sellos || (actual.premios || 0) !== (esperado.premios || 0))) {
+    const cambio = (k) => (actual[k] || 0) !== (esperado[k] || 0);
+    if (esperado && (cambio("sellos") || cambio("sellos2") || cambio("premios"))) {
       return false;
     }
     await escribir("clientes", { ...all, [cliente.serial]: { ...actual, ...patch } });

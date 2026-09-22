@@ -19,6 +19,7 @@
 // que quiera sin tocar código.
 export { MARCAS, FORMAS, BANDAS, MODOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
 import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
+import { normalizarCartillas } from "./validacion";
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
 // de uno de estos y se le cambia el emoji y el color de acento.
@@ -200,6 +201,21 @@ const TEMA_DE_ESTILO = {
     ink: "#5a1a12",
     accent: "#c1121f",
     atras: "Cada pedido te gana una porción. Pizza completa = pizza gratis.",
+  },
+  // Cafetería de galletas: la cookie mordida, en chocolate sobre masa tostada.
+  galletas: {
+    estilo: "galletas",
+    emoji: "\u{1F36A}",
+    marca: "galleta",
+    forma: "circulo",
+    banda: "clara",
+    preset: "purple",
+    pageBg: "linear-gradient(135deg,#fbf1e3 0%,#f1dcc0 55%,#d9b48a 100%)",
+    pageInk: "#3b2314",
+    cardBg: "#fbf1e3",
+    ink: "#3b2314",
+    accent: "#7a3f1d",
+    atras: "Un sello por cookie. Al completar la cartilla, la siguiente te la invitamos.",
   },
   heladeria: {
     estilo: "heladeria",
@@ -415,14 +431,18 @@ export function componerNegocio(slug, guardado) {
   const nombre = guardado?.nombre ?? semilla?.nombre ?? slug;
   const tipo = guardado?.tipo ?? semilla?.tipo ?? "sellos";
   const tema = completarTema({ ...temaPorDefecto(c.tema || semilla?.tema), ...(semilla?.tema || {}), ...(c.tema || {}) });
+  // Con dos cartillas, la primera manda sobre la meta y el premio del negocio:
+  // es la misma cartilla vista desde el código de siempre (ver lib/cartillas.js).
+  const cartillas = tipo === "descuento" ? null : normalizarCartillas(c.cartillas);
 
   return {
     slug,
     nombre,
     tipo,
     tema,
-    meta: c.meta ?? semilla?.meta ?? (tipo === "descuento" ? 1 : 8),
-    premio: c.premio ?? semilla?.premio ?? "premio",
+    meta: cartillas?.[0].meta ?? c.meta ?? semilla?.meta ?? (tipo === "descuento" ? 1 : 8),
+    premio: cartillas?.[0].premio ?? c.premio ?? semilla?.premio ?? "premio",
+    cartillas,
     acciones: c.acciones ?? semilla?.acciones ?? (tipo === "descuento" ? ["canjear"] : ["sellar", "canjear"]),
     promo: c.promo ?? null,
     ubicaciones: Array.isArray(c.ubicaciones) ? c.ubicaciones : [],

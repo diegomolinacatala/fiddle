@@ -2,6 +2,7 @@
 
 import { normalizarTextoMarca } from "./apple/glifos";
 import { FORMAS, BANDAS, MODOS, resolverMarca } from "./apple/dibujo";
+import { CONTADORES } from "./cartillas";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 
@@ -45,6 +46,29 @@ export function patchNegocio(body, accionesValidas) {
 // ---------------------------------------------------------------- admin
 const texto = (v, max) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const HEX = /^#[0-9a-f]{6}$/i;
+
+const MAX_META_CARTILLA = 20; // dos filas de más de veinte ya no se distinguen en la banda
+
+/**
+ * Las dos cartillas de una tienda que lleva dos en el mismo pase (ver
+ * lib/cartillas.js), o null si no valen. Solo acepta exactamente dos: una lista
+ * a medias no se adivina.
+ * @param {unknown} lista
+ * @returns {{nombre:string, marca:string, meta:number, premio:string}[] | null}
+ */
+export function normalizarCartillas(lista) {
+  if (!Array.isArray(lista) || lista.length !== CONTADORES.length) return null;
+  const out = [];
+  for (const c of lista) {
+    const nombre = texto(c?.nombre, 24);
+    const premio = texto(c?.premio, 64);
+    const marca = resolverMarca(c?.marca);
+    const meta = Math.round(Number(c?.meta));
+    if (!nombre || !premio || !marca || !(meta >= 1 && meta <= MAX_META_CARTILLA)) return null;
+    out.push({ nombre, marca, meta, premio });
+  }
+  return out;
+}
 
 /**
  * Las piezas con las que se dibuja el pase (ver lib/apple/dibujo.js).
@@ -118,6 +142,16 @@ export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPor
     patch.nombre = nombre;
   }
   if (typeof b.brief === "string") patch.brief = b.brief.trim().slice(0, 4000);
+  // null quita la segunda cartilla; una lista tiene que valer entera.
+  if (b.cartillas === null) patch.cartillas = null;
+  else if (b.cartillas !== undefined) {
+    const cartillas = normalizarCartillas(b.cartillas);
+    if (!cartillas) return { error: `Cartillas no válidas: dos, cada una con nombre, marca, premio y meta de 1 a ${MAX_META_CARTILLA}` };
+    patch.cartillas = cartillas;
+    // La primera cartilla ES la de siempre: su meta y su premio son los del negocio.
+    patch.meta = cartillas[0].meta;
+    patch.premio = cartillas[0].premio;
+  }
   if (b.tema && typeof b.tema === "object") {
     const cambiaPlantilla = temaPorDefecto && ESTILOS.includes(b.tema.estilo);
     const tema = {

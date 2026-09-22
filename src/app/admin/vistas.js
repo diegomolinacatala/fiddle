@@ -56,7 +56,7 @@ export const ROTULO = {
   // marcas
   taza: "Taza", vaso: "Vaso para llevar", grano: "Grano de café",
   tijeras: "Tijeras", peine: "Peine", poste: "Poste de barbero",
-  pizza: "Porción de pizza", burger: "Hamburguesa", croissant: "Croissant", helado: "Helado",
+  pizza: "Porción de pizza", burger: "Hamburguesa", croissant: "Croissant", galleta: "Galleta", helado: "Helado",
   copa: "Copa", jarra: "Jarra de cerveza",
   corazon: "Corazón", estrella: "Estrella", huella: "Huella", pesa: "Pesa", flor: "Flor", libro: "Libro",
   bote: "Bote de proteína", shaker: "Shaker", manzana: "Manzana", rayo: "Rayo",
@@ -98,7 +98,7 @@ export const ROTULO_PLANTILLA = {
   coffee: "Cafetería", barber: "Barbería", pizza: "Pizzería", moderno: "Neutra (moderna)",
   iced: "Vaso que se llena", panaderia: "Panadería", bar: "Bar", mascotas: "Mascotas",
   gym: "Gimnasio", belleza: "Belleza",
-  nutricion: "Nutrición / suplementos", pizzeria: "Pizzería (porciones)", heladeria: "Heladería",
+  nutricion: "Nutrición / suplementos", pizzeria: "Pizzería (porciones)", galletas: "Galletas / cookies", heladeria: "Heladería",
   estudio: "Estudio (yoga/pilates)", club: "Club de socios",
   floristeria: "Floristería", nocturno: "Bar de noche", taller: "Taller / lavadero",
   academia: "Academia", clinica: "Clínica / fisio",

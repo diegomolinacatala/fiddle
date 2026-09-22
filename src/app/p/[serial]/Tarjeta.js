@@ -5,6 +5,7 @@ import Icono from "@/app/Icono";
 import { camposDelPase } from "@/lib/apple/pase";
 import { svgLogo, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
+import { describirBanda } from "@/lib/cartillas";
 import { useTarjetaEnVivo } from "./telefono";
 import Acciones from "./Acciones";
 
@@ -65,10 +66,10 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
           <div style={{ position: "relative" }}>
             {/* key: cada sello nuevo vuelve a montar la banda y la animación se ve */}
             <img
-              key={`${cliente.sellos}-${cliente.premios}`}
+              key={`${cliente.sellos}-${cliente.sellos2}-${cliente.premios}`}
               className={novedad ? "banda nueva" : "banda"}
               src={comoDataUri(banda.svg)}
-              alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : `${e.sellos} de ${e.meta} sellos`}
+              alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio)}
               style={{ display: "block", width: "100%", height: "auto", aspectRatio: `${banda.ancho} / ${banda.alto}` }}
             />
             {primaryFields.length > 0 && (

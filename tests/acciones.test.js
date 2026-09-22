@@ -33,7 +33,8 @@ describe("acciones", () => {
     expect(() => ACCIONES.sellar.aplicar(c, sellos)).not.toThrow();
   });
 
-  it("LISTA_ACCIONES expone todas para la UI", () => {
-    expect(LISTA_ACCIONES.map((a) => a.key)).toEqual(Object.keys(ACCIONES));
+  it("LISTA_ACCIONES expone las que el manager activa; las de la segunda cartilla van solas", () => {
+    expect(LISTA_ACCIONES.map((a) => a.key)).toEqual(Object.keys(ACCIONES).filter((k) => !ACCIONES[k].segunda));
+    expect(LISTA_ACCIONES.map((a) => a.key)).not.toContain("sellar2");
   });
 });
