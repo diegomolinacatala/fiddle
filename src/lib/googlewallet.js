@@ -28,6 +28,15 @@ const CONCURRENCIA = 10;
 export const rutaGuardarGoogle = (serial) => (hayGoogle() && serial ? `/api/google/guardar/${serial}` : null);
 
 /**
+ * A dónde manda el tap de la tienda a un cliente que no es de iPhone. En Android
+ * con Google activo, directo a guardar en Google Wallet: igual que el iPhone
+ * recibe el .pkpass y ve "Añadir" sin pasar por ninguna página. Si ya la tiene,
+ * Google la abre en vez de duplicarla. Sin Google, o en ordenador, la tarjeta web.
+ */
+export const destinoDelTap = (plataforma, serial) =>
+  (plataforma === "android" && rutaGuardarGoogle(serial)) || `/p/${serial}`;
+
+/**
  * Lo que hace /api/google/guardar: deja el objeto creado en Google con el
  * estado de ahora, apunta que el cliente lo tiene y devuelve el enlace de Google.
  * Si la API falla, el enlace lleva clase y objeto enteros y Google los crea al

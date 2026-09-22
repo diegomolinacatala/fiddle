@@ -23,6 +23,10 @@ export async function GET(request, { params }) {
     if (!negocio) return jsonError("Tienda no encontrada", 404);
     return NextResponse.redirect(await prepararGuardado(cliente, negocio), 302);
   } catch (e) {
-    return errorInterno("google guardar", e);
+    // El tap de Android llega aquí directo: si Google falla, a su tarjeta web en
+    // vez de dejarle un error en pantalla. La tarjeta ya existe; solo falta Wallet.
+    errorInterno("google guardar", e);
+    const { serial } = await params;
+    return NextResponse.redirect(new URL(`/p/${serial}`, request.url), 302);
   }
 }

@@ -14,7 +14,9 @@ funcionan a la vez:
 ## Lo que ve el cliente
 
 1. Toca el tag NFC (o escanea el QR del mostrador) → `/api/tap?b=<tienda>`.
-2. En Android le lleva a **su tarjeta** (`/p/<serial>`). Se dibuja con las mismas
+2. En Android, **si Google Wallet está activo, va directo a guardarla en Google Wallet**
+   (como el iPhone, que recibe el pase sin pasar por ninguna página). Si Google falla
+   en ese momento, o no está configurado, le lleva a **su tarjeta** (`/p/<serial>`). Se dibuja con las mismas
    funciones que el pase de Apple (`camposDelPase`, `stripDelPase`, `svgLogo`):
    misma banda de sellos, mismos textos, mismo QR y código de 3 letras.
 3. Debajo, según lo que permita su teléfono:
