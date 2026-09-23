@@ -133,6 +133,18 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 > Las tareas sueltas van aquí; el orden y el porqué, en
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
+### Pedido el 23-09-2026 (antes de la visita a La Delicantería)
+- [x] Ejecutar en Supabase el SQL de `guardados` / `fusionado_en` / `tarjetas_de_dispositivo`
+      y después fusionar `feat/misma-tarjeta-y-premio-guardado` a `main`.
+- [x] Vista previa del pase con **dos cartillas**: cuenta los sellos de una sola (sale 1
+      cuando puede tener 5).
+- [x] CRM: nombres de grupos/estados **neutros y profesionales** (nada de "fantasma" y similares).
+- [x] Quitar el panel "Estado de la integración" de arriba del manager (ahora vive en `/admin`).
+- [x] Manager: la lista de clientes de la derecha crece sin fin → fuera; la pestaña Clientes (CRM) pagina de 50 en 50.
+- [x] Homogeneizar la interfaz (primera pasada: pestañas y radios, cabecera común manager/clientes): mismos radios y estilos de botón (no uno cuadrado al
+      lado de uno redondo), y quitar textos de relleno que no aportan.
+- [x] Velocidad percibida: 1, 3 y 4 de la sección [Velocidad](#velocidad) hechas.
+
 ### Ahora
 - [ ] Confirmar en el iPhone la notificación de **promo** y la de **sello**.
 - [ ] Grabar los tags NFC (manager → *Tag NFC / emitir* → Copiar URL → app NFC Tools).
@@ -149,6 +161,11 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Botón oficial "Añadir a Google Wallet" (Google exige su imagen, como Apple la suya).
 
 ### Antes de abrir al público
+- [ ] **Un Pass Type ID por tienda** en la cuenta de Apple Developer, para que el Wallet
+      no apile las tarjetas de negocios distintos. Detalle y coste en
+      [la sección de abajo](#un-pass-type-id-por-tienda). Hacerlo **antes** de que una
+      tienda nueva reparta tarjetas: las que ya estén en un iPhone se quedan con el ID
+      con el que se emitieron.
 - [ ] Quitar `USUARIOS_DEMO` de Vercel: se desactivan los accesos de prueba y dejan de
       mostrarse en el login. Quedan solo las contraseñas de `certs/secretos.env`.
 - [ ] Badge oficial "Add to Apple Wallet" en `/p/<serial>` (ahora hay un botón provisional).
@@ -159,6 +176,47 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Anti-fraude: código rotativo en el QR.
 - [ ] Métricas para el dueño: visitas, canjes, clientes nuevos.
 - [ ] Tests end-to-end (Playwright) de caja y manager.
+
+### Un Pass Type ID por tienda
+
+Hoy todas las tiendas firman con el mismo Pass Type ID (`pass.com.fiddle`), y el Wallet
+**agrupa en un mismo montón los pases que comparten Pass Type ID**: la tarjeta de Nube y
+la de la Delicantería salen apiladas como si fueran de la misma casa. Decisión
+(23-09-2026): cada tienda con el suyo (`pass.com.fiddle.nube`, `pass.com.fiddle.delicanteria`…).
+
+| Trabajo | Dónde | Notas |
+|---|---|---|
+| Crear el Pass Type ID y **su** certificado, por tienda | developer.apple.com (misma cuenta y Team ID) | Papeleo: los pasos 1.2–1.4 de [APPLE-WALLET.md](docs/APPLE-WALLET.md), una vez por tienda. Cada certificado caduca por su cuenta: una alarma más por tienda |
+| Guardar ID + certificado + clave por tienda | base (cifrado, como el nombre del cliente) o variables `APPLE_<SLUG>_*` | Hoy `configApple()` lee UN juego de `APPLE_*`; el de siempre queda de respaldo |
+| Firmar cada pase con el de su tienda | `lib/apple/firmar.js`, `lib/apple/pase.js` (`passTypeIdentifier`) | |
+| Web service: aceptar cualquiera de nuestros IDs | `lib/apple/servicio.js` (`clienteAutenticado` compara con UN `passTypeId`) | El `passType` de la URL tiene que ser el de la tienda del cliente |
+| APNs con el certificado de cada tienda | `lib/apple/apns.js`, `lib/wallet.js` (`tokensApple` filtra por UN `passTypeId`) | El *topic* del aviso es el Pass Type ID: con el certificado de otro, Apple lo rechaza |
+
+~4-6 h de código + el papeleo en Apple. Las tarjetas que ya estén en un iPhone **no
+cambian de ID** (va firmado dentro): se quedan en `pass.com.fiddle` y siguen funcionando.
+Por eso conviene hacerlo antes de que una tienda nueva empiece a repartir.
+
+### Velocidad
+
+Por qué hoy se siente lento, de más a menos impacto:
+
+1. ✅ *(hecho 23-09)* **Manager y CRM son páginas de cliente que esperan a un `fetch` para pintar nada**
+   ("Cargando…" a pantalla vacía). Pasar la carga al servidor (Server Component que lee el
+   store y pasa los datos) quita un viaje entero; con `loading.js` por ruta, Next enseña un
+   **esqueleto** (las cajas grises con la forma de la página) al instante mientras llega.
+2. **`getNegocio` se lee varias veces por petición** (layout: metadata + viewport, página,
+   API). Un `cache()` de React por petición y, para el negocio, caché de unos segundos:
+   cambia poco y es lo que más se lee.
+3. ✅ *(hecho 23-09: Supabase está en eu-west-2, Londres → `lhr1`)* **Supabase en `eu-west` vs. funciones de Vercel en EE. UU. por defecto**: cada consulta
+   cruza el Atlántico (~80-100 ms) y una página hace varias en serie. Fijar la región de las
+   funciones a la de Supabase (`regions` en `vercel.json`) es un cambio de una línea.
+4. ✅ *(hecho 23-09, `w/[serial]/TarjetaCaja.js`)* **Caja**: tras sellar se hace `router.refresh()` (repinta todo desde el servidor). Pintar
+   el resultado que ya devuelve `/api/accion` al momento (actualización optimista) y
+   refrescar detrás hace que el botón responda en el acto.
+5. **Transiciones**: `<Link>` con prefetch en vez de `<a>` entre Manager ↔ Clientes ↔ Caja,
+   para que el cambio de pestaña no recargue la página entera.
+6. Supabase gratis "en frío" tras inactividad: la primera petición tarda segundos. Con
+   plan de pago o un cron que lo mantenga despierto desaparece.
 
 ### Google Wallet — hecho, pendiente de credenciales (21-sep-2026)
 

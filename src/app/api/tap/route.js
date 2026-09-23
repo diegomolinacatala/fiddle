@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { emitirPase } from "@/lib/wallet";
 import { getCliente, getNegocio } from "@/lib/store";
-import { generarPkpass, MIME_PKPASS } from "@/lib/apple/firmar";
+import { MIME_PKPASS } from "@/lib/apple/firmar";
+import { clienteVigente } from "@/lib/unaTarjeta";
 import { hayApple } from "@/lib/apple/config";
 import { destinoDelTap } from "@/lib/googlewallet";
 import { esSlug } from "@/lib/negocios";
@@ -21,6 +22,13 @@ const respuestaPkpass = (buffer, slug) =>
       "cache-control": "no-store",
     },
   });
+
+// En iPhone, el .pkpass NO va en esta misma respuesta: se redirige a
+// /api/pase/<serial>. Así la cookie que recuerda la tarjeta viaja en una
+// redirección normal, que Safari guarda siempre, y no en la descarga que se
+// queda el Wallet (si esa cookie se pierde, el siguiente escaneo da otra
+// tarjeta). Cuesta un salto de red y nada más.
+const descargaPkpass = (serial, request) => NextResponse.redirect(new URL(`/api/pase/${serial}`, request.url), 302);
 
 // El "tap NFC" de un negocio. El tag guarda /api/tap?b=<slug>.
 //
@@ -44,13 +52,14 @@ export async function GET(request) {
     const recordado = url.searchParams.get("nuevo") === "1"
       ? null
       : serialRecordado(request.cookies.get(cookieDeTarjeta(slug))?.value);
-    const suyo = recordado ? await getCliente(recordado) : null;
+    // Si la tarjeta recordada se fusionó en otra (ver lib/unaTarjeta.js), la buena es esa.
+    const suyo = recordado ? await clienteVigente(getCliente, recordado) : null;
 
-    let cliente, negocio, respuesta;
-    if (suyo?.negocio === slug && (negocio = await getNegocio(slug))) {
+    let cliente, respuesta;
+    if (suyo?.negocio === slug && (await getNegocio(slug))) {
       cliente = suyo;
       respuesta = plataforma === "ios" && hayApple()
-        ? respuestaPkpass(await generarPkpass(cliente, negocio), slug)
+        ? descargaPkpass(cliente.serial, request)
         : NextResponse.redirect(new URL(destinoDelTap(plataforma, cliente.serial), request.url), 302);
     } else {
       if (await usoExcedido("tap", ipDe(request))) {
@@ -58,7 +67,7 @@ export async function GET(request) {
       }
       const r = await emitirPase(slug, { origen: "tap" });
       cliente = r.cliente;
-      if (plataforma === "ios" && r.proveedor === "apple") respuesta = respuestaPkpass(await generarPkpass(r.cliente, r.negocio), slug);
+      if (plataforma === "ios" && r.proveedor === "apple") respuesta = descargaPkpass(r.cliente.serial, request);
       else if (plataforma === "ios" && r.pkpassWalletWallet) respuesta = respuestaPkpass(r.pkpassWalletWallet, slug);
       // A la tarjeta en el MISMO dominio por el que entró (un deploy de prueba no
       // debe mandar al cliente a producción).

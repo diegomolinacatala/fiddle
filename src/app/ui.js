@@ -90,6 +90,26 @@ export const botonSecundario = {
 
 export const botonPequeno = { ...botonSecundario, padding: "0.4rem 0.8rem", fontSize: 13 };
 
+// Radios: TODO lo que se pulsa (botones, pestañas, campos) lleva 10; las filas de
+// lista 12; los paneles 14. Nada de píldoras sueltas al lado de botones cuadrados.
+export const RADIO = { boton: 10, fila: 12, panel: 14 };
+
+/** Pestaña (Manager / Clientes, Resumen / Grupos…): la misma en todas las pantallas. */
+export const solapa = (activa, accent = C.texto) => ({
+  padding: "0.5rem 0.95rem",
+  borderRadius: RADIO.boton,
+  border: `1px solid ${activa ? accent : C.borde}`,
+  background: activa ? `${accent}14` : "#fff",
+  color: activa ? accent : C.texto,
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: "pointer",
+  textDecoration: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+});
+
 export const aviso = (ok) => ({
   padding: "10px 13px",
   borderRadius: 10,

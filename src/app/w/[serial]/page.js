@@ -1,15 +1,16 @@
 import { cookies } from "next/headers";
-import { getCliente, getNegocio, listEventos } from "@/lib/store";
+import { redirect } from "next/navigation";
+import { getCliente, getNegocio, listEventos, clientePublico } from "@/lib/store";
 import { accionesDe } from "@/lib/acciones";
+import { clienteVigente } from "@/lib/unaTarjeta";
 import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
-import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
-import { cartillasDe, describirBanda } from "@/lib/cartillas";
-import WorkerActions from "./WorkerActions";
+import TarjetaCaja from "./TarjetaCaja";
+import { negocioDeTarjeta } from "@/lib/tarjeta";
 import SetNombre from "./SetNombre";
 import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
-import { C, pagina, panel, chipCodigo, botonSecundario } from "@/app/ui";
+import { C, pagina, chipCodigo, botonSecundario } from "@/app/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,11 @@ export const metadata = { title: "Cliente · caja", robots: { index: false, foll
 export default async function Page({ params }) {
   const { serial } = await params;
   const cliente = await getCliente(serial);
+  // El QR de una tarjeta antigua (fusionada en la nueva): a la buena, sin preguntar.
+  if (cliente?.fusionado_en) {
+    const vigente = await clienteVigente(getCliente, serial);
+    if (vigente) redirect(`/w/${vigente.serial}`);
+  }
   if (!cliente) {
     return (
       <main style={pagina}>
@@ -45,7 +51,6 @@ export default async function Page({ params }) {
   const acciones = accionesDe(n);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
-  const banda = stripDelPase(n, cliente);
 
   return (
     <main style={pagina}>
@@ -67,40 +72,12 @@ export default async function Page({ params }) {
           </div>
         </div>
 
-        <div style={{ ...panel, padding: 0, overflow: "hidden", borderColor: `${accent}66` }}>
-          <img
-            src={comoDataUri(banda.svg)}
-            alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, n)}
-            style={{ display: "block", width: "100%", height: "auto", aspectRatio: `${banda.ancho} / ${banda.alto}` }}
-          />
-          {!e.esCupon && n.cartillas ? cartillasDe(cliente, n).map((c) => (
-            <div key={c.clave} style={{ ...cuentaFila, borderTop: c.indice ? `1px solid ${C.borde}` : 0 }}>
-              <span style={{ fontSize: 15, color: c.completa ? accent : C.suave, fontWeight: c.completa ? 650 : 400 }}>
-                <strong style={{ color: C.texto, fontWeight: 600 }}>{c.nombre}</strong>
-                {" · "}{c.completa ? `premio listo: ${c.premio}` : `faltan ${c.faltan} para ${c.premio}`}
-              </span>
-              <span style={{ fontSize: 20, fontWeight: 650 }}>{c.sellos}/{c.meta}</span>
-            </div>
-          )) : (
-          <div style={cuentaFila}>
-            {e.esCupon ? (
-              <>
-                <span style={{ fontSize: 16, fontWeight: 600, color: e.usado ? C.tenue : accent }}>{e.usado ? "Ya usado" : "Válido, un solo uso"}</span>
-                <span style={{ fontSize: 14, color: C.suave, textAlign: "right" }}>{n.premio}</span>
-              </>
-            ) : (
-              <>
-                <span style={{ fontSize: 15, color: e.completa ? accent : C.suave, fontWeight: e.completa ? 650 : 400 }}>
-                  {e.completa ? `Premio listo: ${n.premio}` : `Faltan ${e.faltan} para ${n.premio}`}
-                </span>
-                <span style={{ fontSize: 22, fontWeight: 650 }}>{e.sellos}/{e.meta}</span>
-              </>
-            )}
-          </div>
-          )}
-        </div>
-
-        <WorkerActions serial={serial} acciones={acciones} accent={accent} />
+        <TarjetaCaja
+          serial={serial}
+          inicial={clientePublico(cliente)}
+          negocio={{ ...negocioDeTarjeta(n), acciones: n.acciones }}
+          acciones={acciones}
+        />
 
         <a href={`/${n.slug}/caja?escanear=1`} style={siguiente}>
           <Icono nombre="camara" tam={18} /> Escanear al siguiente
@@ -132,7 +109,6 @@ function Aviso({ titulo, texto, children }) {
 }
 
 const volver = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: C.suave, textDecoration: "none", fontWeight: 500 };
-const cuentaFila = { padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 };
 const cap = { fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 };
 const siguiente = {
   ...botonSecundario,

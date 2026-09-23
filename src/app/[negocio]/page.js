@@ -4,6 +4,7 @@ import { getNegocio, getCliente } from "@/lib/store";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import { plataformaDe } from "@/lib/plataforma";
 import { cookieDeTarjeta, serialRecordado } from "@/lib/recordar";
+import { clienteVigente } from "@/lib/unaTarjeta";
 import { hayApple } from "@/lib/apple/config";
 import { hayGoogle } from "@/lib/googlewallet";
 import ErrorDatos from "@/app/ErrorDatos";
@@ -28,7 +29,7 @@ export default async function Page({ params }) {
 
   const plataforma = plataformaDe((await headers()).get("user-agent"));
   const recordado = serialRecordado((await cookies()).get(cookieDeTarjeta(negocio))?.value);
-  const suya = recordado ? await getCliente(recordado).catch(() => null) : null;
+  const suya = recordado ? await clienteVigente(getCliente, recordado).catch(() => null) : null;
   const tieneTarjeta = suya?.negocio === negocio;
 
   const tinta = n.tema.pageInk;

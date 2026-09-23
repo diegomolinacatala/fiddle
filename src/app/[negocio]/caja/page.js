@@ -8,7 +8,7 @@ import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
 import { useInstalar } from "@/app/instalable";
 import { normalizarCodigo } from "@/lib/codigo";
-import { cuentaCorta } from "@/lib/cartillas";
+import { saldoCorto } from "@/lib/cartillas";
 import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso } from "@/app/ui";
 
 // App de CAJA de un negocio (móvil, instalable). Escanea el pase; si el QR no se
@@ -122,13 +122,7 @@ export default function Caja() {
   );
 }
 
-// "3/8 · 1 premio" o, en un cupón, si está usado. Sin emojis: se lee igual en todos los móviles.
-function resumenCliente(c, n) {
-  if (n?.tipo === "descuento") return (c.premios || 0) > 0 ? "usado" : "válido";
-  const premios = c.premios ? ` · ${c.premios} ${c.premios === 1 ? "premio" : "premios"}` : "";
-  if (n?.cartillas) return `${cuentaCorta(c, n)}${premios}`;
-  return `${c.sellos}${n?.meta ? `/${n.meta}` : ""}${premios}`;
-}
+const resumenCliente = (c, n) => (n ? saldoCorto(c, n) : String(c.sellos));
 
 const fila = {
   display: "grid",

@@ -1,6 +1,6 @@
 import { camposDelPase } from "../apple/pase";
 import { puntosDe, estadoDe } from "../resumen";
-import { describirBanda } from "../cartillas";
+import { describirBanda, totalGuardados } from "../cartillas";
 import { rutaLogo, rutaBanda } from "../rutasImagen";
 
 // ============================================================================
@@ -90,9 +90,13 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl }, { conMen
     accountId: codigo,
     ...(cliente.nombre ? { accountName: cliente.nombre } : {}),
     loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },
-    ...(!e.esCupon && (cliente.premios || 0) > 0
-      ? { secondaryLoyaltyPoints: { label: "Premios", balance: { int: cliente.premios } } }
-      : {}),
+    // Como la cabecera del pase de Apple: un premio guardado manda sobre el
+    // contador de canjeados.
+    ...(!e.esCupon && totalGuardados(cliente) > 0
+      ? { secondaryLoyaltyPoints: { label: "Premios guardados", balance: { int: totalGuardados(cliente) } } }
+      : !e.esCupon && (cliente.premios || 0) > 0
+        ? { secondaryLoyaltyPoints: { label: "Premios", balance: { int: cliente.premios } } }
+        : {}),
     barcode: { type: "QR_CODE", value: `${appUrl}/w/${cliente.serial}`, alternateText: codigo },
     heroImage: imagen(
       `${appUrl}${rutaBanda(negocio, cliente)}`,

@@ -44,6 +44,11 @@ alter table clientes add column if not exists mensaje       text;         -- avi
 alter table clientes add column if not exists nota          text;         -- lo que la tienda apunta del cliente
 -- Segunda cartilla en el mismo pase (galletas y cafés): la primera sigue en `sellos`.
 alter table clientes add column if not exists sellos2       int not null default 0;
+-- Premios que el cliente se guardó sin gastar (uno por cartilla, ver lib/acciones.js).
+alter table clientes add column if not exists guardados     int not null default 0;
+alter table clientes add column if not exists guardados2    int not null default 0;
+-- Tarjeta sustituida por otra del mismo iPhone (ver lib/unaTarjeta.js): serial de la nueva.
+alter table clientes add column if not exists fusionado_en  text;
 -- Clientes antiguos sin token: se les genera uno (32 hex) para poder actualizar su pase.
 update clientes set auth_token = replace(gen_random_uuid()::text, '-', '') where auth_token is null;
 create index if not exists clientes_negocio on clientes (negocio);
@@ -79,7 +84,8 @@ update clientes c set
   ultima_visita = v.ultima
 from (
   select serial, count(*) as n, max(ts) as ultima
-    from eventos where tipo in ('sellar', 'canjear', 'confirmar', 'sellar2', 'canjear2') group by serial
+    from eventos where tipo in ('sellar', 'canjear', 'confirmar', 'sellar2', 'canjear2',
+                                'guardar', 'usarGuardado', 'guardar2', 'usarGuardado2') group by serial
 ) v
 where v.serial = c.serial and c.visitas = 0;
 
@@ -126,6 +132,25 @@ create table if not exists registros (
 create index if not exists registros_serial on registros (serial);
 create index if not exists registros_negocio on registros (negocio);
 
+-- ===================== UNA TARJETA POR IPHONE Y TIENDA =====================
+-- Qué tarjeta tiene (o TUVO) cada iPhone en cada tienda. No se borra al quitar
+-- el pase: si lo vuelve a añadir desde otra tarjeta, la vieja se fusiona en la
+-- nueva y no pierde los sellos (ver lib/unaTarjeta.js).
+create table if not exists tarjetas_de_dispositivo (
+  dispositivo text not null,                -- deviceLibraryIdentifier (estable en ese iPhone)
+  negocio     text not null,
+  serial      text not null,
+  visto       timestamptz not null default now(),
+  primary key (dispositivo, negocio)
+);
+-- Relleno con lo que ya está en los iPhone (solo Apple: web y Google no tienen id de teléfono).
+insert into tarjetas_de_dispositivo (dispositivo, negocio, serial, visto)
+select distinct on (dispositivo, negocio) dispositivo, negocio, serial, creado
+  from registros
+ where negocio is not null and pass_type not in ('web', 'google')
+ order by dispositivo, negocio, creado desc
+on conflict do nothing;
+
 -- ===================== LÍMITES DE USO =====================
 -- PINs fallidos ("login:nube:ip"), emisiones de pases ("tap:ip"), logs ("log:ip").
 create table if not exists intentos (
@@ -146,3 +171,4 @@ alter table dispositivos   enable row level security;
 alter table registros      enable row level security;
 alter table intentos       enable row level security;
 alter table campanas       enable row level security;
+alter table tarjetas_de_dispositivo enable row level security;

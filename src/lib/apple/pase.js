@@ -12,7 +12,7 @@
 // pantalla de bloqueo cuando cambian (p.ej. "Tienes 5 de 8 sellos").
 // ============================================================================
 
-import { cartillasDe } from "../cartillas";
+import { cartillasDe, totalGuardados } from "../cartillas";
 
 const MAX_UBICACIONES = 10; // límite de Apple
 
@@ -36,9 +36,14 @@ function camposSellos(cliente, negocio) {
   const faltan = Math.max(0, negocio.meta - cliente.sellos);
   const completa = faltan === 0;
 
-  const header = negocio.tema.estilo === "barber"
-    ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
-    : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@" }];
+  // Un premio guardado es lo más valioso que tiene el cliente en la tarjeta:
+  // mientras lo tenga, ocupa la cabecera en vez del contador de canjeados.
+  const guardados = totalGuardados(cliente);
+  const header = guardados > 0
+    ? [{ key: "guardados", label: guardados === 1 ? "PREMIO GUARDADO" : "PREMIOS GUARDADOS", value: guardados, changeMessage: "Premios guardados en tu tarjeta: %@" }]
+    : negocio.tema.estilo === "barber"
+      ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
+      : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@" }];
 
   // NO hay campo "SELLOS 5 de 8": eso ya lo dicen los círculos de la banda, y
   // gastaba una columna de las pocas que hay (ver camposDelPase).
@@ -103,6 +108,17 @@ export function ubicacionesApple(negocio) {
  * @returns {{headerFields:object[], primaryFields:object[], secondaryFields:object[], auxiliaryFields:object[], backFields:object[]}}
  */
 export function camposDelPase(cliente, negocio) {
+  // Tarjeta sustituida por otra en el mismo iPhone (lib/unaTarjeta.js): ya no
+  // cuenta nada, solo dice dónde están los sellos.
+  if (cliente.fusionado_en) {
+    return {
+      headerFields: [],
+      primaryFields: [],
+      secondaryFields: [{ key: "premio", label: "TARJETA ANTIGUA", value: "Tus sellos están en tu tarjeta nueva", changeMessage: "%@" }],
+      auxiliaryFields: [],
+      backFields: [{ key: "como", label: "Puedes borrarla", value: "Esta tarjeta se ha pasado a la nueva que añadiste. No pierdes nada al borrarla." }],
+    };
+  }
   const esCupon = negocio.tipo === "descuento";
   const campos = esCupon ? camposCupon(cliente, negocio) : camposSellos(cliente, negocio);
 
@@ -134,7 +150,15 @@ export function camposDelPase(cliente, negocio) {
   const premios = negocio.cartillas && !esCupon
     ? [{ key: "premios", label: "Premios", value: negocio.cartillas.map((c) => `${c.meta} ${c.nombre.toLowerCase()}: ${c.premio}`).join("\n") }]
     : [];
+  const guardados = esCupon ? [] : cartillasDe(cliente, negocio).filter((c) => c.guardados > 0);
   const backFields = [
+    ...(guardados.length
+      ? [{
+          key: "guardados",
+          label: "Premios guardados",
+          value: `${guardados.map((c) => `${c.guardados} × ${c.premio}`).join("\n")}\nPídelo en caja cuando quieras.`,
+        }]
+      : []),
     { key: "como", label: "Cómo funciona", value: negocio.tema.atras },
     ...premios,
     { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
@@ -190,7 +214,9 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
 
   const ubicaciones = ubicacionesApple(negocio);
   if (ubicaciones.length) pase.locations = ubicaciones;
-  if (esCupon && cuponUsado(cliente)) pase.voided = true;
+  // Anulado: iOS lo aparta a "pases caducados". Una tarjeta fusionada en otra
+  // también, para que no queden dos vivas de la misma tienda.
+  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en) pase.voided = true;
 
   return pase;
 }

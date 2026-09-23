@@ -129,7 +129,7 @@ const burbuja = { width: 40, height: 40, borderRadius: 12, display: "grid", plac
 
 const botonAccion = (accent) => ({
   border: 0,
-  borderRadius: 999,
+  borderRadius: 12,
   padding: "0.55rem 1rem",
   minHeight: 40,
   background: accent,
@@ -142,7 +142,7 @@ const botonAccion = (accent) => ({
 
 const botonSuave = {
   border: "1px solid #cbd1d9",
-  borderRadius: 999,
+  borderRadius: 12,
   padding: "0.5rem 0.9rem",
   minHeight: 40,
   background: "#fff",

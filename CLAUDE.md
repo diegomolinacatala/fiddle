@@ -36,6 +36,46 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   PREMIO, cuyo valor cambia con cada sello.
 - El QR lleva el `serial`; debajo va el **código de 3 caracteres**, único dentro
   de su tienda (`lib/codigo.js`).
+- **Hoy todas las tiendas comparten Pass Type ID** y el Wallet las apila. Está
+  decidido pasar a uno por tienda: ver
+  [NEXT-STEPS.md](NEXT-STEPS.md#un-pass-type-id-por-tienda) antes de tocar la firma,
+  el web service o APNs, que hoy dan por hecho que solo hay uno.
+
+## Una tarjeta por iPhone y tienda
+
+Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
+
+- **Cookie del tap** (`lib/recordar.js`): quien vuelve a escanear recibe la misma
+  tarjeta. En iPhone el `.pkpass` va tras una redirección para que la cookie viaje
+  en una respuesta normal.
+- **Fusión al registrar en el Wallet**: si un iPhone (`deviceLibraryIdentifier`)
+  añade una tarjeta nueva de una tienda de la que ya tuvo otra, la vieja se fusiona
+  en la nueva (sellos, premios, código, nombre, historial) y queda anulada con
+  `fusionado_en`. `tarjetas_de_dispositivo` NO se borra al quitar el pase: es lo
+  que permite devolverle los sellos.
+- Una tarjeta con `fusionado_en` **no es un cliente**: `listClientes` la esconde,
+  `/api/accion` la rechaza y `/w`, `/p`, `/api/pase` y el tap saltan a la vigente
+  (`clienteVigente`). Lo que lea `clientes` a mano tiene que filtrarla igual.
+- En Android no hay id del teléfono: ahí solo está la cookie.
+
+## Lo que hace que la web vaya rápida
+
+- **Vercel corre en `lhr1` (Londres) porque Supabase está en eu-west-2** (`vercel.json`).
+  Si la base cambia de región, la de las funciones va con ella.
+- **Manager y CRM cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
+  cliente) y cada ruta tiene `loading.js` con su esqueleto (`app/Esqueleto.js`).
+  Nada de pantallas que arrancan vacías y piden sus datos con `fetch`.
+- **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
+  la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
+  siendo PURA y sin imports del servidor.
+
+## El premio: dar o guardar
+
+Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"
+(`premiosDe()` en `lib/acciones.js`). Guardar vacía la cartilla y suma en
+`guardados` / `guardados2` (una columna por cartilla, como `sellos` / `sellos2`).
+Todo lo que mueva el saldo pasa por `SALDO` en `store.js`, que es lo que compara el
+guardado optimista: una columna de saldo nueva va ahí.
 
 ## Android
 

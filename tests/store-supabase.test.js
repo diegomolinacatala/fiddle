@@ -72,7 +72,7 @@ describe("store con Supabase", () => {
     encolar("clientes", { data: [], error: null });
     const ok = await store.saveCliente({ serial: "s1", sellos: 0, premios: 1 }, { esperado: { sellos: 8, premios: 0 } });
     expect(ok).toBe(false);
-    expect(llamadas[0].cadena.slice(1)).toEqual([["eq", "serial", "s1"], ["eq", "sellos", 8], ["eq", "sellos2", 0], ["eq", "premios", 0], ["select", "serial"]]);
+    expect(llamadas[0].cadena.slice(1)).toEqual([["eq", "serial", "s1"], ["eq", "sellos", 8], ["eq", "sellos2", 0], ["eq", "premios", 0], ["eq", "guardados", 0], ["eq", "guardados2", 0], ["select", "serial"]]);
 
     encolar("clientes", { data: [{ serial: "s1" }], error: null });
     expect(await store.guardarNombre("s1", "Ana")).toBe(true);
@@ -156,7 +156,8 @@ describe("store con Supabase", () => {
     encolar("clientes", { data: [{ serial: "s1", negocio: "nube", sellos: 1, premios: 0, auth_token: "x", creado: "c" }], error: null });
     const lista = await store.listClientes("nube");
     expect(lista[0]).toMatchObject({ serial: "s1", nombre: null, actualizado: "c" });
-    expect(metodos(0)).toEqual(["select", "order", "eq"]);
+    // Sin las tarjetas fusionadas en otra: ya no son clientes.
+    expect(metodos(0)).toEqual(["select", "is", "order", "eq"]);
   });
 });
 

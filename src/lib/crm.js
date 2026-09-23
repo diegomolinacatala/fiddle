@@ -21,7 +21,10 @@
 const DIA = 24 * 60 * 60 * 1000;
 
 /** Qué evento significa "el cliente estuvo en la tienda". `restar` es una corrección, no una visita. */
-export const TIPOS_VISITA = ["sellar", "canjear", "confirmar", "sellar2", "canjear2"];
+export const TIPOS_VISITA = [
+  "sellar", "canjear", "confirmar", "sellar2", "canjear2",
+  "guardar", "usarGuardado", "guardar2", "usarGuardado2",
+];
 
 /**
  * Los números que deciden cuándo alguien se está enfriando. En un sitio aparte
@@ -90,12 +93,12 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
 
 // ------------------------------------------------------ la escalera (excluyentes)
 export const ESTADOS = {
-  fantasma: { label: "Fantasma", icon: "fantasma", color: "#8b929e", descripcion: "Se llevó el pase y no volvió a usarlo nunca." },
-  nuevo:    { label: "Nuevo",    icon: "brote", color: "#2563eb", descripcion: "Llegó hace poco y todavía no tiene costumbre." },
-  activo:   { label: "Activo",   icon: "llama", color: "#136f3a", descripcion: "Viene a su ritmo, sin retraso." },
-  riesgo:   { label: "Enfriándose", icon: "copo", color: "#c26b04", descripcion: "Ha roto su ritmo: lleva más de lo suyo sin aparecer." },
-  dormido:  { label: "Dormido",  icon: "luna", color: "#8a5cf6", descripcion: "Un par de meses sin pasar." },
-  perdido:  { label: "Perdido",  icon: "puerta", color: "#b42318", descripcion: "Tanto tiempo fuera que ya no cuenta como cliente." },
+  fantasma: { label: "Sin uso", icon: "cartera", color: "#8b929e", descripcion: "Tiene la tarjeta pero no ha registrado ninguna visita." },
+  nuevo:    { label: "Nuevo",    icon: "clientes", color: "#2563eb", descripcion: "Alta en los últimos 30 días, con menos de 3 visitas." },
+  activo:   { label: "Activo",   icon: "check", color: "#136f3a", descripcion: "Visita con su frecuencia habitual." },
+  riesgo:   { label: "En riesgo", icon: "alerta", color: "#c26b04", descripcion: "Lleva más tiempo del habitual sin venir." },
+  dormido:  { label: "Inactivo", icon: "reloj", color: "#6b7280", descripcion: "Más de 60 días sin visitas." },
+  perdido:  { label: "Perdido",  icon: "cerrar", color: "#b42318", descripcion: "Más de 120 días sin visitas." },
 };
 
 export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, ...v }));
@@ -124,66 +127,66 @@ export function estadoDe(p) {
 // exportación, sin tocar nada más.
 export const GRUPOS = {
   a_punto: {
-    label: "A un paso del premio",
+    label: "Cerca del premio",
     icon: "diana",
-    descripcion: "Les falta poco para completar la cartilla. El empujón que mejor funciona.",
+    descripcion: "Les faltan 2 sellos o menos para completar la cartilla.",
     idea: "Te falta 1 para tu {premio}",
     incluye: (p) => !p.esCupon && p.visitas > 0 && !p.completa && p.faltan <= UMBRALES.aPuntoFaltan,
   },
   premio_listo: {
-    label: "Premio sin recoger",
+    label: "Premio pendiente",
     icon: "regalo",
-    descripcion: "Tienen la cartilla llena y no han venido a por el premio.",
+    descripcion: "Tienen la cartilla completa y no han canjeado el premio.",
     idea: "Tu {premio} te está esperando",
     incluye: (p) => p.completa,
   },
   fieles_frios: {
-    label: "Fieles que se enfriaron",
-    icon: "corazonRoto",
-    descripcion: "Venían seguido y llevan semanas sin aparecer. El grupo que más duele y el que más vale recuperar.",
-    idea: "Hace tiempo que no te vemos. Tu próximo café, invita la casa",
+    label: "Habituales en riesgo",
+    icon: "estrella",
+    descripcion: "Clientes frecuentes (4 visitas o más) que llevan tiempo sin venir.",
+    idea: "Hace tiempo que no te vemos. En tu próxima visita tienes un detalle",
     incluye: (p) => p.visitas >= UMBRALES.fielVisitas && ["riesgo", "dormido", "perdido"].includes(p.estado),
   },
   riesgo: {
-    label: "Se están enfriando",
-    icon: "copo",
-    descripcion: "Han roto su propio ritmo: llevan más tiempo del suyo sin venir.",
-    idea: "¿Te vienes esta semana? Te guardamos algo",
+    label: "En riesgo",
+    icon: "alerta",
+    descripcion: "Llevan más tiempo del habitual sin venir.",
+    idea: "Esta semana tenemos algo para ti en tu próxima visita",
     incluye: (p) => p.estado === "riesgo",
   },
   habituales: {
     label: "Habituales",
-    icon: "llama",
-    descripcion: "Vienen a su ritmo y ya llevan unas cuantas. Los de casa.",
+    icon: "check",
+    descripcion: "Visitan con regularidad y llevan 3 visitas o más.",
     idea: "Gracias por estar siempre. Hoy, algo extra",
     incluye: (p) => p.estado === "activo" && p.visitas >= UMBRALES.nuevoVisitas,
   },
   nuevos: {
-    label: "Recién llegados",
-    icon: "brote",
-    descripcion: "Se dieron de alta hace poco. Aún no son clientes: hay que convertirlos.",
+    label: "Nuevos",
+    icon: "clientes",
+    descripcion: "Alta en los últimos 30 días.",
     idea: "Bienvenido. Tu segunda visita lleva regalo",
     incluye: (p) => p.estado === "nuevo",
   },
   dormidos: {
-    label: "Dormidos",
-    icon: "luna",
-    descripcion: "Llevan dos meses o más sin pasar por la tienda.",
-    idea: "Te echamos de menos. Vuelve y te invitamos",
+    label: "Inactivos",
+    icon: "reloj",
+    descripcion: "Más de 60 días sin visitas.",
+    idea: "Hace tiempo que no te vemos. Tu tarjeta sigue activa",
     incluye: (p) => ["dormido", "perdido"].includes(p.estado),
   },
   fantasmas: {
-    label: "Nunca lo usaron",
-    icon: "fantasma",
-    descripcion: "Se llevaron el pase y jamás lo enseñaron. O no entendieron para qué era.",
+    label: "Sin uso",
+    icon: "cartera",
+    descripcion: "Tienen la tarjeta pero nunca la han usado en caja.",
     idea: "Enseña esta tarjeta en caja y empieza a sumar",
     incluye: (p) => p.visitas === 0,
   },
   campeones: {
-    label: "Campeones",
+    label: "Mejores clientes",
     icon: "trofeo",
-    descripcion: "Los que más han canjeado. Merecen que se les trate distinto.",
-    idea: "Eres de los nuestros. Pásate: tenemos algo para ti",
+    descripcion: "Han canjeado 2 premios o más.",
+    idea: "Gracias por tu fidelidad. En tu próxima visita tienes un detalle",
     incluye: (p) => p.premios >= 2,
   },
 };

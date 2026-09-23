@@ -23,7 +23,7 @@ function faltanPara(faltan, premio) {
  * @param {{sellos:number, premios:number}|null} antes
  * @param {{sellos:number, premios:number}} despues
  * @param {{nombre:string, tipo:string, meta:number, premio:string}} negocio
- * @returns {{titulo:string, cuerpo:string, tipo:"sello"|"completa"|"canje"}|null}
+ * @returns {{titulo:string, cuerpo:string, tipo:"sello"|"completa"|"canje"|"guardado"}|null}
  */
 export function avisoDeCambio(antes, despues, negocio) {
   if (!antes || !despues || !negocio) return null;
@@ -31,6 +31,8 @@ export function avisoDeCambio(antes, despues, negocio) {
   const e = estadoDe(despues, negocio);
 
   if (negocio.cartillas && !e.esCupon) return avisoDeCartillas(antes, despues, negocio);
+  const guardado = avisoDeGuardado(antes, despues, { clave: "guardados", premio: negocio.premio, nombre: null }, titulo);
+  if (guardado) return guardado;
   if ((despues.premios || 0) > (antes.premios || 0)) {
     return e.esCupon
       ? { titulo, cuerpo: `Cupón usado: ${negocio.premio}. Gracias por venir.`, tipo: "canje" }
@@ -45,6 +47,23 @@ export function avisoDeCambio(antes, despues, negocio) {
 }
 
 /**
+ * Guardar un premio también vacía la cartilla, así que va antes que el canje:
+ * si no, "guardado" se leería como "canjeado". Y usar uno guardado suma un
+ * canje sin vaciar nada.
+ */
+function avisoDeGuardado(antes, despues, { clave, premio, nombre }, titulo) {
+  const a = antes[clave] || 0;
+  const d = despues[clave] || 0;
+  if (d > a) {
+    return { titulo, cuerpo: `Premio guardado: ${premio}. Lo tienes en la tarjeta para cuando quieras${nombre ? `, y empiezas otra cartilla de ${nombre.toLowerCase()}` : ", y empiezas una cartilla nueva"}.`, tipo: "guardado" };
+  }
+  if (d < a && (despues.premios || 0) > (antes.premios || 0)) {
+    return { titulo, cuerpo: `Premio canjeado: ${premio}.${d ? ` Te ${d === 1 ? "queda 1 guardado" : `quedan ${d} guardados`}.` : ""}`, tipo: "canje" };
+  }
+  return null;
+}
+
+/**
  * Lo mismo con dos cartillas: el aviso dice de cuál es ("Cafés: 3 de 8"), y un
  * canje se reconoce porque su cartilla vuelve a cero.
  */
@@ -52,6 +71,8 @@ function avisoDeCartillas(antes, despues, negocio) {
   const titulo = negocio.nombre;
   const previas = cartillasDe(antes, negocio);
   for (const c of cartillasDe(despues, negocio)) {
+    const guardado = avisoDeGuardado(antes, despues, { clave: c.claveGuardados, premio: c.premio, nombre: c.nombre }, titulo);
+    if (guardado) return guardado;
     const antesN = antes[c.clave] || 0;
     const ahora = despues[c.clave] || 0;
     if ((despues.premios || 0) > (antes.premios || 0) && ahora < antesN && previas[c.indice].completa) {

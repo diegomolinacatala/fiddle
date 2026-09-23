@@ -21,6 +21,8 @@ export async function POST(request) {
 
     const cliente = await getCliente(serial);
     if (!cliente) return jsonError("Cliente no encontrado", 404);
+    // Sus sellos ya viven en la tarjeta nueva (lib/unaTarjeta.js): sellar aquí se perdería.
+    if (cliente.fusionado_en) return jsonError("Esta tarjeta se pasó a una nueva. Vuelve a escanear al cliente.", 409);
 
     const { sesion, respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
     if (respuesta) return respuesta;

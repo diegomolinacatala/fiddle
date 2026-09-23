@@ -1,5 +1,9 @@
 import PwaRegister from "@/app/pwa-register";
+import { cache } from "react";
 import { getNegocio } from "@/lib/store";
+
+// Metadatos y viewport piden el mismo negocio: una sola lectura por petición.
+const leerNegocio = cache((slug) => getNegocio(slug).catch(() => null));
 import { rutaIcono } from "@/lib/rutasImagen";
 import { CAPTURAR_INSTALAR } from "@/app/temprano";
 
@@ -7,7 +11,7 @@ import { CAPTURAR_INSTALAR } from "@/app/temprano";
 // sale de su marca: una tienda nueva lo tiene sin que nadie dibuje nada.
 export async function generateMetadata({ params }) {
   const { negocio } = await params;
-  const n = await getNegocio(negocio).catch(() => null);
+  const n = await leerNegocio(negocio);
   if (!n) return { title: "Sellos" };
   return {
     title: n.nombre,
@@ -19,7 +23,7 @@ export async function generateMetadata({ params }) {
 
 export async function generateViewport({ params }) {
   const { negocio } = await params;
-  const n = await getNegocio(negocio).catch(() => null);
+  const n = await leerNegocio(negocio);
   return { width: "device-width", initialScale: 1, maximumScale: 1, themeColor: n?.tema?.accent };
 }
 

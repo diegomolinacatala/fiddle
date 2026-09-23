@@ -64,10 +64,10 @@ describe("dos cartillas en un pase", () => {
     expect(accionesDe(deli).map((a) => [a.key, a.label])).toEqual([
       ["sellar", "Añadir cookie"], ["sellar2", "Añadir café"],
       ["restar", "Quitar cookie"], ["restar2", "Quitar café"],
-      ["canjear", "Canjear cookie"], ["canjear2", "Canjear café"],
     ]);
+    // El premio no es un botón: tiene su recuadro (premiosDe), solo cuando hay algo que dar.
     const nube = componerNegocio("nube", null);
-    expect(accionesDe(nube).map((a) => a.label)).toEqual(["Añadir sello", "Quitar sello", "Canjear"]);
+    expect(accionesDe(nube).map((a) => a.label)).toEqual(["Añadir sello", "Quitar sello"]);
     expect([singular("Cookies"), singular("Cafés"), singular("Panes"), singular("Té")]).toEqual(["cookie", "café", "pan", "té"]);
   });
 

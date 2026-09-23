@@ -4,7 +4,7 @@ import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
 import { cadenciaTexto } from "@/lib/crm";
-import { C, pagina, panel, h2, titulo, subtitulo, botonPequeno } from "@/app/ui";
+import { C, pagina, panel, h2, titulo, botonPequeno } from "@/app/ui";
 
 // ============================================================================
 // CRM DE LA PLATAFORMA — las tiendas, comparadas
@@ -38,7 +38,6 @@ export default function AdminCRM() {
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <h1 style={titulo}>Clientes de la plataforma</h1>
-            <p style={subtitulo}>Las {t.tiendas} tiendas, una al lado de otra.</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a href="/admin" style={{ ...botonPequeno, textDecoration: "none" }}>← Tiendas</a>
@@ -49,7 +48,7 @@ export default function AdminCRM() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, margin: "18px 0" }}>
           <Total label="Clientes" valor={t.total} />
           <Total label="Activos" valor={t.activos} color={C.ok} />
-          <Total label="Enfriándose" valor={t.enRiesgo} color={t.enRiesgo ? "#c26b04" : C.texto} />
+          <Total label="En riesgo" valor={t.enRiesgo} color={t.enRiesgo ? "#c26b04" : C.texto} />
           <Total label="Altas (30 d)" valor={t.nuevos30} />
           <Total label="Visitas (30 d)" valor={t.visitas30} />
           <Total label="Instalan el pase" valor={`${t.tasaInstalacion}%`} />
@@ -61,7 +60,7 @@ export default function AdminCRM() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr>
-                  {["Tienda", "Clientes", "Activos", "Enfriándose", "Altas 30d", "Visitas 30d", "Instalan", "Vuelven", "Ritmo", ""].map((x) => (
+                  {["Tienda", "Clientes", "Activos", "En riesgo", "Altas 30d", "Visitas 30d", "Instalan", "Vuelven", "Ritmo", ""].map((x) => (
                     <th key={x} style={th}>{x}</th>
                   ))}
                 </tr>
@@ -96,9 +95,7 @@ export default function AdminCRM() {
         </section>
 
         <p style={{ fontSize: 13, color: C.suave, marginTop: 14 }}>
-          «Instalan» es cuántos de los pases emitidos acabaron dentro de un Wallet, y «vuelven»
-          cuántos clientes han venido más de una vez. Una tienda que reparte muchas tarjetas con las
-          dos columnas bajas no tiene un problema de clientes: tiene un problema de mostrador.
+          «Instalan»: pases emitidos que acabaron en un Wallet. «Vuelven»: clientes con más de una visita.
         </p>
       </div>
     </main>

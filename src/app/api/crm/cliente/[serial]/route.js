@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCliente, getNegocio, listEventos, guardarNota, clientePublico } from "@/lib/store";
 import { perfilDe } from "@/lib/crm";
+import { saldoCorto } from "@/lib/cartillas";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -22,6 +23,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       cliente: clientePublico(cliente),
       perfil: perfilDe(cliente, negocio),
+      saldo: negocio ? saldoCorto(cliente, negocio) : String(cliente.sellos),
       eventos,
     });
   } catch (e) {
