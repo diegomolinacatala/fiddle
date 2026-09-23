@@ -60,5 +60,21 @@ export function describirBanda(cliente, negocio) {
   return lista.map((c) => `${c.nombre} ${c.sellos} de ${c.meta}`).join(", ");
 }
 
+/**
+ * El saldo de un cliente en una línea, para listas: "3/8 · 4/8 · 1 guardado · 2 canjeados",
+ * o "usado" / "sin usar" en un cupón. Un solo sitio para que ninguna lista se
+ * olvide de la segunda cartilla ni de los guardados.
+ */
+export function saldoCorto(cliente, negocio) {
+  if (negocio?.tipo === "descuento") return (cliente?.premios || 0) > 0 ? "usado" : "sin usar";
+  const g = totalGuardados(cliente);
+  const p = cliente?.premios || 0;
+  return [
+    cuentaCorta(cliente, negocio),
+    g ? `${g} ${g === 1 ? "guardado" : "guardados"}` : null,
+    p ? `${p} ${p === 1 ? "canjeado" : "canjeados"}` : null,
+  ].filter(Boolean).join(" · ");
+}
+
 /** Premios guardados sin gastar, sumando las dos cartillas. */
 export const totalGuardados = (cliente) => GUARDADOS.reduce((a, k) => a + Math.max(0, cliente?.[k] ?? 0), 0);

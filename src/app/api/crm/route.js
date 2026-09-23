@@ -48,7 +48,8 @@ export async function GET(request) {
       catalogoGrupos: LISTA_GRUPOS,
       // Ficha por cliente: lo guardado + lo calculado, ya cruzado.
       clientes: conRegistro.map((c, i) => ({
-        serial: c.serial, codigo: c.codigo, nombre: c.nombre, sellos: c.sellos, premios: c.premios,
+        serial: c.serial, codigo: c.codigo, nombre: c.nombre, premios: c.premios,
+        sellos: c.sellos, sellos2: c.sellos2, guardados: c.guardados, guardados2: c.guardados2,
         creado: c.creado, ultima_visita: c.ultima_visita, origen: c.origen,
         mensaje: c.mensaje, nota: c.nota,
         perfil: perfiles[i],

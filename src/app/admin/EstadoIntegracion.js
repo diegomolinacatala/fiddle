@@ -93,9 +93,9 @@ function detalleApple({ proveedor, apple }) {
   return apple.avisos.length ? `${base} · ${apple.avisos.join(" · ")}` : base;
 }
 
-const panel = { marginTop: 16, padding: "10px 14px", borderRadius: 12, border: "1px solid", background: C.panel };
+const panel = { marginTop: 16, padding: "10px 14px", borderRadius: 14, border: "1px solid", background: C.panel };
 const botonCifrar = (accent) => ({
-  border: 0, borderRadius: 999, padding: "0.35rem 0.9rem", background: accent, color: "#fff",
+  border: 0, borderRadius: 10, padding: "0.4rem 0.8rem", background: accent, color: "#fff",
   fontWeight: 600, fontSize: 13, cursor: "pointer",
 });
 const punto = (color) => ({ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0, alignSelf: "center" });

@@ -158,7 +158,7 @@ export function Chip({ estado, estados }) {
     <span
       title={e.descripcion}
       style={{
-        display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 20,
+        display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 7,
         background: `${e.color}18`, color: e.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
       }}
     >

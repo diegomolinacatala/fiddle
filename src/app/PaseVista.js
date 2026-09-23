@@ -57,9 +57,7 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
         ? <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />
         : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />}
 
-      <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>
-        {pie || "Parecido, no idéntico: la banda y el logo son los del pase real; la tipografía la pone iOS."}
-      </p>
+      {pie && <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>{pie}</p>}
     </div>
   );
 }

@@ -71,7 +71,7 @@ function LoginForm() {
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <h1 style={{ fontSize: "1.6rem", margin: "0 0 2px", letterSpacing: "-0.01em" }}>Sellos</h1>
           <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>
-            Tarjetas de fidelización para iPhone y Android. Entra con el usuario de tu negocio.
+            Entra con el usuario de tu negocio.
           </p>
         </div>
 
@@ -158,7 +158,7 @@ const fila = {
   alignItems: "center",
   textAlign: "left",
   padding: "9px 11px",
-  borderRadius: 9,
+  borderRadius: 10,
   border: `1px solid ${C.borde}`,
   background: "#fff",
   color: C.texto,

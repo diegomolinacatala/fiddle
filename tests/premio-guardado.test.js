@@ -4,6 +4,7 @@ import { componerNegocio } from "@/lib/negocios";
 import { camposDelPase } from "@/lib/apple/pase";
 import { avisoDeCambio } from "@/lib/avisos";
 import { construirObjeto } from "@/lib/google/pase";
+import { saldoCorto } from "@/lib/cartillas";
 
 const crearPaseGoogle = (c, n) => construirObjeto(c, n, { issuerId: "3388", appUrl: "https://fiddle.test" });
 
@@ -87,6 +88,14 @@ describe("el recuadro del premio en la caja", () => {
       ["Cookies", true, 0, "usarGuardado"],
       ["Cafés", false, 1, "usarGuardado2"],
     ]);
+  });
+});
+
+describe("las listas cuentan las dos cartillas", () => {
+  it("saldoCorto: 1 cookie + 4 cafés no es '1 sello'", () => {
+    expect(saldoCorto(cliente({ sellos: 1, sellos2: 4 }), deli)).toBe("1/8 · 4/8");
+    expect(saldoCorto(cliente({ sellos: 3, guardados: 1, premios: 2 }), nube)).toBe("3/8 · 1 guardado · 2 canjeados");
+    expect(saldoCorto(cliente({ premios: 1 }), { ...nube, tipo: "descuento" })).toBe("usado");
   });
 });
 

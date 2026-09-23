@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
 import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
+import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
-import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
+import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
 
 // ============================================================================
 // ADMIN DE LA PLATAFORMA — lista de tiendas
@@ -74,16 +75,18 @@ export default function Admin() {
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div>
             <h1 style={titulo}>Plataforma</h1>
-            <p style={subtitulo}>Todas las tiendas: crear, editar, archivar.</p>
           </div>
           <LogoutButton />
         </header>
+
+        {/* Certificados, base de datos, avisos, cifrado: es cosa de la plataforma, no de cada tienda. */}
+        <EstadoIntegracion accent={AZUL} />
 
         <div style={{ display: "flex", gap: 8, margin: "18px 0 14px" }}>
           {[["activas", "Tiendas"], ["archivadas", "Archivadas"]].map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
           ))}
-          <a href="/admin/crm" style={{ ...botonSecundario, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><Icono nombre="clientes" tam={16} /> Clientes</a>
+          <a href="/admin/crm" style={solapa(false)}><Icono nombre="clientes" tam={16} /> Clientes</a>
           <div style={{ flex: 1 }} />
           {pestana === "activas" && (
             <button type="button" onClick={() => setAbriendo((v) => !v)} style={botonPrimario(AZUL)}>
@@ -354,16 +357,6 @@ const sugerirSlug = (nombre) =>
   String(nombre).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 32);
 
-const solapa = (activa) => ({
-  padding: "0.5rem 1rem",
-  borderRadius: 999,
-  border: `1px solid ${activa ? C.texto : C.borde}`,
-  background: activa ? C.texto : "#fff",
-  color: activa ? "#fff" : C.texto,
-  fontSize: 14,
-  fontWeight: 500,
-  cursor: "pointer",
-});
 
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",

@@ -79,8 +79,7 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
               <Dato label="Ritmo" valor={cadenciaTexto(datos.perfil.cadencia)} />
               <Dato label="Última" valor={haceTexto(datos.perfil.diasSinVenir)} />
               <Dato label="Cliente desde" valor={haceTexto(datos.perfil.diasDesdeAlta)} />
-              <Dato label="Sellos" valor={datos.cliente.sellos} />
-              <Dato label="Premios" valor={datos.cliente.premios} />
+              <Dato label="Tarjeta" valor={datos.saldo} />
             </div>
 
             <p style={{ fontSize: 13, color: C.suave, margin: "0 0 14px" }}>

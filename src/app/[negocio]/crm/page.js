@@ -3,12 +3,15 @@
 import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import LogoutButton from "@/app/LogoutButton";
+import CabeceraGestion from "../CabeceraGestion";
 import { serieVisitas, rejillaHoraria, tendencia, haceTexto, cadenciaTexto } from "@/lib/crm";
 import { Cifra, Barras, Rejilla, Reparto, Chip } from "./piezas";
 import Campana from "./Campana";
 import Ficha from "./Ficha";
-import { C, pagina, panel, campo, h2, titulo, subtitulo, botonPequeno, chipCodigo } from "@/app/ui";
+import { saldoCorto } from "@/lib/cartillas";
+import { C, pagina, panel, campo, h2, botonPequeno, chipCodigo, solapa } from "@/app/ui";
+
+const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 
 // ============================================================================
 // CRM DE UNA TIENDA
@@ -39,6 +42,7 @@ export default function CRM() {
   const [verFicha, setVerFicha] = useState(null);
   const [busca, setBusca] = useState("");
   const [orden, setOrden] = useState("reciente");
+  const [mostrar, setMostrar] = useState(POR_PAGINA);
   const [msg, setMsg] = useState(null);
 
   useEffect(() => { if (slug) cargar(); }, [slug]);
@@ -68,6 +72,7 @@ export default function CRM() {
       .filter((c) => !q || (c.nombre || "").toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q))
       .sort(ORDENES[orden].cmp);
   }, [d, busca, orden]);
+  useEffect(() => setMostrar(POR_PAGINA), [busca, orden]);
 
   if (error) return <main style={pagina}><p style={{ color: C.mal }}>{error}</p></main>;
   if (!d) return <main style={pagina}><p style={{ color: C.suave }}>Cargando…</p></main>;
@@ -79,28 +84,17 @@ export default function CRM() {
   return (
     <main style={pagina}>
       <div style={{ width: "min(1100px, 96vw)" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <h1 style={titulo}>{n.tema.emoji} {n.nombre} · clientes</h1>
-            <p style={subtitulo}>
-              Quién viene, quién dejó de venir y a quién conviene decirle algo.
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <a href={`/${slug}/manager`} style={{ ...botonPequeno, textDecoration: "none" }}>← Manager</a>
-            <LogoutButton negocio={slug} />
-          </div>
-        </header>
+        <CabeceraGestion negocio={n} slug={slug} activa="crm" />
 
-        <div style={{ display: "flex", gap: 8, margin: "18px 0 16px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, margin: "20px 0 16px", flexWrap: "wrap", paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
           {PESTANAS.map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id, accent)}>
               {texto}
             </button>
           ))}
           <div style={{ flex: 1 }} />
-          <a href={`/api/crm/export?b=${slug}`} style={{ ...botonPequeno, textDecoration: "none" }} title="Descarga un CSV con todos los clientes">
-            ⭳ Exportar
+          <a href={`/api/crm/export?b=${slug}`} style={{ ...botonPequeno, textDecoration: "none" }} >
+            Exportar CSV
           </a>
         </div>
 
@@ -109,15 +103,15 @@ export default function CRM() {
           <div style={{ display: "grid", gap: 18 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
               <Cifra label="Clientes" valor={m.total} pie={`${m.instalados} con la tarjeta en el teléfono`} accent={accent} />
-              <Cifra label="Activos" valor={m.activos} pie="vienen a su ritmo" accent={C.ok} />
-              <Cifra label="Enfriándose" valor={m.enRiesgo} pie="han roto su ritmo" accent={m.enRiesgo ? "#c26b04" : C.texto} />
+              <Cifra label="Activos" valor={m.activos} pie="con su frecuencia habitual" accent={C.ok} />
+              <Cifra label="En riesgo" valor={m.enRiesgo} pie="más tiempo del habitual sin venir" accent={m.enRiesgo ? "#c26b04" : C.texto} />
               <Cifra label="Visitas (30 d)" valor={m.visitas30} variacion={tendencia(m.visitas30, m.visitas30Previas)} pie="vs. los 30 anteriores" />
               <Cifra label="Altas (30 d)" valor={m.nuevos30} variacion={tendencia(m.nuevos30, m.nuevos30Previos)} pie="pases nuevos" />
               <Cifra label="Premios" valor={m.premios} pie="canjeados en total" />
             </div>
 
             <section style={panel}>
-              <h2 style={h2}>Cómo está el cliente</h2>
+              <h2 style={h2}>Estado de los clientes</h2>
               <Reparto porEstado={m.porEstado} estados={estados} total={m.total} />
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 18, fontSize: 13, color: C.suave }}>
                 <span>Vuelven una segunda vez: <strong style={{ color: C.texto }}>{m.tasaVuelta}%</strong></span>
@@ -127,9 +121,7 @@ export default function CRM() {
               </div>
               {m.total > 0 && m.tasaInstalacion < 60 && (
                 <p style={{ ...nota, marginTop: 14 }}>
-                  Solo {m.tasaInstalacion} de cada 100 llegan a meter el pase en el teléfono. A los demás
-                  no se les puede avisar de nada: mirar cómo se entrega la tarjeta en el mostrador
-                  vale más que cualquier campaña.
+                  Solo el {m.tasaInstalacion}% ha añadido la tarjeta al teléfono; al resto no le llegan los avisos.
                 </p>
               )}
             </section>
@@ -148,13 +140,9 @@ export default function CRM() {
             {d.cohortes.length > 1 && (
               <section style={panel}>
                 <h2 style={h2}>Por mes de alta</h2>
-                <p style={{ fontSize: 13, color: C.suave, margin: "-6px 0 12px" }}>
-                  De los que entraron cada mes, cuántos repitieron y cuántos siguen vivos. Es lo que
-                  dice si la tarjeta funciona, mejor que el número de tarjetas repartidas.
-                </p>
                 <table style={tabla}>
                   <thead>
-                    <tr>{["Mes", "Altas", "Repitieron", "Siguen vivos", ""].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
+                    <tr>{["Mes", "Altas", "Repitieron", "Siguen activos", ""].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
                   </thead>
                   <tbody>
                     {d.cohortes.map((c) => (
@@ -214,14 +202,13 @@ export default function CRM() {
                 />
                 <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${C.borde}` }}>
                   <a href={`/api/crm/export?b=${slug}&grupo=${grupo}`} style={{ ...botonPequeno, textDecoration: "none" }}>
-                    ⭳ Exportar este grupo
+                    Exportar este grupo (CSV)
                   </a>
                 </div>
               </section>
             ) : (
               <p style={nota}>
-                Un cliente puede estar en varios grupos a la vez: quien está a un sello del premio
-                también puede llevar semanas sin venir. Elige uno para escribirle.
+                Un cliente puede estar en varios grupos. Elige uno para enviarle un aviso.
               </p>
             )}
 
@@ -248,8 +235,7 @@ export default function CRM() {
                   </tbody>
                 </table>
                 <p style={{ fontSize: 12, color: C.tenue, marginTop: 10, marginBottom: 0 }}>
-                  «Volvieron» son los avisados que pasaron por la tienda después del envío. No prueba
-                  que fuera el mensaje, pero si sale siempre a cero, algo no está funcionando.
+                  «Volvieron»: avisados que visitaron la tienda después del envío.
                 </p>
               </section>
             )}
@@ -277,7 +263,7 @@ export default function CRM() {
                   <tr>{["", "Cliente", "Estado", "Visitas", "Ritmo", "Última", "Cartilla"].map((t, i) => <th key={i} style={th}>{t}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {lista.map((c) => (
+                  {lista.slice(0, mostrar).map((c) => (
                     <tr key={c.serial} onClick={() => setVerFicha(c.serial)} style={{ cursor: "pointer" }}>
                       <td style={td}><span style={chipCodigo(accent)}>{c.codigo}</span></td>
                       <td style={td}>
@@ -291,14 +277,18 @@ export default function CRM() {
                       <td style={{ ...td, color: C.suave }}>{cadenciaTexto(c.perfil.cadencia)}</td>
                       <td style={{ ...td, color: C.suave }}>{haceTexto(c.perfil.diasSinVenir)}</td>
                       <td style={td}>
-                        {n.tipo === "descuento"
-                          ? (c.premios ? "usado" : "sin usar")
-                          : `${c.sellos}/${n.meta}${c.premios ? ` · ${c.premios} premio${c.premios === 1 ? "" : "s"}` : ""}`}
+                        {saldoCorto(c, n)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {lista.length > mostrar && (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 14 }}>
+                  <span style={{ fontSize: 13, color: C.suave }}>{mostrar} de {lista.length}</span>
+                  <button type="button" onClick={() => setMostrar((m) => m + POR_PAGINA)} style={botonPequeno}>Ver {Math.min(POR_PAGINA, lista.length - mostrar)} más</button>
+                </div>
+              )}
               {!lista.length && (
                 <p style={{ color: C.suave, fontSize: 14 }}>
                   {busca ? "Ningún cliente con ese nombre o código." : "Todavía no hay clientes."}
@@ -323,12 +313,6 @@ export default function CRM() {
   );
 }
 
-const solapa = (activa, accent) => ({
-  padding: "0.5rem 0.95rem", borderRadius: 999, fontSize: 14, fontWeight: 600, cursor: "pointer",
-  border: `1px solid ${activa ? accent : C.borde}`,
-  background: activa ? `${accent}14` : "#fff",
-  color: activa ? accent : C.texto,
-});
 const tarjetaGrupo = (activa, accent, hay) => ({
   ...panel, padding: 14, textAlign: "left", cursor: hay ? "pointer" : "default",
   borderColor: activa ? accent : C.borde,
