@@ -1,6 +1,7 @@
 import { X509Certificate, createPrivateKey } from "node:crypto";
 import { configApple, faltanVariablesApple } from "./apple/config";
-import { hasSupabase, comprobarTablas } from "./store";
+import { hasSupabase, comprobarTablas, contarSinCifrar } from "./store";
+import { estadoClaveCifrado } from "./cifrado";
 import { clavesPush } from "./push/vapid";
 import { configGoogle, faltanVariablesGoogle } from "./google/config";
 import { tokenDeAcceso } from "./google/api";
@@ -177,5 +178,27 @@ export async function diagnosticoGoogle({ comprobar = (config) => tokenDeAcceso(
     return { ok: true, configurado: true, detalle: `Emisor ${config.issuerId} · cuenta ${config.email}` };
   } catch (e) {
     return { ok: false, configurado: true, detalle: `Google rechaza la cuenta de servicio: ${String(e?.message || e).slice(0, 160)}` };
+  }
+}
+
+/**
+ * Nombres y notas de los clientes cifrados (lib/cifrado.js): que haya clave, que
+ * sirva, y que no queden datos de antes en claro.
+ * @returns {Promise<{ok:boolean, pendientes:number|null, detalle:string}>}
+ */
+export async function diagnosticoCifrado({ contar = contarSinCifrar } = {}) {
+  const clave = estadoClaveCifrado();
+  if (!clave.ok && clave.problema === "falta") {
+    return { ok: false, pendientes: null, detalle: "Falta CIFRADO_CLAVE: los nombres y notas se guardan sin cifrar" };
+  }
+  if (!clave.ok) return { ok: false, pendientes: null, detalle: "CIFRADO_CLAVE no sirve: tienen que ser 32 bytes en base64" };
+  try {
+    const pendientes = await conTimeout(contar(), TIMEOUT_SUPABASE_MS);
+    if (pendientes > 0) {
+      return { ok: false, pendientes, detalle: `Cifrado activo, pero ${pendientes} clientes tienen datos de antes sin cifrar` };
+    }
+    return { ok: true, pendientes: 0, detalle: "Nombres y notas cifrados (AES-256-GCM)" };
+  } catch (e) {
+    return { ok: false, pendientes: null, detalle: `No se pudo comprobar: ${String(e?.message || e).slice(0, 120)}` };
   }
 }

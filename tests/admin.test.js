@@ -16,6 +16,7 @@ describe("acceso del admin", () => {
     expect(reglaDeRuta("/admin", params())).toEqual({ tipo: "admin" });
     expect(reglaDeRuta("/admin/nube", params())).toEqual({ tipo: "admin" });
     expect(reglaDeRuta("/api/admin/negocios", params())).toEqual({ tipo: "admin" });
+    expect(reglaDeRuta("/api/admin/cifrar", params(), "POST")).toEqual({ tipo: "admin" }); // cifra los datos de toda la plataforma
     // Y "admin" no se puede colar como si fuera una tienda.
     expect(esSlug("admin")).toBe(false);
   });

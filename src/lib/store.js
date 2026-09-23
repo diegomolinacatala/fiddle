@@ -3,6 +3,7 @@ import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { SEMILLAS, componerNegocio, configInicial, esSlug } from "./negocios";
 import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
+import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -236,6 +237,13 @@ const CAMPOS_CLIENTE =
   "serial, negocio, codigo, ww_serial, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
   "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota";
 
+// Datos personales de un cliente: van cifrados en la base (lib/cifrado.js). Se
+// cifran al guardarlos y se descifran aquí, al leer: lo demás del código los ve
+// en claro y no tiene que saber nada de esto.
+const PERSONALES = ["nombre", "nota"];
+const cifrarCampo = (serial, campo, valor) => cifrar(valor, { serial, campo });
+const descifrarCampo = (c, campo) => descifrar(c[campo] ?? null, { serial: c.serial, campo });
+
 function normalizarCliente(c) {
   return c
     ? {
@@ -248,7 +256,7 @@ function normalizarCliente(c) {
         // La segunda cartilla, en las tiendas que llevan dos (ver lib/cartillas.js).
         sellos2: c.sellos2 ?? 0,
         premios: c.premios ?? 0,
-        nombre: c.nombre ?? null,
+        nombre: descifrarCampo(c, "nombre"),
         auth_token: c.auth_token ?? null,
         actualizado: c.actualizado ?? c.creado ?? null,
         creado: c.creado ?? null,
@@ -259,7 +267,7 @@ function normalizarCliente(c) {
         desinstalado: c.desinstalado ?? null,
         origen: c.origen ?? null,
         mensaje: c.mensaje ?? null,
-        nota: c.nota ?? null,
+        nota: descifrarCampo(c, "nota"),
       }
     : null;
 }
@@ -370,7 +378,7 @@ export async function saveCliente(cliente, { esperado } = {}) {
 
 /** Cambia SOLO el nombre (no pisa sellos que otra caja esté poniendo a la vez). */
 export async function guardarNombre(serial, nombre) {
-  const patch = { nombre: nombre ?? null, actualizado: ahoraISO() };
+  const patch = { nombre: cifrarCampo(serial, "nombre", nombre), actualizado: ahoraISO() };
   if (hasSupabase()) {
     const filas = sinError(
       await supa().from("clientes").update(patch).eq("serial", serial).select("serial"),
@@ -628,7 +636,7 @@ export async function guardarMensajes(seriales, texto) {
 
 /** Nota interna sobre un cliente ("sin lactosa", "el del perro"). NO sale en el pase. */
 export async function guardarNota(serial, nota) {
-  const patch = { nota: nota || null };
+  const patch = { nota: cifrarCampo(serial, "nota", nota) };
   if (hasSupabase()) {
     const filas = sinError(
       await supa().from("clientes").update(patch).eq("serial", serial).select("serial"),
@@ -641,6 +649,58 @@ export async function guardarNota(serial, nota) {
     if (!all[serial]) return false;
     await escribir("clientes", { ...all, [serial]: { ...all[serial], ...patch } });
     return true;
+  });
+}
+
+// ------------------------------------------------- datos de antes del cifrado
+// Los nombres y notas que se guardaron sin CIFRADO_CLAVE siguen en claro: se
+// leen igual, pero hay que cifrarlos una vez (botón del admin en el panel de
+// estado). Solo se reescribe la columna que está en claro.
+
+const enClaro = (c, campo) => c[campo] != null && c[campo] !== "" && !estaCifrado(c[campo]);
+const estaEnClaro = (c) => PERSONALES.some((campo) => enClaro(c, campo));
+const pendienteDeCifrar = (c) =>
+  Object.fromEntries(
+    PERSONALES.filter((campo) => enClaro(c, campo)).map((campo) => [campo, cifrarCampo(c.serial, campo, c[campo])]),
+  );
+
+async function clientesConDatosPersonales() {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("clientes").select("serial, nombre, nota").or("nombre.not.is.null,nota.not.is.null"),
+      "leer datos personales",
+    ) || [];
+  }
+  return Object.values(await enFila(() => leer("clientes", {})));
+}
+
+/** Cuántos clientes tienen nombre o nota sin cifrar. */
+export async function contarSinCifrar() {
+  return (await clientesConDatosPersonales()).filter(estaEnClaro).length;
+}
+
+/** Cifra los nombres y notas que siguen en claro. @returns {Promise<number>} clientes cifrados */
+export async function cifrarPendientes() {
+  if (!estadoClaveCifrado().ok) throw new Error("Falta una CIFRADO_CLAVE válida: sin ella no hay con qué cifrar");
+  const pendientes = (await clientesConDatosPersonales()).filter(estaEnClaro);
+  if (hasSupabase()) {
+    let n = 0;
+    for (const c of pendientes) {
+      const patch = pendienteDeCifrar(c);
+      // Solo si sigue el valor que se leyó: si la caja lo cambió mientras tanto,
+      // el suyo ya se guardó cifrado y este (el viejo) no lo pisa.
+      let q = supa().from("clientes").update(patch).eq("serial", c.serial);
+      for (const campo of Object.keys(patch)) q = q.eq(campo, c[campo]);
+      n += (sinError(await q.select("serial"), "cifrar datos")?.length ?? 0) > 0 ? 1 : 0;
+    }
+    return n;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const nuevos = { ...all };
+    for (const c of pendientes) nuevos[c.serial] = { ...all[c.serial], ...pendienteDeCifrar(all[c.serial]) };
+    await escribir("clientes", nuevos);
+    return pendientes.length;
   });
 }
 
@@ -887,16 +947,23 @@ export async function borrarDispositivos(ids) {
 
 // ============================ INTENTOS (límites de uso) ============================
 // Contadores con ventana temporal para frenar abusos (lib/limitador.js):
-// PINs fallidos ("login:nube:ip"), emisiones de pases ("tap:ip"), logs ("log:ip").
+// PINs fallidos ("login:nube:<huella>"), emisiones de pases ("tap:<huella>")...
+// La huella sale de la IP, pero no es la IP (ver limitador.js).
+//
+// Nada cuenta más de un día atrás: lo de antes se borra al apuntar uno nuevo.
+// Así la tabla no crece sin fin y no se guarda rastro de nadie más de lo necesario.
+const RETENCION_INTENTOS_MS = 24 * 60 * 60 * 1000;
 
 export async function registrarIntento(clave) {
+  const limite = Date.now() - RETENCION_INTENTOS_MS;
   if (hasSupabase()) {
-    sinError(await supa().from("intentos").insert({ clave }), "registrar intento");
+    const db = supa();
+    sinError(await db.from("intentos").delete().lt("ts", new Date(limite).toISOString()), "limpiar intentos");
+    sinError(await db.from("intentos").insert({ clave }), "registrar intento");
     return;
   }
   return enFila(async () => {
     const all = await leer("intentos", []);
-    const limite = Date.now() - 24 * 60 * 60 * 1000; // no crecer sin fin en demo
     await escribir("intentos", [...all.filter((i) => Date.parse(i.ts) > limite), { clave, ts: ahoraISO() }]);
   });
 }

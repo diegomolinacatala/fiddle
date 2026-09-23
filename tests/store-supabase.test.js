@@ -146,6 +146,9 @@ describe("store con Supabase", () => {
     expect(await store.contarIntentos("login:nube:ip", 0)).toBe(3);
     expect(await store.contarIntentos("login:nube:ip", 0)).toBe(0);
     await store.registrarIntento("tap:ip");
+    // Antes de apuntar, borra lo de más de un día (como el backend de ficheros).
+    expect(llamadas.at(-2)).toMatchObject({ tabla: "intentos", cadena: [["delete"], ["lt", "ts", expect.any(String)]] });
+    expect(Date.now() - Date.parse(llamadas.at(-2).cadena[1][2])).toBeGreaterThan(23 * 60 * 60 * 1000);
     expect(llamadas.at(-1)).toMatchObject({ tabla: "intentos", cadena: [["insert", { clave: "tap:ip" }]] });
   });
 
@@ -154,5 +157,50 @@ describe("store con Supabase", () => {
     const lista = await store.listClientes("nube");
     expect(lista[0]).toMatchObject({ serial: "s1", nombre: null, actualizado: "c" });
     expect(metodos(0)).toEqual(["select", "order", "eq"]);
+  });
+});
+
+describe("datos personales cifrados con Supabase", () => {
+  const CLAVE = Buffer.alloc(32, 7).toString("base64");
+
+  it("guardarNombre y guardarNota mandan el valor cifrado; al leer se descifra", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    encolar("clientes", { data: [{ serial: "s1" }], error: null }, { data: [{ serial: "s1" }], error: null });
+    await store.guardarNombre("s1", "Ana");
+    await store.guardarNota("s1", "sin lactosa");
+    const nombre = llamadas[0].cadena[0][1].nombre;
+    const nota = llamadas[1].cadena[0][1].nota;
+    expect(nombre).toMatch(/^v1:/);
+    expect(nota).toMatch(/^v1:/);
+
+    encolar("clientes", { data: { serial: "s1", negocio: "nube", nombre, nota }, error: null });
+    expect(await store.getCliente("s1")).toMatchObject({ nombre: "Ana", nota: "sin lactosa" });
+  });
+
+  it("cifrarPendientes lee solo filas con nombre o nota y actualiza las que están en claro", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    const cifrado = "v1:" + "A".repeat(40); // con forma de cifrado: no se toca
+    encolar("clientes",
+      {
+        data: [
+          { serial: "s1", nombre: "Ana", nota: null },
+          { serial: "s2", nombre: cifrado, nota: "el del perro" },
+          { serial: "s3", nombre: cifrado, nota: null },
+        ],
+        error: null,
+      },
+      { data: [{ serial: "s1" }], error: null },
+      // s2 cambió entre la lectura y la escritura: no se pisa, no cuenta.
+      { data: [], error: null },
+    );
+    expect(await store.cifrarPendientes()).toBe(1);
+    expect(metodos(0)).toEqual(["select", "or"]);
+    const [u1, u2] = [llamadas[1].cadena, llamadas[2].cadena];
+    expect(u1[0][1]).toEqual({ nombre: expect.stringMatching(/^v1:/) });
+    // Solo escribe si el valor sigue siendo el que leyó: no pisa un cambio de la caja.
+    expect(u1.slice(1)).toEqual([["eq", "serial", "s1"], ["eq", "nombre", "Ana"], ["select", "serial"]]);
+    // Solo la columna en claro: la ya cifrada no se toca.
+    expect(u2[0][1]).toEqual({ nota: expect.stringMatching(/^v1:/) });
+    expect(u2.slice(1)).toEqual([["eq", "serial", "s2"], ["eq", "nota", "el del perro"], ["select", "serial"]]);
   });
 });

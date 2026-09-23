@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { registrarIntento, contarIntentos } from "./store";
 
 // ============================================================================
@@ -34,7 +35,16 @@ async function supera(clave, { max, ventanaMs }, ahora) {
   return (await contarIntentos(clave, ahora - ventanaMs)) >= max;
 }
 
-const clavesLogin = (slug, ip) => ({ ip: `login:${slug}:${ip || "?"}`, negocio: `login:${slug}:*` });
+// Para contar basta con saber que es "la misma IP", no cuál: en la base va una
+// huella. Con clave (AUTH_SECRET), porque IPv4 solo hay 4.000 millones y un hash
+// suelto se revierte probándolas todas.
+function huellaIp(ip) {
+  if (!ip) return "?";
+  const secreto = process.env.AUTH_SECRET || "huella-ip-demo";
+  return createHmac("sha256", secreto).update(ip).digest("hex").slice(0, 16);
+}
+
+const clavesLogin = (slug, ip) => ({ ip: `login:${slug}:${huellaIp(ip)}`, negocio: `login:${slug}:*` });
 
 /** @returns {Promise<boolean>} true si hay que rechazar el intento sin mirar el PIN. */
 export async function loginBloqueado(slug, ip, ahora = Date.now()) {
@@ -57,7 +67,7 @@ export async function anotarFalloLogin(slug, ip) {
  * @returns {Promise<boolean>} true si hay que rechazar (429)
  */
 export async function usoExcedido(recurso, ip, ahora = Date.now()) {
-  const clave = `${recurso}:${ip || "?"}`;
+  const clave = `${recurso}:${huellaIp(ip)}`;
   if (await supera(clave, LIMITES[recurso], ahora)) return true;
   await registrarIntento(clave);
   return false;
