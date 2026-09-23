@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Logo de fiddle: una «f» y un sello como punto final. Es el del Perfil de
+       Empresa de Google Pay & Wallet. Lo importante cabe en el círculo central
+       porque Google lo enseña recortado. El PNG de al lado sale de aquí con sharp. -->
+  <rect width="1024" height="1024" fill="#1d1b2e"/>
+  <g transform="translate(512 512) scale(1.15) translate(-526 -530)">
+    <path d="M452 770 V430 Q452 290 592 290 H640" fill="none" stroke="#fff7ea" stroke-width="118" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M330 475 H560" fill="none" stroke="#fff7ea" stroke-width="118" stroke-linecap="round"/>
+    <circle cx="672" cy="737" r="92" fill="#ff5c8a"/>
+  </g>
+</svg>

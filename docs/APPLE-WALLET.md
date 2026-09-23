@@ -158,7 +158,9 @@ Mac con la app *Consola*.
 
 ## Antes de publicar
 
-- Sustituye el botón "Añadir a Apple Wallet" de `/p/<serial>` por el **badge oficial**
-  (Apple Wallet Identity Guidelines); el actual es un botón provisional.
+- El botón de `/p/<serial>` ya es el **badge oficial**: el SVG de `ES/RGB` del paquete
+  de Apple (*Download badge files* en las Add to Apple Wallet Guidelines; pide aceptar
+  su licencia), tal cual, en `public/marcas/apple-wallet-anadir.svg`. En España dice
+  "Añadir a Cartera de Apple". `tests/marcas.test.js` fija su hash.
 - Revisa que `organizationName`, textos del reverso y colores son los definitivos.
 - Renovación del certificado: pon un recordatorio con la fecha que imprimió `apple:env`.
