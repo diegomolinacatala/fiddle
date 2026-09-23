@@ -6,6 +6,7 @@ import { normalizarCodigo } from "@/lib/codigo";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
+import ClaveNueva from "@/app/ClaveNueva";
 import CabeceraGestion from "../CabeceraGestion";
 import Icono from "@/app/Icono";
 import { C, pagina, panel, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo } from "@/app/ui";
@@ -26,6 +27,7 @@ export default function PanelManager({ negocio, inicial }) {
   const [origin, setOrigin] = useState("");
   const [real, setReal] = useState(null); // cliente real en la vista previa (null = ejemplo)
   const [codigo, setCodigo] = useState("");
+  const [claveCaja, setClaveCaja] = useState(null); // contraseña nueva de la caja, se ve una vez
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -111,6 +113,17 @@ export default function PanelManager({ negocio, inicial }) {
     const res = await fetch(`/api/crear?b=${negocio}`, { method: "POST" });
     const data = await res.json();
     flash(res.ok ? `Tarjeta emitida · código ${data.codigo}` : data.error);
+  }
+
+  // Un empleado que se va, un móvil perdido: contraseña nueva y la vieja deja de valer.
+  async function cambiarClaveCaja() {
+    if (!window.confirm(`¿Cambiar la contraseña de la caja?
+
+La actual dejará de valer para entrar. Tendrás que escribir la nueva en el móvil de la caja.`)) return;
+    const res = await fetch(`/api/accesos/caja?b=${negocio}`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) return flash(data.error || "No se pudo cambiar");
+    setClaveCaja(data);
   }
 
   async function copiarTap() {
@@ -220,6 +233,11 @@ export default function PanelManager({ negocio, inicial }) {
               </div>
             </div>
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
+
+            <h2 style={{ ...h2, marginTop: 26 }}>Acceso de la caja</h2>
+            <p style={texto}>Usuario <strong style={{ color: C.texto }}>{negocio}-caja</strong></p>
+            <button onClick={cambiarClaveCaja} style={botonPequeno}>Cambiar contraseña de la caja</button>
+            {claveCaja && <ClaveNueva accesos={[claveCaja]} onCerrar={() => setClaveCaja(null)} />}
           </section>
         </div>
 

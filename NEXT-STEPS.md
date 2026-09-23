@@ -133,6 +133,12 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 > Las tareas sueltas van aquí; el orden y el porqué, en
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
+### Contraseñas en la base — hecho (23-09-2026)
+- [x] Tabla `accesos` (hash scrypt). Se generan al crear la tienda; se cambian en
+      `/admin/<tienda>` y la de la caja también desde el manager.
+- [ ] Para las tiendas que ya existen: `/admin/<tienda>` → **Generar** para manager y caja, y
+      después se pueden quitar sus `CLAVE_*` de Vercel.
+
 ### Pedido el 23-09-2026 (antes de la visita a La Delicantería)
 - [x] Ejecutar en Supabase el SQL de `guardados` / `fusionado_en` / `tarjetas_de_dispositivo`
       y después fusionar `feat/misma-tarjeta-y-premio-guardado` a `main`.

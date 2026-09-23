@@ -6,6 +6,7 @@ import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { ACCIONES } from "@/lib/acciones";
 import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validacion";
 import { notificarNegocio } from "@/lib/wallet";
+import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
 import { jsonError, errorInterno } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -49,7 +50,16 @@ export async function POST(request) {
 
     const creado = await crearNegocio(r.datos);
     if (creado.error) return jsonError(creado.error, 409);
-    return NextResponse.json(creado.negocio, { status: 201 });
+    // Las contraseñas nacen con la tienda y se enseñan UNA vez: nadie tiene que
+    // tocar Vercel para que pueda entrar. Si fallan, la tienda ya existe y se
+    // generan después desde su ficha.
+    let accesos = null;
+    try {
+      accesos = await Promise.all(ROLES_TIENDA.map((rol) => nuevaClave(creado.negocio.slug, rol)));
+    } catch (e) {
+      console.error(`[admin] tienda ${creado.negocio.slug} creada sin contraseñas:`, e);
+    }
+    return NextResponse.json({ ...creado.negocio, accesos }, { status: 201 });
   } catch (e) {
     return errorInterno("admin negocios POST", e);
   }

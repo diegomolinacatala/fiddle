@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
+import { destinoSeguro } from "@/lib/acceso";
 import { C, paginaCentrada, panel, campo, etiqueta, aviso } from "@/app/ui";
 
 // PRIMERA PANTALLA de la app: usuario + contraseña, para todos los negocios.
@@ -35,7 +35,7 @@ function LoginForm() {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuario, clave }),
+        body: JSON.stringify({ usuario, clave, next }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -43,12 +43,8 @@ function LoginForm() {
         setClave("");
         return;
       }
-      // El admin de la plataforma no tiene tienda: su sitio es /admin.
-      // `next` solo se respeta si es del mismo negocio (o no es de ninguno, como /w/...).
-      const nextNegocio = negocioDeRuta(next);
-      const suSitio = data.rol === "admin" ? "/admin" : `/${data.negocio}/${data.rol === "manager" ? "manager" : "caja"}`;
-      const destino = next && (data.rol === "admin" || !nextNegocio || nextNegocio === data.negocio) ? next : suSitio;
-      router.push(destino);
+      // El servidor decide a dónde: `next` solo si es de esta tienda (ver /api/login).
+      router.push(data.destino);
       router.refresh();
     } catch (err) {
       setError(String(err?.message || err));

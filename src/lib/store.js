@@ -23,7 +23,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -213,6 +213,7 @@ export async function borrarNegocio(slug) {
     if (seriales.length) sinError(await db.from("eventos").delete().in("serial", seriales), "borrar eventos");
     sinError(await db.from("campanas").delete().eq("negocio", slug), "borrar campañas");
     sinError(await db.from("tarjetas_de_dispositivo").delete().eq("negocio", slug), "borrar tarjetas de dispositivo");
+    sinError(await db.from("accesos").delete().eq("negocio", slug), "borrar accesos");
     sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
     sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
     return { borrados: seriales.length };
@@ -231,6 +232,8 @@ export async function borrarNegocio(slug) {
     await escribir("campanas", (await leer("campanas", [])).filter((c) => c.negocio !== slug));
     const tarjetas = await leer("tarjetas_de_dispositivo", {});
     await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => t.negocio !== slug)));
+    const accesos = await leer("accesos", {});
+    await escribir("accesos", Object.fromEntries(Object.entries(accesos).filter(([, a]) => a.negocio !== slug)));
     return { borrados: seriales.length };
   });
 }
@@ -956,6 +959,45 @@ export async function borrarDispositivos(ids) {
     await escribir("dispositivos", Object.fromEntries(Object.entries(dispositivos).filter(([id]) => !fuera.has(id))));
     const registros = await leer("registros", []);
     await escribir("registros", registros.filter((r) => !fuera.has(r.dispositivo)));
+  });
+}
+
+// ============================ ACCESOS (ver claves.js) ============================
+// Contraseña de cada usuario de tienda (`nube` = manager, `nube-caja` = caja),
+// como hash. Sin fila, el login cae a la variable de entorno de siempre.
+
+/** @returns {Promise<{usuario:string, negocio:string, rol:string, hash:string, actualizado:string}|null>} */
+export async function getAcceso(usuario) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("accesos").select("usuario, negocio, rol, hash, actualizado").eq("usuario", usuario).maybeSingle(),
+      "leer acceso",
+    ) ?? null;
+  }
+  return (await enFila(() => leer("accesos", {})))[usuario] ?? null;
+}
+
+/** Cuándo se puso la contraseña de cada usuario de una tienda (sin hashes). */
+export async function accesosDeNegocio(negocio) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("accesos").select("usuario, rol, actualizado").eq("negocio", negocio),
+      "leer accesos",
+    ) || [];
+  }
+  const todos = await enFila(() => leer("accesos", {}));
+  return Object.values(todos).filter((a) => a.negocio === negocio).map(({ usuario, rol, actualizado }) => ({ usuario, rol, actualizado }));
+}
+
+export async function guardarAcceso({ usuario, negocio, rol, hash }) {
+  const fila = { usuario, negocio, rol, hash, actualizado: ahoraISO() };
+  if (hasSupabase()) {
+    sinError(await supa().from("accesos").upsert(fila, { onConflict: "usuario" }), "guardar acceso");
+    return;
+  }
+  return enFila(async () => {
+    const todos = await leer("accesos", {});
+    await escribir("accesos", { ...todos, [usuario]: fila });
   });
 }
 

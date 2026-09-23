@@ -15,7 +15,7 @@ del día a día siguen en [NEXT-STEPS.md](../NEXT-STEPS.md).
 
 ## Lo que de verdad bloquea
 
-### 1. Las contraseñas de una tienda nueva son variables de entorno
+### 1. ✅ Las contraseñas de una tienda nueva son variables de entorno (hecho 23-09-2026: tabla `accesos`)
 
 `claveDe()` en [`src/lib/auth.js`](../src/lib/auth.js) lee `CLAVE_<SLUG>_<ROL>` de
 `process.env`. Creas la tienda en `/admin` en treinta segundos y no puede entrar

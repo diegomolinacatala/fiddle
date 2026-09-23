@@ -7,6 +7,7 @@ import LogoutButton from "@/app/LogoutButton";
 import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
 import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
+import ClaveNueva from "@/app/ClaveNueva";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
 
@@ -30,6 +31,7 @@ export default function Admin() {
   const [msg, setMsg] = useState(null);
   const [error, setError] = useState(null);
   const [borrando, setBorrando] = useState(null); // slug cuyo borrado se está confirmando
+  const [creada, setCreada] = useState(null); // tienda recién creada: sus contraseñas, una vez
 
   useEffect(() => { cargar(pestana); }, [pestana]);
 
@@ -97,8 +99,19 @@ export default function Admin() {
 
         {abriendo && pestana === "activas" && (
           <NuevaTienda
-            onCreada={(n) => { setAbriendo(false); flash(`"${n.nombre}" creada`); cargar(); }}
+            onCreada={(n) => { setAbriendo(false); setCreada(n); flash(`"${n.nombre}" creada`); cargar(); }}
           />
+        )}
+
+        {creada && (
+          <div style={{ ...panel, marginBottom: 14 }}>
+            <strong>{creada.nombre}: accesos</strong>
+            {creada.accesos
+              ? <ClaveNueva accesos={creada.accesos} onCerrar={() => setCreada(null)} />
+              : <p style={{ color: C.mal, fontSize: 14, margin: "8px 0 0" }}>
+                  No se pudieron crear las contraseñas. Genéralas desde <a href={`/admin/${creada.slug}`}>su ficha</a>.
+                </p>}
+          </div>
         )}
 
         {error && <div style={{ ...aviso(false), marginBottom: 14 }}>{error}</div>}

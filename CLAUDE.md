@@ -133,6 +133,24 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   calcula **en el navegador**. El servidor vive en UTC y sacaría el café de las 9
   a las 7.
 
+## Contraseñas
+
+Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/claves.js).
+
+- **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan (nunca las elige
+  nadie) al crear la tienda en `/admin`, se enseñan UNA vez y se cambian desde la
+  ficha de la tienda en `/admin` o, la de la caja, desde el manager.
+- Si un usuario tiene contraseña en la base, **solo vale esa**. Sin fila, vale la
+  variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
+  también se cae a la variable: una caja sin poder entrar es peor.
+- Los admins (victor, diego) siguen solo con variables.
+- Cambiar una contraseña **no cierra las sesiones ya abiertas** (la caja dura 30 días):
+  el token de sesión no sabe de contraseñas. Si hiciera falta, bastaría con cambiar
+  `AUTH_SECRET` (echa a todos).
+- **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
+  `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
+  quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
+
 ## Datos y permisos
 
 - Las tiendas **viven en la base**, se crean y se borran desde `/admin`.

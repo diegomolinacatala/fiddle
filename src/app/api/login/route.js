@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  verificarAcceso, resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS, ADMINS,
+  resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS, ADMINS,
 } from "@/lib/auth";
-import { listNegocios, getNegocio } from "@/lib/store";
+import { listNegocios, getNegocio, getCliente } from "@/lib/store";
+import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
+import { comprobarAcceso } from "@/lib/accesos";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -33,7 +35,7 @@ export async function GET() {
 // en una cookie httpOnly. Devuelve negocio y rol para redirigir.
 export async function POST(request) {
   try {
-    const { usuario, clave } = await request.json().catch(() => ({}));
+    const { usuario, clave, next } = await request.json().catch(() => ({}));
     const quien = resolverUsuario(usuario);
     if (!quien) return jsonError("Usuario o contraseña incorrectos", 401);
     // Un usuario de tienda solo vale si la tienda existe (y no está archivada):
@@ -55,13 +57,15 @@ export async function POST(request) {
       console.error("[login] no se pudo consultar el límite de intentos:", e);
     }
 
-    const acceso = verificarAcceso(usuario, clave);
+    // Contraseña de la base; si la tienda no tiene, la variable de entorno (lib/accesos.js).
+    const acceso = await comprobarAcceso(usuario, clave);
     if (!acceso) {
       await anotarFalloLogin(quien.negocio, ip).catch((e) => console.error("[login] no se pudo anotar el fallo:", e));
       return jsonError("Usuario o contraseña incorrectos", 401);
     }
 
-    const res = NextResponse.json({ ok: true, negocio: acceso.negocio, rol: acceso.rol });
+    const destino = await destinoTrasLogin(acceso, next);
+    const res = NextResponse.json({ ok: true, negocio: acceso.negocio, rol: acceso.rol, destino });
     res.cookies.set(COOKIE, await firmarSesion(acceso.negocio, acceso.rol), {
       httpOnly: true,
       sameSite: "lax",
@@ -73,4 +77,27 @@ export async function POST(request) {
   } catch (e) {
     return errorInterno("login", e);
   }
+}
+
+const FICHA = /^\/w\/([0-9a-f-]{36})$/i;
+
+/**
+ * A dónde ir tras entrar. `next` solo se respeta si es de ESTA tienda: una
+ * ficha de caja (/w/<serial>) no dice de qué tienda es, así que se mira la
+ * tarjeta. Sin esto, quien escaneó su propio pase con el móvil acababa, al
+ * entrar en cualquier tienda, en la ficha de su tarjeta ("esta tarjeta es de
+ * otra tienda", o sellándose a sí mismo).
+ */
+async function destinoTrasLogin(acceso, next) {
+  const suSitio = acceso.rol === "admin" ? "/admin" : `/${acceso.negocio}/${acceso.rol === "manager" ? "manager" : "caja"}`;
+  const pedido = destinoSeguro(next);
+  if (!pedido) return suSitio;
+  if (acceso.rol === "admin") return pedido;
+  if (negocioDeRuta(pedido) === acceso.negocio) return pedido;
+  const ficha = FICHA.exec(pedido);
+  if (ficha) {
+    const cliente = await getCliente(ficha[1]).catch(() => null);
+    if (cliente?.negocio === acceso.negocio) return pedido;
+  }
+  return suSitio;
 }

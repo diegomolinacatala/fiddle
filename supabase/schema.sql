@@ -151,6 +151,19 @@ select distinct on (dispositivo, negocio) dispositivo, negocio, serial, creado
  order by dispositivo, negocio, creado desc
 on conflict do nothing;
 
+-- ===================== CONTRASEÑAS DE LAS TIENDAS =====================
+-- Una fila por usuario (`nube` = manager, `nube-caja` = caja). Solo el hash
+-- scrypt: nadie puede leer una contraseña, solo generar otra (lib/claves.js).
+-- Sin fila, el login usa la variable de entorno CLAVE_<SLUG>_<ROL> de siempre.
+create table if not exists accesos (
+  usuario     text primary key,
+  negocio     text not null,
+  rol         text not null check (rol in ('manager', 'caja')),
+  hash        text not null,
+  actualizado timestamptz not null default now()
+);
+create index if not exists accesos_negocio on accesos (negocio);
+
 -- ===================== LÍMITES DE USO =====================
 -- PINs fallidos ("login:nube:ip"), emisiones de pases ("tap:ip"), logs ("log:ip").
 create table if not exists intentos (
@@ -172,3 +185,4 @@ alter table registros      enable row level security;
 alter table intentos       enable row level security;
 alter table campanas       enable row level security;
 alter table tarjetas_de_dispositivo enable row level security;
+alter table accesos        enable row level security;

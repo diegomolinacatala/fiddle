@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
+import Accesos from "@/app/admin/Accesos";
 import { MARCAS, FORMAS, BANDAS, ESTILOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
 import Cartillas from "@/app/admin/Cartillas";
@@ -128,6 +129,8 @@ export default function AdminNegocio() {
           </div>
           <LogoutButton />
         </header>
+
+        <div style={{ marginTop: 18 }}><Accesos slug={n.slug} /></div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
           {/* ------------------------------------------------ datos */}

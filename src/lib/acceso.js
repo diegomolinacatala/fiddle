@@ -76,6 +76,8 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
   if (pathname === "/api/clientes") return { tipo: "negocio", slug: b, rol: "caja" };
   if (pathname === "/api/crear") return { tipo: "negocio", slug: b, rol: "manager" };
+  // El manager puede cambiar la contraseña de SU caja (un empleado que se va).
+  if (pathname === "/api/accesos/caja") return { tipo: "negocio", slug: b, rol: "manager" };
   // CRM: quién es quién, en bloque o cliente a cliente. Solo el manager.
   // Las dos que llevan ?b= se comprueban aquí; /api/crm/campana (el negocio va
   // en el cuerpo, como en /api/promo) y /api/crm/cliente/<serial> (sale del
