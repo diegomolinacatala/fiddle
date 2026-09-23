@@ -1,8 +1,18 @@
 # Google Wallet
 
-El código está hecho y probado contra una API de Google simulada. Para activarlo
-solo faltan las credenciales. Sin ellas, Android usa la tarjeta web con avisos
-([ANDROID.md](ANDROID.md)) y el botón de Google no sale.
+Activo en producción (`fiddle-zeta`) desde el 23-09-2026. Sin credenciales,
+Android usa la tarjeta web con avisos ([ANDROID.md](ANDROID.md)) y el botón de
+Google no sale.
+
+## Dónde está cada cosa
+
+| Qué | Dónde |
+|---|---|
+| Emisor | Consola de Google Pay & Wallet, cuenta `BCR2DN6D5K7ON22K`, **Issuer ID `3388000000023207798`** |
+| Cuenta de servicio | `fiddle-wallet@fiddle-509414.iam.gserviceaccount.com`, proyecto de Google Cloud `fiddle-509414`, con rol *Desarrollador* en la consola de Wallet |
+| Clave | `certs/google-wallet.json` en local (ignorado por Git, nunca subido) y `GOOGLE_WALLET_SA_JSON` en Vercel. Si se pierde, se crea otra en Google Cloud → la cuenta de servicio → *Claves*, y se cambia en Vercel |
+| Perfil de Empresa | Aprobado, como particular a nombre de Diego. Logo: [`docs/marca/`](marca/) |
+| Publicación | Solicitada el 23-09-2026 (Google tarda 2-3 días hábiles). Hasta que la aprueben, solo guardan tarjetas las cuentas de prueba |
 
 ## Qué hace
 
@@ -57,11 +67,27 @@ que un cliente guarda la tarjeta de esa tienda.
 
 ## Modo demo de Google
 
-Mientras Google no apruebe la cuenta, el emisor está en **modo demo**: solo pueden
-guardar tarjetas los usuarios de prueba. En la consola → *Google Wallet API* →
-*Usuarios de prueba*, añadir las cuentas de Google de los teléfonos con los que se
-vaya a enseñar. Para abrirlo al público: *Solicitar acceso de publicación* en la
-misma consola (Google revisa el aspecto de una tarjeta real; tarda unos días).
+Mientras Google no apruebe la publicación, el emisor está en **modo demo**: solo
+pueden guardar tarjetas las cuentas de prueba (consola → *API de Google Wallet* →
+*Configurar cuentas de prueba*). Para salir, la consola pide tres pasos:
+
+1. **Crear una clase.** No con el botón de la consola: la crea la app al guardar
+   la primera tarjeta de una tienda (vale una tablet Android con una cuenta de
+   prueba). Así Google revisa la clase que ven los clientes, no una hecha a mano.
+2. **Completar el Perfil de Empresa.** Dos bloques: *Business identity* (el
+   perfil de pagos: quién hay detrás, legalmente) y *Business information*
+   (logo de 640-1024 px, MCC 7372, web y contacto de soporte).
+3. **Solicitar acceso para publicar.** Se describe en texto qué lleva la tarjeta
+   y cómo llega al cliente. Una vez aprobado, **no se vuelve al modo demo**.
+
+## El botón «Añadir a Google Wallet»
+
+Google revisa el botón y no deja uno propio: la tarjeta web usa los SVG de su
+paquete oficial (`add-to-wallet-svg.zip`, variantes `esES`) tal cual, en
+[`public/marcas/`](../public/marcas/). El normal (298x50) y, en teléfonos de
+menos de 360 px, el compacto. `tests/marcas.test.js` fija su hash: si alguien los
+retoca, falla. `/marcas/` queda fuera del middleware (si no, pedía login) y
+`marcas` es un slug reservado.
 
 ## Qué no está (a propósito)
 
