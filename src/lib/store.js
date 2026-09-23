@@ -1022,7 +1022,16 @@ export async function fusionarClientes(viejo, nuevo, campos) {
     for (const k of SALDO) q = q.eq(k, viejo[k] || 0);
     const reclamada = sinError(await q.select("serial"), "anular tarjeta fusionada");
     if (!reclamada?.length) return false;
-    sinError(await db.from("clientes").update(patch).eq("serial", nuevo.serial), "fusionar tarjeta");
+    try {
+      sinError(await db.from("clientes").update(patch).eq("serial", nuevo.serial), "fusionar tarjeta");
+    } catch (e) {
+      // La vieja ya está a cero: sin esto sus sellos se perderían. Se deja como estaba.
+      const deshacer = { fusionado_en: null, codigo: viejo.codigo, actualizado: ts, mensaje: viejo.mensaje ?? null };
+      for (const k of SALDO) deshacer[k] = viejo[k] || 0;
+      for (const k of PERSONALES) deshacer[k] = cifrarCampo(viejo.serial, k, viejo[k] ?? null);
+      await db.from("clientes").update(deshacer).eq("serial", viejo.serial);
+      throw e;
+    }
     sinError(await db.from("eventos").update({ serial: nuevo.serial }).eq("serial", viejo.serial), "mover historial");
     return true;
   }

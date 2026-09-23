@@ -7,6 +7,7 @@ import { serieVisitas, rejillaHoraria, tendencia, haceTexto, cadenciaTexto } fro
 import { Cifra, Barras, Rejilla, Reparto, Chip } from "./piezas";
 import Campana from "./Campana";
 import Ficha from "./Ficha";
+import Exportar from "./Exportar";
 import { saldoCorto } from "@/lib/cartillas";
 import { C, pagina, panel, campo, h2, botonPequeno, chipCodigo, solapa } from "@/app/ui";
 
@@ -36,7 +37,6 @@ const ORDENES = {
 // vacía esperando a otra petición. `cargar()` solo recarga tras un cambio.
 export default function PanelCrm({ slug, inicial }) {
   const [d, setD] = useState(inicial);
-  const [error, setError] = useState(null);
   const [pestana, setPestana] = useState("resumen");
   const [grupo, setGrupo] = useState(null);
   const [verFicha, setVerFicha] = useState(null);
@@ -45,16 +45,15 @@ export default function PanelCrm({ slug, inicial }) {
   const [mostrar, setMostrar] = useState(POR_PAGINA);
   const [msg, setMsg] = useState(null);
 
-
   async function cargar() {
     try {
       const r = await fetch(`/api/crm?b=${slug}`);
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "No se pudo cargar");
       setD(data);
-      setError(null);
     } catch (e) {
-      setError(String(e?.message || e));
+      // Lo que ya se ve sigue valiendo: se avisa y no se tira la página.
+      flash(`No se pudo actualizar: ${e?.message || e}`);
     }
   }
 
@@ -73,8 +72,6 @@ export default function PanelCrm({ slug, inicial }) {
   }, [d, busca, orden]);
   useEffect(() => setMostrar(POR_PAGINA), [busca, orden]);
 
-  if (error) return <main style={pagina}><p style={{ color: C.mal }}>{error}</p></main>;
-
   const { negocio: n, metricas: m, grupos, estados } = d;
   const accent = n.tema.accent;
   const grupoActivo = grupos.find((g) => g.key === grupo);
@@ -91,9 +88,7 @@ export default function PanelCrm({ slug, inicial }) {
             </button>
           ))}
           <div style={{ flex: 1 }} />
-          <a href={`/api/crm/export?b=${slug}`} style={{ ...botonPequeno, textDecoration: "none" }} >
-            Exportar CSV
-          </a>
+          <Exportar href={`/api/crm/export?b=${slug}`} accent={accent} />
         </div>
 
         {/* ------------------------------------------------------ resumen */}
@@ -199,9 +194,13 @@ export default function PanelCrm({ slug, inicial }) {
                   onEnviada={() => { cargar(); setGrupo(null); }}
                 />
                 <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${C.borde}` }}>
-                  <a href={`/api/crm/export?b=${slug}&grupo=${grupo}`} style={{ ...botonPequeno, textDecoration: "none" }}>
-                    Exportar este grupo (CSV)
-                  </a>
+                  <Exportar
+                    href={`/api/crm/export?b=${slug}&grupo=${grupo}`}
+                    accent={accent}
+                    texto="Exportar este grupo"
+                    alinear="izquierda"
+                    queContiene={`los clientes de «${grupoActivo.label}»`}
+                  />
                 </div>
               </section>
             ) : (
