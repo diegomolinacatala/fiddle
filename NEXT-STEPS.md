@@ -134,7 +134,7 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ### Pedido el 23-09-2026 (antes de la visita a La Delicantería)
-- [ ] Ejecutar en Supabase el SQL de `guardados` / `fusionado_en` / `tarjetas_de_dispositivo`
+- [x] Ejecutar en Supabase el SQL de `guardados` / `fusionado_en` / `tarjetas_de_dispositivo`
       y después fusionar `feat/misma-tarjeta-y-premio-guardado` a `main`.
 - [x] Vista previa del pase con **dos cartillas**: cuenta los sellos de una sola (sale 1
       cuando puede tener 5).
@@ -143,7 +143,7 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [x] Manager: la lista de clientes de la derecha crece sin fin → fuera; la pestaña Clientes (CRM) pagina de 50 en 50.
 - [x] Homogeneizar la interfaz (primera pasada: pestañas y radios, cabecera común manager/clientes): mismos radios y estilos de botón (no uno cuadrado al
       lado de uno redondo), y quitar textos de relleno que no aportan.
-- [ ] Velocidad percibida: ver la sección [Velocidad](#velocidad-ideas-sin-hacer).
+- [x] Velocidad percibida: 1, 3 y 4 de la sección [Velocidad](#velocidad) hechas.
 
 ### Ahora
 - [ ] Confirmar en el iPhone la notificación de **promo** y la de **sello**.
@@ -196,21 +196,21 @@ la de la Delicantería salen apiladas como si fueran de la misma casa. Decisión
 cambian de ID** (va firmado dentro): se quedan en `pass.com.fiddle` y siguen funcionando.
 Por eso conviene hacerlo antes de que una tienda nueva empiece a repartir.
 
-### Velocidad (ideas, sin hacer)
+### Velocidad
 
 Por qué hoy se siente lento, de más a menos impacto:
 
-1. **Manager y CRM son páginas de cliente que esperan a un `fetch` para pintar nada**
+1. ✅ *(hecho 23-09)* **Manager y CRM son páginas de cliente que esperan a un `fetch` para pintar nada**
    ("Cargando…" a pantalla vacía). Pasar la carga al servidor (Server Component que lee el
    store y pasa los datos) quita un viaje entero; con `loading.js` por ruta, Next enseña un
    **esqueleto** (las cajas grises con la forma de la página) al instante mientras llega.
 2. **`getNegocio` se lee varias veces por petición** (layout: metadata + viewport, página,
    API). Un `cache()` de React por petición y, para el negocio, caché de unos segundos:
    cambia poco y es lo que más se lee.
-3. **Supabase en `eu-west` vs. funciones de Vercel en EE. UU. por defecto**: cada consulta
+3. ✅ *(hecho 23-09: Supabase está en eu-west-2, Londres → `lhr1`)* **Supabase en `eu-west` vs. funciones de Vercel en EE. UU. por defecto**: cada consulta
    cruza el Atlántico (~80-100 ms) y una página hace varias en serie. Fijar la región de las
    funciones a la de Supabase (`regions` en `vercel.json`) es un cambio de una línea.
-4. **Caja**: tras sellar se hace `router.refresh()` (repinta todo desde el servidor). Pintar
+4. ✅ *(hecho 23-09, `w/[serial]/TarjetaCaja.js`)* **Caja**: tras sellar se hace `router.refresh()` (repinta todo desde el servidor). Pintar
    el resultado que ya devuelve `/api/accion` al momento (actualización optimista) y
    refrescar detrás hace que el botón responda en el acto.
 5. **Transiciones**: `<Link>` con prefetch en vez de `<a>` entre Manager ↔ Clientes ↔ Caja,

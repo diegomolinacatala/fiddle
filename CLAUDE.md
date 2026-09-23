@@ -58,6 +58,17 @@ Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
   (`clienteVigente`). Lo que lea `clientes` a mano tiene que filtrarla igual.
 - En Android no hay id del teléfono: ahí solo está la cookie.
 
+## Lo que hace que la web vaya rápida
+
+- **Vercel corre en `lhr1` (Londres) porque Supabase está en eu-west-2** (`vercel.json`).
+  Si la base cambia de región, la de las funciones va con ella.
+- **Manager y CRM cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
+  cliente) y cada ruta tiene `loading.js` con su esqueleto (`app/Esqueleto.js`).
+  Nada de pantallas que arrancan vacías y piden sus datos con `fetch`.
+- **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
+  la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
+  siendo PURA y sin imports del servidor.
+
 ## El premio: dar o guardar
 
 Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"

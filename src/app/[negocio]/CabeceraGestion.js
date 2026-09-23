@@ -1,3 +1,4 @@
+import Link from "next/link";
 import LogoutButton from "@/app/LogoutButton";
 import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
@@ -10,6 +11,7 @@ const SECCIONES = [
 
 // Cabecera de las pantallas del dueño (manager y clientes): marca, nombre y
 // las mismas pestañas en las dos, para que se muevan entre ellas sin buscar.
+// Con <Link>: el cambio no recarga la página y el esqueleto sale al momento.
 export default function CabeceraGestion({ negocio, slug, activa }) {
   const accent = negocio.tema.accent;
   return (
@@ -23,9 +25,9 @@ export default function CabeceraGestion({ negocio, slug, activa }) {
       </div>
       <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {SECCIONES.map(([ruta, texto, icono]) => (
-          <a key={ruta} href={`/${slug}/${ruta}`} aria-current={ruta === activa ? "page" : undefined} style={solapa(ruta === activa, accent)}>
+          <Link key={ruta} href={`/${slug}/${ruta}`} aria-current={ruta === activa ? "page" : undefined} style={solapa(ruta === activa, accent)}>
             <Icono nombre={icono} tam={16} /> {texto}
-          </a>
+          </Link>
         ))}
       </nav>
     </header>
