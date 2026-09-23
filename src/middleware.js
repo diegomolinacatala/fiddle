@@ -34,7 +34,8 @@ export async function middleware(req) {
   return NextResponse.redirect(url);
 }
 
-// Todo salvo estáticos: assets de Next, iconos, service worker y favicon.
+// Todo salvo estáticos: assets de Next, iconos, botones oficiales de Wallet,
+// service worker y favicon.
 export const config = {
-  matcher: ["/((?!_next/|icons/|sw\\.js|favicon\\.ico).*)"],
+  matcher: ["/((?!_next/|icons/|marcas/|sw\\.js|favicon\\.ico).*)"],
 };
