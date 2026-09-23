@@ -24,6 +24,9 @@ const ICONO = {
   sellar: "mas",
   restar: "menos",
   canjear: "regalo",
+  guardar: "cartera",
+  usarGuardado: "regalo",
+  fusion: "movil",
   confirmar: "check",
 };
 

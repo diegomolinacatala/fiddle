@@ -21,7 +21,7 @@ import Acciones from "./Acciones";
 // código), con la tipografía del sistema y un QR grande: esto se enseña en caja.
 // ============================================================================
 
-const TITULOS = { sello: "Sello añadido", completa: "Cartilla completa", canje: "Premio canjeado" };
+const TITULOS = { sello: "Sello añadido", completa: "Cartilla completa", canje: "Premio canjeado", guardado: "Premio guardado" };
 
 export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl, googleUrl, clavePush, demo }) {
   const { datos, novedad, cerrarNovedad } = useTarjetaEnVivo(serial, inicial);

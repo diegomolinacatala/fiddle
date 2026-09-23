@@ -22,6 +22,8 @@ const cambio = (a, b) =>
   a.cliente.sellos !== b.cliente.sellos ||
   a.cliente.sellos2 !== b.cliente.sellos2 ||
   a.cliente.premios !== b.cliente.premios ||
+  a.cliente.guardados !== b.cliente.guardados ||
+  a.cliente.guardados2 !== b.cliente.guardados2 ||
   a.cliente.mensaje !== b.cliente.mensaje ||
   a.cliente.nombre !== b.cliente.nombre ||
   JSON.stringify(a.negocio) !== JSON.stringify(b.negocio);

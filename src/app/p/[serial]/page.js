@@ -1,6 +1,8 @@
 import { cache } from "react";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getCliente, getNegocio } from "@/lib/store";
+import { clienteVigente } from "@/lib/unaTarjeta";
 import { proveedorWallet } from "@/lib/wallet";
 import { rutaGuardarGoogle } from "@/lib/googlewallet";
 import { clavesPush } from "@/lib/push/vapid";
@@ -55,6 +57,11 @@ const temprano = REGISTRAR_SW + CAPTURAR_INSTALAR;
 export default async function Page({ params }) {
   const { serial } = await params;
   const { cliente, negocio } = await cargar(serial);
+  // Tarjeta sustituida por otra (mismo iPhone, ver lib/unaTarjeta.js): a la vigente.
+  if (cliente?.fusionado_en) {
+    const vigente = await clienteVigente(getCliente, serial);
+    if (vigente) redirect(`/p/${vigente.serial}`);
+  }
   if (!cliente || !negocio) {
     return (
       <main style={paginaCentrada}>

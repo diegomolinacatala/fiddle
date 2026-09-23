@@ -23,7 +23,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -212,6 +212,7 @@ export async function borrarNegocio(slug) {
     // `registros` cae solo por la FK; los eventos van por serial, sin FK.
     if (seriales.length) sinError(await db.from("eventos").delete().in("serial", seriales), "borrar eventos");
     sinError(await db.from("campanas").delete().eq("negocio", slug), "borrar campañas");
+    sinError(await db.from("tarjetas_de_dispositivo").delete().eq("negocio", slug), "borrar tarjetas de dispositivo");
     sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
     sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
     return { borrados: seriales.length };
@@ -226,8 +227,10 @@ export async function borrarNegocio(slug) {
     await escribir("eventos", (await leer("eventos", [])).filter((e) => !seriales.includes(e.serial)));
 
     const registros = await leer("registros", []);
-    await escribir("registros", registros.filter((r) => !seriales.includes(r.serial)));
+    await escribir("registros", registros.filter((r) => !seriales.includes(r.serial) && r.negocio !== slug));
     await escribir("campanas", (await leer("campanas", [])).filter((c) => c.negocio !== slug));
+    const tarjetas = await leer("tarjetas_de_dispositivo", {});
+    await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => t.negocio !== slug)));
     return { borrados: seriales.length };
   });
 }
@@ -235,12 +238,15 @@ export async function borrarNegocio(slug) {
 // ============================ CLIENTES ============================
 const CAMPOS_CLIENTE =
   "serial, negocio, codigo, ww_serial, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
-  "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota";
+  "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en";
 
 // Datos personales de un cliente: van cifrados en la base (lib/cifrado.js). Se
 // cifran al guardarlos y se descifran aquí, al leer: lo demás del código los ve
 // en claro y no tiene que saber nada de esto.
 const PERSONALES = ["nombre", "nota"];
+
+// El saldo de la tarjeta: lo que mueve la caja y se guarda con guardado optimista.
+const SALDO = ["sellos", "sellos2", "premios", "guardados", "guardados2"];
 const cifrarCampo = (serial, campo, valor) => cifrar(valor, { serial, campo });
 const descifrarCampo = (c, campo) => descifrar(c[campo] ?? null, { serial: c.serial, campo });
 
@@ -256,6 +262,11 @@ function normalizarCliente(c) {
         // La segunda cartilla, en las tiendas que llevan dos (ver lib/cartillas.js).
         sellos2: c.sellos2 ?? 0,
         premios: c.premios ?? 0,
+        // Premios que el cliente se guardó sin gastar, uno por cartilla.
+        guardados: c.guardados ?? 0,
+        guardados2: c.guardados2 ?? 0,
+        // Serial de la tarjeta que sustituyó a esta (mismo iPhone, ver unaTarjeta.js).
+        fusionado_en: c.fusionado_en ?? null,
         nombre: descifrarCampo(c, "nombre"),
         auth_token: c.auth_token ?? null,
         actualizado: c.actualizado ?? c.creado ?? null,
@@ -276,6 +287,7 @@ function normalizarCliente(c) {
 export const clientePublico = (c) =>
   c && {
     serial: c.serial, negocio: c.negocio, codigo: c.codigo, sellos: c.sellos, sellos2: c.sellos2 ?? 0, premios: c.premios,
+    guardados: c.guardados ?? 0, guardados2: c.guardados2 ?? 0,
     nombre: c.nombre ?? null, creado: c.creado ?? null,
     // El CRM no es secreto para quien ya puede ver al cliente: la caja también
     // agradece saber que este viene cada tres días y lleva dos semanas sin pasar.
@@ -293,7 +305,7 @@ export async function crearCliente({ serial, negocio, authToken, wwSerial = null
   const ts = ahoraISO();
   const base = {
     serial, negocio, ww_serial: wwSerial, auth_token: authToken,
-    sellos: 0, sellos2: 0, premios: 0, nombre: null, actualizado: ts, creado: ts,
+    sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0, nombre: null, actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
     origen, mensaje: null, nota: null,
   };
@@ -350,16 +362,17 @@ export async function getCliente(serial) {
  * estado que se leyó. Así dos cajas que canjean a la vez no entregan el premio
  * dos veces: la segunda recibe `false` y debe reintentar con el estado nuevo.
  *
- * @param {{serial:string, sellos:number, sellos2?:number, premios:number}} cliente
- * @param {{esperado?: {sellos:number, sellos2?:number, premios:number}}} [opciones]
+ * @param {{serial:string, sellos:number, sellos2?:number, premios:number, guardados?:number, guardados2?:number}} cliente
+ * @param {{esperado?: {sellos:number, sellos2?:number, premios:number, guardados?:number, guardados2?:number}}} [opciones]
  * @returns {Promise<boolean>} true si se guardó
  */
 export async function saveCliente(cliente, { esperado } = {}) {
-  const patch = { sellos: cliente.sellos, sellos2: cliente.sellos2 || 0, premios: cliente.premios || 0, actualizado: ahoraISO() };
+  const patch = { actualizado: ahoraISO() };
+  for (const k of SALDO) patch[k] = cliente[k] || 0;
 
   if (hasSupabase()) {
     let q = supa().from("clientes").update(patch).eq("serial", cliente.serial);
-    if (esperado) q = q.eq("sellos", esperado.sellos).eq("sellos2", esperado.sellos2 || 0).eq("premios", esperado.premios || 0);
+    if (esperado) for (const k of SALDO) q = q.eq(k, esperado[k] || 0);
     const filas = sinError(await q.select("serial"), "guardar cliente");
     return (filas?.length ?? 0) > 0;
   }
@@ -367,8 +380,7 @@ export async function saveCliente(cliente, { esperado } = {}) {
     const all = await leer("clientes", {});
     const actual = all[cliente.serial];
     if (!actual) return false;
-    const cambio = (k) => (actual[k] || 0) !== (esperado[k] || 0);
-    if (esperado && (cambio("sellos") || cambio("sellos2") || cambio("premios"))) {
+    if (esperado && SALDO.some((k) => (actual[k] || 0) !== (esperado[k] || 0))) {
       return false;
     }
     await escribir("clientes", { ...all, [cliente.serial]: { ...actual, ...patch } });
@@ -416,14 +428,16 @@ export async function tocarClientesDeNegocio(slug) {
  */
 export async function listClientes(negocio, { limite } = {}) {
   if (hasSupabase()) {
-    let q = supa().from("clientes").select(CAMPOS_CLIENTE).order("creado", { ascending: false });
+    // Las tarjetas fusionadas en otra (ver unaTarjeta.js) ya no son clientes:
+    // su historial y sus sellos viven en la que las sustituyó.
+    let q = supa().from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).order("creado", { ascending: false });
     if (negocio) q = q.eq("negocio", negocio);
     if (limite) q = q.limit(limite);
     return (sinError(await q, "listar clientes") || []).map(normalizarCliente);
   }
   const all = await enFila(() => leer("clientes", {}));
   const lista = Object.values(all)
-    .filter((c) => !negocio || c.negocio === negocio)
+    .filter((c) => (!negocio || c.negocio === negocio) && !c.fusionado_en)
     .sort((a, b) => (b.creado || "").localeCompare(a.creado || ""))
     .map(normalizarCliente);
   return limite ? lista.slice(0, limite) : lista;
@@ -942,6 +956,88 @@ export async function borrarDispositivos(ids) {
     await escribir("dispositivos", Object.fromEntries(Object.entries(dispositivos).filter(([id]) => !fuera.has(id))));
     const registros = await leer("registros", []);
     await escribir("registros", registros.filter((r) => !fuera.has(r.dispositivo)));
+  });
+}
+
+// ================= UNA TARJETA POR TELÉFONO (ver unaTarjeta.js) =================
+// Qué tarjeta tiene (o TUVO) cada iPhone en cada tienda. A diferencia de
+// `registros`, no se borra cuando el cliente quita el pase: es justo lo que
+// hace falta recordar para devolverle sus sellos cuando lo vuelva a añadir.
+
+/** Serial de la tarjeta de este iPhone en esta tienda, o null. */
+export async function tarjetaDeDispositivo({ dispositivo, negocio }) {
+  if (hasSupabase()) {
+    const fila = sinError(
+      await supa().from("tarjetas_de_dispositivo").select("serial")
+        .eq("dispositivo", dispositivo).eq("negocio", negocio).maybeSingle(),
+      "leer tarjeta del dispositivo",
+    );
+    return fila?.serial ?? null;
+  }
+  const tarjetas = await enFila(() => leer("tarjetas_de_dispositivo", {}));
+  return tarjetas[`${dispositivo}|${negocio}`]?.serial ?? null;
+}
+
+export async function apuntarTarjetaDeDispositivo({ dispositivo, negocio, serial }) {
+  const fila = { dispositivo, negocio, serial, visto: ahoraISO() };
+  if (hasSupabase()) {
+    sinError(
+      await supa().from("tarjetas_de_dispositivo").upsert(fila, { onConflict: "dispositivo,negocio" }),
+      "apuntar tarjeta del dispositivo",
+    );
+    return;
+  }
+  return enFila(async () => {
+    const tarjetas = await leer("tarjetas_de_dispositivo", {});
+    await escribir("tarjetas_de_dispositivo", { ...tarjetas, [`${dispositivo}|${negocio}`]: fila });
+  });
+}
+
+/**
+ * Pasa la tarjeta `viejo` a `nuevo`: `nuevo` se queda con `campos` (ver
+ * `fusionar()`) y el historial; `viejo` queda anulada, a cero y apuntando a
+ * `nuevo`. Los códigos cortos se intercambian: la nueva conserva el que la
+ * caja ya conocía y ninguno se repite dentro de la tienda.
+ *
+ * Primero se RECLAMA la vieja con un guardado condicional (sigue sin fusionar y
+ * con el mismo saldo): si dos registros llegan a la vez, o una caja le pone un
+ * sello justo ahora, solo uno gana y no se pierde ni se duplica nada.
+ *
+ * @returns {Promise<boolean>} true si se fusionó
+ */
+export async function fusionarClientes(viejo, nuevo, campos) {
+  const ts = ahoraISO();
+  // Los datos personales se van con la tarjeta nueva: en la anulada no queda nada.
+  const anulada = { fusionado_en: nuevo.serial, codigo: nuevo.codigo, actualizado: ts, mensaje: null, nombre: null, nota: null };
+  for (const k of SALDO) anulada[k] = 0;
+  const patch = { actualizado: ts };
+  for (const k of [...SALDO, "codigo", "visitas", "ultima_visita", "instalado", "origen"]) {
+    if (k in campos) patch[k] = campos[k];
+  }
+  for (const k of PERSONALES) patch[k] = cifrarCampo(nuevo.serial, k, campos[k] ?? null);
+
+  if (hasSupabase()) {
+    const db = supa();
+    let q = db.from("clientes").update(anulada).eq("serial", viejo.serial).is("fusionado_en", null);
+    for (const k of SALDO) q = q.eq(k, viejo[k] || 0);
+    const reclamada = sinError(await q.select("serial"), "anular tarjeta fusionada");
+    if (!reclamada?.length) return false;
+    sinError(await db.from("clientes").update(patch).eq("serial", nuevo.serial), "fusionar tarjeta");
+    sinError(await db.from("eventos").update({ serial: nuevo.serial }).eq("serial", viejo.serial), "mover historial");
+    return true;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const v = all[viejo.serial];
+    if (!v || v.fusionado_en || !all[nuevo.serial] || SALDO.some((k) => (v[k] || 0) !== (viejo[k] || 0))) return false;
+    await escribir("clientes", {
+      ...all,
+      [viejo.serial]: { ...v, ...anulada },
+      [nuevo.serial]: { ...all[nuevo.serial], ...patch },
+    });
+    const eventos = await leer("eventos", []);
+    await escribir("eventos", eventos.map((e) => (e.serial === viejo.serial ? { ...e, serial: nuevo.serial } : e)));
+    return true;
   });
 }
 

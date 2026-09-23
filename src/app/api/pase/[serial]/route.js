@@ -1,6 +1,7 @@
 import { getCliente, getNegocio } from "@/lib/store";
 import { proveedorWallet } from "@/lib/wallet";
 import { generarPkpass, MIME_PKPASS } from "@/lib/apple/firmar";
+import { clienteVigente } from "@/lib/unaTarjeta";
 import { jsonError, errorInterno } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -12,7 +13,8 @@ export async function GET(_request, { params }) {
   if (proveedorWallet() !== "apple") return jsonError("Apple Wallet no está configurado", 404);
   try {
     const { serial } = await params;
-    const cliente = await getCliente(serial);
+    // El enlace de una tarjeta ya fusionada da la vigente: con ella están los sellos.
+    const cliente = await clienteVigente(getCliente, serial);
     if (!cliente) return jsonError("Pase no encontrado", 404);
     const negocio = await getNegocio(cliente.negocio);
     if (!negocio) return jsonError("Negocio no encontrado", 404);

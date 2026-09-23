@@ -64,6 +64,9 @@ export async function registrar(deps, { dispositivo, passType, serial, authoriza
     if (primeraVez) {
       await deps.addEvento(serial, "instalado", "Añadió el pase al Wallet", { negocio: cliente.negocio, actor: "apple" });
     }
+    // Una tarjeta por iPhone y tienda: si este iPhone ya tuvo otra de aquí, sus
+    // sellos pasan a esta (ver lib/unaTarjeta.js). No lanza nunca.
+    await deps.unificarTarjeta?.({ dispositivo, negocio: cliente.negocio, serial });
   }
   return { status: nuevo ? 201 : 200, json: {} };
 }

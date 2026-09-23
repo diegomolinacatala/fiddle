@@ -21,7 +21,10 @@
 const DIA = 24 * 60 * 60 * 1000;
 
 /** Qué evento significa "el cliente estuvo en la tienda". `restar` es una corrección, no una visita. */
-export const TIPOS_VISITA = ["sellar", "canjear", "confirmar", "sellar2", "canjear2"];
+export const TIPOS_VISITA = [
+  "sellar", "canjear", "confirmar", "sellar2", "canjear2",
+  "guardar", "usarGuardado", "guardar2", "usarGuardado2",
+];
 
 /**
  * Los números que deciden cuándo alguien se está enfriando. En un sitio aparte

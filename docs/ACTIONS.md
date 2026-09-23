@@ -75,8 +75,16 @@ ya tiene el botón. Cero cambios en rutas, UI o base de datos.
 |-------|-------|----------|
 | `sellar` | ➕ Añadir sello | +1 sello (hasta la meta) |
 | `restar` | ➖ Quitar sello | −1 sello (corrección) |
-| `canjear` | 🎁 Canjear | sellos: exige cartilla llena, entrega premio y reinicia · descuento: usa el cupón una vez (el pase queda anulado) |
+| `canjear` | 🎁 Dárselo ahora | sellos: exige cartilla llena, entrega premio y reinicia · descuento: usa el cupón una vez (el pase queda anulado) |
+| `guardar` | Guardarlo para otro día | cartilla llena → vuelve a cero y el premio queda en `guardados`. Va con `canjear` (`vaCon`), sin casilla propia |
+| `usarGuardado` | Usar un premio guardado | `guardados − 1`, `premios + 1`; los sellos no se tocan. Va con `canjear` |
 | `confirmar` | ✅ Confirmar visita | registra una visita sin tocar la cartilla |
+
+En una tienda de sellos, `canjear`, `guardar` y `usarGuardado` no son botones sueltos
+en la caja: salen en el **recuadro del premio** (`premiosDe()`), que solo aparece
+cuando la cartilla está llena o el cliente tiene premios guardados, y pregunta
+"¿lo quiere ahora o se lo guardas?". En las tiendas de cupón, `canjear` sigue siendo
+un botón.
 
 ## Ideas de acciones modulares futuras
 

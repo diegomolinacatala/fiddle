@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getCliente, getNegocio, listEventos } from "@/lib/store";
-import { accionesDe } from "@/lib/acciones";
+import { accionesDe, premiosDe } from "@/lib/acciones";
+import { clienteVigente } from "@/lib/unaTarjeta";
 import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
@@ -21,6 +23,11 @@ export const metadata = { title: "Cliente · caja", robots: { index: false, foll
 export default async function Page({ params }) {
   const { serial } = await params;
   const cliente = await getCliente(serial);
+  // El QR de una tarjeta antigua (fusionada en la nueva): a la buena, sin preguntar.
+  if (cliente?.fusionado_en) {
+    const vigente = await clienteVigente(getCliente, serial);
+    if (vigente) redirect(`/w/${vigente.serial}`);
+  }
   if (!cliente) {
     return (
       <main style={pagina}>
@@ -43,6 +50,7 @@ export default async function Page({ params }) {
   const n = await getNegocio(cliente.negocio);
   const eventos = await listEventos(serial);
   const acciones = accionesDe(n);
+  const premios = premiosDe(cliente, n);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
   const banda = stripDelPase(n, cliente);
@@ -100,7 +108,7 @@ export default async function Page({ params }) {
           )}
         </div>
 
-        <WorkerActions serial={serial} acciones={acciones} accent={accent} />
+        <WorkerActions serial={serial} acciones={acciones} premios={premios} accent={accent} />
 
         <a href={`/${n.slug}/caja?escanear=1`} style={siguiente}>
           <Icono nombre="camara" tam={18} /> Escanear al siguiente

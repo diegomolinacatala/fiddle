@@ -1,7 +1,9 @@
 import {
   getCliente, getNegocio, registrarPase, borrarRegistro, pasesDeDispositivo,
-  marcarInstalacion, addEvento,
+  marcarInstalacion, addEvento, tarjetaDeDispositivo, apuntarTarjetaDeDispositivo, fusionarClientes,
 } from "../store";
+import { notificarCliente } from "../wallet";
+import { unificarTarjeta } from "../unaTarjeta";
 import { configApple } from "./config";
 import { generarPkpass } from "./firmar";
 
@@ -21,6 +23,10 @@ export function depsServicio() {
     pasesDeDispositivo,
     marcarInstalacion,
     addEvento,
+    unificarTarjeta: (datos) => unificarTarjeta({
+      getCliente, getNegocio, tarjetaDeDispositivo, apuntarTarjetaDeDispositivo,
+      fusionarClientes, addEvento, notificarCliente,
+    }, datos),
     generarPkpass: (cliente, negocio) => generarPkpass(cliente, negocio, config),
     log: (mensaje) => console.warn(mensaje),
   };

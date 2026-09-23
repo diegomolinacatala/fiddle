@@ -149,6 +149,11 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Botón oficial "Añadir a Google Wallet" (Google exige su imagen, como Apple la suya).
 
 ### Antes de abrir al público
+- [ ] **Un Pass Type ID por tienda** en la cuenta de Apple Developer, para que el Wallet
+      no apile las tarjetas de negocios distintos. Detalle y coste en
+      [la sección de abajo](#un-pass-type-id-por-tienda). Hacerlo **antes** de que una
+      tienda nueva reparta tarjetas: las que ya estén en un iPhone se quedan con el ID
+      con el que se emitieron.
 - [ ] Quitar `USUARIOS_DEMO` de Vercel: se desactivan los accesos de prueba y dejan de
       mostrarse en el login. Quedan solo las contraseñas de `certs/secretos.env`.
 - [ ] Badge oficial "Add to Apple Wallet" en `/p/<serial>` (ahora hay un botón provisional).
@@ -159,6 +164,25 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Anti-fraude: código rotativo en el QR.
 - [ ] Métricas para el dueño: visitas, canjes, clientes nuevos.
 - [ ] Tests end-to-end (Playwright) de caja y manager.
+
+### Un Pass Type ID por tienda
+
+Hoy todas las tiendas firman con el mismo Pass Type ID (`pass.com.fiddle`), y el Wallet
+**agrupa en un mismo montón los pases que comparten Pass Type ID**: la tarjeta de Nube y
+la de la Delicantería salen apiladas como si fueran de la misma casa. Decisión
+(23-09-2026): cada tienda con el suyo (`pass.com.fiddle.nube`, `pass.com.fiddle.delicanteria`…).
+
+| Trabajo | Dónde | Notas |
+|---|---|---|
+| Crear el Pass Type ID y **su** certificado, por tienda | developer.apple.com (misma cuenta y Team ID) | Papeleo: los pasos 1.2–1.4 de [APPLE-WALLET.md](docs/APPLE-WALLET.md), una vez por tienda. Cada certificado caduca por su cuenta: una alarma más por tienda |
+| Guardar ID + certificado + clave por tienda | base (cifrado, como el nombre del cliente) o variables `APPLE_<SLUG>_*` | Hoy `configApple()` lee UN juego de `APPLE_*`; el de siempre queda de respaldo |
+| Firmar cada pase con el de su tienda | `lib/apple/firmar.js`, `lib/apple/pase.js` (`passTypeIdentifier`) | |
+| Web service: aceptar cualquiera de nuestros IDs | `lib/apple/servicio.js` (`clienteAutenticado` compara con UN `passTypeId`) | El `passType` de la URL tiene que ser el de la tienda del cliente |
+| APNs con el certificado de cada tienda | `lib/apple/apns.js`, `lib/wallet.js` (`tokensApple` filtra por UN `passTypeId`) | El *topic* del aviso es el Pass Type ID: con el certificado de otro, Apple lo rechaza |
+
+~4-6 h de código + el papeleo en Apple. Las tarjetas que ya estén en un iPhone **no
+cambian de ID** (va firmado dentro): se quedan en `pass.com.fiddle` y siguen funcionando.
+Por eso conviene hacerlo antes de que una tienda nueva empiece a repartir.
 
 ### Google Wallet — hecho, pendiente de credenciales (21-sep-2026)
 
