@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { diagnosticoApple, diagnosticoSupabase, explicarErrorSupabase } from "@/lib/diagnostico";
+import { diagnosticoApple, diagnosticoSupabase, explicarErrorSupabase, diagnosticoCifrado } from "@/lib/diagnostico";
 import { cadenaDePrueba, generarClave } from "../scripts/lib/certs.mjs";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -69,5 +69,37 @@ describe("diagnosticoSupabase", () => {
     expect(explicarErrorSupabase("Could not find the table 'public.intentos' in the schema cache", "intentos")).toMatch(/Falta la tabla "intentos"/);
     expect(explicarErrorSupabase("permission denied for table clientes", "clientes")).toMatch(/Permiso denegado/);
     expect(explicarErrorSupabase("algo raro", "eventos")).toMatch(/Error de Supabase en "eventos": algo raro/);
+  });
+});
+
+describe("diagnosticoCifrado", () => {
+  const CLAVE = Buffer.alloc(32, 1).toString("base64");
+
+  it("sin clave: falla y dice qué falta, sin mirar la base", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", "");
+    const contar = vi.fn();
+    expect(await diagnosticoCifrado({ contar })).toMatchObject({ ok: false, pendientes: null, detalle: expect.stringMatching(/CIFRADO_CLAVE/) });
+    expect(contar).not.toHaveBeenCalled();
+  });
+
+  it("clave mal formada: falla", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", "corta");
+    expect(await diagnosticoCifrado({ contar: async () => 0 })).toMatchObject({ ok: false, detalle: expect.stringMatching(/32 bytes/) });
+  });
+
+  it("clave bien pero quedan datos de antes: falla y dice cuántos", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    expect(await diagnosticoCifrado({ contar: async () => 3 })).toMatchObject({ ok: false, pendientes: 3, detalle: expect.stringMatching(/3 clientes/) });
+  });
+
+  it("todo cifrado: bien", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    expect(await diagnosticoCifrado({ contar: async () => 0 })).toMatchObject({ ok: true, pendientes: 0 });
+  });
+
+  it("si la base no responde, lo dice sin romper", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    const r = await diagnosticoCifrado({ contar: async () => { throw new Error("caída"); } });
+    expect(r).toMatchObject({ ok: false, pendientes: null, detalle: expect.stringMatching(/caída/) });
   });
 });

@@ -56,6 +56,15 @@ describe("limitador de login", () => {
     expect(await usoExcedido("tap", "3.3.3.3", Date.now() + LIMITES.tap.ventanaMs + 1000)).toBe(false);
   });
 
+  it("no guarda la IP: guarda una huella que no se puede revertir", async () => {
+    const { readFileSync } = await import("node:fs");
+    await anotarFalloLogin("nube", "1.1.1.1");
+    await usoExcedido("tap", "3.3.3.3");
+    const guardado = readFileSync(path.join(dir, "intentos.json"), "utf8");
+    expect(guardado).not.toMatch(/1\.1\.1\.1|3\.3\.3\.3/);
+    expect(guardado).toMatch(/login:nube:[0-9a-f]{16}/);
+  });
+
   it("ipDe usa el primer x-forwarded-for", () => {
     expect(ipDe(new Request("http://x", { headers: { "x-forwarded-for": "9.9.9.9, 10.0.0.1" } }))).toBe("9.9.9.9");
     expect(ipDe(new Request("http://x", { headers: { "x-real-ip": "8.8.8.8" } }))).toBe("8.8.8.8");

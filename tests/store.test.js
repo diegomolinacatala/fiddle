@@ -269,3 +269,44 @@ describe("errores de lectura", () => {
     await expect(store.getCliente("s1")).rejects.toThrow(/clientes\.json/);
   });
 });
+
+describe("datos personales cifrados", () => {
+  const CLAVE = Buffer.alloc(32, 7).toString("base64");
+  const enDisco = async () => (await import("node:fs")).readFileSync(path.join(dir, "clientes.json"), "utf8");
+
+  it("nombre y nota se guardan cifrados y se leen en claro", async () => {
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    await nuevo("s1");
+    await store.guardarNombre("s1", "Marta");
+    await store.guardarNota("s1", "sin lactosa");
+    expect(await enDisco()).not.toMatch(/Marta|lactosa/);
+    expect(await store.getCliente("s1")).toMatchObject({ nombre: "Marta", nota: "sin lactosa" });
+    expect((await store.listClientes("nube"))[0]).toMatchObject({ nombre: "Marta", nota: "sin lactosa" });
+  });
+
+  it("cifrarPendientes cifra lo que se guardó en claro antes de tener clave, una vez", async () => {
+    await nuevo("s1");
+    await nuevo("s2");
+    await nuevo("s3");
+    await store.guardarNombre("s1", "Marta");
+    await store.guardarNota("s2", "el del perro");
+    expect(await store.contarSinCifrar()).toBe(2);
+
+    vi.stubEnv("CIFRADO_CLAVE", CLAVE);
+    await store.guardarNombre("s3", "Luis"); // ya cifrado: no cuenta
+    expect(await store.contarSinCifrar()).toBe(2);
+    expect(await store.cifrarPendientes()).toBe(2);
+    expect(await enDisco()).not.toMatch(/Marta|perro|Luis/);
+    expect(await store.contarSinCifrar()).toBe(0);
+    expect(await store.cifrarPendientes()).toBe(0);
+    expect(await store.getCliente("s1")).toMatchObject({ nombre: "Marta", nota: null });
+    expect(await store.getCliente("s2")).toMatchObject({ nombre: null, nota: "el del perro" });
+  });
+
+  it("sin clave, cifrarPendientes no hace nada (no hay con qué)", async () => {
+    await nuevo("s1");
+    await store.guardarNombre("s1", "Marta");
+    await expect(store.cifrarPendientes()).rejects.toThrow(/CIFRADO_CLAVE/);
+    expect(await enDisco()).toMatch(/Marta/);
+  });
+});

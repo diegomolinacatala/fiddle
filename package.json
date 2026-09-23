@@ -12,7 +12,8 @@
     "apple:csr": "node scripts/apple-setup.mjs csr",
     "apple:env": "node scripts/apple-setup.mjs env",
     "apple:prueba": "node scripts/apple-setup.mjs prueba",
-    "secretos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/secretos.mjs"
+    "secretos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/secretos.mjs",
+    "clave-cifrado": "node scripts/clave-cifrado.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

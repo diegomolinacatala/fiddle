@@ -100,6 +100,11 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
 - Tres roles: `caja`, `manager`, `admin`. El admin (victor/diego) entra en todo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.
+- **Nombre y nota del cliente van cifrados** (`lib/cifrado.js`, ver
+  [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md)). Se cifran al guardar y se descifran
+  en `normalizarCliente`: leer y escribir `clientes` siempre por esas funciones
+  del store. Un dato personal nuevo se añade a `PERSONALES`. No se puede buscar
+  por ellos en SQL: se filtra en JS.
 - **`supabase/schema.sql` primero, código después.** Si una columna nueva se
   despliega antes de existir en la base, producción devuelve 500.
 

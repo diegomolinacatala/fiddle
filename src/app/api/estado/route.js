@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { proveedorWallet } from "@/lib/wallet";
 import { configApple } from "@/lib/apple/config";
-import { diagnosticoApple, diagnosticoSupabase, diagnosticoPush, diagnosticoGoogle } from "@/lib/diagnostico";
+import { diagnosticoApple, diagnosticoSupabase, diagnosticoPush, diagnosticoGoogle, diagnosticoCifrado } from "@/lib/diagnostico";
 import { appUrl } from "@/lib/url";
 import { sesionDeRequest } from "@/lib/auth";
 import { jsonError } from "@/lib/http";
@@ -23,7 +23,7 @@ export async function GET(request) {
     apple = { ok: false, problemas: [`Variables de Apple ilegibles: ${e.message}`], avisos: [] };
   }
 
-  const [supabase, google] = await Promise.all([diagnosticoSupabase(), diagnosticoGoogle()]);
+  const [supabase, google, cifrado] = await Promise.all([diagnosticoSupabase(), diagnosticoGoogle(), diagnosticoCifrado()]);
 
   return NextResponse.json({
     proveedor: proveedorWallet(),
@@ -31,6 +31,9 @@ export async function GET(request) {
     supabase,
     push: diagnosticoPush(),
     google,
+    cifrado,
+    // Cifrar los datos de antes toca a toda la plataforma: el botón, solo al admin.
+    esAdmin: sesion.rol === "admin",
     authSecret: Boolean(process.env.AUTH_SECRET),
     appUrl: url,
     // Apple solo acepta webServiceURL con HTTPS: en local no habrá actualizaciones.
