@@ -133,6 +133,19 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 > Las tareas sueltas van aquí; el orden y el porqué, en
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
+### Pedido el 23-09-2026 (antes de la visita a La Delicantería)
+- [ ] Ejecutar en Supabase el SQL de `guardados` / `fusionado_en` / `tarjetas_de_dispositivo`
+      y después fusionar `feat/misma-tarjeta-y-premio-guardado` a `main`.
+- [ ] Vista previa del pase con **dos cartillas**: cuenta los sellos de una sola (sale 1
+      cuando puede tener 5).
+- [ ] CRM: nombres de grupos/estados **neutros y profesionales** (nada de "fantasma" y similares).
+- [ ] Quitar el panel "Estado de la integración" de arriba del manager.
+- [ ] Manager: la lista de clientes de la derecha crece sin fin → pestaña propia / paginada.
+- [ ] Homogeneizar la interfaz: mismos radios y estilos de botón (no uno cuadrado al
+      lado de uno redondo), y quitar textos de relleno que no aportan.
+- [ ] Pensar (no hacer todavía) cómo mejorar la velocidad o la sensación de velocidad:
+      esqueletos de carga, etc.
+
 ### Ahora
 - [ ] Confirmar en el iPhone la notificación de **promo** y la de **sello**.
 - [ ] Grabar los tags NFC (manager → *Tag NFC / emitir* → Copiar URL → app NFC Tools).
