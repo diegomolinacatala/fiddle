@@ -1,0 +1,2 @@
+# Botones oficiales de terceros: se guardan byte a byte (tests/marcas.test.js)
+public/marcas/*.svg -text

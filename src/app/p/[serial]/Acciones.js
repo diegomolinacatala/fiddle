@@ -20,25 +20,24 @@ export default function Acciones({ serial, negocio, plataforma, appleUrl, google
   const esAndroid = plataforma === "android";
   const esCupon = negocio.tipo === "descuento";
 
-  const wallets = [
-    appleUrl && !esAndroid && { href: appleUrl, texto: "Añadir a Apple Wallet" },
-    googleUrl && !esIOS && { href: googleUrl, texto: "Añadir a Google Wallet" },
-  ].filter(Boolean);
+  const conApple = Boolean(appleUrl) && !esAndroid;
+  const conGoogle = Boolean(googleUrl) && !esIOS;
 
   // En iPhone la tarjeta vive en Wallet: los avisos del navegador sobran.
   const conAvisos = !esIOS && avisos.estado !== "no-soportado";
   const conInstalar = !esIOS && !instalar.instalada;
 
-  if (!wallets.length && !conAvisos && !conInstalar) return null;
+  if (!conApple && !conGoogle && !conAvisos && !conInstalar) return null;
 
   return (
     <section style={panel} aria-label="Guardar la tarjeta">
-      {wallets.map((w) => (
-        <a key={w.href} href={w.href} style={botonWallet}>
+      {conApple && (
+        <a href={appleUrl} style={botonWallet}>
           <Icono nombre="cartera" tam={20} />
-          {w.texto}
+          Añadir a Apple Wallet
         </a>
-      ))}
+      )}
+      {conGoogle && <BotonGoogleWallet href={googleUrl} />}
 
       {conAvisos && (
         <Fila icono={avisos.estado === "bloqueado" ? "campanaNo" : "campana"} accent={accent}
@@ -61,6 +60,22 @@ export default function Acciones({ serial, negocio, plataforma, appleUrl, google
           texto="En el menú de Chrome (los tres puntos), toca «Añadir a pantalla de inicio»." />
       ))}
     </section>
+  );
+}
+
+// El botón oficial de Google, sin tocar: Google lo revisa antes de dar acceso de
+// publicación y no deja cambiarle color, radio ni texto (tests/marcas.test.js).
+// Se escala entero, nunca estirado, y no puede bajar de 48 px de alto: el ancho
+// (298) no cabe en teléfonos de menos de 360 px, y ahí va la versión compacta,
+// que es la que Google da para espacios estrechos.
+function BotonGoogleWallet({ href }) {
+  return (
+    <a href={href} style={botonGoogle}>
+      <picture>
+        <source media="(max-width: 359px)" srcSet="/marcas/google-wallet-anadir-compacto.svg" width={199} height={55} />
+        <img src="/marcas/google-wallet-anadir.svg" alt="Añadir a Google Wallet" width={298} height={50} style={{ display: "block" }} />
+      </picture>
+    </a>
   );
 }
 
@@ -111,6 +126,10 @@ const botonWallet = {
   fontSize: 16,
   textDecoration: "none",
 };
+
+// Google pide 8 px libres alrededor: ya los dan el gap y el padding del panel.
+// El radio es para que el anillo de foco siga la forma de píldora del botón.
+const botonGoogle = { justifySelf: "center", lineHeight: 0, borderRadius: 999 };
 
 const fila = { display: "flex", alignItems: "center", gap: 12, padding: "6px 2px" };
 const burbuja = { width: 40, height: 40, borderRadius: 12, display: "grid", placeItems: "center", flexShrink: 0 };
