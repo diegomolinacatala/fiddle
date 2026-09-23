@@ -119,6 +119,9 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
             <a href={`/w/${serial}`} style={{ color: "inherit", fontWeight: 600 }}>Abrir la vista de caja (modo demo)</a>
           </p>
         )}
+        <p style={{ textAlign: "center", fontSize: 12, marginTop: 18, opacity: 0.7 }}>
+          <a href={`/privacidad?b=${negocio.slug}`} style={{ color: "inherit" }}>Privacidad</a>
+        </p>
       </div>
     </main>
   );

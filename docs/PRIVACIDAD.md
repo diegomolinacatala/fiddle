@@ -53,8 +53,8 @@ lo revise alguien que sepa de RGPD):
 - **Contrato de encargado del tratamiento** con cada tienda (art. 28 RGPD): la
   tienda es la responsable de los datos de sus clientes y fiddle los trata por
   ella.
-- **Aviso de privacidad** para el cliente, donde se da de alta la tarjeta: quién
-  trata sus datos, para qué, cuánto tiempo y cómo borrarlos.
+- **Aviso de privacidad** para el cliente: HECHO en `/privacidad?b=<tienda>`. La lista
+  completa de lo legal pendiente está en [NEXT-STEPS.md](../NEXT-STEPS.md).
 - **Supabase y Vercel:** aceptar sus DPA y comprobar que el proyecto de Supabase
   está en una región de la UE.
 - **Borrar a un cliente cuando lo pida.** Todavía no hay botón: hoy solo se borra

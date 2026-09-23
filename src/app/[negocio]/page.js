@@ -66,6 +66,9 @@ export default async function Page({ params }) {
           {" · "}
           <a href={`/${negocio}/manager`} style={{ color: tinta }}>Manager</a>
         </p>
+        <p style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>
+          <a href={`/privacidad?b=${negocio}`} style={{ color: tinta }}>Privacidad</a>
+        </p>
       </div>
     </main>
   );

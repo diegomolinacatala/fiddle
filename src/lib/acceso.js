@@ -29,6 +29,7 @@ import { RESERVADOS } from "./negocios";
 const PUBLICAS = [
   /^\/$/,
   /^\/login$/,
+  /^\/privacidad$/,
   /^\/api\/login$/,
   /^\/api\/logout$/,
   /^\/api\/tap$/,

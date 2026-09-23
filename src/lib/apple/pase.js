@@ -209,7 +209,11 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
         altText: codigoDe(cliente),
       },
     ],
-    [esCupon ? "coupon" : "storeCard"]: { ...cara, backFields },
+    // El aviso de privacidad, al final del reverso: iOS convierte la URL en enlace.
+    [esCupon ? "coupon" : "storeCard"]: {
+      ...cara,
+      backFields: [...backFields, { key: "privacidad", label: "Privacidad", value: `${appUrl}/privacidad?b=${negocio.slug}` }],
+    },
   };
 
   const ubicaciones = ubicacionesApple(negocio);

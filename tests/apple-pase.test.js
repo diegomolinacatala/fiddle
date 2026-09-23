@@ -82,7 +82,8 @@ describe("construirPassJson", () => {
     // El nombre no aparece en la cara del pase, en ningún sitio.
     const cara = [...p.storeCard.headerFields, ...p.storeCard.primaryFields, ...p.storeCard.secondaryFields, ...p.storeCard.auxiliaryFields];
     expect(cara.some((f) => String(f.value).includes("Marta"))).toBe(false);
-    expect(p.storeCard.backFields.map((f) => f.key)).toEqual(["como", "codigo"]);
+    expect(p.storeCard.backFields.map((f) => f.key)).toEqual(["como", "codigo", "privacidad"]);
+    expect(p.storeCard.backFields.at(-1).value).toMatch(/\/privacidad\?b=nube$/);
     expect(p.locations).toEqual([{ latitude: 40.4, longitude: -3.7, relevantText: expect.stringContaining("Nube Café") }]);
   });
 

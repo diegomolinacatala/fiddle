@@ -177,6 +177,36 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Métricas para el dueño: visitas, canjes, clientes nuevos.
 - [ ] Tests end-to-end (Playwright) de caja y manager.
 
+### Legal — sin agobios, por orden (23-sep-2026)
+
+Hecho: aviso de privacidad en `/privacidad?b=<tienda>`, enlazado desde la landing, la
+tarjeta web y el reverso del pase. Solo cookies técnicas → **no hace falta banner de
+cookies** (mientras no se añada analítica). Si cambia qué se guarda, cambiar la página
+y su fecha (`ACTUALIZADO` en `src/app/privacidad/page.js`).
+
+**Con la primera tienda de verdad (poco trabajo):**
+- [ ] Poner `CONTACTO_PRIVACIDAD` (un email) en Vercel: la página lo enseña para ejercer
+      derechos. Sin él dice "pídelo en la tienda".
+- [ ] **Contrato de encargado del tratamiento** (art. 28 RGPD) con cada tienda. La AEPD tiene
+      una plantilla gratuita; basta un anexo firmado. Ellos son responsables, nosotros encargados.
+- [ ] Una hoja de **condiciones del servicio** con la tienda: qué incluye, precio (o piloto
+      gratis), que es un piloto sin garantía de disponibilidad, y qué pasa con los datos si
+      lo dejan (se borran).
+- [ ] Aceptar los **DPA** de Supabase y Vercel desde sus paneles (y 2FA en todas las cuentas).
+- [ ] **Borrar un cliente** cuando lo pida: hoy es a mano (SQL). Botón en la ficha del CRM, ~1 h.
+
+**Cuando se cobre:**
+- [ ] Forma legal (autónomo o SL) y **aviso legal** en la web con titular, NIF y contacto (LSSI).
+- [ ] Plan **Pro** de Vercel (el gratuito es no comercial).
+- [ ] Facturas a las tiendas.
+
+**Más adelante:**
+- [ ] Plazo de conservación (p. ej. borrar tarjetas sin uso en 24 meses) y automatizarlo;
+      entonces decirlo en `/privacidad`, que hoy dice "mientras siga en uso".
+- [ ] Registro de actividades de tratamiento (una tabla de una página, art. 30.2).
+- [ ] Revisión por alguien que sepa de RGPD antes de pasar de unas pocas tiendas.
+- [ ] Saber que una fuga de datos se notifica a la AEPD en 72 h.
+
 ### Un Pass Type ID por tienda
 
 Hoy todas las tiendas firman con el mismo Pass Type ID (`pass.com.fiddle`), y el Wallet
