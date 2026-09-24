@@ -4,13 +4,15 @@ const esDev = process.env.NODE_ENV !== "production";
 // - CSP: todo desde el propio dominio. 'unsafe-inline' en script-src lo exige Next
 //   sin nonces (scripts de hidratación en línea); 'unsafe-eval' solo en desarrollo.
 //   img-src data: para el QR generado en el navegador.
+//   OpenStreetMap: las teselas y la búsqueda de direcciones del mapa del manager
+//   (app/[negocio]/manager/MapaUbicacion.js). Nada más sale del dominio.
 // - camera/geolocation solo para el propio sitio (escáner de caja, ubicación del manager).
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${esDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "connect-src 'self'",
+  "img-src 'self' data: blob: https://tile.openstreetmap.org",
+  "connect-src 'self' https://nominatim.openstreetmap.org",
   "font-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",

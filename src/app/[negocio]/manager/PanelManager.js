@@ -6,6 +6,7 @@ import { normalizarCodigo } from "@/lib/codigo";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
+import MapaUbicacion from "./MapaUbicacion";
 import ClaveNueva from "@/app/ClaveNueva";
 import CabeceraGestion from "../CabeceraGestion";
 import Icono from "@/app/Icono";
@@ -19,10 +20,8 @@ import { C, pagina, panel, campo, etiqueta, h2, botonPrimario, botonSecundario, 
 export default function PanelManager({ negocio, inicial }) {
   const [n, setN] = useState(inicial);
   const [promoTexto, setPromoTexto] = useState(inicial.promo || "");
-  const [ubicacion, setUbicacion] = useState(() => {
-    const u = inicial.ubicaciones?.[0];
-    return u ? { lat: String(u.lat), lng: String(u.lng) } : { lat: "", lng: "" };
-  });
+  // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
+  const [ubicacion, setUbicacion] = useState(() => inicial.ubicaciones?.[0] || null);
   const [msg, setMsg] = useState(null);
   const [origin, setOrigin] = useState("");
   const [real, setReal] = useState(null); // cliente real en la vista previa (null = ejemplo)
@@ -77,8 +76,7 @@ export default function PanelManager({ negocio, inicial }) {
   }
 
   async function guardar() {
-    const hayUbicacion = ubicacion.lat.trim() || ubicacion.lng.trim();
-    const ubicaciones = hayUbicacion ? [{ lat: ubicacion.lat, lng: ubicacion.lng }] : [];
+    const ubicaciones = ubicacion ? [ubicacion] : [];
     const res = await fetch(`/api/negocio?b=${negocio}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -88,14 +86,6 @@ export default function PanelManager({ negocio, inicial }) {
     if (!res.ok) return flash(data.error || "Error al guardar");
     setN(data);
     flash(`Guardado${resumenAviso(data.aviso)}`);
-  }
-
-  function usarMiUbicacion() {
-    if (!navigator.geolocation) return flash("Este navegador no da la ubicación");
-    navigator.geolocation.getCurrentPosition(
-      (p) => setUbicacion({ lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6) }),
-      () => flash("No se pudo obtener la ubicación (da permiso)"),
-    );
   }
 
   async function lanzarPromo(texto) {
@@ -172,13 +162,12 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             </div>
 
             <label style={etiqueta}>Ubicación de la tienda</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={ubicacion.lat} onChange={(e) => setUbicacion((u) => ({ ...u, lat: e.target.value }))} placeholder="Latitud" inputMode="decimal" style={campo} />
-              <input value={ubicacion.lng} onChange={(e) => setUbicacion((u) => ({ ...u, lng: e.target.value }))} placeholder="Longitud" inputMode="decimal" style={campo} />
-            </div>
-            <button onClick={usarMiUbicacion} style={{ ...botonPequeno, marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Icono nombre="ubicacion" tam={16} /> Usar mi ubicación
-            </button>
+            <MapaUbicacion
+              valor={ubicacion}
+              onChange={(v) => setUbicacion(v && { ...ubicacion, ...v })}
+              accent={accent}
+              flash={flash}
+            />
 
             <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar y actualizar pases</button></div>
           </section>
