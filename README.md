@@ -22,7 +22,7 @@ En producción: **<https://fiddle-zeta.vercel.app>** (se despliega solo al fusio
 > [Google Wallet](docs/GOOGLE-WALLET.md) ·
 > [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
 > [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
-> [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md)
+> [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md) · [Avisos automáticos](docs/AVISOS.md)
 
 ## Admin de la plataforma
 
@@ -36,15 +36,18 @@ Dentro de cada tienda hay un **modo comentarios**: se toca cualquier campo del p
 la tienda, así Claude ve de golpe qué hay que cambiar y dónde.
 
 Las tiendas **viven en la base de datos**: [`negocios.js`](src/lib/negocios.js) ya solo
-trae las *semillas* (los tres de ejemplo) y las plantillas de estilo.
+trae la *semilla* de La Delicantería y las plantillas de estilo.
 
-## Negocios de ejemplo
+## La tienda
 
 | Negocio | Tipo | URLs |
 |---------|------|------|
-| **Nube Café** (`nube`) | cartilla de sellos | `/nube` · `/nube/caja` · `/nube/manager` · `/api/tap?b=nube` |
-| **Fade Room** (`fade`) | sellos + niveles | `/fade` · `/fade/caja` · `/fade/manager` · `/api/tap?b=fade` |
-| **Forno Nostro** (`forno`) | cupón de un uso | `/forno` · `/forno/caja` · `/forno/manager` · `/api/tap?b=forno` |
+| **La Delicantería** (`delicanteria`) | dos cartillas: cookies y cafés | `/delicanteria` · `/delicanteria/caja` · `/delicanteria/manager` · `/api/tap?b=delicanteria` |
+
+El dueño tiene tres pestañas, una por pregunta, y cada cosa en **un solo sitio**:
+**Tienda** (tarjeta, caja, horario, QR), **Clientes** (quién viene; la exportación va
+junto a la lista) y **Avisos** (la promo, mensajes a un grupo y los
+[avisos automáticos](docs/AVISOS.md), que trabajan solos).
 
 ## Cómo funciona
 
@@ -74,9 +77,9 @@ npm test
 Sin variables = **modo demo** (datos en `.data/`, sin pases reales). Para probar la
 firma de Apple sin iPhone: `npm run apple:prueba` (ver [docs/APPLE-WALLET.md](docs/APPLE-WALLET.md)).
 
-La app abre directamente en `/login`: usuario **`nube`** (manager) o **`nube-caja`**
-(caja), contraseña igual que el usuario; lo mismo con `fade` y `forno`. En local
-siempre valen y se listan en la propia pantalla de login para tocarlos y entrar.
+La app abre directamente en `/login`: usuario **`delicanteria`** (manager) o
+**`delicanteria-caja`** (caja), contraseña igual que el usuario. En local siempre
+valen y se listan en la propia pantalla de login para tocarlos y entrar.
 
 Cada pase tiene, además de su serial, un **código de 3 caracteres** (`K7M`) que sale
 debajo del QR: identifica al cliente **dentro de su tienda** (dos negocios pueden

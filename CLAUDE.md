@@ -24,6 +24,11 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 - **`npm test` y `npm run build` antes de abrir el PR.** Los dos, siempre.
 - **PowerShell 5.1**: nada de `&&`. Encadenar con `;` o `if ($?) { ... }`.
   Y ejecutarlo uno mismo, no pasárselo al usuario para que lo pegue.
+- **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
+  pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
+  (tarjeta, caja, horario, QR), **Clientes** (quién viene; exportar va junto a la lista
+  y baja lo que se ve) y **Avisos** (promo, grupos y automáticos). Antes de añadir un
+  botón, mirar si esa acción ya vive en otra pestaña.
 
 ## Lo que hay que saber del pase de Apple
 
@@ -133,6 +138,24 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   calcula **en el navegador**. El servidor vive en UTC y sacaría el café de las 9
   a las 7.
 
+## Avisos automáticos
+
+Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js).
+
+- **Un tipo de aviso = una entrada en `DISPAROS`.** Sale solo en el selector del
+  manager y en el motor. Cualquier grupo del CRM ya vale con el disparo `grupo`.
+- **Lo de una tienda se cambia desde su manager** (a quién, cuántos días, hora, días,
+  texto, horario). Si una tienda pide otro texto u otra hora, no se toca código.
+- **La memoria es `campanas`** (`grupo = "auto:<id>"`): de ahí salen "ya se lo
+  dijimos", la pausa entre avisos y el "¿volvió?". Nada de tablas nuevas ni de
+  apuntar "ya corrió hoy": el motor es idempotente y el reloj puede pasar de más.
+- **La hora es la de la tienda** (`horario.zona`), nunca la del servidor: todo lo que
+  mire el reloj pasa por `lib/horario.js`.
+- **El reloj NO va en `vercel.json`** mientras el plan sea Hobby: un cron de más de
+  una vez al día hace fallar el despliegue. Lo llama Supabase (`pg_cron`).
+- Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la
+  tarjeta en el teléfono, y la caja lo ve arriba de la ficha ("En su tarjeta pone…").
+
 ## Contraseñas
 
 Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/claves.js).
@@ -155,6 +178,10 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 
 - Las tiendas **viven en la base**, se crean y se borran desde `/admin`.
   `negocios.js` solo aporta semillas y plantillas.
+- **La tienda es La Delicantería**: es la única semilla. Nube, Fade y Forno existen
+  solo para los tests (`tests/tiendasDePrueba.js`, cargado por `setupFiles` de
+  vitest; un test con `vi.resetModules()` lo vuelve a importar). No devolverlas a
+  `negocios.js`.
 - Tres roles: `caja`, `manager`, `admin`. El admin (victor/diego) entra en todo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.

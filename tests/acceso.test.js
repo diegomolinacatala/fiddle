@@ -31,13 +31,21 @@ describe("reglaDeRuta", () => {
   it("el CRM es del manager: pantalla y APIs", () => {
     expect(regla("/nube/crm")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
     expect(regla("/api/crm?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
-    expect(regla("/api/crm/export?b=fade")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });
+    // La exportación ya no es una ruta: el CSV sale en el navegador de la lista que se ve.
+    expect(regla("/api/crm/export?b=fade")).toEqual({ tipo: "sesion" });
     // Estas dos no llevan ?b=: el negocio va en el cuerpo (campaña) o sale del
     // propio cliente (ficha), así que las comprueba su handler.
     expect(regla("/api/crm/campana", "POST")).toEqual({ tipo: "sesion" });
     expect(regla("/api/crm/cliente/abc")).toEqual({ tipo: "sesion" });
     // "crm" está reservado: nunca puede ser una tienda.
     expect(regla("/crm")).toEqual({ tipo: "sesion" });
+  });
+
+  it("los avisos son del manager; el reloj no tiene sesión (lo protege su secreto)", () => {
+    expect(regla("/delicanteria/avisos")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });
+    expect(regla("/api/automatizaciones?b=delicanteria", "PUT")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });
+    expect(regla("/api/cron/avisos")).toEqual({ tipo: "publica" });
+    expect(regla("/api/cron/otra")).toEqual({ tipo: "sesion" });
   });
 
   it("APIs con ?b= exigen el negocio indicado", () => {

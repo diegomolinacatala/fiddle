@@ -3,6 +3,7 @@
 import { normalizarTextoMarca } from "./apple/glifos";
 import { FORMAS, BANDAS, MODOS, resolverMarca } from "./apple/dibujo";
 import { CONTADORES } from "./cartillas";
+import { normalizarHorario } from "./horario";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 
@@ -26,9 +27,13 @@ export function normalizarUbicaciones(lista) {
 
 /**
  * Patch de configuración de negocio a partir del body del manager.
+ *
+ * `cartillasActuales`: con dos cartillas el manager cambia la meta y el premio
+ * de cada una, pero no su nombre ni su dibujo (eso es del admin): lo que llega
+ * se pone encima de las que ya hay.
  * @returns {{patch:object} | {error:string}}
  */
-export function patchNegocio(body, accionesValidas) {
+export function patchNegocio(body, accionesValidas, { cartillasActuales = null } = {}) {
   const b = body && typeof body === "object" ? body : {};
   const patch = {};
   if (Number.isFinite(b.meta)) patch.meta = Math.max(1, Math.min(50, Math.round(b.meta)));
@@ -39,6 +44,22 @@ export function patchNegocio(body, accionesValidas) {
     const ubicaciones = normalizarUbicaciones(b.ubicaciones);
     if (!ubicaciones) return { error: "Ubicaciones no válidas (máx. 10, lat/lng numéricos)" };
     patch.ubicaciones = ubicaciones;
+  }
+  if (b.horario === null) patch.horario = null;
+  else if (b.horario !== undefined) {
+    const horario = normalizarHorario(b.horario);
+    if (!horario) return { error: "Horario no válido: siete días, cada uno cerrado o con su hora de abrir y de cerrar" };
+    patch.horario = horario;
+  }
+  if (Array.isArray(b.cartillas) && cartillasActuales) {
+    const cartillas = normalizarCartillas(cartillasActuales.map((c, i) => ({
+      ...c,
+      meta: b.cartillas[i]?.meta ?? c.meta,
+      premio: b.cartillas[i]?.premio ?? c.premio,
+    })));
+    if (!cartillas) return { error: `Cada cartilla necesita un premio y de 1 a ${MAX_META_CARTILLA} sellos` };
+    // La primera cartilla ES la de siempre: su meta y su premio son los del negocio.
+    Object.assign(patch, { cartillas, meta: cartillas[0].meta, premio: cartillas[0].premio });
   }
   return { patch };
 }

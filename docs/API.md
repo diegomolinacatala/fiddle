@@ -17,7 +17,9 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
 | `/<negocio>/caja`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `GET /api/clientes`, `GET /api/negocio` | **caja** o manager de ese negocio |
 | `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `GET /api/estado` | **manager** de ese negocio |
-| `/<negocio>/crm`, `GET /api/crm`, `GET /api/crm/export`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>` | **manager** de ese negocio |
+| `/<negocio>/crm`, `GET /api/crm`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>` | **manager** de ese negocio |
+| `/<negocio>/avisos`, `/api/automatizaciones` | **manager** de ese negocio |
+| `/api/cron/avisos` | sin sesión: lo protege `CRON_SECRET` (cabecera `Authorization: Bearer …`) |
 | `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*` | **admin de la plataforma** (`victor`, `diego`) |
 
 Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
@@ -26,7 +28,7 @@ Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
 El GET dice si hay accesos de prueba (`USUARIOS_DEMO=1`) y cuáles, para pintarlos en el login.
 ```json
 // POST request                              // response ok (+ cookie httpOnly "sesion")
-{ "usuario": "nube", "clave": "..." }        { "ok": true, "negocio": "nube", "rol": "manager" }
+{ "usuario": "delicanteria", "clave": "..." }        { "ok": true, "negocio": "delicanteria", "rol": "manager" }
 ```
 Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. Contraseña en `CLAVE_<SLUG>_<ROL>`.
 `401` usuario o contraseña incorrectos · `429` demasiados intentos (10 por IP y
@@ -47,7 +49,7 @@ El "tap NFC". Crea cliente y pase, o **devuelve el que ya tenía ese teléfono**
 
 ### `POST /api/crear?b=<negocio>` · manager
 ```json
-{ "serial": "uuid", "codigo": "K7M", "negocio": "nube", "proveedor": "apple", "urlPase": "https://…/p/uuid", "googleSaveUrl": null }
+{ "serial": "uuid", "codigo": "K7M", "negocio": "delicanteria", "proveedor": "apple", "urlPase": "https://…/p/uuid", "googleSaveUrl": null }
 ```
 
 ### `GET /api/pase/<serial>`
@@ -58,8 +60,8 @@ Descarga el `.pkpass` actual (botón "Añadir a Apple Wallet"). `404` si Apple n
 ### `GET /api/cliente/<serial>`
 ```json
 {
-  "cliente":  { "serial": "…", "negocio": "nube", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
-  "negocio":  { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null, "ubicaciones": [], "tema": { … } },
+  "cliente":  { "serial": "…", "negocio": "delicanteria", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
+  "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null, "ubicaciones": [], "tema": { … } },
   "eventos":  [ { "tipo": "sellar", "mensaje": "Sello 5/8", "ts": "…" } ],
   "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "mas", "descripcion": "…", "correccion": false } ]
 }
@@ -98,7 +100,7 @@ se puede resolver desde aquí. Lo usa la caja cuando el QR no se deja leer.
 Campos opcionales, validados (meta 1–50, máx. 10 ubicaciones). Tras guardar se
 actualizan **todos** los pases del negocio: respuesta = negocio + `aviso`.
 
-### `POST /api/promo` — `{ "b": "nube", "texto": "Hoy 2x1" }`
+### `POST /api/promo` — `{ "b": "delicanteria", "texto": "Hoy 2x1" }`
 Guarda la promo (vacío la quita) y avisa a todos los pases del negocio.
 ```json
 { "promo": "Hoy 2x1", "proveedor": "apple", "total": 12, "enviadas": 12, "fallidas": [] }
@@ -176,7 +178,7 @@ Quién es cada cliente y a quién conviene decirle algo. Las cuentas son las de
 Todo el panel en una petición.
 ```json
 {
-  "negocio":  { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
+  "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
   "metricas": { "total": 33, "activos": 11, "enRiesgo": 10, "porEstado": { "activo": 11, … },
                 "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
                 "instalados": 28, "tasaInstalacion": 85, "tasaVuelta": 79, "cadenciaMedia": 7.1 },
@@ -195,7 +197,7 @@ servidor vive en UTC y sacaría el café de las 9 a las 7.
 Manda un mensaje a un GRUPO. El negocio va en el cuerpo (como en `/api/promo`).
 ```json
 // request                                          // response
-{ "b": "nube", "grupo": "fieles_frios",             { "ok": true, "campana": { "id": 1, … }, "enGrupo": 9,
+{ "b": "delicanteria", "grupo": "fieles_frios",             { "ok": true, "campana": { "id": 1, … }, "enGrupo": 9,
   "texto": "Hace tiempo que no te vemos" }            "destinatarios": 9, "avisados": 9, "proveedor": "apple" }
 ```
 El grupo se **recalcula en el servidor**: del navegador solo llega su clave, nunca
@@ -209,8 +211,29 @@ Ficha completa: `{ cliente, perfil, eventos }` (hasta 100 eventos, del más nuev
 ### `PUT /api/crm/cliente/<serial>` · manager
 `{ "nota": "sin lactosa" }` → nota interna de la tienda. **No** sale en el pase.
 
-### `GET /api/crm/export?b=<negocio>[&grupo=<clave>]` · manager
-CSV (con BOM, para que Excel abra bien los acentos). Sin `grupo`, la tienda entera.
+La exportación a CSV ya no es una ruta: el panel de Clientes arma el fichero en el
+navegador con la lista que se está viendo (`csvClientes()` de `lib/exportar.js`).
+
+## Avisos automáticos
+
+Detalle en [AVISOS.md](AVISOS.md). Las reglas las decide `lib/automatizaciones.js`.
+
+### `GET /api/automatizaciones?b=<negocio>` · manager
+Lo que pinta la pestaña Avisos: `{ negocio (con horario, automatizaciones y pausaAvisos),
+contextos, envios, conteos: { <regla>: { encajan, llegaria } }, grupos, historial, reloj: { ultimo } }`.
+Los `contextos` van al navegador para contar al momento a cuántos les llegaría una regla mientras se edita.
+
+### `PUT /api/automatizaciones?b=<negocio>` · manager
+`{ "automatizaciones": [ … ], "pausaAvisos": 3 }` → guarda la lista entera y devuelve lo mismo que el GET.
+`400` con una frase que dice qué regla está mal (`"En «Racha» no existe {premo}"`). No toca los pases.
+
+### `POST /api/automatizaciones?b=<negocio>` · manager — `{ "regla": "te-echamos-de-menos" }`
+*Enviar ahora*: manda esa regla ya, sin mirar la hora (a quién, no repetir y la pausa se respetan).
+`{ envio: { regla, destinatarios, avisados, web, google }, datos }`. `404` si la regla no está guardada.
+
+### `GET|POST /api/cron/avisos` · `Authorization: Bearer <CRON_SECRET>`
+Una pasada del reloj por todas las tiendas: `{ ok, resultados: [{ negocio, retirados, envios: [...] }] }`.
+`503` sin `CRON_SECRET` · `401` secreto equivocado. Idempotente: llamarlo de más no repite nada.
 
 ### `GET /api/admin/crm` · admin
 Las mismas cuentas de todas las tiendas juntas: `{ tiendas: [...], totales: {...} }`.
@@ -228,7 +251,7 @@ Estado de la tarjeta para que `/p/<serial>` se ponga al día sola. Sin nada inte
 (ni nota de la tienda, ni token, ni brief).
 ```json
 { "cliente": { "serial": "…", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": null, "mensaje": null },
-  "negocio": { "slug": "nube", "nombre": "Nube Café", "tipo": "sellos", "meta": 8, "premio": "café gratis", "promo": null, "tema": { … } } }
+  "negocio": { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "café gratis", "promo": null, "tema": { … } } }
 ```
 
 ### `POST /api/push/<serial>` — `{ "suscripcion": PushSubscription.toJSON() }`

@@ -9,14 +9,17 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 ### `negocios` — config editable por su manager
 | Campo | Tipo | Notas |
 |-------|------|-------|
-| `slug` | text PK | `nube`, `fade`, `forno` (el preset vive en `negocios.js`) |
+| `slug` | text PK | `delicanteria` (su semilla vive en `negocios.js`) |
 | `nombre`, `tipo` | text | copia informativa del preset |
-| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado }` |
+| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, cartillas, horario, automatizaciones, pausaAvisos }` |
 
 `tema` (colores, emoji y las piezas del dibujo: `marca` · `texto` · `forma` ·
 `banda` · `modo`, ver [`dibujo.js`](../src/lib/apple/dibujo.js)), `brief` (texto libre para Claude), `notas`
 (`{"apple.premio": "esto debería ser X"}`, del modo comentarios del admin) y
-`archivado` los edita **/admin**. Las tiendas se crean y se borran ahí: `negocios.js`
+`archivado` los edita **/admin**. `horario` (`{ zona, semana[7], cerrados[] }`),
+`automatizaciones` (las reglas de los avisos automáticos) y `pausaAvisos` los edita el
+manager; sin ellos en la fila, valen los de la semilla o los de partida (ver
+[AVISOS.md](AVISOS.md)). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
 solo aporta las *semillas* y las plantillas de estilo. Un tema guardado antes de
 las piezas sueltas sigue valiendo: `piezasDeTema()` las deduce de su `estilo`, y
 hay un test que fija que el SVG que sale es idéntico al de antes.
@@ -47,7 +50,7 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 `actor` dice desde dónde: `caja`, `manager`, `admin`, `tap`, `apple`.
 
 `negocio` va **desnormalizado**: el CRM siempre pregunta por tienda ("toda la
-actividad de nube") y sin esa columna habría que leer antes sus miles de seriales
+actividad de la Delicantería") y sin esa columna habría que leer antes sus miles de seriales
 solo para poder filtrar por ellos.
 
 ### `campanas` — envíos a un grupo

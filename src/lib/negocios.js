@@ -6,8 +6,8 @@
 // Los negocios VIVEN EN LA BASE DE DATOS: se crean, se editan y se archivan
 // desde el admin (/admin). Lo que hay aquí abajo son dos cosas distintas:
 //
-//   SEMILLAS  los tres negocios de siempre, para que una base vacía arranque
-//             con algo dentro. Una vez en la base, mandan los datos, no esto.
+//   SEMILLAS  La Delicantería, para que una base vacía arranque con ella
+//             dentro. Una vez en la base, mandan los datos, no esto.
 //   ESTILOS   las plantillas de partida que puede elegir un negocio nuevo. No
 //             son moldes cerrados: cada una es una combinación de las piezas de
 //             lib/apple/dibujo.js, y desde /admin se cambian una a una.
@@ -20,6 +20,8 @@
 export { MARCAS, FORMAS, BANDAS, MODOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
 import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
 import { normalizarCartillas } from "./validacion";
+import { normalizarHorario } from "./horario";
+import { normalizarReglas, normalizarPausa, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
 // de uno de estos y se le cambia el emoji y el color de acento.
@@ -383,35 +385,93 @@ export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm",
 export const esSlug = (slug) =>
   typeof slug === "string" && /^[a-z0-9][a-z0-9-]{1,30}$/.test(slug) && !RESERVADOS.has(slug);
 
+/** La plantilla de un estilo tal cual, sin completar (la usan los tests para armar tiendas de prueba). */
+export const temaDeEstilo = (estilo) => ({ ...(TEMA_DE_ESTILO[estilo] || TEMA_DE_ESTILO.coffee) });
+
 // ---------------------------------------------------------------- semillas
-// Los tres de siempre. Se siembran solos la primera vez que se lee la base.
+// La tienda con la que trabajamos. Con una base vacía (el modo demo) arranca
+// con ella dentro; en producción ya vive en la base y lo guardado MANDA: de
+// aquí solo sale lo que su fila todavía no tenga (el horario y los avisos
+// automáticos, hasta que el manager los toque).
+//
+// Lo de La Delicantería salió de internet en septiembre de 2026 (ficha pública
+// del local, calendario laboral de València): hay que confirmarlo con ellos.
+//   · Café bistró en Av. dels Tarongers 1, local 8 (Algirós), junto al campus.
+//   · L–J 7:30–18:30 · V 7:30–16:30 · S 8:30–13:00 · domingo cerrado.
+//   · Estudiantes y gente que teletrabaja; lo fuerte, de la mañana a mediodía.
+// Por eso los avisos van temprano (la racha, al abrir), la merienda solo de
+// lunes a jueves (el viernes y el sábado ya han cerrado) y nada en festivos.
+const HORARIO_DELICANTERIA = {
+  zona: "Europe/Madrid",
+  semana: [
+    { abre: "07:30", cierra: "18:30" },
+    { abre: "07:30", cierra: "18:30" },
+    { abre: "07:30", cierra: "18:30" },
+    { abre: "07:30", cierra: "18:30" },
+    { abre: "07:30", cierra: "16:30" },
+    { abre: "08:30", cierra: "13:00" },
+    null,
+  ],
+  // Festivos de València que quedan en 2026 y los fijos de enero de 2027.
+  cerrados: ["2026-10-09", "2026-10-12", "2026-12-08", "2026-12-25", "2027-01-01", "2027-01-06"],
+};
+
+const LUNES_A_JUEVES = [0, 1, 2, 3];
+const LUNES_A_VIERNES = [0, 1, 2, 3, 4];
+
+// Los avisos de partida, con su voz: cookies y cafés, gente que estudia o
+// trabaja cerca. Ninguno promete nada que no esté ya en su tarjeta salvo la
+// racha, que es el regalo que decide la tienda (se cambia en Avisos).
+const AVISOS_DELICANTERIA = [
+  {
+    id: "racha", nombre: "Premio a la racha", activa: true, disparo: "racha", valor: 4,
+    hora: "08:00", dias: [], caduca: true,
+    texto: "{racha} días seguidos viniendo: hoy la cookie te la invitamos nosotros. Enséñalo en caja.",
+  },
+  {
+    id: "premio-pendiente", nombre: "Premio sin recoger", activa: true, disparo: "premio_listo", valor: 3,
+    hora: "10:00", dias: [],
+    texto: "Tu {premio} te está esperando en la barra. Pásate cuando quieras.",
+  },
+  {
+    id: "a-un-paso", nombre: "A un paso del premio", activa: true, disparo: "cerca_premio", valor: 1,
+    hora: "16:00", dias: LUNES_A_JUEVES,
+    texto: "Estás a {faltan} de tu {premio}. ¿Merienda esta tarde?",
+  },
+  {
+    id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: true, disparo: "sin_venir", valor: 21,
+    hora: "12:00", dias: [],
+    texto: "Hace unas semanas que no te vemos. ¿Un café esta semana? Tu tarjeta sigue sumando.",
+  },
+  {
+    id: "segunda-visita", nombre: "Segunda visita", activa: true, disparo: "segunda_visita", valor: 7,
+    hora: "09:00", dias: LUNES_A_VIERNES,
+    texto: "¿Repetimos? Tu café y tu cookie te esperan, y cada visita suma en tu tarjeta.",
+  },
+  {
+    id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: true, disparo: "sin_estrenar", valor: 3,
+    hora: "11:00", dias: LUNES_A_VIERNES,
+    texto: "Tu tarjeta ya está lista: enséñala en caja y empieza a sumar cookies y cafés.",
+  },
+];
+
 export const SEMILLAS = {
-  nube: {
-    slug: "nube",
-    nombre: "Nube Café",
+  delicanteria: {
+    slug: "delicanteria",
+    nombre: "La Delicantería",
     tipo: "sellos",
+    // La tarjeta de papel: ocho cookies arriba y ocho cafés abajo.
+    cartillas: [
+      { nombre: "Cookies", marca: "galleta", meta: 8, premio: "cookie gratis" },
+      { nombre: "Cafés", marca: "taza", meta: 8, premio: "café gratis" },
+    ],
     meta: 8,
-    premio: "café gratis",
+    premio: "cookie gratis",
     acciones: ["sellar", "canjear", "restar"],
-    tema: { ...TEMA_DE_ESTILO.coffee, atras: "Un sello por café. Al 8º invita la casa. De lunes a viernes." },
-  },
-  fade: {
-    slug: "fade",
-    nombre: "Fade Room",
-    tipo: "sellos",
-    meta: 6,
-    premio: "corte gratis",
-    acciones: ["sellar", "canjear"],
-    tema: { ...TEMA_DE_ESTILO.barber, atras: "Cada corte suma. 6 = uno gratis. Niveles: Bronce · Plata · Oro." },
-  },
-  forno: {
-    slug: "forno",
-    nombre: "Forno Nostro",
-    tipo: "descuento",
-    meta: 1,
-    premio: "20% en la Diavola",
-    acciones: ["canjear"],
-    tema: { ...TEMA_DE_ESTILO.pizza, atras: "20 % en tu Diavola. Un solo uso: enséñalo en caja." },
+    tema: { ...TEMA_DE_ESTILO.galletas, atras: "Un sello por cookie y otro por café. Al completar cada cartilla, la siguiente te la invitamos." },
+    brief: "Café bistró en Av. dels Tarongers 1 (Algirós, València), junto al campus. Cookies, café, tostadas y brunch. Clientela de estudiantes y gente que teletrabaja; más ambiente de mañana a mediodía.",
+    horario: HORARIO_DELICANTERIA,
+    automatizaciones: AVISOS_DELICANTERIA,
   },
 };
 
@@ -433,7 +493,11 @@ export function componerNegocio(slug, guardado) {
   const tema = completarTema({ ...temaPorDefecto(c.tema || semilla?.tema), ...(semilla?.tema || {}), ...(c.tema || {}) });
   // Con dos cartillas, la primera manda sobre la meta y el premio del negocio:
   // es la misma cartilla vista desde el código de siempre (ver lib/cartillas.js).
-  const cartillas = tipo === "descuento" ? null : normalizarCartillas(c.cartillas);
+  // Las cartillas de la semilla solo valen SIN fila (el modo demo): una tienda que
+  // ya existe en la base no puede cambiar de cartillas —ni lo que enseñan sus pases—
+  // porque se despliegue una semilla nueva. Y `hasOwn`, no `??`: una fila que quitó
+  // la segunda cartilla (null) no la recupera.
+  const cartillas = tipo === "descuento" ? null : normalizarCartillas(guardada(c, "cartillas", guardado ? null : semilla));
 
   return {
     slug,
@@ -447,13 +511,21 @@ export function componerNegocio(slug, guardado) {
     promo: c.promo ?? null,
     ubicaciones: Array.isArray(c.ubicaciones) ? c.ubicaciones : [],
     // Texto libre que escribe el admin para que Claude sepa qué es esta tienda.
-    brief: typeof c.brief === "string" ? c.brief : "",
+    brief: typeof c.brief === "string" ? c.brief : semilla?.brief ?? "",
     // Notas sobre campos concretos del pase: { "apple.premio": "esto debería ser X" }.
     notas: c.notas && typeof c.notas === "object" ? c.notas : {},
     archivado: c.archivado === true,
     creado: guardado?.creado ?? null,
+    // Cuándo abre (lib/horario.js) y qué se avisa solo (lib/automatizaciones.js).
+    // Una tienda que nunca los tocó arranca con los de su semilla o los de partida.
+    horario: normalizarHorario(guardada(c, "horario", semilla)),
+    automatizaciones: normalizarReglas(guardada(c, "automatizaciones", semilla)) ?? normalizarReglas(PLANTILLAS),
+    pausaAvisos: normalizarPausa(guardada(c, "pausaAvisos", semilla) ?? PAUSA_POR_DEFECTO),
   };
 }
+
+/** Lo guardado en la config si la clave existe (aunque sea null); si no, lo de la semilla. */
+const guardada = (config, clave, semilla) => (Object.hasOwn(config, clave) ? config[clave] : semilla?.[clave]);
 
 /** Config inicial de un negocio (lo que se guarda en la columna `config`). */
 export function configInicial({ meta, premio, acciones, tema, brief }) {

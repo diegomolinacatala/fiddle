@@ -7,7 +7,8 @@ import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { cartillasDe, describirBanda } from "@/lib/cartillas";
 import WorkerActions from "./WorkerActions";
-import { C, panel } from "@/app/ui";
+import Icono from "@/app/Icono";
+import { C, panel, RADIO } from "@/app/ui";
 
 // ============================================================================
 // LA TARJETA EN LA CAJA, AL INSTANTE
@@ -26,6 +27,10 @@ export default function TarjetaCaja({ serial, inicial, negocio, acciones }) {
   const router = useRouter();
   const [cliente, setCliente] = useState(inicial);
   const [toast, setToast] = useState(null);
+  // El mensaje que traía en su tarjeta al llegar (la promo de la racha, "hace
+  // tiempo que no te vemos"…): la caja tiene que verlo para aplicarlo. Sumar la
+  // visita lo quita del pase, pero aquí se queda a la vista mientras se le atiende.
+  const [alLlegar] = useState(inicial.mensaje || null);
   const fila = useRef(Promise.resolve());
   const pendientes = useRef(0);
 
@@ -76,6 +81,18 @@ export default function TarjetaCaja({ serial, inicial, negocio, acciones }) {
 
   return (
     <>
+      {alLlegar && (
+        <div role="note" style={{ ...avisoTarjeta, borderColor: `${accent}66`, background: `${accent}0d` }}>
+          <span style={{ color: accent, display: "inline-flex", marginTop: 2 }}><Icono nombre="megafono" tam={18} /></span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 650, letterSpacing: 0.6, textTransform: "uppercase", color: accent }}>En su tarjeta pone</div>
+            <div style={{ fontSize: 15, fontWeight: 500, marginTop: 2 }}>{alLlegar}</div>
+            {cliente.mensaje !== alLlegar && (
+              <div style={{ fontSize: 12, color: C.tenue, marginTop: 4 }}>Ya se ha quitado de su tarjeta al sumar la visita.</div>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{ ...panel, padding: 0, overflow: "hidden", borderColor: `${accent}66` }}>
         <img
           src={comoDataUri(banda.svg)}
@@ -131,3 +148,4 @@ function resumenAviso(a) {
 }
 
 const cuentaFila = { padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 };
+const avisoTarjeta = { display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", marginBottom: 12, border: "1px solid", borderRadius: RADIO.fila };

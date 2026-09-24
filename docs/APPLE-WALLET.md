@@ -85,9 +85,9 @@ integración**: tiene que salir 🟢 en Apple Wallet, URL HTTPS, base de datos y
 
 ## 3. Probar en un iPhone
 
-1. En Safari del iPhone abre `https://TU-APP/api/tap?b=nube` (o toca el tag NFC).
+1. En Safari del iPhone abre `https://TU-APP/api/tap?b=delicanteria` (o toca el tag NFC).
    → Sale la hoja **Añadir a Apple Wallet** directamente. Añade.
-2. En otro móvil abre `https://TU-APP/nube/caja`, entra con el usuario `nube-caja`,
+2. En otro móvil abre `https://TU-APP/delicanteria/caja`, entra con el usuario `delicanteria-caja`,
    **Escanear pase** → apunta al QR del pase → **Añadir sello**.
 3. En unos segundos el iPhone recibe la notificación *"Tienes 1 de 8 sellos"* y la
    banda del pase muestra el primer café relleno.
@@ -96,7 +96,7 @@ integración**: tiene que salir 🟢 en Apple Wallet, URL HTTPS, base de datos y
 ## Cómo funciona por dentro
 
 ```
-EMITIR   /api/tap?b=nube ──▶ crea cliente {serial, auth_token}
+EMITIR   /api/tap?b=delicanteria ──▶ crea cliente {serial, auth_token}
                          └─▶ generarPkpass() ──▶ .pkpass firmado ──▶ "Añadir a Wallet"
 
 REGISTRO (lo hace el iPhone solo al añadir el pase)
@@ -124,8 +124,8 @@ ACTUALIZAR (cada sello, canje, nombre, promo, cambio de config)
 
 | Negocio | Estilo Apple | Cabecera | Banda | Campos | Extra |
 |---------|-------------|----------|-------|--------|-------|
-| sellos (Nube, Fade) | `storeCard` | premios canjeados · nivel (Fade) | cartilla dibujada | sellos "3 de 8", premio, nombre | ubicación de la tienda |
-| descuento (Forno) | `coupon` | — | porciones de pizza | descuento, estado | `voided` al usarse |
+| sellos (La Delicantería, con dos cartillas) | `storeCard` | premios canjeados · nivel (Fade) | cartilla dibujada | sellos "3 de 8", premio, nombre | ubicación de la tienda |
+| descuento (cupón) | `coupon` | — | porciones de pizza | descuento, estado | `voided` al usarse |
 
 Todos: colores del tema del negocio, `sharingProhibited` (no se puede reenviar por
 AirDrop/Mensajes), la promo en la CARA del pase (en el reverso no notificaría) y, en el
