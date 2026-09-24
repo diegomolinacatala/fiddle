@@ -137,7 +137,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(1080px, 96vw)" }}>
+      <div style={{ width: "min(1080px, 100%)" }}>
         <CabeceraGestion negocio={n} slug={negocio} activa="manager" />
 
         <div style={grid}>
@@ -226,9 +226,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               {origin && <QrImagen texto={tapUrl} lado={104} style={{ border: `1px solid ${C.borde}`, borderRadius: 10, padding: 6 }} />}
               <div style={{ flex: 1, minWidth: 170 }}>
                 <div style={{ fontSize: 12, color: C.tenue, wordBreak: "break-all", marginBottom: 8 }}>{tapUrl}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={copiarTap} style={botonPequeno}>Copiar enlace</button>
-                  <button onClick={emitir} style={botonPequeno}>Emitir una</button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={copiarTap} style={{ ...botonPequeno, whiteSpace: "nowrap" }}>Copiar enlace</button>
+                  <button onClick={emitir} style={{ ...botonPequeno, whiteSpace: "nowrap" }}>Emitir una</button>
                 </div>
               </div>
             </div>
@@ -247,7 +247,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
   );
 }
 
-const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginTop: 20, alignItems: "start" };
+const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20, marginTop: 20, alignItems: "start" };
 const texto = { color: C.suave, fontSize: 13, margin: "-6px 0 10px" };
 const accionRow = (on, accent) => ({
   display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", borderRadius: 10,

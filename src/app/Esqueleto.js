@@ -38,7 +38,7 @@ export function EsqueletoGestion({ children }) {
   return (
     <main style={pagina} aria-busy="true" aria-label="Cargando">
       <style>{css}</style>
-      <div style={{ width: "min(1080px, 96vw)" }}>
+      <div style={{ width: "min(1080px, 100%)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Hueso w={42} h={42} r={12} />
           <Hueso w={200} h={24} />
@@ -58,7 +58,7 @@ export function EsqueletoCaja() {
   return (
     <main style={pagina} aria-busy="true" aria-label="Cargando">
       <style>{css}</style>
-      <div style={{ width: "min(430px, 94vw)" }}>
+      <div style={{ width: "min(430px, 100%)" }}>
         <Hueso w={140} h={16} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 16px" }}>
           <Hueso w={62} h={34} r={7} />

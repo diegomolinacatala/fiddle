@@ -4,7 +4,7 @@ import { EsqueletoGestion, PanelHueso } from "@/app/Esqueleto";
 export default function Cargando() {
   return (
     <EsqueletoGestion>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20, alignItems: "start" }}>
         <PanelHueso lineas={6} />
         <PanelHueso alto={420} />
         <PanelHueso lineas={4} />

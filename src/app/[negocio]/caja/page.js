@@ -59,7 +59,7 @@ export default function Caja() {
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(430px, 94vw)" }}>
+      <div style={{ width: "min(430px, 100%)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             {n?.tema && <MarcaTienda tema={n.tema} tam={40} icono />}

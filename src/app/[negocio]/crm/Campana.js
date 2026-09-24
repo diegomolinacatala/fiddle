@@ -68,7 +68,7 @@ export default function Campana({ negocio, grupo, catalogo, onEnviada, flash }) 
   const sinNadie = def.contactables === 0;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 20, alignItems: "start" }}>
       <div>
         <h2 style={{ ...h2, display: "flex", alignItems: "center", gap: 8 }}><Icono nombre={def.icon} tam={18} /> {def.label}</h2>
         <p style={{ fontSize: 13, color: C.suave, margin: "0 0 4px" }}>{def.descripcion}</p>

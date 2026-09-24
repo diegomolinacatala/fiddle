@@ -54,7 +54,7 @@ export default async function Page({ params }) {
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(430px, 94vw)" }}>
+      <div style={{ width: "min(430px, 100%)" }}>
         <a href={`/${n.slug}/caja`} style={volver}>
           <Icono nombre="volver" tam={16} />
           <MarcaTienda tema={n.tema} tam={20} />
@@ -100,7 +100,7 @@ export default async function Page({ params }) {
 
 function Aviso({ titulo, texto, children }) {
   return (
-    <div style={{ textAlign: "center", width: "min(430px, 94vw)", marginTop: "18vh" }}>
+    <div style={{ textAlign: "center", width: "min(430px, 100%)", marginTop: "18vh" }}>
       <h1 style={{ fontSize: 20, margin: "0 0 6px" }}>{titulo}</h1>
       <p style={{ color: C.suave, fontSize: 15, margin: "0 0 12px" }}>{texto}</p>
       {children}
@@ -108,7 +108,7 @@ function Aviso({ titulo, texto, children }) {
   );
 }
 
-const volver = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: C.suave, textDecoration: "none", fontWeight: 500 };
+const volver = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: C.suave, textDecoration: "none", fontWeight: 500, minHeight: 36 };
 const cap = { fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 };
 const siguiente = {
   ...botonSecundario,

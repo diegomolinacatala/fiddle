@@ -78,7 +78,7 @@ export default function PanelCrm({ slug, inicial }) {
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(1100px, 96vw)" }}>
+      <div style={{ width: "min(1100px, 100%)" }}>
         <CabeceraGestion negocio={n} slug={slug} activa="crm" />
 
         <div style={{ display: "flex", gap: 8, margin: "20px 0 16px", flexWrap: "wrap", paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
@@ -119,7 +119,7 @@ export default function PanelCrm({ slug, inicial }) {
               )}
             </section>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 18 }}>
               <section style={panel}>
                 <h2 style={h2}>Visitas de los últimos 30 días</h2>
                 <Barras serie={serie} accent={accent} />
@@ -133,6 +133,7 @@ export default function PanelCrm({ slug, inicial }) {
             {d.cohortes.length > 1 && (
               <section style={panel}>
                 <h2 style={h2}>Por mes de alta</h2>
+                <div style={{ overflowX: "auto" }}>
                 <table style={tabla}>
                   <thead>
                     <tr>{["Mes", "Altas", "Repitieron", "Siguen activos", ""].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
@@ -154,6 +155,7 @@ export default function PanelCrm({ slug, inicial }) {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </section>
             )}
           </div>
@@ -162,7 +164,7 @@ export default function PanelCrm({ slug, inicial }) {
         {/* ------------------------------------------------------- grupos */}
         {pestana === "grupos" && (
           <div style={{ display: "grid", gap: 18 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 12 }}>
               {grupos.map((g) => (
                 <button
                   key={g.key}
@@ -212,6 +214,7 @@ export default function PanelCrm({ slug, inicial }) {
             {d.campanas.length > 0 && (
               <section style={panel}>
                 <h2 style={h2}>Avisos enviados</h2>
+                <div style={{ overflowX: "auto" }}>
                 <table style={tabla}>
                   <thead>
                     <tr>{["Cuándo", "Grupo", "Mensaje", "A", "Volvieron"].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
@@ -221,7 +224,7 @@ export default function PanelCrm({ slug, inicial }) {
                       <tr key={c.id}>
                         <td style={td}>{new Date(c.creado).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
                         <td style={td}>{d.catalogoGrupos.find((g) => g.key === c.grupo)?.label || c.grupo}</td>
-                        <td style={{ ...td, maxWidth: 260 }}>{c.texto}</td>
+                        <td style={{ ...td, maxWidth: 260, whiteSpace: "normal", minWidth: 160 }}>{c.texto}</td>
                         <td style={td}>{c.destinatarios}</td>
                         <td style={td}>
                           <strong style={{ color: c.volvieron ? C.ok : C.suave }}>{c.volvieron}</strong>
@@ -231,6 +234,7 @@ export default function PanelCrm({ slug, inicial }) {
                     ))}
                   </tbody>
                 </table>
+                </div>
                 <p style={{ fontSize: 12, color: C.tenue, marginTop: 10, marginBottom: 0 }}>
                   «Volvieron»: avisados que visitaron la tienda después del envío.
                 </p>
@@ -323,7 +327,9 @@ const th = {
   textAlign: "left", fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase",
   letterSpacing: 0.6, padding: "0 10px 8px 0", borderBottom: `1px solid ${C.borde}`, whiteSpace: "nowrap",
 };
-const td = { padding: "9px 10px 9px 0", borderBottom: `1px solid ${C.borde}`, verticalAlign: "middle" };
+// Sin partir líneas: en el móvil la tabla se desliza de lado en vez de apilar
+// "sin nombre" en tres renglones por fila.
+const td = { padding: "9px 10px 9px 0", borderBottom: `1px solid ${C.borde}`, verticalAlign: "middle", whiteSpace: "nowrap" };
 const nota = { fontSize: 13, color: C.suave, background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: 10, padding: "12px 14px", margin: 0 };
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",

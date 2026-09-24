@@ -69,7 +69,7 @@ export default function EstadoIntegracion({ accent }) {
 
   return (
     <details open={!todoBien} style={{ ...panel, borderColor: todoBien ? "#bfe5cd" : `${accent}66` }}>
-      <summary style={{ cursor: "pointer", fontSize: 14 }}>
+      <summary style={{ cursor: "pointer", fontSize: 14, padding: "6px 0" }}>
         Estado de la integración · {filas.filter((f) => f.ok).length}/{filas.length} listo
       </summary>
       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
