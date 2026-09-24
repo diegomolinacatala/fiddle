@@ -8,6 +8,7 @@ import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/ne
 import Selector from "@/app/admin/Selector";
 import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
 import ClaveNueva from "@/app/ClaveNueva";
+import Invitar from "@/app/admin/Invitar";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
 
@@ -111,6 +112,8 @@ export default function Admin() {
               : <p style={{ color: C.mal, fontSize: 14, margin: "8px 0 0" }}>
                   No se pudieron crear las contraseñas. Genéralas desde <a href={`/admin/${creada.slug}`}>su ficha</a>.
                 </p>}
+            {/* Lo normal tras crearla: que el dueño elija las suyas. */}
+            <Invitar slug={creada.slug} />
           </div>
         )}
 

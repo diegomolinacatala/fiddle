@@ -162,6 +162,28 @@ create table if not exists accesos (
 );
 create index if not exists accesos_negocio on accesos (negocio);
 
+-- Invitación por correo: un enlace para que el dueño elija sus contraseñas
+-- (lib/invitaciones.js). Se guarda la HUELLA (sha256) del token, nunca el token.
+-- Un solo uso (`usada`) y caducidad; crear otra anula las anteriores sin usar.
+create table if not exists invitaciones (
+  huella  text primary key,
+  negocio text not null,
+  caduca  timestamptz not null,
+  creado  timestamptz not null default now(),
+  usada   timestamptz
+);
+create index if not exists invitaciones_negocio on invitaciones (negocio);
+
+-- Recorridos de bienvenida que ya vio cada usuario (`nube`, `nube-caja`, `admin`).
+create table if not exists tutoriales (
+  usuario   text not null,
+  negocio   text not null,                 -- para borrarlos con la tienda
+  recorrido text not null,                 -- "manager" | "caja"
+  visto     timestamptz not null default now(),
+  primary key (usuario, recorrido)
+);
+create index if not exists tutoriales_negocio on tutoriales (negocio);
+
 -- ===================== LÍMITES DE USO =====================
 -- PINs fallidos ("login:nube:ip"), emisiones de pases ("tap:ip"), logs ("log:ip").
 create table if not exists intentos (
@@ -184,3 +206,5 @@ alter table intentos       enable row level security;
 alter table campanas       enable row level security;
 alter table tarjetas_de_dispositivo enable row level security;
 alter table accesos        enable row level security;
+alter table invitaciones   enable row level security;
+alter table tutoriales     enable row level security;

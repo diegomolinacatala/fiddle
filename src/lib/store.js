@@ -23,7 +23,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -214,6 +214,8 @@ export async function borrarNegocio(slug) {
     sinError(await db.from("campanas").delete().eq("negocio", slug), "borrar campañas");
     sinError(await db.from("tarjetas_de_dispositivo").delete().eq("negocio", slug), "borrar tarjetas de dispositivo");
     sinError(await db.from("accesos").delete().eq("negocio", slug), "borrar accesos");
+    sinError(await db.from("invitaciones").delete().eq("negocio", slug), "borrar invitaciones");
+    sinError(await db.from("tutoriales").delete().eq("negocio", slug), "borrar tutoriales");
     sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
     sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
     return { borrados: seriales.length };
@@ -234,6 +236,10 @@ export async function borrarNegocio(slug) {
     await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => t.negocio !== slug)));
     const accesos = await leer("accesos", {});
     await escribir("accesos", Object.fromEntries(Object.entries(accesos).filter(([, a]) => a.negocio !== slug)));
+    for (const tabla of ["invitaciones", "tutoriales"]) {
+      const filas = await leer(tabla, {});
+      await escribir(tabla, Object.fromEntries(Object.entries(filas).filter(([, f]) => f.negocio !== slug)));
+    }
     return { borrados: seriales.length };
   });
 }
@@ -997,6 +1003,86 @@ export async function guardarAcceso({ usuario, negocio, rol, hash }) {
   return enFila(async () => {
     const todos = await leer("accesos", {});
     await escribir("accesos", { ...todos, [usuario]: fila });
+  });
+}
+
+// ============================ INVITACIONES (ver invitaciones.js) ============================
+// Un enlace por tienda para que su dueño elija sus contraseñas. Se guarda la
+// huella del token, no el token: quien lea la tabla no puede usar el enlace.
+
+/** Guarda la invitación nueva y anula las anteriores sin usar de esa tienda: solo vale el último enlace. */
+export async function crearInvitacion({ huella, negocio, caduca }) {
+  const fila = { huella, negocio, caduca, creado: ahoraISO(), usada: null };
+  if (hasSupabase()) {
+    const db = supa();
+    sinError(await db.from("invitaciones").delete().eq("negocio", negocio).is("usada", null), "anular invitaciones");
+    sinError(await db.from("invitaciones").insert(fila), "crear invitación");
+    return;
+  }
+  return enFila(async () => {
+    const todas = await leer("invitaciones", {});
+    const quedan = Object.fromEntries(Object.entries(todas).filter(([, i]) => i.negocio !== negocio || i.usada));
+    await escribir("invitaciones", { ...quedan, [huella]: fila });
+  });
+}
+
+/** @returns {Promise<{huella:string, negocio:string, caduca:string, creado:string, usada:string|null}|null>} */
+export async function getInvitacion(huella) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("invitaciones").select("huella, negocio, caduca, creado, usada").eq("huella", huella).maybeSingle(),
+      "leer invitación",
+    ) ?? null;
+  }
+  return (await enFila(() => leer("invitaciones", {})))[huella] ?? null;
+}
+
+/**
+ * Gasta la invitación. Condicional (solo si seguía sin usar): con dos pestañas
+ * a la vez, solo una fija las contraseñas.
+ * @returns {Promise<boolean>} true si era la primera vez
+ */
+export async function gastarInvitacion(huella) {
+  const ts = ahoraISO();
+  if (hasSupabase()) {
+    const filas = sinError(
+      await supa().from("invitaciones").update({ usada: ts }).eq("huella", huella).is("usada", null).select("huella"),
+      "gastar invitación",
+    );
+    return Boolean(filas?.length);
+  }
+  return enFila(async () => {
+    const todas = await leer("invitaciones", {});
+    if (!todas[huella] || todas[huella].usada) return false;
+    await escribir("invitaciones", { ...todas, [huella]: { ...todas[huella], usada: ts } });
+    return true;
+  });
+}
+
+// ============================ TUTORIALES VISTOS ============================
+// Qué recorridos de bienvenida ha visto cada usuario (`nube`, `nube-caja`,
+// `admin`). En la base y no en el navegador: la caja cambia de móvil y el
+// dueño entra desde el ordenador y desde el teléfono.
+
+/** @returns {Promise<string[]>} claves de los recorridos que ya vio */
+export async function tutorialesVistos(usuario) {
+  if (hasSupabase()) {
+    const filas = sinError(await supa().from("tutoriales").select("recorrido").eq("usuario", usuario), "leer tutoriales");
+    return (filas || []).map((f) => f.recorrido);
+  }
+  const todos = await enFila(() => leer("tutoriales", {}));
+  return Object.values(todos).filter((t) => t.usuario === usuario).map((t) => t.recorrido);
+}
+
+export async function marcarTutorial({ usuario, negocio, recorrido }) {
+  const fila = { usuario, negocio, recorrido, visto: ahoraISO() };
+  if (hasSupabase()) {
+    sinError(await supa().from("tutoriales").upsert(fila, { onConflict: "usuario,recorrido" }), "marcar tutorial");
+    return;
+  }
+  return enFila(async () => {
+    const todos = await leer("tutoriales", {});
+    await escribir("tutoriales", { ...todos, [`${usuario}|${recorrido}`]: fila });
   });
 }
 
