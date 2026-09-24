@@ -93,6 +93,34 @@ integración**: tiene que salir 🟢 en Apple Wallet, URL HTTPS, base de datos y
    banda del pase muestra el primer café relleno.
 4. En el manager: **Lanzar** una promo → llega a todos los iPhone del negocio.
 
+## 4. Pass Type ID propio de una tienda
+
+Wallet **apila en un solo montón** todos los pases que comparten Pass Type ID: con
+el general, la tarjeta de una tienda sale agrupada con las de las demás y hay que
+tocar el montón para pasar de una a otra. Para que una tienda vaya aparte, se le da
+un Pass Type ID propio dentro de la misma cuenta (la tienda no necesita cuenta de
+Apple). **Hazlo antes de repartir tarjetas reales**: un pase no cambia nunca de Pass
+Type ID, así que las ya instaladas siguen en el montón hasta que el cliente las borre
+y las vuelva a añadir (mientras tanto, se siguen actualizando con el general).
+
+1. [Identifiers → Pass Type IDs](https://developer.apple.com/account/resources/identifiers/list/passTypeId)
+   → **+** → descripción `<Nombre de la tienda>`, identificador con el mismo prefijo
+   que el general y el slug al final (`pass.com.tudominio.<slug>`).
+2. En ese ID → **Create Certificate** → sube el **mismo** `certs/pass.certSigningRequest`
+   del general. Así comparte `APPLE_PASS_KEY` y no hay secreto nuevo que guardar.
+3. Descarga el `.cer` como `certs/<slug>.cer` y ejecuta:
+   ```bash
+   npm run apple:env -- --tienda <slug>
+   ```
+   Escribe `certs/apple-<slug>.env` con dos variables: `APPLE_PASS_TYPE_ID_<SLUG>` y
+   `APPLE_PASS_CERT_<SLUG>` (slug en mayúsculas, `-` → `_`).
+4. Pégalas en Vercel (Production) y vuelve a desplegar. En `/admin`, **Estado de la
+   integración** debe tener una fila `iPhone · <slug>` con
+   `pass.com.tudominio.<slug> (solo de esta tienda)`.
+5. Añade en un iPhone su tarjeta y la de otra tienda: tienen que salir separadas.
+
+Cada certificado caduca al año y se renueva por separado (pasos 2–4, mismo ID).
+
 ## Cómo funciona por dentro
 
 ```
@@ -152,7 +180,8 @@ error sale en el log y la acción sigue funcionando). Los tests
 |---------|----------------|
 | Safari: "no se puede descargar el archivo" / el pase no abre | Firma inválida: variables mal pegadas, clave que no corresponde al certificado (repite `npm run apple:env`), o certificado caducado. Mira los logs de Vercel. |
 | El pase se añade pero no se actualiza | `APP_URL` no es HTTPS público; el pase se emitió con otra URL; no hay Supabase (los registros no persisten); revisa que la tabla `registros` tenga filas tras añadir el pase. |
-| Logs `[apns] avisos con error` | `BadCertificate`/`403`: certificado de otro Pass Type ID o caducado. `TopicDisallowed`: `APPLE_PASS_TYPE_ID` no coincide con el certificado. |
+| Logs `[apns] avisos con error` | `BadCertificate`/`403`: certificado de otro Pass Type ID o caducado. `TopicDisallowed`: `APPLE_PASS_TYPE_ID` (o el `_<SLUG>` de la tienda) no coincide con el certificado. `DeviceTokenNotForTopic`: el token de ese iPhone no vale para ese Pass Type ID; no se borra nada. |
+| Las tarjetas de varias tiendas salen apiladas en el Wallet | Comparten el Pass Type ID general: dale uno propio a la tienda (sección 4). Si ya lo tiene, esas tarjetas se instalaron antes: bórralas y añádelas de nuevo. |
 | Logs `[apple-wallet] ...` | Son errores que manda el propio iPhone (`/api/wallet/v1/log`): suelen decir exactamente qué falla. |
 | Llega la actualización pero sin notificación | Solo notifican los campos con `changeMessage` que cambian de valor (sellos, estado del cupón, nivel, premios, promo). |
 

@@ -40,6 +40,15 @@ export default function EstadoIntegracion({ accent }) {
       titulo: "iPhone · Apple Wallet",
       detalle: detalleApple(estado),
     },
+    // Una fila por tienda con Pass Type ID propio: sus tarjetas van aparte en el Wallet.
+    ...(estado.appleTiendas || []).map((t) => ({
+      ok: t.ok,
+      aviso: t.ok && t.avisos.length > 0,
+      titulo: `iPhone · ${t.slug}`,
+      detalle: t.ok
+        ? [`${t.passTypeId} (solo de esta tienda) · caduca ${t.caduca}`, ...t.avisos].join(" · ")
+        : t.problemas.join(" · "),
+    })),
     { ok: Boolean(push?.ok), titulo: "Android · avisos", detalle: push?.detalle || "Sin datos" },
     {
       ok: Boolean(google?.ok),
@@ -89,7 +98,7 @@ export default function EstadoIntegracion({ accent }) {
 function detalleApple({ proveedor, apple }) {
   if (proveedor === "walletwallet") return "Usando WalletWallet (plan B). Configura APPLE_* para firmar con tu cuenta.";
   if (!apple.ok) return apple.problemas.join(" · ");
-  const base = `Firma propia · ${apple.passTypeId} · caduca ${apple.caduca}`;
+  const base = `Firma propia · ${apple.passTypeId} (compartido) · caduca ${apple.caduca}`;
   return apple.avisos.length ? `${base} · ${apple.avisos.join(" · ")}` : base;
 }
 
