@@ -7,6 +7,7 @@ import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
 import MapaUbicacion from "./MapaUbicacion";
+import Recorrido from "@/app/Recorrido";
 import ClaveNueva from "@/app/ClaveNueva";
 import CabeceraGestion from "../CabeceraGestion";
 import Icono from "@/app/Icono";
@@ -128,11 +129,12 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
   return (
     <main style={pagina}>
       <div style={{ width: "min(1080px, 100%)" }}>
-        <CabeceraGestion negocio={n} slug={negocio} activa="manager" />
+        <CabeceraGestion negocio={n} slug={negocio} activa="manager" ayuda />
 
         <div style={grid}>
           {/* ---------------------------------------------------- cartilla */}
           <section style={panel}>
+            <div data-recorrido="cartilla">
             <h2 style={h2}>{esCupon ? "Cupón" : "Cartilla"}</h2>
             <div style={{ display: "flex", gap: 12 }}>
               {!esCupon && (
@@ -146,7 +148,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
                 <input value={n.premio} onChange={(e) => set("premio", e.target.value)} style={campo} />
               </div>
             </div>
+            </div>
 
+            <div data-recorrido="botones-caja">
             <label style={etiqueta}>Botones de la caja</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {LISTA_ACCIONES.map((a) => (
@@ -160,7 +164,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
                 </label>
               ))}
             </div>
+            </div>
 
+            <div data-recorrido="ubicacion">
             <label style={etiqueta}>Ubicación de la tienda</label>
             <MapaUbicacion
               valor={ubicacion}
@@ -168,12 +174,13 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               accent={accent}
               flash={flash}
             />
+            </div>
 
             <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar y actualizar pases</button></div>
           </section>
 
           {/* ------------------------------------------------ vista previa */}
-          <section style={panel}>
+          <section style={panel} data-recorrido="vista-previa">
             <h2 style={h2}>Vista previa del pase</h2>
             <form onSubmit={verCliente} style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               <input
@@ -201,6 +208,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
 
           {/* ------------------------------------------------- promo · tag */}
           <section style={panel}>
+            <div data-recorrido="promo">
             <h2 style={h2}>Promo</h2>
             <p style={texto}>Sale en todas las tarjetas y avisa en el móvil.</p>
             <input value={promoTexto} onChange={(e) => setPromoTexto(e.target.value)} placeholder="Hoy 2x1…" maxLength={200} style={campo} />
@@ -208,7 +216,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               <button onClick={() => lanzarPromo(promoTexto)} style={botonPrimario(accent)}>Lanzar</button>
               <button onClick={() => lanzarPromo("")} style={botonSecundario}>Quitar</button>
             </div>
+            </div>
 
+            <div data-recorrido="tag">
             <h2 style={{ ...h2, marginTop: 26 }}>Tag NFC y QR del mostrador</h2>
             <p style={texto}>Quien lo toque o escanee se lleva su tarjeta.</p>
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
@@ -222,6 +232,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               </div>
             </div>
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
+            </div>
 
             <h2 style={{ ...h2, marginTop: 26 }}>Acceso de la caja</h2>
             <p style={texto}>Usuario <strong style={{ color: C.texto }}>{negocio}-caja</strong></p>
@@ -231,6 +242,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
         </div>
 
         {msg && <div role="status" style={toast}>{msg}</div>}
+        <Recorrido recorrido="manager" accent={accent} />
       </div>
     </main>
   );

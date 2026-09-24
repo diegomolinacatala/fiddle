@@ -6,6 +6,7 @@ import QrScanner from "./QrScanner";
 import LogoutButton from "@/app/LogoutButton";
 import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
+import Recorrido, { BotonAyuda } from "@/app/Recorrido";
 import { useInstalar } from "@/app/instalable";
 import { normalizarCodigo } from "@/lib/codigo";
 import { saldoCorto } from "@/lib/cartillas";
@@ -56,6 +57,15 @@ export default function Caja() {
   }
 
   const accent = n?.tema?.accent || C.texto;
+  const filaCliente = (c) => (
+    <a key={c.serial} href={`/w/${c.serial}`} style={fila}>
+      <span style={chipCodigo(accent)}>{c.codigo}</span>
+      <span style={{ fontSize: 14, color: c.nombre ? C.texto : C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {c.nombre || "sin nombre"}
+      </span>
+      <span style={{ fontSize: 14, color: C.suave, whiteSpace: "nowrap" }}>{resumenCliente(c, n)}</span>
+    </a>
+  );
 
   return (
     <main style={pagina}>
@@ -68,13 +78,16 @@ export default function Caja() {
               <p style={subtitulo}>Escanea la tarjeta del cliente.</p>
             </div>
           </div>
-          <LogoutButton negocio={negocio} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <BotonAyuda />
+            <LogoutButton negocio={negocio} />
+          </div>
         </header>
 
         <div style={{ ...panel, marginTop: 16, padding: 16 }}>
-          <QrScanner accent={accent} />
+          <div data-recorrido="escanear"><QrScanner accent={accent} /></div>
 
-          <button onClick={() => { setManual((v) => !v); setError(null); }} style={{ ...botonSecundario, width: "100%", marginTop: 10 }}>
+          <button data-recorrido="codigo" onClick={() => { setManual((v) => !v); setError(null); }} style={{ ...botonSecundario, width: "100%", marginTop: 10 }}>
             {manual ? "Ocultar entrada manual" : "Escribir el código a mano"}
           </button>
           {manual && (
@@ -98,18 +111,14 @@ export default function Caja() {
           )}
         </div>
 
+        {/* Lo que señala el recorrido: la etiqueta y las primeras filas, no toda la lista. */}
+        <div data-recorrido="clientes">
         <div style={{ fontSize: 12, color: C.tenue, textTransform: "uppercase", letterSpacing: 1, margin: "22px 0 8px" }}>
           Clientes ({clientes.length})
         </div>
-        {clientes.slice(0, 15).map((c) => (
-          <a key={c.serial} href={`/w/${c.serial}`} style={fila}>
-            <span style={chipCodigo(accent)}>{c.codigo}</span>
-            <span style={{ fontSize: 14, color: c.nombre ? C.texto : C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {c.nombre || "sin nombre"}
-            </span>
-            <span style={{ fontSize: 14, color: C.suave, whiteSpace: "nowrap" }}>{resumenCliente(c, n)}</span>
-          </a>
-        ))}
+        {clientes.slice(0, 3).map(filaCliente)}
+        </div>
+        {clientes.slice(3, 15).map(filaCliente)}
         {clientes.length === 0 && <p style={{ color: C.suave, fontSize: 14 }}>Aún no hay clientes.</p>}
 
         {instalar.puede && !instalar.instalada && (
@@ -117,6 +126,7 @@ export default function Caja() {
             <Icono nombre="instalar" tam={18} /> Instalar la caja en este móvil
           </button>
         )}
+        <Recorrido recorrido="caja" accent={accent} />
       </div>
     </main>
   );
