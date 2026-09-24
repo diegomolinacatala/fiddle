@@ -14,6 +14,7 @@ const TOKEN_OK = "aa".repeat(32);
 const TOKEN_MUERTO = "bb".repeat(32);
 const TOKEN_410 = "cc".repeat(32);
 const TOKEN_500 = "dd".repeat(32);
+const TOKEN_OTRO_TOPIC = "ee".repeat(32);
 
 beforeAll(async () => {
   cadena = cadenaDePrueba({ passTypeId: "pass.dev.sellos" });
@@ -31,6 +32,7 @@ beforeAll(async () => {
       if (token === TOKEN_OK) return responder(200);
       if (token === TOKEN_MUERTO) return responder(400, { reason: "BadDeviceToken" });
       if (token === TOKEN_410) return responder(410, { reason: "Unregistered" });
+      if (token === TOKEN_OTRO_TOPIC) return responder(400, { reason: "DeviceTokenNotForTopic" });
       return responder(500, { reason: "InternalServerError" });
     });
   });
@@ -47,18 +49,23 @@ describe("enviarAvisos", () => {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     try {
       const r = await enviarAvisos(
-        [TOKEN_OK, TOKEN_OK, TOKEN_MUERTO, TOKEN_410, TOKEN_500, "no-hex"],
+        [TOKEN_OK, TOKEN_OK, TOKEN_MUERTO, TOKEN_410, TOKEN_500, TOKEN_OTRO_TOPIC, "no-hex"],
         { cert: cadena.certPem, key: cadena.keyPem, passTypeId: "pass.dev.sellos" },
         { host, ca: cadena.wwdrPem },
       );
       expect(r.enviados).toBe(1);
       expect(r.invalidos.sort()).toEqual([TOKEN_MUERTO, TOKEN_410].sort());
-      expect(r.errores).toEqual([{ token: TOKEN_500, estado: 500, razon: "InternalServerError" }]);
+      // Token de otro Pass Type ID: error, no se borra (el teléfono sigue ahí).
+      expect(r.errores).toEqual(expect.arrayContaining([
+        { token: TOKEN_500, estado: 500, razon: "InternalServerError" },
+        { token: TOKEN_OTRO_TOPIC, estado: 400, razon: "DeviceTokenNotForTopic" },
+      ]));
+      expect(r.errores).toHaveLength(2);
     } finally {
       delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
     }
 
-    expect(peticiones).toHaveLength(4); // duplicados y tokens no hex se descartan
+    expect(peticiones).toHaveLength(5); // duplicados y tokens no hex se descartan
     const p = peticiones.find((x) => x.headers[":path"] === `/3/device/${TOKEN_OK}`);
     expect(p.headers[":method"]).toBe("POST");
     expect(p.headers["apns-topic"]).toBe("pass.dev.sellos");

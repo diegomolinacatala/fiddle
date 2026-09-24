@@ -1,5 +1,5 @@
 import { X509Certificate, createPrivateKey } from "node:crypto";
-import { configApple, faltanVariablesApple } from "./apple/config";
+import { configApple, faltanVariablesApple, faltanVariablesTienda, variablesDe } from "./apple/config";
 import { hasSupabase, comprobarTablas, contarSinCifrar } from "./store";
 import { estadoClaveCifrado } from "./cifrado";
 import { clavesPush } from "./push/vapid";
@@ -26,23 +26,31 @@ function camposSujeto(sujeto) {
 }
 
 /**
- * Comprueba el certificado de Apple Wallet.
+ * Comprueba el certificado de Apple Wallet con que firma una tienda (el suyo
+ * propio o el general). `propio` dice si sus tarjetas van aparte en el Wallet.
  * @param {ReturnType<typeof configApple>} [config]
- * @returns {{ok:boolean, problemas:string[], avisos:string[], passTypeId?:string, teamId?:string, caduca?:string, diasRestantes?:number}}
+ * @param {number} [ahora]
+ * @param {string} [slug]  la tienda, para avisar si su Pass Type ID propio está a medias
+ * @returns {{ok:boolean, problemas:string[], avisos:string[], propio?:boolean, passTypeId?:string, teamId?:string, caduca?:string, diasRestantes?:number}}
  */
-export function diagnosticoApple(config, ahora = Date.now()) {
+export function diagnosticoApple(config, ahora = Date.now(), slug = null) {
   const faltan = faltanVariablesApple();
   if (!config) {
     return { ok: false, problemas: [faltan.length ? `Faltan variables: ${faltan.join(", ")}` : "Configuración de Apple ilegible"], avisos: [] };
   }
 
+  // Los mensajes nombran la variable que hay que tocar: la de la tienda si es suya.
+  const vars = variablesDe(config.tienda);
   const problemas = [];
+  // Con una sola de las dos, la tienda firma con el general sin que nadie lo note.
+  const aMedias = slug ? faltanVariablesTienda(slug) : [];
+  if (aMedias.length) problemas.push(`Falta ${aMedias.join(", ")}: sus tarjetas salen con el Pass Type ID compartido`);
   const avisos = [];
   let cert;
   try {
     cert = new X509Certificate(config.cert);
   } catch {
-    return { ok: false, problemas: ["APPLE_PASS_CERT no es un certificado válido (¿valor cortado al pegarlo?)"], avisos };
+    return { ok: false, problemas: [...problemas, `${vars.cert} no es un certificado válido (¿valor cortado al pegarlo?)`], avisos };
   }
 
   const sujeto = camposSujeto(cert.subject);
@@ -51,14 +59,16 @@ export function diagnosticoApple(config, ahora = Date.now()) {
 
   try {
     if (!cert.checkPrivateKey(createPrivateKey({ key: config.key, passphrase: config.passphrase }))) {
-      problemas.push("APPLE_PASS_KEY no corresponde al certificado (¿pegada la de otro certificado?)");
+      problemas.push(config.tienda
+        ? `${vars.cert} no se pidió con APPLE_PASS_KEY (usa el mismo CSR que el certificado general)`
+        : "APPLE_PASS_KEY no corresponde al certificado (¿pegada la de otro certificado?)");
     }
   } catch {
     problemas.push("APPLE_PASS_KEY no es una clave privada válida (¿valor cortado al pegarlo?)");
   }
 
   if (sujeto.UID !== config.passTypeId) {
-    problemas.push(`APPLE_PASS_TYPE_ID (${config.passTypeId}) no coincide con el certificado (${sujeto.UID})`);
+    problemas.push(`${vars.passTypeId} (${config.passTypeId}) no coincide con el certificado (${sujeto.UID})`);
   }
   if (sujeto.OU !== config.teamId) {
     problemas.push(`APPLE_TEAM_ID (${config.teamId}) no coincide con el certificado (${sujeto.OU})`);
@@ -80,6 +90,7 @@ export function diagnosticoApple(config, ahora = Date.now()) {
     ok: problemas.length === 0,
     problemas,
     avisos,
+    propio: Boolean(config.tienda),
     passTypeId: sujeto.UID,
     teamId: sujeto.OU,
     caduca: caduca.toISOString().slice(0, 10),

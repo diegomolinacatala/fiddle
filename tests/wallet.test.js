@@ -15,7 +15,7 @@ const { enviarAvisos } = await import("@/lib/apple/apns");
 const ww = await import("@/lib/walletwallet");
 const wallet = await import("@/lib/wallet");
 const store = await import("@/lib/store");
-const { cadenaDePrueba, aBase64 } = await import("../scripts/lib/certs.mjs");
+const { cadenaDePrueba, otroPassTypeDePrueba, aBase64 } = await import("../scripts/lib/certs.mjs");
 
 let dir;
 beforeEach(() => {
@@ -90,9 +90,31 @@ describe("notificar", () => {
     expect(await store.pushTokens({ seriales: [cliente.serial] })).toEqual(["aa11"]);
   });
 
+  it("apple: tienda con Pass Type ID propio avisa a cada pase con SU certificado", async () => {
+    stubApple();
+    const propio = otroPassTypeDePrueba(cadena, "pass.dev.nube");
+    vi.stubEnv("APPLE_PASS_TYPE_ID_NUBE", propio.passTypeId);
+    vi.stubEnv("APPLE_PASS_CERT_NUBE", aBase64(propio.certPem));
+    const { cliente, negocio } = await wallet.emitirPase("nube");
+    // Uno instalado antes de tener ID propio (general) y otro después.
+    await store.registrarPase({ dispositivo: "d1", pushToken: "aa11", passType: cadena.passTypeId, serial: cliente.serial, negocio: "nube" });
+    await store.registrarPase({ dispositivo: "d2", pushToken: "bb22", passType: propio.passTypeId, serial: cliente.serial, negocio: "nube" });
+    vi.mocked(enviarAvisos).mockResolvedValue({ enviados: 1, invalidos: [], errores: [] });
+
+    expect(await wallet.notificarCliente(cliente, negocio)).toMatchObject({ avisados: 2 });
+    const envios = vi.mocked(enviarAvisos).mock.calls.map(([tokens, c]) => [c.passTypeId, tokens]);
+    expect(envios).toEqual(expect.arrayContaining([[propio.passTypeId, ["bb22"]], [cadena.passTypeId, ["aa11"]]]));
+    expect(vi.mocked(enviarAvisos).mock.calls.find(([, c]) => c.passTypeId === propio.passTypeId)[1].cert).toBe(propio.certPem);
+
+    vi.mocked(enviarAvisos).mockClear();
+    expect(await wallet.notificarNegocio(negocio)).toMatchObject({ total: 2, enviadas: 2 });
+    expect(vi.mocked(enviarAvisos)).toHaveBeenCalledTimes(2);
+  });
+
   it("apple: si APNs falla no lanza (el estado ya está guardado)", async () => {
     stubApple();
     const { cliente, negocio } = await wallet.emitirPase("nube");
+    await store.registrarPase({ dispositivo: "d1", pushToken: "aa11", passType: cadena.passTypeId, serial: cliente.serial, negocio: "nube" });
     vi.mocked(enviarAvisos).mockRejectedValue(new Error("red caída"));
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = await wallet.notificarCliente(cliente, negocio);

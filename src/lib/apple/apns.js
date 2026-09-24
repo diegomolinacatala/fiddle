@@ -17,7 +17,10 @@ const CONCURRENCIA = 20;
 const TIMEOUT_MS = 10_000;
 
 // Razones por las que Apple dice que el token ya no vale: se borra el dispositivo.
-const TOKEN_MUERTO = new Set(["BadDeviceToken", "Unregistered", "DeviceTokenNotForTopic"]);
+// "DeviceTokenNotForTopic" NO está: dice que el token no casa con ESE Pass Type
+// ID, no que el teléfono se haya ido. Con un ID por tienda, borrar el dispositivo
+// se llevaría también sus tarjetas de las demás tiendas; queda como error en el log.
+const TOKEN_MUERTO = new Set(["BadDeviceToken", "Unregistered"]);
 
 function enviarUno(sesion, token, topic) {
   return new Promise((resolve) => {

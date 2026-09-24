@@ -105,7 +105,7 @@ Guarda la promo (vacío la quita) y avisa a todos los pases del negocio.
 ```
 
 ### `GET /api/estado`
-Qué integraciones están activas (sin secretos): `proveedor`, `apple.{configurado, faltan, passTypeId, webServiceURL}`, `google`, `supabase`, `authSecret`, `appUrl`, `httpsPublico`.
+Qué integraciones están activas (sin secretos): `proveedor`, `apple.{ok, problemas, avisos, passTypeId, caduca, webServiceURL}` (el Pass Type ID general), `appleTiendas` (solo admin: `[{slug, ok, problemas, avisos, propio, passTypeId, caduca}]`, una por tienda con Pass Type ID propio), `google`, `supabase`, `authSecret`, `appUrl`, `httpsPublico`.
 
 ## Admin de la plataforma
 
