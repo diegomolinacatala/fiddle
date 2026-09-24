@@ -152,7 +152,7 @@ ACTUALIZAR (cada sello, canje, nombre, promo, cambio de config)
 
 | Negocio | Estilo Apple | Cabecera | Banda | Campos | Extra |
 |---------|-------------|----------|-------|--------|-------|
-| sellos (La Delicantería, con dos cartillas) | `storeCard` | premios canjeados · nivel (Fade) | cartilla dibujada | sellos "3 de 8", premio, nombre | ubicación de la tienda |
+| sellos (La Delicantería, con dos cartillas) | `storeCard` | premios canjeados | cartilla dibujada | sellos "3 de 8", premio, nombre | ubicación de la tienda |
 | descuento (cupón) | `coupon` | — | porciones de pizza | descuento, estado | `voided` al usarse |
 
 Todos: colores del tema del negocio, `sharingProhibited` (no se puede reenviar por

@@ -6,7 +6,7 @@ import { destinoSeguro } from "@/lib/acceso";
 import { C, paginaCentrada, panel, campo, etiqueta, aviso } from "@/app/ui";
 
 // PRIMERA PANTALLA de la app: usuario + contraseña, para todos los negocios.
-//   nube / nube-caja · fade / fade-caja · forno / forno-caja
+//   delicanteria (manager) · delicanteria-caja (caja)
 // El rol lo decide el usuario. Si el servidor tiene activo el modo pruebas,
 // debajo se listan los accesos de ejemplo y se rellenan al tocarlos.
 function LoginForm() {
@@ -80,7 +80,7 @@ function LoginForm() {
             autoComplete="username"
             autoCapitalize="none"
             autoCorrect="off"
-            placeholder="nube"
+            placeholder="delicanteria"
             autoFocus
             style={campo}
           />
