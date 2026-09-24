@@ -240,7 +240,7 @@ export async function borrarNegocio(slug) {
 
 // ============================ CLIENTES ============================
 const CAMPOS_CLIENTE =
-  "serial, negocio, codigo, ww_serial, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
+  "serial, negocio, codigo, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
   "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en";
 
 // Datos personales de un cliente: van cifrados en la base (lib/cifrado.js). Se
@@ -260,7 +260,6 @@ function normalizarCliente(c) {
         negocio: c.negocio,
         // Clientes creados antes del código corto: se deduce del serial (estable).
         codigo: c.codigo || codigoDesdeSerial(c.serial),
-        ww_serial: c.ww_serial ?? null,
         sellos: c.sellos ?? 0,
         // La segunda cartilla, en las tiendas que llevan dos (ver lib/cartillas.js).
         sellos2: c.sellos2 ?? 0,
@@ -286,7 +285,7 @@ function normalizarCliente(c) {
     : null;
 }
 
-/** Lo que puede salir hacia el navegador: sin auth_token ni ww_serial. */
+/** Lo que puede salir hacia el navegador: sin auth_token. */
 export const clientePublico = (c) =>
   c && {
     serial: c.serial, negocio: c.negocio, codigo: c.codigo, sellos: c.sellos, sellos2: c.sellos2 ?? 0, premios: c.premios,
@@ -300,14 +299,14 @@ export const clientePublico = (c) =>
   };
 
 /**
- * @param {{serial:string, negocio:string, authToken:string, wwSerial?:string|null, origen?:string}} datos
+ * @param {{serial:string, negocio:string, authToken:string, origen?:string}} datos
  *   `origen`: de dónde salió el pase ("tap" en el tag NFC, "manager" desde el
  *   mostrador). Responde a "¿de dónde vienen mis clientes?" sin preguntárselo.
  */
-export async function crearCliente({ serial, negocio, authToken, wwSerial = null, origen = null }) {
+export async function crearCliente({ serial, negocio, authToken, origen = null }) {
   const ts = ahoraISO();
   const base = {
-    serial, negocio, ww_serial: wwSerial, auth_token: authToken,
+    serial, negocio, auth_token: authToken,
     sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0, nombre: null, actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
     origen, mensaje: null, nota: null,

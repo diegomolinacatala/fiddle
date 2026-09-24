@@ -235,7 +235,6 @@ describe("avisos a Android desde wallet.js", () => {
     vi.stubEnv("DATA_DIR", dir);
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("APPLE_PASS_TYPE_ID", "");
-    vi.stubEnv("WALLETWALLET_API_KEY", "");
     push = await import("@/lib/push/enviar");
     wallet = await import("@/lib/wallet");
     store = await import("@/lib/store");

@@ -35,7 +35,6 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 | Proveedor | Cuándo | Firma | Actualización |
 |-----------|--------|-------|---------------|
 | **apple** | hay variables `APPLE_*` | nosotros (passkit-generator) | web service propio + APNs |
-| walletwallet | solo `WALLETWALLET_API_KEY` | WalletWallet | `PUT` a su API |
 | demo | nada | — | — (el estado vive en el store) |
 
 Las rutas no saben cuál hay debajo.

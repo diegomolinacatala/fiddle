@@ -5,7 +5,6 @@ import {
 } from "./store";
 import { hayApple, configApple } from "./apple/config";
 import { enviarAvisos } from "./apple/apns";
-import { hayWalletWallet, createPass, updatePass, buildPassBody } from "./walletwallet";
 import { hayGoogle, rutaGuardarGoogle, actualizarEnGoogle, mensajeEnGoogle, tiendaEnGoogle } from "./googlewallet";
 import { enviarPush } from "./push/enviar";
 import { TIPO_WEB } from "./push/suscripcion";
@@ -17,9 +16,8 @@ import { appUrl } from "./url";
 // ----------------------------------------------------------------------------
 // Las rutas NO saben qué hay debajo. El PASE (lo que se descarga en el iPhone)
 // se elige solo según las variables:
-//   "apple"        firma propia + web service + APNs (cuenta Apple Developer)
-//   "walletwallet" servicio externo (plan B, sin cuenta de Apple)
-//   "demo"         nada configurado: el estado vive en el store, sin pase real
+//   "apple"  firma propia + web service + APNs (cuenta Apple Developer)
+//   "demo"   nada configurado: el estado vive en el store, sin pase real
 //
 // Y los AVISOS van por todos los canales a la vez, cada uno a quien lo tenga:
 //   iPhone        APNs -> el iPhone baja el pase nuevo (y avisa si cambia un campo)
@@ -29,13 +27,9 @@ import { appUrl } from "./url";
 // Ningún canal tumba la acción: el estado ya está guardado cuando se avisa.
 // ============================================================================
 
-const LOTE_WALLETWALLET = 10;
-
-/** @returns {"apple"|"walletwallet"|"demo"} */
+/** @returns {"apple"|"demo"} */
 export function proveedorWallet() {
-  if (hayApple()) return "apple";
-  if (hayWalletWallet()) return "walletwallet";
-  return "demo";
+  return hayApple() ? "apple" : "demo";
 }
 
 /**
@@ -43,7 +37,7 @@ export function proveedorWallet() {
  * El serial es NUESTRO (uuid): va en el QR desde el primer momento.
  * `origen` ("tap" | "manager") queda guardado: el CRM lo usa para saber por
  * dónde entra la gente.
- * @returns {Promise<{cliente:object, negocio:object, proveedor:string, urlPase:string, shareUrl:string, pkpassWalletWallet:Buffer|null, googleSaveUrl:string|null}>}
+ * @returns {Promise<{cliente:object, negocio:object, proveedor:string, urlPase:string, googleSaveUrl:string|null}>}
  */
 export async function emitirPase(slug, { origen = null } = {}) {
   const negocio = await getNegocio(slug);
@@ -53,17 +47,7 @@ export async function emitirPase(slug, { origen = null } = {}) {
   const serial = randomUUID();
   const authToken = randomBytes(24).toString("hex"); // autentica al iPhone ante el web service
 
-  let wwSerial = null;
-  let shareUrl = null;
-  let pkpassWalletWallet = null;
-  if (proveedor === "walletwallet") {
-    const creado = await createPass(buildPassBody({ serial, sellos: 0, premios: 0, nombre: null }, negocio));
-    wwSerial = creado.wwSerial;
-    shareUrl = creado.shareUrl;
-    pkpassWalletWallet = creado.applePass ? Buffer.from(creado.applePass, "base64") : null;
-  }
-
-  const cliente = await crearCliente({ serial, negocio: slug, authToken, wwSerial, origen });
+  const cliente = await crearCliente({ serial, negocio: slug, authToken, origen });
   // El alta abre el historial del cliente: sin ella, su ficha empieza en el aire.
   await addEvento(serial, "alta", origen === "manager" ? "Pase emitido en el mostrador" : "Pase emitido", {
     negocio: slug,
@@ -77,8 +61,6 @@ export async function emitirPase(slug, { origen = null } = {}) {
     negocio,
     proveedor,
     urlPase,
-    shareUrl: shareUrl || urlPase,
-    pkpassWalletWallet,
     googleSaveUrl: rutaGoogle ? `${appUrl()}${rutaGoogle}` : null,
   };
 }
@@ -144,10 +126,6 @@ export async function notificarCliente(cliente, negocio, { antes = null } = {}) 
     if (proveedor === "apple") {
       const r = await avisarApple(await tokensApple({ seriales: [cliente.serial] }));
       return { proveedor, avisados: r.enviados, web, google };
-    }
-    if (proveedor === "walletwallet") {
-      await updatePass(cliente.ww_serial, buildPassBody(cliente, negocio));
-      return { proveedor, avisados: 1, web, google };
     }
     return { proveedor, avisados: 0, web, google };
   } catch (e) {
@@ -240,17 +218,5 @@ export async function notificarNegocio(negocio, { promoNueva = null, cartilla = 
   }
 
   const [clientes, [web, google]] = await Promise.all([listClientes(negocio.slug), android()]);
-  if (proveedor === "demo") return { proveedor, total: clientes.length, enviadas: 0, fallidas: [], web, google };
-
-  // En lotes concurrentes: uno a uno, una promo a cientos de clientes agotaría el
-  // tiempo máximo de la función serverless.
-  const resultados = [];
-  for (let i = 0; i < clientes.length; i += LOTE_WALLETWALLET) {
-    const lote = clientes.slice(i, i + LOTE_WALLETWALLET);
-    resultados.push(...await Promise.allSettled(lote.map((c) => updatePass(c.ww_serial, buildPassBody(c, negocio)))));
-  }
-  const fallidas = resultados
-    .map((r, i) => (r.status === "rejected" ? { serial: clientes[i].serial, error: String(r.reason?.message || r.reason) } : null))
-    .filter(Boolean);
-  return { proveedor, total: clientes.length, enviadas: clientes.length - fallidas.length, fallidas, web, google };
+  return { proveedor, total: clientes.length, enviadas: 0, fallidas: [], web, google };
 }

@@ -3,16 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-// APNs y WalletWallet se simulan: aquí se prueba la orquestación.
+// APNs se simula: aquí se prueba la orquestación.
 vi.mock("@/lib/apple/apns", () => ({ enviarAvisos: vi.fn() }));
-vi.mock("@/lib/walletwallet", async (original) => ({
-  ...(await original()),
-  createPass: vi.fn(async () => ({ wwSerial: "ww-1", shareUrl: "https://ww/share", applePass: Buffer.from("PK").toString("base64") })),
-  updatePass: vi.fn(async () => ({})),
-}));
 
 const { enviarAvisos } = await import("@/lib/apple/apns");
-const ww = await import("@/lib/walletwallet");
 const wallet = await import("@/lib/wallet");
 const store = await import("@/lib/store");
 const { cadenaDePrueba, aBase64 } = await import("../scripts/lib/certs.mjs");
@@ -22,11 +16,9 @@ beforeEach(() => {
   dir = mkdtempSync(path.join(tmpdir(), "sellos-wallet-"));
   vi.stubEnv("DATA_DIR", dir);
   vi.stubEnv("SUPABASE_URL", "");
-  vi.stubEnv("WALLETWALLET_API_KEY", "");
   vi.stubEnv("APPLE_PASS_TYPE_ID", "");
   vi.stubEnv("APP_URL", "https://sellos.app");
   vi.mocked(enviarAvisos).mockReset();
-  vi.mocked(ww.updatePass).mockClear();
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -43,10 +35,8 @@ function stubApple() {
 }
 
 describe("proveedorWallet", () => {
-  it("apple > walletwallet > demo", () => {
+  it("apple si hay certificados; si no, demo", () => {
     expect(wallet.proveedorWallet()).toBe("demo");
-    vi.stubEnv("WALLETWALLET_API_KEY", "ww_live_x");
-    expect(wallet.proveedorWallet()).toBe("walletwallet");
     stubApple();
     expect(wallet.proveedorWallet()).toBe("apple");
   });
@@ -60,14 +50,6 @@ describe("emitirPase", () => {
     expect(r.cliente.auth_token).toMatch(/^[0-9a-f]{48}$/);
     expect(r.urlPase).toBe(`https://sellos.app/p/${r.cliente.serial}`);
     expect(await store.getCliente(r.cliente.serial)).toBeTruthy();
-  });
-
-  it("walletwallet: guarda ww_serial y devuelve su pkpass", async () => {
-    vi.stubEnv("WALLETWALLET_API_KEY", "ww_live_x");
-    const r = await wallet.emitirPase("fade");
-    expect(r.cliente.ww_serial).toBe("ww-1");
-    expect(r.shareUrl).toBe("https://ww/share");
-    expect(r.pkpassWalletWallet.toString()).toBe("PK");
   });
 
   it("negocio desconocido lanza", async () => {
@@ -113,16 +95,10 @@ describe("notificar", () => {
     expect(Date.parse((await store.getCliente(cliente.serial)).actualizado)).toBeGreaterThan(Date.parse(antes));
   });
 
-  it("walletwallet: PUT por cliente; demo: no hace nada", async () => {
-    vi.stubEnv("WALLETWALLET_API_KEY", "ww_live_x");
+  it("demo: no avisa a nadie", async () => {
     const { cliente, negocio } = await wallet.emitirPase("nube");
-    expect(await wallet.notificarCliente(cliente, negocio)).toEqual({ proveedor: "walletwallet", avisados: 1, web: 0, google: 0 });
-    expect(await wallet.notificarNegocio(negocio)).toMatchObject({ proveedor: "walletwallet", total: 1, enviadas: 1 });
-
-    vi.stubEnv("WALLETWALLET_API_KEY", "");
-    ww.updatePass.mockClear();
     expect(await wallet.notificarCliente(cliente, negocio)).toEqual({ proveedor: "demo", avisados: 0, web: 0, google: 0 });
-    expect(await wallet.notificarNegocio(negocio)).toMatchObject({ proveedor: "demo", enviadas: 0 });
-    expect(ww.updatePass).not.toHaveBeenCalled();
+    expect(await wallet.notificarNegocio(negocio)).toMatchObject({ proveedor: "demo", total: 1, enviadas: 0 });
+    expect(enviarAvisos).not.toHaveBeenCalled();
   });
 });

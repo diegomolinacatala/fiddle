@@ -16,7 +16,6 @@ create table if not exists clientes (
   serial      text primary key,          -- nuestro id (va en el QR: /w/<serial>)
   negocio     text,                       -- slug del negocio
   codigo      text,                       -- clave corta de 3 caracteres, única DENTRO del negocio
-  ww_serial   text,                       -- serial de WalletWallet (solo plan B)
   sellos      int  not null default 0,
   premios     int  not null default 0,
   nombre      text,                       -- personalización (aparece en el pase)
@@ -27,7 +26,6 @@ create table if not exists clientes (
 -- Por si la tabla clientes ya existía de antes (añade columnas nuevas):
 alter table clientes add column if not exists negocio text;
 alter table clientes add column if not exists codigo text;
-alter table clientes add column if not exists ww_serial text;
 alter table clientes add column if not exists nombre text;
 alter table clientes add column if not exists auth_token text;
 alter table clientes add column if not exists actualizado timestamptz not null default now();

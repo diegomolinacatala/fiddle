@@ -31,7 +31,6 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 | `nombre` | text? | personalización (sale en el pase) |
 | `auth_token` | text | `authenticationToken` del pase (secreto, nunca al navegador) |
 | `actualizado` | timestamptz | se marca en cada cambio; Apple pregunta "¿qué cambió desde…?" |
-| `ww_serial` | text? | solo plan B WalletWallet |
 | `creado` | timestamptz | |
 | `visitas`, `ultima_visita` | int · timestamptz? | **resumen del historial**, mantenido al vuelo por `registrarVisita`. Sin esto, agrupar clientes por comportamiento obligaría a recorrer `eventos` entero en cada pantalla |
 | `instalado`, `desinstalado` | timestamptz? | cuándo entró el pase en un Wallet y cuándo salió del último iPhone. Lo apunta el web service de Apple, que es el único que se entera |
@@ -86,7 +85,7 @@ fallidos), `tap:<ip>` (emisiones), `log:<ip>` (logs de Apple). Ver
 
 ```
 Negocios:     getNegocio(slug) · listNegocios() · saveNegocio(slug, patch)
-Clientes:     crearCliente({serial, negocio, authToken, wwSerial?}) · getCliente(serial)
+Clientes:     crearCliente({serial, negocio, authToken, origen?}) · getCliente(serial)
               saveCliente({serial, sellos, premios}, {esperado?}) -> guardado?
                 (marca actualizado; con `esperado` solo escribe si el estado no cambió:
                  dos cajas canjeando a la vez no entregan el premio dos veces)

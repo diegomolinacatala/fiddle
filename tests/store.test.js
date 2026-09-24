@@ -69,7 +69,6 @@ describe("clientes", () => {
   it("clientePublico no expone el token", async () => {
     const c = await nuevo("s1");
     expect(store.clientePublico(c)).not.toHaveProperty("auth_token");
-    expect(store.clientePublico(c)).not.toHaveProperty("ww_serial");
   });
 
   it("lista por negocio y toca solo los de ese negocio", async () => {

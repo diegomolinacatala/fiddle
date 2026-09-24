@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { emitirPase } from "@/lib/wallet";
 import { getCliente, getNegocio } from "@/lib/store";
-import { MIME_PKPASS } from "@/lib/apple/firmar";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { hayApple } from "@/lib/apple/config";
 import { destinoDelTap } from "@/lib/googlewallet";
@@ -13,15 +12,6 @@ import { usoExcedido, ipDe } from "@/lib/limitador";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const respuestaPkpass = (buffer, slug) =>
-  new NextResponse(buffer, {
-    headers: {
-      "content-type": MIME_PKPASS,
-      "content-disposition": `attachment; filename="${slug}.pkpass"`,
-      "cache-control": "no-store",
-    },
-  });
 
 // En iPhone, el .pkpass NO va en esta misma respuesta: se redirige a
 // /api/pase/<serial>. Así la cookie que recuerda la tarjeta viaja en una
@@ -68,10 +58,9 @@ export async function GET(request) {
       const r = await emitirPase(slug, { origen: "tap" });
       cliente = r.cliente;
       if (plataforma === "ios" && r.proveedor === "apple") respuesta = descargaPkpass(r.cliente.serial, request);
-      else if (plataforma === "ios" && r.pkpassWalletWallet) respuesta = respuestaPkpass(r.pkpassWalletWallet, slug);
       // A la tarjeta en el MISMO dominio por el que entró (un deploy de prueba no
       // debe mandar al cliente a producción).
-      else respuesta = NextResponse.redirect(r.proveedor === "walletwallet" ? r.shareUrl : new URL(destinoDelTap(plataforma, r.cliente.serial), request.url), 302);
+      else respuesta = NextResponse.redirect(new URL(destinoDelTap(plataforma, r.cliente.serial), request.url), 302);
     }
 
     respuesta.cookies.set(cookieDeTarjeta(slug), cliente.serial, opcionesCookieTarjeta(url.protocol === "https:"));

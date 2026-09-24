@@ -42,7 +42,7 @@ Borra la cookie. `{ "ok": true }`.
 El "tap NFC". Crea cliente y pase, o **devuelve el que ya tenía ese teléfono**
 (cookie `tarjeta_<negocio>`, 1 año). `nuevo=1` fuerza uno nuevo.
 - iPhone + Apple configurado → responde el **`.pkpass`** (`application/vnd.apple.pkpass`).
-- Resto → `302` a `/p/<serial>` en el mismo dominio (o a la página de WalletWallet en el plan B).
+- Resto → `302` a `/p/<serial>` en el mismo dominio.
 - `429` si una misma IP emite más de 30 pases en 10 min (reabrir el suyo no cuenta).
 
 ### `POST /api/crear?b=<negocio>` · manager
