@@ -12,6 +12,11 @@
 //       variables APPLE_* listas para pegar en Vercel / .env.local.
 //       Si no tienes el WWDR G4, lo descarga de apple.com.
 //
+//   node scripts/apple-setup.mjs env --tienda <slug> [--cer certs/<slug>.cer]
+//       Pass Type ID PROPIO de una tienda (para que su tarjeta no se apile con
+//       las de las demás en el Wallet). El .cer se pide con el MISMO CSR que el
+//       general. Escribe certs/apple-<slug>.env con sus 2 variables.
+//
 //   node scripts/apple-setup.mjs prueba
 //       Certificados FALSOS para probar en local la firma y el web service
 //       (el iPhone no acepta esos pases). Escribe certs/prueba.env.
@@ -23,6 +28,7 @@ import path from "node:path";
 import {
   generarCsr, cadenaDePrueba, aPem, leerCertificadoPase, claveCoincide, aBase64,
 } from "./lib/certs.mjs";
+import { variablesDe } from "../src/lib/apple/config.js";
 
 const DIR = "certs";
 const URL_WWDR_G4 = "https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer";
@@ -82,7 +88,10 @@ async function obtenerWwdr(ruta) {
 }
 
 async function env(opts) {
-  const rutaCer = opts.cer || path.join(DIR, "pass.cer");
+  if (opts.tienda !== undefined && !/^[a-z0-9-]+$/.test(String(opts.tienda))) {
+    salir("--tienda necesita el slug de la tienda, tal como sale en su URL (p.ej. la-delicanteria).");
+  }
+  const rutaCer = opts.cer || path.join(DIR, opts.tienda ? `${opts.tienda}.cer` : "pass.cer");
   const rutaClave = opts.key || path.join(DIR, "pass.key.pem");
   if (!existsSync(rutaCer)) salir(`No encuentro ${rutaCer}. Descárgalo de Apple (paso 3 de "csr").`);
   if (!existsSync(rutaClave)) salir(`No encuentro ${rutaClave}. ¿Generaste el CSR en este ordenador?`);
@@ -98,6 +107,8 @@ async function env(opts) {
     salir(`Este certificado no parece de un Pass Type ID (UID=${info.passTypeId}). ¿Descargaste el correcto?`);
   }
   if (info.caduca < new Date()) salir(`El certificado caducó el ${info.caduca.toISOString().slice(0, 10)}.`);
+
+  if (opts.tienda) return envTienda(opts.tienda, certPem, info);
 
   const wwdrPem = await obtenerWwdr(opts.wwdr);
   const vars = {
@@ -119,6 +130,24 @@ async function env(opts) {
 Pega esas 5 variables en Vercel (Settings -> Environment Variables, entorno Production).
 NO hace falta .env.local: en local (http://localhost) Apple no puede actualizar pases.
 Asegúrate de que APP_URL es la URL HTTPS pública: Apple solo actualiza pases contra HTTPS.
+`);
+}
+
+// Solo lo que cambia por tienda: Team ID, clave y WWDR ya están en Vercel.
+function envTienda(slug, certPem, info) {
+  const nombres = variablesDe(slug);
+  const salida = path.join(DIR, `apple-${slug}.env`);
+  writeFileSync(salida, lineasEnv({ [nombres.passTypeId]: info.passTypeId, [nombres.cert]: aBase64(certPem) }), { mode: 0o600 });
+  console.log(`
+✔ Tienda:       ${slug}
+✔ Pass Type ID: ${info.passTypeId}
+✔ Caduca:       ${info.caduca.toISOString().slice(0, 10)}  (cada tienda se renueva por separado)
+✔ Variables en ${salida}
+
+Pega esas 2 variables en Vercel (Production) y vuelve a desplegar. En /admin,
+"Estado de la integración" debe tener la fila "iPhone · ${slug}" en verde.
+Las tarjetas que ya estuvieran instaladas siguen apiladas hasta que el cliente
+las borre y las vuelva a añadir.
 `);
 }
 

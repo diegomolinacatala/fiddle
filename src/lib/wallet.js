@@ -3,7 +3,7 @@ import {
   getNegocio, crearCliente, listClientes, tocarClientesDeNegocio,
   pushTokens, destinosDeAviso, borrarDispositivosPorToken, borrarDispositivos, addEvento,
 } from "./store";
-import { hayApple, configApple } from "./apple/config";
+import { hayApple, configsDeTienda } from "./apple/config";
 import { enviarAvisos } from "./apple/apns";
 import { hayWalletWallet, createPass, updatePass, buildPassBody } from "./walletwallet";
 import { hayGoogle, rutaGuardarGoogle, actualizarEnGoogle, mensajeEnGoogle, tiendaEnGoogle } from "./googlewallet";
@@ -83,17 +83,25 @@ export async function emitirPase(slug, { origen = null } = {}) {
   };
 }
 
-// Aviso a una lista de tokens + limpieza de los que Apple ya no acepta.
-async function avisarApple(tokens) {
-  const r = await enviarAvisos(tokens, configApple());
-  await borrarDispositivosPorToken(r.invalidos);
-  if (r.errores.length) {
-    console.error("[apns] avisos con error:", JSON.stringify(r.errores.slice(0, 5)));
+// Avisa a los iPhone de una tienda y limpia los tokens que Apple ya no acepta.
+// Cada aviso sale con el certificado de SU Pass Type ID (es el topic de APNs):
+// los pases de antes de que la tienda tuviera uno propio siguen en el general.
+async function avisarApple(filtro, slug) {
+  const total = { enviados: 0, tokens: 0, errores: [] };
+  for (const config of configsDeTienda(slug)) {
+    const tokens = await pushTokens({ ...filtro, passType: config.passTypeId });
+    if (!tokens.length) continue;
+    const r = await enviarAvisos(tokens, config);
+    await borrarDispositivosPorToken(r.invalidos);
+    if (r.errores.length) {
+      console.error(`[apns] avisos con error (${config.passTypeId}):`, JSON.stringify(r.errores.slice(0, 5)));
+    }
+    total.enviados += r.enviados;
+    total.tokens += tokens.length;
+    total.errores.push(...r.errores);
   }
-  return r;
+  return total;
 }
-
-const tokensApple = (filtro) => pushTokens({ ...filtro, passType: configApple().passTypeId });
 
 /**
  * Avisos del navegador. `aviso(serial)` da el texto de cada uno (o null para
@@ -142,7 +150,7 @@ export async function notificarCliente(cliente, negocio, { antes = null } = {}) 
 
   try {
     if (proveedor === "apple") {
-      const r = await avisarApple(await tokensApple({ seriales: [cliente.serial] }));
+      const r = await avisarApple({ seriales: [cliente.serial] }, cliente.negocio);
       return { proveedor, avisados: r.enviados, web, google };
     }
     if (proveedor === "walletwallet") {
@@ -192,9 +200,8 @@ export async function avisarSeriales(seriales, { negocio = null, texto = null } 
 
   try {
     if (proveedor === "apple") {
-      const tokens = await tokensApple({ seriales });
-      const r = await avisarApple(tokens);
-      return { proveedor, avisados: r.enviados, total: tokens.length, web, google };
+      const r = await avisarApple({ seriales }, negocio?.slug);
+      return { proveedor, avisados: r.enviados, total: r.tokens, web, google };
     }
     // Sin Apple no hay empujón por cliente: el pase se pondrá al día al abrirlo.
     return { proveedor, avisados: 0, total: seriales.length, web, google };
@@ -229,14 +236,14 @@ export async function notificarNegocio(negocio, { promoNueva = null, cartilla = 
 
   if (proveedor === "apple") {
     await tocarClientesDeNegocio(negocio.slug);
-    const [tokens, [web, google]] = await Promise.all([tokensApple({ negocio: negocio.slug }), android()]);
-    try {
-      const r = await avisarApple(tokens);
-      return { proveedor, total: tokens.length, enviadas: r.enviados, fallidas: r.errores, web, google };
-    } catch (e) {
-      console.error(`[wallet] avisos del negocio ${negocio.slug} fallidos:`, e);
-      return { proveedor, total: tokens.length, enviadas: 0, fallidas: [{ error: String(e?.message || e) }], web, google };
-    }
+    const [apple, [web, google]] = await Promise.all([
+      avisarApple({ negocio: negocio.slug }, negocio.slug).catch((e) => {
+        console.error(`[wallet] avisos del negocio ${negocio.slug} fallidos:`, e);
+        return { enviados: 0, tokens: 0, errores: [{ error: String(e?.message || e) }] };
+      }),
+      android(),
+    ]);
+    return { proveedor, total: apple.tokens, enviadas: apple.enviados, fallidas: apple.errores, web, google };
   }
 
   const [clientes, [web, google]] = await Promise.all([listClientes(negocio.slug), android()]);

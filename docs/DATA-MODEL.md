@@ -75,7 +75,7 @@ pregunta que importa: ¿volvió alguno?
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `dispositivo` | text FK → dispositivos (cascade) | |
-| `pass_type` | text | el canal: `APPLE_PASS_TYPE_ID` (iPhone) · `web` (avisos del navegador) · `google` (Google Wallet) |
+| `pass_type` | text | el canal: el Pass Type ID con que se instaló (iPhone: el general o el propio de la tienda) · `web` (avisos del navegador) · `google` (Google Wallet) |
 | `serial` | text FK → clientes (cascade) | |
 | `negocio` | text | desnormalizado para avisar a todo un negocio |
 PK (`dispositivo`, `pass_type`, `serial`).

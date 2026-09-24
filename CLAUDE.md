@@ -39,6 +39,11 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 - Los avisos en la pantalla de bloqueo los dispara un **campo que cambia**, no
   una imagen. La banda se actualiza en silencio: por eso `changeMessage` vive en
   PREMIO, cuyo valor cambia con cada sello.
+- **Wallet apila los pases que comparten Pass Type ID.** Una tienda puede tener
+  uno propio (`APPLE_PASS_TYPE_ID_<SLUG>` + `APPLE_PASS_CERT_<SLUG>`, ver
+  `lib/apple/config.js`). Un pase instalado no cambia nunca de ID: por eso el
+  web service y los avisos aceptan el de la tienda Y el general
+  (`configsDeTienda()`), y cada aviso sale con el certificado de su ID.
 - El QR lleva el `serial`; debajo va el **código de 3 caracteres**, único dentro
   de su tienda (`lib/codigo.js`).
 - **Hoy todas las tiendas comparten Pass Type ID** y el Wallet las apila. Está

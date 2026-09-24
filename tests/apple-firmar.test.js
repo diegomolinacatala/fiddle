@@ -3,10 +3,10 @@ import { inflateRawSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import forge from "node-forge";
 import { generarPkpass } from "@/lib/apple/firmar";
-import { configApple, leerPem, hayApple, faltanVariablesApple } from "@/lib/apple/config";
+import { configApple, configsDeTienda, faltanVariablesTienda, tiendasConPassTypePropio, variablesDe, leerPem, hayApple, faltanVariablesApple } from "@/lib/apple/config";
 import { imagenesDelPase, rejillaSellos } from "@/lib/apple/imagenes";
 import { SEMILLAS, componerNegocio } from "@/lib/negocios";
-import { cadenaDePrueba, aBase64 } from "../scripts/lib/certs.mjs";
+import { cadenaDePrueba, otroPassTypeDePrueba, aBase64 } from "../scripts/lib/certs.mjs";
 
 // Lector mínimo de zip (entradas stored o deflate) para inspeccionar el .pkpass.
 function leerZip(buffer) {
@@ -60,6 +60,75 @@ describe("config de Apple", () => {
   it("rechaza valores ilegibles", () => {
     expect(() => leerPem("no-es-un-pem")).toThrow(/ilegible/);
     expect(leerPem("")).toBeNull();
+  });
+});
+
+// Wallet apila las tarjetas que comparten Pass Type ID: una tienda se separa
+// con el suyo propio (dos variables más; clave, Team ID y WWDR se comparten).
+describe("Pass Type ID propio de una tienda", () => {
+  const stubTienda = (slug, passTypeId) => {
+    const propio = otroPassTypeDePrueba(cadena, passTypeId);
+    const vars = variablesDe(slug);
+    vi.stubEnv(vars.passTypeId, passTypeId);
+    vi.stubEnv(vars.cert, aBase64(propio.certPem));
+    return propio;
+  };
+
+  it("las variables llevan el slug en mayúsculas y con _", () => {
+    expect(variablesDe("la-deli")).toEqual({ passTypeId: "APPLE_PASS_TYPE_ID_LA_DELI", cert: "APPLE_PASS_CERT_LA_DELI" });
+    expect(variablesDe()).toEqual({ passTypeId: "APPLE_PASS_TYPE_ID", cert: "APPLE_PASS_CERT" });
+  });
+
+  it("con las dos variables, la tienda firma con lo suyo y comparte el resto", () => {
+    stubApple();
+    const propio = stubTienda("la-deli", "pass.dev.deli");
+    const c = configApple("la-deli");
+    expect(c).toMatchObject({ passTypeId: "pass.dev.deli", cert: propio.certPem, tienda: "la-deli", teamId: cadena.teamId });
+    expect(c.key).toBe(configApple().key);
+    expect(configsDeTienda("la-deli").map((x) => x.passTypeId)).toEqual(["pass.dev.deli", cadena.passTypeId]);
+  });
+
+  it("sin ellas (u otra tienda), la general", () => {
+    stubApple();
+    stubTienda("la-deli", "pass.dev.deli");
+    expect(configApple("nube")).toMatchObject({ passTypeId: cadena.passTypeId, tienda: null });
+    expect(configsDeTienda("nube").map((x) => x.passTypeId)).toEqual([cadena.passTypeId]);
+    expect(faltanVariablesTienda("nube")).toEqual([]);
+  });
+
+  it("con una sola, la general, y se sabe qué falta", () => {
+    stubApple();
+    vi.stubEnv("APPLE_PASS_TYPE_ID_LA_DELI", "pass.dev.deli");
+    expect(configApple("la-deli").passTypeId).toBe(cadena.passTypeId);
+    expect(faltanVariablesTienda("la-deli")).toEqual(["APPLE_PASS_CERT_LA_DELI"]);
+  });
+
+  it("el panel lista las tiendas con ID propio, también las que están a medias", () => {
+    stubApple();
+    stubTienda("la-deli", "pass.dev.deli");
+    vi.stubEnv("APPLE_PASS_CERT_FADE", "x");
+    vi.stubEnv("APPLE_PASS_TYPE_ID_NUBE", ""); // vacía = no está
+    expect(tiendasConPassTypePropio()).toEqual(["fade", "la-deli"]);
+  });
+
+  it("sin Apple general no hay config de tienda", () => {
+    vi.stubEnv("APPLE_PASS_TYPE_ID", "");
+    stubTienda("la-deli", "pass.dev.deli");
+    expect(configApple("la-deli")).toBeNull();
+    expect(configsDeTienda("la-deli")).toEqual([]);
+  });
+
+  it("el .pkpass de la tienda sale con su Pass Type ID y su certificado", async () => {
+    stubApple();
+    vi.stubEnv("APP_URL", "https://sellos.app");
+    stubTienda("nube", "pass.dev.nube");
+    const f = leerZip(await generarPkpass(cliente, negocio("nube")));
+    expect(JSON.parse(f["pass.json"]).passTypeIdentifier).toBe("pass.dev.nube");
+    // Firmado con SU certificado: si no, el iPhone lo rechaza.
+    const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(f.signature.toString("binary"))));
+    const sujetos = p7.certificates.map((c) => c.subject.getField("CN")?.value);
+    expect(sujetos).toContain("Pass Type ID: pass.dev.nube");
+    expect(sujetos).not.toContain(`Pass Type ID: ${cadena.passTypeId}`);
   });
 });
 
