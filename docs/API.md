@@ -12,6 +12,8 @@ sesión sea **del negocio del recurso** (`403` si no).
 | Ruta | Acceso |
 |------|--------|
 | `/`, `/<negocio>`, `/login`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios` | público |
+| `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación) |
+| `/api/tutorial` | cualquier sesión (cada uno ve y marca lo suyo) |
 | `GET /api/tap`, `/p/<serial>`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
 | `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>` | público (la tarjeta de Android: el serial es la llave) |
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
@@ -35,6 +37,23 @@ Sesión de caja: 30 días. Sesión de manager: 12 h.
 
 ### `POST /api/logout`
 Borra la cookie. `{ "ok": true }`.
+
+### `POST /api/invitacion`
+El dueño de una tienda elige sus contraseñas desde el enlace del correo
+([`invitaciones.js`](../src/lib/invitaciones.js)). El token va en el cuerpo, nunca en la URL.
+```json
+// ¿vale el enlace?                          // response
+{ "token": "…" }                             { "nombre": "Nube Café", "tema": {…}, "usuarios": { "manager": "nube", "caja": "nube-caja" } }
+// fijar las dos                             // response ok (+ cookie de sesión de manager)
+{ "token": "…", "manager": "…", "caja": "…" } { "ok": true, "destino": "/nube/manager" }
+```
+`410` enlace usado, caducado, anulado por otro más nuevo o inventado · `400` contraseña
+floja (`campo`: `manager` | `caja`; mínimo 10 caracteres, distinta del usuario y entre sí) ·
+`429` más de 20 altas por IP en 10 min.
+
+### `GET /api/tutorial?recorrido=manager|caja` · `POST /api/tutorial` — `{ "recorrido": "caja" }`
+Si el usuario de la sesión ya vio el recorrido de bienvenida (`{ "visto": true }`) y
+apuntarlo. Va por usuario (`nube`, `nube-caja`); los admins comparten `admin`.
 
 ## Emitir
 
@@ -150,6 +169,13 @@ Con `{ slug, nota: { clave, texto } }` guarda un comentario sobre un campo del p
 `archivar` (por defecto) la esconde de todas partes sin borrar nada · `desarchivar` la
 devuelve · `borrar` la elimina para siempre **con sus clientes y su historial**, y exige
 `&confirmar=<slug>` exacto.
+
+### `POST /api/admin/invitacion` — `{ "slug": "nube" }`
+Enlace nuevo para que el dueño elija sus contraseñas. Anula los anteriores sin usar.
+```json
+{ "url": "https://…/invitacion#<token>", "caduca": "2026-10-01T…", "dias": 7,
+  "nombre": "Nube Café", "usuarios": { "manager": "nube", "caja": "nube-caja" } }
+```
 
 ## Apple Wallet web service
 

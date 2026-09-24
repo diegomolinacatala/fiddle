@@ -66,7 +66,7 @@ Necesitas **Node 22 o superior** (`node -v`) y git. Nada más.
 - `/p/<serial>` es la página del pase de un cliente.
 
 ```bash
-npm test          # 241 tests
+npm test          # 324 tests
 npm run build     # comprobar que compila antes de subir
 ```
 
@@ -157,6 +157,30 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Instalar la caja en el móvil de cada tienda (*Añadir a pantalla de inicio*).
 - [ ] Poner la **ubicación** de cada negocio desde su manager (aviso en pantalla de bloqueo).
 
+### Pedido el 23-09-2026 (después) — hecho (24-09-2026, rama `feat/movil-mapa-invitacion-tutorial`)
+- [x] **Vista en el móvil** revisada a 375 px (manager, caja, CRM, `/admin`, tarjeta, login).
+      Arreglado: la tabla del CRM empujaba la página entera, los contenedores de `96vw`
+      se pasaban del ancho, la fila de pestañas del admin no bajaba de línea, los botones
+      del tag se partían, y la X de la ficha y los enlaces de volver eran pequeños.
+- [x] **Ubicación con mapa** en el manager (Leaflet + OpenStreetMap, sin clave): punto
+      arrastrable, búsqueda por dirección, la dirección del punto debajo y el círculo de
+      ~100 m del aviso en pantalla de bloqueo.
+- [x] **Invitar al dueño por correo**: ficha `/admin/<tienda>` (y al crearla) → *Invitar al
+      dueño por correo* → abre tu correo con el mensaje escrito (mailto, sin proveedor). El
+      enlace lleva un token de un solo uso que caduca en 7 días (no la contraseña); el dueño
+      elige la suya y la de la caja y entra. Las que generó el admin dejan de valer.
+- [x] **Recorrido de bienvenida** en manager y caja: globos sobre la pantalla real, se
+      guarda por usuario en la base y el **(?)** de la cabecera lo repite.
+- [x] Fuera **WalletWallet** y `ww_serial` del código.
+
+**Para desplegarlo, en este orden:**
+1. Supabase → SQL Editor: ejecutar `supabase/schema.sql` (crea `invitaciones` y
+   `tutoriales`). Sin esto, invitar y el recorrido dan 500.
+2. Fusionar la rama a `main` (Vercel despliega).
+3. **Después** del deploy, en Supabase: `alter table clientes drop column if exists ww_serial;`
+   Antes no: el código de antes todavía lee esa columna.
+4. Opcional: quitar `WALLETWALLET_API_KEY` de Vercel y de tu `.env.local` (ya no se lee).
+
 ### Android
 - [ ] **Google Wallet**: sacar las credenciales y ponerlas en Vercel (20 minutos,
       [guía](docs/GOOGLE-WALLET.md)). Añadir como usuarios de prueba las cuentas de
@@ -175,7 +199,6 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Quitar `USUARIOS_DEMO` de Vercel: se desactivan los accesos de prueba y dejan de
       mostrarse en el login. Quedan solo las contraseñas de `certs/secretos.env`.
 - [ ] Badge oficial "Add to Apple Wallet" en `/p/<serial>` (ahora hay un botón provisional).
-- [ ] Quitar WalletWallet del código y la columna `ww_serial` (ya no se usa).
 - [ ] Plan **Pro** en Vercel: el gratuito es solo para uso no comercial.
 
 ### Más adelante

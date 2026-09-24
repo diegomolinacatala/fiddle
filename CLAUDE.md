@@ -137,9 +137,15 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
 
 Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/claves.js).
 
-- **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan (nunca las elige
-  nadie) al crear la tienda en `/admin`, se enseñan UNA vez y se cambian desde la
-  ficha de la tienda en `/admin` o, la de la caja, desde el manager.
+- **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan al crear la tienda
+  en `/admin`, se enseñan UNA vez y se cambian desde la ficha de la tienda en `/admin`
+  o, la de la caja, desde el manager. La única vez que las elige alguien es la
+  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja.
+- **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
+  detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
+  desde el correo del admin: no hay proveedor de correo.
+- `hashClave` normaliza igual que `comprobarClave`. Si se toca una, la otra también: una
+  elegida con forma de generada ("cafe12345678") dejaría de entrar.
 - Si un usuario tiene contraseña en la base, **solo vale esa**. Sin fila, vale la
   variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
   también se cae a la variable: una caja sin poder entrar es peor.
@@ -150,6 +156,18 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
+
+## Pantallas en el móvil
+
+- **Los contenedores de página van a `min(Npx, 100%)`, nunca a `vw`**: `96vw` más el margen
+  de `pagina` ya se sale. Y `pagina` lleva `gridTemplateColumns: "minmax(0, 1fr)"`: sin
+  eso, una tabla ancha hace crecer la rejilla y se desborda TODA la página, no la tabla.
+- Tablas anchas dentro de `overflowX: "auto"`. Filas de botones con `flexWrap`.
+- **Recorrido de bienvenida** (`app/Recorrido.js`): cada paso señala un elemento con
+  `data-recorrido="<ancla>"`. Mover o quitar ese atributo no rompe nada visible: el paso
+  se salta en silencio. Al tocar manager o caja, mirar que las anclas siguen.
+- **Dominios externos**: la CSP (`next.config.mjs`) solo abre OpenStreetMap (teselas y
+  Nominatim, para el mapa del manager). Otro servicio = otra línea ahí, o no carga.
 
 ## Datos y permisos
 
