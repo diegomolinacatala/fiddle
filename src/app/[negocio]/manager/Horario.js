@@ -10,7 +10,8 @@ import { C, campo, h2, botonPrimario, botonPequeno, RADIO } from "@/app/ui";
 // ----------------------------------------------------------------------------
 // Lo usan los avisos automáticos: solo salen con la tienda abierta, y los
 // "días seguidos" de la racha cuentan días de apertura (el domingo cerrado no
-// la rompe). Guardarlo no toca ningún pase: el horario no sale en la tarjeta.
+// la rompe). Y la tarjeta web dice con él si está abierta (app/AbiertoAhora.js).
+// Guardarlo no toca ningún pase: Wallet no lo enseña, y la tarjeta web lo lee sola.
 // ============================================================================
 
 // Para una tienda que aún no lo ha puesto: un punto de partida, no un horario inventado.

@@ -194,6 +194,14 @@ describe("tarjeta pública", () => {
     expect(n).toMatchObject({ slug: "nube", meta: 8, tema: nube.tema });
   });
 
+  it("el horario llega (para decir si está abierta); los avisos automáticos, no", () => {
+    const deli = componerNegocio("delicanteria", null);
+    const n = negocioDeTarjeta(deli);
+    expect(n.horario).toEqual(deli.horario);
+    expect(n).not.toHaveProperty("automatizaciones");
+    expect(negocioDeTarjeta(nube).horario).toBeNull();
+  });
+
   it("el tag recuerda la tarjeta por tienda y solo acepta seriales", () => {
     expect(cookieDeTarjeta("nube")).toBe("tarjeta_nube");
     expect(serialRecordado(SERIAL)).toBe(SERIAL);

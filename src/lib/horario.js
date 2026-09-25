@@ -209,3 +209,59 @@ export function cuandoTexto(fecha, hoy) {
   if (dentro > 1 && dentro < 7) return `el ${DIAS[diaDeFecha(fecha)]}`;
   return `el ${new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "long", timeZone: "UTC" })}`;
 }
+
+// ---------------------------------------------------------- ¿abierta ahora?
+// La línea bajo el nombre de la tienda en la tarjeta del cliente. Es lo que
+// hacen Google Maps y Apple Maps: el estado y la hora siguiente que importa, en
+// una línea ("Abierto hasta las 18:30", "Cerrado hasta mañana"), y "pronto"
+// cuando falta una hora o menos para cerrar o para abrir.
+//
+// Cortas a propósito: comparten la cabecera con el nombre y el contador de
+// premios, y en un Android de 360 px caben unos 30 caracteres. Por eso la hora
+// de abrir solo sale si es hoy; "Cerrado · abre el miércoles a las 7:30" se cortaba.
+
+const PRONTO_MIN = 60;
+
+/** 1110 -> "las 18:30"; 105 -> "la 1:45". */
+const lasHoras = (min) => `${Math.floor(min / 60) === 1 ? "la" : "las"} ${horaCorta(aHora(min))}`;
+
+/** Próxima apertura desde `minutos` de `fecha` (hoy incluido): {fecha, minutos} o null. */
+function aperturaTras(horario, fecha, minutos) {
+  for (let i = 0; i < 15; i += 1) {
+    const f = sumarDias(fecha, i);
+    const tramo = tramoDe(horario, f);
+    if (tramo && (i > 0 || minutos < tramo.abre)) return { fecha: f, minutos: tramo.abre };
+  }
+  return null;
+}
+
+/**
+ * ¿Está abierta la tienda en `ms`? Con la hora de la tienda, no la de quien mira.
+ * Sin horario, null: no se sabe, y "Abierto" sería inventárselo.
+ *
+ * `corto` es el principio de `texto` ("Abierto", "Cierra pronto", "Cerrado"):
+ * lo que queda cuando el resto no cabe, mejor que "Abierto hasta las 16:…".
+ * @returns {{abierta:boolean, tono:"abierto"|"pronto"|"cerrado", corto:string, texto:string}|null}
+ */
+export function estadoAhora(horario, ms) {
+  if (!horario) return null;
+  const { fecha, minutos } = relojLocal(ms, horario.zona);
+  const hoy = tramoDe(horario, fecha);
+  const hora = (min) => horaCorta(aHora(min));
+
+  if (hoy && minutos >= hoy.abre && minutos < hoy.cierra) {
+    return hoy.cierra - minutos <= PRONTO_MIN
+      ? { abierta: true, tono: "pronto", corto: "Cierra pronto", texto: `Cierra pronto · ${hora(hoy.cierra)}` }
+      : { abierta: true, tono: "abierto", corto: "Abierto", texto: `Abierto hasta ${lasHoras(hoy.cierra)}` };
+  }
+
+  const cerrado = (texto) => ({ abierta: false, tono: "cerrado", corto: "Cerrado", texto });
+  const abre = aperturaTras(horario, fecha, minutos);
+  if (!abre) return cerrado("Cerrado");
+  // Una que abre a las 0:15 está a 25 minutos a las 23:50: "pronto", aunque sea mañana.
+  const dias = abre.fecha === fecha ? 0 : abre.fecha === sumarDias(fecha, 1) ? 1 : Infinity;
+  if (abre.minutos - minutos + dias * 24 * 60 <= PRONTO_MIN) {
+    return { abierta: false, tono: "pronto", corto: "Abre pronto", texto: `Abre pronto · ${hora(abre.minutos)}` };
+  }
+  return cerrado(`Cerrado hasta ${dias === 0 ? lasHoras(abre.minutos) : cuandoTexto(abre.fecha, fecha)}`);
+}
