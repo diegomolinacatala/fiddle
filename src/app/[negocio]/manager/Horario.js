@@ -66,7 +66,7 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
     <div id="horario" style={{ scrollMarginTop: 20 }}>
       <h2 style={h2}>Horario</h2>
       <p style={texto}>
-        {inicial ? resumenHorario(inicial) : "Sin horario: los avisos automáticos salen a su hora cualquier día."}
+        {inicial ? resumenHorario(inicial) : "Sin horario: los avisos automáticos no salen hasta que lo guardes."}
         {" "}Los avisos automáticos solo salen con la tienda abierta.
       </p>
 

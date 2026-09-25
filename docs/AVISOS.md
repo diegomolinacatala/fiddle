@@ -76,7 +76,8 @@ Cada 15 minutos, por tienda, el motor:
 1. **Quita los mensajes de un solo día que ya pasaron** (reglas con *"Quitarlo de la
    tarjeta al cerrar"*, como la promo de la racha): al cerrar, fuera. Solo a quien
    sigue teniendo ese texto: si luego le llegó otro, no se toca.
-2. **Manda las reglas a las que les toca**, en el orden de la lista. Una regla toca:
+2. **Manda las reglas a las que les toca**, en el orden de la lista. Una tienda **sin
+   horario no manda nada solo** (el botón *Enviar ahora* sí funciona). Una regla toca:
    - un día que la tienda abre (`horario`: días de la semana y días cerrados),
    - si es uno de sus días (ninguno marcado = los que abre),
    - desde su hora (o desde que abre, si a esa hora aún no había abierto) y durante

@@ -112,9 +112,12 @@ async function retirarCaducados(negocio, campanas, clientes, ahora) {
 export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = null } = {}) {
   const reglas = negocio.automatizaciones || [];
   const reloj = relojLocal(ahora, negocio.horario?.zona);
+  // Sin horario no sale nada solo: una tienda que nadie ha configurado (o una de
+  // prueba) no puede empezar a avisar a sus clientes a cualquier hora. A mano
+  // ("Enviar ahora") sí, porque lo pide el manager.
   const tocan = soloRegla
     ? reglas.filter((r) => r.id === soloRegla)
-    : reglas.filter((r) => r.activa && tocaAhora(r, negocio.horario, reloj));
+    : negocio.horario ? reglas.filter((r) => r.activa && tocaAhora(r, negocio.horario, reloj)) : [];
   const resultado = { negocio: negocio.slug, retirados: 0, envios: [] };
 
   const campanas = await historial(negocio.slug, ahora);

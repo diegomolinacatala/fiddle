@@ -111,7 +111,7 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
         {n.horario ? (
           <span>Solo salen con la tienda abierta: <strong style={{ color: C.texto, fontWeight: 600 }}>{resumenHorario(n.horario)}</strong>.</span>
         ) : (
-          <span>Pon el horario de la tienda para que no salgan con la tienda cerrada.</span>
+          <span><strong style={{ color: C.texto, fontWeight: 600 }}>Sin horario no sale ninguno solo.</strong> Pon cuándo abre la tienda; mientras, «Enviar ahora» sí funciona.</span>
         )}
         <Link href={`/${slug}/manager#horario`} style={{ marginLeft: "auto", color: n.tema.accent, fontWeight: 600, whiteSpace: "nowrap" }}>
           {n.horario ? "Cambiar horario" : "Poner horario"}
