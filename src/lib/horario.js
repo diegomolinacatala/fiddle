@@ -16,8 +16,9 @@
 //     cerrados: ["2026-10-09", …]   festivos y vacaciones
 //   }
 //
-// Sin horario (null) la tienda cuenta como abierta siempre: nada se bloquea,
-// pero la pantalla pide ponerlo.
+// Sin horario (null) estas funciones la tratan como abierta siempre, pero el
+// motor (lib/motorAvisos.js) no manda nada solo a una tienda sin horario: la
+// pantalla pide ponerlo.
 // ============================================================================
 
 export const DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];

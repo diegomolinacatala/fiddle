@@ -61,7 +61,9 @@ export default function Regla({ regla, negocio, grupos, contextos, envios, pausa
               ? <>Ahora mismo le llegaría a <strong style={{ color: C.texto }}>{llegan}</strong></>
               : "Ahora mismo no le llegaría a nadie"}
             {" · "}
-            {proximo ? `Próximo envío: ${proximo.texto}` : "Esos días la tienda está cerrada"}
+            {!negocio.horario
+              ? "No sale solo hasta que la tienda tenga horario"
+              : proximo ? `Próximo envío: ${proximo.texto}` : "Esos días la tienda está cerrada"}
           </>
         ) : "Apagado: no sale hasta que lo enciendas"}
       </p>

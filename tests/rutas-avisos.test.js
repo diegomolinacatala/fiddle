@@ -14,6 +14,7 @@ const store = await import("@/lib/store");
 const cron = await import("@/app/api/cron/avisos/route.js");
 const autos = await import("@/app/api/automatizaciones/route.js");
 const negocioRuta = await import("@/app/api/negocio/route.js");
+const negociosRuta = await import("@/app/api/negocios/route.js");
 
 let dir;
 beforeEach(() => {
@@ -121,5 +122,13 @@ describe("PUT /api/negocio desde el manager", () => {
     const r = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { horario: { semana: [] } } }));
     expect(r.status).toBe(400);
     expect((await r.json()).error).toMatch(/Horario no válido/);
+  });
+});
+
+describe("GET /api/negocios (público)", () => {
+  it("solo dice qué tiendas hay: nada de brief, notas, horario ni avisos", async () => {
+    const lista = await (await negociosRuta.GET()).json();
+    expect(lista).toContainEqual({ slug: "delicanteria", nombre: "La Delicantería" });
+    for (const n of lista) expect(Object.keys(n).sort()).toEqual(["nombre", "slug"]);
   });
 });

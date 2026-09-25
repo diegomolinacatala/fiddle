@@ -151,3 +151,21 @@ describe("enviar ahora y la pantalla", () => {
     expect(d.conteos["te-echamos-de-menos"].llegaria).toBe(0);
   });
 });
+
+describe("una tienda sin horario", () => {
+  it("no manda nada sola, aunque tenga avisos encendidos; a mano, sí", async () => {
+    // Nube (tienda de prueba) no tiene horario y lleva los avisos de partida encendidos.
+    vi.setSystemTime(valencia("2026-09-18", "09:00"));
+    await store.crearCliente({ serial: "nube-1", negocio: "nube", authToken: "t".repeat(24) });
+    await store.registrarPase({ dispositivo: "web-nube", pushToken: "{}", passType: "web", serial: "nube-1", negocio: "nube" });
+
+    // Jueves a las 11:05: "Tarjeta sin estrenar" (11:00) le tocaría si hubiera horario.
+    const r = await pasada("2026-09-24", "11:05");
+    expect(r.find((x) => x.negocio === "nube").envios).toEqual([]);
+    expect((await store.getCliente("nube-1")).mensaje).toBeNull();
+
+    const nube = await store.getNegocio("nube");
+    const aMano = await motor.repasarNegocio(nube, { soloRegla: "sin-estrenar" });
+    expect(aMano.envios[0]).toMatchObject({ regla: "sin-estrenar", destinatarios: 1 });
+  });
+});

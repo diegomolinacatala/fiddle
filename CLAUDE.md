@@ -155,7 +155,8 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
   dijimos", la pausa entre avisos y el "¿volvió?". Nada de tablas nuevas ni de
   apuntar "ya corrió hoy": el motor es idempotente y el reloj puede pasar de más.
 - **La hora es la de la tienda** (`horario.zona`), nunca la del servidor: todo lo que
-  mire el reloj pasa por `lib/horario.js`.
+  mire el reloj pasa por `lib/horario.js`. **Sin horario, nada sale solo**: el reloj
+  pasa por todas las tiendas de la base, también las de prueba.
 - **El reloj NO va en `vercel.json`** mientras el plan sea Hobby: un cron de más de
   una vez al día hace fallar el despliegue. Lo llama Supabase (`pg_cron`).
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la

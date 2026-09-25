@@ -13,7 +13,8 @@
 //
 // Tres reglas que no se negocian, porque son las que evitan el spam:
 //   1. Solo con la tienda abierta (lib/horario.js): si a esa hora aún no ha
-//      abierto, sale al abrir; si ya ha cerrado, ese día no sale.
+//      abierto, sale al abrir; si ya ha cerrado, ese día no sale. Y una tienda
+//      sin horario no manda nada solo (lo decide el motor).
 //   2. Cada regla, una vez por ausencia: hasta que el cliente vuelve a pasar
 //      por caja no se le repite lo mismo.
 //   3. Una pausa entre avisos a la misma persona (`pausaAvisos`, 3 días), sean

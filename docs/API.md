@@ -211,6 +211,8 @@ Ficha completa: `{ cliente, perfil, eventos }` (hasta 100 eventos, del más nuev
 ### `PUT /api/crm/cliente/<serial>` · manager
 `{ "nota": "sin lactosa" }` → nota interna de la tienda. **No** sale en el pase.
 
+`GET /api/negocios` (público) solo dice qué tiendas hay: `[{ slug, nombre }]`.
+
 La exportación a CSV ya no es una ruta: el panel de Clientes arma el fichero en el
 navegador con la lista que se está viendo (`csvClientes()` de `lib/exportar.js`).
 
