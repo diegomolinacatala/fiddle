@@ -52,9 +52,10 @@ junto a la lista) y **Avisos** (la promo, mensajes a un grupo y los
 ## Cómo funciona
 
 ```
-Tag NFC ─▶ /api/tap?b=<negocio> ─▶ iPhone: .pkpass firmado directo ─▶ "Añadir a Wallet"
-                                    Android: /p/<serial> ─▶ Google Wallet · avisos · instalar
-           (si ese teléfono ya tenía tarjeta, se le devuelve la suya)
+Tag NFC / QR ─▶ /api/tap?b=<negocio> ─▶ /<negocio>: su nombre ─▶ botón de SU Wallet
+                  iPhone: .pkpass firmado ─▶ "Añadir a Wallet"
+                  Android: Google Wallet, o /p/<serial> ─▶ avisos · instalar
+           (si ese teléfono ya tenía tarjeta, va directo a la suya)
 
 Tarjeta (QR = /w/<serial>)
    │ la caja la escanea (/<negocio>/caja, con login)

@@ -41,11 +41,23 @@ Borra la cookie. `{ "ok": true }`.
 ## Emitir
 
 ### `GET /api/tap?b=<negocio>[&nuevo=1]`
-El "tap NFC". Crea cliente y pase, o **devuelve el que ya tenía ese teléfono**
-(cookie `tarjeta_<negocio>`, 1 año). `nuevo=1` fuerza uno nuevo.
-- iPhone + Apple configurado → responde el **`.pkpass`** (`application/vnd.apple.pkpass`).
-- Resto → `302` a `/p/<serial>` en el mismo dominio (o a la página de WalletWallet en el plan B).
-- `429` si una misma IP emite más de 30 pases en 10 min (reabrir el suyo no cuenta).
+El "tap NFC" (y el QR del mostrador). Si ese teléfono **ya tiene tarjeta** (cookie
+`tarjeta_<negocio>`, 1 año), se la devuelve:
+- iPhone + Apple configurado → `302` a `/api/pase/<serial>` (el **`.pkpass`**).
+- Android + Google Wallet → `302` a guardarla en Google Wallet.
+- Resto → `302` a `/p/<serial>` en el mismo dominio.
+
+Si no la tiene, `302` a `/<negocio>`: la página de la tienda **pide el nombre** y
+luego ofrece la Wallet. No se crea nada hasta tener el nombre. `nuevo=1` pide otra
+aunque ya tenga una.
+
+### `POST /api/tap?b=<negocio>[&nuevo=1]` · `{ "nombre": "Marta" }`
+Lo manda el formulario de `/<negocio>`. Crea la tarjeta con ese nombre (cifrado) y
+deja la cookie. En JSON responde `{ "ok": true, "ir": "/<negocio>" }`; como formulario
+normal (sin JavaScript), `303` a `ir`. Con WalletWallet (plan B), `ir` es su página.
+- Si la cookie ya tiene tarjeta de la tienda, no crea otra: devuelve esa.
+- `400` sin nombre · `403` si viene de otra web (`Sec-Fetch-Site: cross-site`) ·
+  `404` si la tienda no existe · `429` si una misma IP saca más de 30 en 10 min.
 
 ### `POST /api/crear?b=<negocio>` · manager
 ```json

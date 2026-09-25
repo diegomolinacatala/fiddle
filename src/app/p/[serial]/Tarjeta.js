@@ -2,10 +2,8 @@
 
 import QrImagen from "@/app/QrImagen";
 import Icono from "@/app/Icono";
-import { camposDelPase } from "@/lib/apple/pase";
-import { svgLogo, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import CaraDelPase from "@/app/CaraDelPase";
 import { estadoDe } from "@/lib/resumen";
-import { describirBanda } from "@/lib/cartillas";
 import { useTarjetaEnVivo } from "./telefono";
 import Acciones from "./Acciones";
 
@@ -28,9 +26,6 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
   const { cliente, negocio } = datos;
   const t = negocio.tema;
   const e = estadoDe(cliente, negocio);
-  const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = camposDelPase(cliente, negocio);
-  const banda = stripDelPase(negocio, cliente);
-  const campos = [...secondaryFields, ...auxiliaryFields];
 
   return (
     <main style={{ ...pagina, background: t.pageBg, color: t.pageInk }}>
@@ -51,46 +46,7 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
       )}
 
       <div style={{ width: "100%", maxWidth: 400 }}>
-        <article className="tarjeta" style={{ background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
-          <header style={cabecera}>
-            <img src={comoDataUri(svgLogo(t))} alt="" width={30} height={30} style={{ display: "block", flexShrink: 0 }} />
-            <strong style={nombreTienda}>{negocio.nombre}</strong>
-            {headerFields.map((f) => (
-              <div key={f.key} style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={etiqueta(t.accent)}>{f.label}</div>
-                <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.15 }}>{f.value}</div>
-              </div>
-            ))}
-          </header>
-
-          <div style={{ position: "relative" }}>
-            {/* key: cada sello nuevo vuelve a montar la banda y la animación se ve */}
-            <img
-              key={`${cliente.sellos}-${cliente.sellos2}-${cliente.premios}`}
-              className={novedad ? "banda nueva" : "banda"}
-              src={comoDataUri(banda.svg)}
-              alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio)}
-              style={{ display: "block", width: "100%", height: "auto", aspectRatio: `${banda.ancho} / ${banda.alto}` }}
-            />
-            {primaryFields.length > 0 && (
-              <div style={sobreLaBanda}>
-                <div style={{ ...etiqueta("#fff"), opacity: 0.9 }}>{primaryFields[0].label}</div>
-                <div style={descuento}>{primaryFields[0].value}</div>
-              </div>
-            )}
-          </div>
-
-          {campos.length > 0 && (
-            <div style={{ display: "flex", gap: 16, padding: "14px 18px 0" }}>
-              {campos.map((f) => (
-                <div key={f.key} style={{ flex: 1, minWidth: 0 }}>
-                  <div style={etiqueta(t.accent)}>{f.label}</div>
-                  <div style={{ fontSize: 16, fontWeight: 500, marginTop: 2, overflowWrap: "anywhere" }}>{f.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
+        <CaraDelPase cliente={cliente} negocio={negocio} claseBanda={novedad ? "banda nueva" : "banda"}>
           <div style={{ display: "grid", placeItems: "center", padding: "20px 18px 22px" }}>
             <div style={cajaQr}>
               <QrImagen texto={qrTexto} lado={196} />
@@ -99,7 +55,7 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
           </div>
 
           {e.usado && <div className="sello-usado" aria-hidden>Usado</div>}
-        </article>
+        </CaraDelPase>
 
         <p style={{ fontSize: 13, textAlign: "center", margin: "14px 8px 0", opacity: 0.8, lineHeight: 1.45 }}>
           Enseña el QR en caja. Si no se deja leer, di tu código: <strong style={{ letterSpacing: 1 }}>{cliente.codigo}</strong>
@@ -135,29 +91,6 @@ const pagina = {
   padding: "max(22px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom))",
 };
 
-const cabecera = { display: "flex", alignItems: "center", gap: 10, padding: "14px 18px" };
-const nombreTienda = { flex: 1, minWidth: 0, fontSize: 16, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-
-const etiqueta = (color) => ({
-  fontSize: 10.5,
-  fontWeight: 700,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  color,
-});
-
-const sobreLaBanda = {
-  position: "absolute",
-  inset: 0,
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  padding: "0 18px",
-  maxWidth: "64%",
-};
-
-const descuento = { fontSize: 26, fontWeight: 750, color: "#fff", lineHeight: 1.1, textShadow: "0 1px 3px rgba(0,0,0,.3)" };
-
 const cajaQr = { background: "#fff", padding: 12, borderRadius: 14, boxShadow: "0 0 0 1px rgba(0,0,0,.06)" };
 
 const codigo = {
@@ -183,8 +116,6 @@ const cerrar = {
 };
 
 const css = `
-.tarjeta{position:relative;border-radius:22px;overflow:hidden;
-  box-shadow:0 22px 44px -18px rgba(0,0,0,.45),0 4px 14px rgba(0,0,0,.1),inset 0 0 0 1px rgba(255,255,255,.06)}
 .banda.nueva{animation:banda .7s cubic-bezier(.2,.9,.3,1.3)}
 @keyframes banda{0%{transform:scale(.96);filter:brightness(1.25)}100%{transform:none;filter:none}}
 .novedad{position:fixed;z-index:10;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;margin:0 auto;max-width:420px;

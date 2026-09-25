@@ -7,7 +7,7 @@ fuera del código para trabajar con una tienda real.
 
 | Dato | Dónde | Cómo se guarda | Por qué así |
 |---|---|---|---|
-| Nombre del cliente (opcional, lo da él) | `clientes.nombre` | **Cifrado** | Identifica a una persona |
+| Nombre del cliente (lo escribe él al sacar la tarjeta) | `clientes.nombre` | **Cifrado** | Identifica a una persona |
 | Nota de la tienda ("sin lactosa", "el del perro") | `clientes.nota` | **Cifrado** | Texto libre: puede acabar siendo un dato de salud |
 | Sellos, visitas, fechas, historial | `clientes`, `eventos` | En claro, ligado al `serial` (un uuid) | El CRM agrupa y ordena por ellos en SQL. Sin nombre no dicen de quién son |
 | Tokens de avisos (Apple, web, Google) | `dispositivos`, `registros` | En claro | Hacen falta tal cual para mandar el aviso y no identifican a nadie |

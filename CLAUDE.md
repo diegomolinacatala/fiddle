@@ -51,6 +51,18 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   [NEXT-STEPS.md](NEXT-STEPS.md#un-pass-type-id-por-tienda) antes de tocar la firma,
   el web service o APNs, que hoy dan por hecho que solo hay uno.
 
+## El alta: primero el nombre
+
+El QR y el tag llevan a `/api/tap`. Quien ya tiene tarjeta (cookie) va directo a
+ella; al resto lo manda a `/<slug>`, que pide SOLO el nombre y luego enseña la
+tarjeta con el botón de su Wallet.
+
+- **La tarjeta la crea el POST de `/api/tap`, nunca el GET**: quien escanea y se va
+  no deja un cliente vacío.
+- Es lo primero que ve el cliente: pocas palabras, los colores de la tienda y los
+  botones oficiales de Wallet (`app/BotonesWallet.js`) sin tocar.
+- La tarjeta de esa página es `app/CaraDelPase.js`, la misma que la tarjeta web.
+
 ## Una tarjeta por iPhone y tienda
 
 Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
