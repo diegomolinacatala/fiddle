@@ -45,6 +45,7 @@ export async function PUT(request) {
     if (!nuevo) return jsonError("negocio desconocido", 404);
     // Solo lo que se ve en el pase merece mover los teléfonos: el horario o los
     // botones de la caja no salen en él, y guardarlos no debe tocar cientos de tarjetas.
+    // (El "Abierto hasta…" de la tarjeta web lo recoge ella sola al preguntar.)
     const tocaPase = PASE.some((k) => k in r.patch);
     const aviso = tocaPase ? await notificarNegocio(nuevo, { cartilla: true }) : null;
     return NextResponse.json({ ...nuevo, aviso });

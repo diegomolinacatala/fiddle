@@ -22,7 +22,11 @@ export const clienteDeTarjeta = (c) =>
     mensaje: c.mensaje ?? null,
   };
 
-/** Lo del negocio que hace falta para pintar la tarjeta y nada más. */
+/**
+ * Lo del negocio que hace falta para pintar la tarjeta y nada más. El horario
+ * va para decir "Abierto hasta las 18:30" (app/AbiertoAhora.js); los avisos
+ * automáticos, que viven al lado, no.
+ */
 export const negocioDeTarjeta = (n) =>
   n && {
     slug: n.slug,
@@ -33,4 +37,5 @@ export const negocioDeTarjeta = (n) =>
     cartillas: n.cartillas ?? null,
     promo: n.promo ?? null,
     tema: n.tema,
+    horario: n.horario ?? null,
   };

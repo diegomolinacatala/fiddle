@@ -46,7 +46,7 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
       )}
 
       <div style={{ width: "100%", maxWidth: 400 }}>
-        <CaraDelPase cliente={cliente} negocio={negocio} claseBanda={novedad ? "banda nueva" : "banda"}>
+        <CaraDelPase cliente={cliente} negocio={negocio} horario={negocio.horario} claseBanda={novedad ? "banda nueva" : "banda"}>
           <div style={{ display: "grid", placeItems: "center", padding: "20px 18px 22px" }}>
             <div style={cajaQr}>
               <QrImagen texto={qrTexto} lado={196} />

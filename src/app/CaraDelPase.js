@@ -2,6 +2,7 @@ import { camposDelPase } from "@/lib/apple/pase";
 import { svgLogo, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { describirBanda } from "@/lib/cartillas";
+import AbiertoAhora from "@/app/AbiertoAhora";
 
 // ============================================================================
 // LA CARA DE LA TARJETA
@@ -14,9 +15,12 @@ import { describirBanda } from "@/lib/cartillas";
 //
 // `claseBanda`: la tarjeta web la cambia para animar la banda con cada sello.
 // `children`: lo que va dentro de la tarjeta, debajo de los campos.
+// `horario`: si viene, "Abierto hasta las 18:30" bajo el nombre (AbiertoAhora).
+// Solo lo pasa la tarjeta web: el pase de Wallet no puede llevarlo, y en el alta
+// el cliente está en la tienda.
 // ============================================================================
 
-export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", children = null }) {
+export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", horario = null, children = null }) {
   const t = negocio.tema;
   const e = estadoDe(cliente, negocio);
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = camposDelPase(cliente, negocio);
@@ -27,7 +31,10 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ch
     <article style={{ ...tarjeta, background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
       <header style={cabecera}>
         <img src={comoDataUri(svgLogo(t))} alt="" width={30} height={30} style={{ display: "block", flexShrink: 0 }} />
-        <strong style={nombreTienda}>{negocio.nombre}</strong>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <strong style={nombreTienda}>{negocio.nombre}</strong>
+          {horario && <AbiertoAhora horario={horario} />}
+        </div>
         {headerFields.map((f) => (
           <div key={f.key} style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={etiqueta(t.accent)}>{f.label}</div>
@@ -77,7 +84,7 @@ const tarjeta = {
 };
 
 const cabecera = { display: "flex", alignItems: "center", gap: 10, padding: "14px 18px" };
-const nombreTienda = { flex: 1, minWidth: 0, fontSize: 16, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const nombreTienda = { display: "block", fontSize: 16, fontWeight: 650, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 const etiqueta = (color) => ({
   fontSize: 10.5,
