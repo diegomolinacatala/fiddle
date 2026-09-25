@@ -304,15 +304,17 @@ export const clientePublico = (c) =>
   };
 
 /**
- * @param {{serial:string, negocio:string, authToken:string, wwSerial?:string|null, origen?:string}} datos
+ * @param {{serial:string, negocio:string, authToken:string, wwSerial?:string|null, origen?:string, nombre?:string|null}} datos
  *   `origen`: de dónde salió el pase ("tap" en el tag NFC, "manager" desde el
  *   mostrador). Responde a "¿de dónde vienen mis clientes?" sin preguntárselo.
+ *   `nombre`: el que escribe el cliente al sacarla. Se guarda cifrado, como siempre.
  */
-export async function crearCliente({ serial, negocio, authToken, wwSerial = null, origen = null }) {
+export async function crearCliente({ serial, negocio, authToken, wwSerial = null, origen = null, nombre = null }) {
   const ts = ahoraISO();
   const base = {
     serial, negocio, ww_serial: wwSerial, auth_token: authToken,
-    sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0, nombre: null, actualizado: ts, creado: ts,
+    sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0,
+    nombre: cifrarCampo(serial, "nombre", nombre), actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
     origen, mensaje: null, nota: null,
   };

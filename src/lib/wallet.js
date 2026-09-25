@@ -42,10 +42,10 @@ export function proveedorWallet() {
  * Crea un cliente nuevo con su pase (el "tap NFC").
  * El serial es NUESTRO (uuid): va en el QR desde el primer momento.
  * `origen` ("tap" | "manager") queda guardado: el CRM lo usa para saber por
- * dónde entra la gente.
+ * dónde entra la gente. `nombre`, el que da el cliente al sacarla desde el tap.
  * @returns {Promise<{cliente:object, negocio:object, proveedor:string, urlPase:string, shareUrl:string, pkpassWalletWallet:Buffer|null, googleSaveUrl:string|null}>}
  */
-export async function emitirPase(slug, { origen = null } = {}) {
+export async function emitirPase(slug, { origen = null, nombre = null } = {}) {
   const negocio = await getNegocio(slug);
   if (!negocio) throw new Error(`Negocio desconocido: ${slug}`);
 
@@ -57,13 +57,13 @@ export async function emitirPase(slug, { origen = null } = {}) {
   let shareUrl = null;
   let pkpassWalletWallet = null;
   if (proveedor === "walletwallet") {
-    const creado = await createPass(buildPassBody({ serial, sellos: 0, premios: 0, nombre: null }, negocio));
+    const creado = await createPass(buildPassBody({ serial, sellos: 0, premios: 0, nombre }, negocio));
     wwSerial = creado.wwSerial;
     shareUrl = creado.shareUrl;
     pkpassWalletWallet = creado.applePass ? Buffer.from(creado.applePass, "base64") : null;
   }
 
-  const cliente = await crearCliente({ serial, negocio: slug, authToken, wwSerial, origen });
+  const cliente = await crearCliente({ serial, negocio: slug, authToken, wwSerial, origen, nombre });
   // El alta abre el historial del cliente: sin ella, su ficha empieza en el aire.
   await addEvento(serial, "alta", origen === "manager" ? "Pase emitido en el mostrador" : "Pase emitido", {
     negocio: slug,

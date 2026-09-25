@@ -86,7 +86,7 @@ integración**: tiene que salir 🟢 en Apple Wallet, URL HTTPS, base de datos y
 ## 3. Probar en un iPhone
 
 1. En Safari del iPhone abre `https://TU-APP/api/tap?b=delicanteria` (o toca el tag NFC).
-   → Sale la hoja **Añadir a Apple Wallet** directamente. Añade.
+   → Pide el nombre; al continuar sale la tarjeta con **Añadir a Cartera de Apple**. Añade.
 2. En otro móvil abre `https://TU-APP/delicanteria/caja`, entra con el usuario `delicanteria-caja`,
    **Escanear pase** → apunta al QR del pase → **Añadir sello**.
 3. En unos segundos el iPhone recibe la notificación *"Tienes 1 de 8 sellos"* y la
@@ -124,8 +124,9 @@ Cada certificado caduca al año y se renueva por separado (pasos 2–4, mismo ID
 ## Cómo funciona por dentro
 
 ```
-EMITIR   /api/tap?b=delicanteria ──▶ crea cliente {serial, auth_token}
-                         └─▶ generarPkpass() ──▶ .pkpass firmado ──▶ "Añadir a Wallet"
+EMITIR   /api/tap?b=delicanteria ──▶ /delicanteria pide el nombre
+         POST /api/tap { nombre } ──▶ crea cliente {serial, auth_token, nombre}
+         /api/pase/<serial> ──▶ generarPkpass() ──▶ .pkpass firmado ──▶ "Añadir a Wallet"
 
 REGISTRO (lo hace el iPhone solo al añadir el pase)
   POST /api/wallet/v1/devices/:id/registrations/:passType/:serial   Authorization: ApplePass <auth_token>

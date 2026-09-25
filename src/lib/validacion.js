@@ -6,6 +6,20 @@ import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
+const MAX_NOMBRE = 48;
+
+/**
+ * El nombre de un cliente, lo escriba él al sacar la tarjeta o la caja. Sin
+ * caracteres invisibles (un control de dirección le da la vuelta al texto en
+ * la ficha) y con los espacios juntos. Se corta por caracteres, no por
+ * unidades UTF-16, para no partir una letra en dos.
+ * @returns {string|null} null si no queda nada
+ */
+export function nombreDeCliente(valor) {
+  if (typeof valor !== "string") return null;
+  const limpio = valor.replace(/\p{Cc}/gu, " ").replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").trim();
+  return Array.from(limpio).slice(0, MAX_NOMBRE).join("").trim() || null;
+}
 
 /**
  * Normaliza las ubicaciones de tienda. Devuelve null si alguna es inválida.

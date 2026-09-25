@@ -3,6 +3,7 @@ import { getCliente, getNegocio, listEventos, guardarNombre, clientePublico } fr
 import { accionesDe } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
+import { nombreDeCliente } from "@/lib/validacion";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,8 +37,8 @@ export async function PUT(request, { params }) {
     const { respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
     if (respuesta) return respuesta;
 
-    // "" o null lo borra; string lo fija (recortado).
-    const nombre = typeof body.nombre === "string" && body.nombre.trim() ? body.nombre.trim().slice(0, 48) : null;
+    // "" o null lo borra; un texto lo fija (limpio y recortado).
+    const nombre = nombreDeCliente(body.nombre);
     const actualizado = { ...cliente, nombre };
     await guardarNombre(serial, nombre); // solo el nombre: no pisa sellos de otra caja
 

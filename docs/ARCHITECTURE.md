@@ -56,10 +56,12 @@ el estado de antes y el de después (un sello sí; una corrección, no).
 
 ### 1. Emitir (tap NFC)
 ```
-tag NFC → GET /api/tap?b=delicanteria → emitirPase(): cliente {serial uuid, auth_token aleatorio}
-        → iPhone: generarPkpass() → .pkpass → "Añadir a Wallet"
-        → otros:  302 /p/<serial>   (Google Wallet · avisos · instalar)
-cookie tarjeta_<negocio>: el siguiente tap del mismo teléfono devuelve SU tarjeta
+tag NFC / QR → GET /api/tap?b=delicanteria → 302 /delicanteria (pide el nombre)
+        → POST /api/tap { nombre } → emitirPase(): cliente {serial uuid, auth_token aleatorio, nombre cifrado}
+        → /delicanteria enseña la tarjeta y el botón de su Wallet:
+            iPhone: /api/pase/<serial> → generarPkpass() → .pkpass → "Añadir a Wallet"
+            Android: Google Wallet, o /p/<serial> (avisos · instalar)
+cookie tarjeta_<negocio>: el siguiente tap del mismo teléfono va directo a SU tarjeta
 ```
 
 ### 2. Registrar (automático, al añadir el pase)
