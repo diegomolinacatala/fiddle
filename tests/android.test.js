@@ -236,6 +236,8 @@ describe("avisos a Android desde wallet.js", () => {
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("APPLE_PASS_TYPE_ID", "");
     vi.stubEnv("WALLETWALLET_API_KEY", "");
+    // resetModules tira las semillas de prueba: se vuelven a meter en el módulo nuevo.
+    await import("./tiendasDePrueba.js");
     push = await import("@/lib/push/enviar");
     wallet = await import("@/lib/wallet");
     store = await import("@/lib/store");
@@ -297,14 +299,15 @@ describe("avisos a Android desde wallet.js", () => {
   });
 });
 
-it("las semillas siguen siendo tres (sanidad del fichero de pruebas)", () => {
-  expect(Object.keys(SEMILLAS)).toEqual(["nube", "fade", "forno"]);
+it("la app trae La Delicantería y los tests sus tres tiendas de prueba", () => {
+  expect(Object.keys(SEMILLAS)).toEqual(["delicanteria", "nube", "fade", "forno"]);
 });
 
 describe("/api/imagen solo dibuja URLs canónicas", () => {
   it("las variantes redirigen a la canónica; la canónica es un PNG inmutable", async () => {
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("DATA_DIR", mkdtempSync(path.join(tmpdir(), "sellos-img-")));
+    await import("./tiendasDePrueba.js");
     const { GET } = await import("@/app/api/imagen/[tipo]/route.js");
     const pedir = (ruta) => GET(new Request(`http://x${ruta}`), { params: Promise.resolve({ tipo: ruta.split("/")[3].split("?")[0] }) });
 

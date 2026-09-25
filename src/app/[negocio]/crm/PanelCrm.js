@@ -3,9 +3,9 @@
 import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
 import CabeceraGestion from "../CabeceraGestion";
-import { serieVisitas, rejillaHoraria, tendencia, haceTexto, cadenciaTexto } from "@/lib/crm";
+import { serieVisitas, rejillaHoraria, tendencia, haceTexto, cadenciaTexto, GRUPOS } from "@/lib/crm";
+import { csvClientes } from "@/lib/exportar";
 import { Cifra, Barras, Rejilla, Reparto, Chip } from "./piezas";
-import Campana from "./Campana";
 import Ficha from "./Ficha";
 import Exportar from "./Exportar";
 import { saldoCorto } from "@/lib/cartillas";
@@ -16,16 +16,17 @@ const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 // ============================================================================
 // CRM DE UNA TIENDA
 // ----------------------------------------------------------------------------
-// Tres pestañas, tres preguntas:
+// Dos pestañas, dos preguntas:
 //   RESUMEN   ¿cómo va la tienda? cifras, reparto de clientes, cuándo vienen
-//   GRUPOS    ¿a quién le hablo hoy? bloques de gente con algo en común
-//   CLIENTES  ¿quién es este? la tabla, la búsqueda y la ficha de cada uno
+//   CLIENTES  ¿quién es este? la tabla, la búsqueda, los grupos, la ficha de
+//             cada uno y la exportación (de lo que se está viendo, y solo aquí)
+// Lo de hablarles (a un grupo, a todos, en automático) vive en Avisos.
 //
 // Todo llega en UNA petición a /api/crm; las cuentas que dependen de la hora
 // local (a qué hora viene la gente) se hacen aquí, con el reloj de la tienda.
 // ============================================================================
 
-const PESTANAS = [["resumen", "Resumen"], ["grupos", "Grupos y avisos"], ["clientes", "Clientes"]];
+const PESTANAS = [["resumen", "Resumen"], ["clientes", "Clientes"]];
 const ORDENES = {
   reciente: { label: "Última visita", cmp: (a, b) => (a.perfil.diasSinVenir ?? 1e9) - (b.perfil.diasSinVenir ?? 1e9) },
   visitas: { label: "Más visitas", cmp: (a, b) => b.perfil.visitas - a.perfil.visitas },
@@ -38,7 +39,7 @@ const ORDENES = {
 export default function PanelCrm({ slug, inicial }) {
   const [d, setD] = useState(inicial);
   const [pestana, setPestana] = useState("resumen");
-  const [grupo, setGrupo] = useState(null);
+  const [grupo, setGrupo] = useState("");
   const [verFicha, setVerFicha] = useState(null);
   const [busca, setBusca] = useState("");
   const [orden, setOrden] = useState("reciente");
@@ -67,14 +68,30 @@ export default function PanelCrm({ slug, inicial }) {
     if (!d) return [];
     const q = busca.trim().toLowerCase();
     return d.clientes
+      .filter((c) => !grupo || GRUPOS[grupo]?.incluye(c.perfil))
       .filter((c) => !q || (c.nombre || "").toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q))
       .sort(ORDENES[orden].cmp);
-  }, [d, busca, orden]);
-  useEffect(() => setMostrar(POR_PAGINA), [busca, orden]);
+  }, [d, busca, orden, grupo]);
+  useEffect(() => setMostrar(POR_PAGINA), [busca, orden, grupo]);
 
   const { negocio: n, metricas: m, grupos, estados } = d;
   const accent = n.tema.accent;
   const grupoActivo = grupos.find((g) => g.key === grupo);
+
+  // La hoja se arma AQUÍ, con la lista que se ve: lo que hay en pantalla es lo que baja.
+  function descargar() {
+    const csv = csvClientes(lista.map((c) => ({ cliente: c, perfil: c.perfil })), n);
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: `${slug}-${grupo || "clientes"}.csv` });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  const queContiene = [
+    grupoActivo ? `Los de «${grupoActivo.label}»` : "Todos tus clientes",
+    busca.trim() && `que coinciden con «${busca.trim()}»`,
+  ].filter(Boolean).join(" ");
 
   return (
     <main style={pagina}>
@@ -87,8 +104,6 @@ export default function PanelCrm({ slug, inicial }) {
               {texto}
             </button>
           ))}
-          <div style={{ flex: 1 }} />
-          <Exportar href={`/api/crm/export?b=${slug}`} accent={accent} />
         </div>
 
         {/* ------------------------------------------------------ resumen */}
@@ -159,100 +174,31 @@ export default function PanelCrm({ slug, inicial }) {
           </div>
         )}
 
-        {/* ------------------------------------------------------- grupos */}
-        {pestana === "grupos" && (
-          <div style={{ display: "grid", gap: 18 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
-              {grupos.map((g) => (
-                <button
-                  key={g.key}
-                  type="button"
-                  onClick={() => setGrupo(g.key === grupo ? null : g.key)}
-                  disabled={!g.total}
-                  style={tarjetaGrupo(g.key === grupo, accent, g.total)}
-                >
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ color: accent, alignSelf: "center" }}><Icono nombre={g.icon} tam={18} /></span>
-                    <strong style={{ fontSize: 14, fontWeight: 650 }}>{g.label}</strong>
-                    <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}>{g.total}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: C.suave, margin: "6px 0 0", textAlign: "left" }}>{g.descripcion}</p>
-                  <div style={{ fontSize: 11, color: C.tenue, marginTop: 6, textAlign: "left" }}>
-                    {g.contactables} avisable{g.contactables === 1 ? "" : "s"}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {grupoActivo ? (
-              <section style={panel}>
-                <Campana
-                  negocio={n}
-                  grupo={grupo}
-                  catalogo={grupos}
-                  flash={flash}
-                  onEnviada={() => { cargar(); setGrupo(null); }}
-                />
-                <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${C.borde}` }}>
-                  <Exportar
-                    href={`/api/crm/export?b=${slug}&grupo=${grupo}`}
-                    accent={accent}
-                    texto="Exportar este grupo"
-                    alinear="izquierda"
-                    queContiene={`los clientes de «${grupoActivo.label}»`}
-                  />
-                </div>
-              </section>
-            ) : (
-              <p style={nota}>
-                Un cliente puede estar en varios grupos. Elige uno para enviarle un aviso.
-              </p>
-            )}
-
-            {d.campanas.length > 0 && (
-              <section style={panel}>
-                <h2 style={h2}>Avisos enviados</h2>
-                <table style={tabla}>
-                  <thead>
-                    <tr>{["Cuándo", "Grupo", "Mensaje", "A", "Volvieron"].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {d.campanas.map((c) => (
-                      <tr key={c.id}>
-                        <td style={td}>{new Date(c.creado).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</td>
-                        <td style={td}>{d.catalogoGrupos.find((g) => g.key === c.grupo)?.label || c.grupo}</td>
-                        <td style={{ ...td, maxWidth: 260 }}>{c.texto}</td>
-                        <td style={td}>{c.destinatarios}</td>
-                        <td style={td}>
-                          <strong style={{ color: c.volvieron ? C.ok : C.suave }}>{c.volvieron}</strong>
-                          <span style={{ color: C.tenue, fontSize: 12 }}> · {c.tasa}%</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p style={{ fontSize: 12, color: C.tenue, marginTop: 10, marginBottom: 0 }}>
-                  «Volvieron»: avisados que visitaron la tienda después del envío.
-                </p>
-              </section>
-            )}
-          </div>
-        )}
-
         {/* ----------------------------------------------------- clientes */}
         {pestana === "clientes" && (
           <section style={panel}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14, alignItems: "stretch" }}>
               <input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar por nombre o código…"
+                aria-label="Buscar cliente"
                 style={{ ...campo, flex: "1 1 220px", width: "auto" }}
               />
-              <select value={orden} onChange={(e) => setOrden(e.target.value)} style={{ ...campo, width: "auto" }}>
+              <select value={grupo} onChange={(e) => setGrupo(e.target.value)} aria-label="Grupo" style={{ ...campo, width: "auto" }}>
+                <option value="">Todos los grupos</option>
+                {grupos.map((g) => <option key={g.key} value={g.key} disabled={!g.total}>{g.label} · {g.total}</option>)}
+              </select>
+              <select value={orden} onChange={(e) => setOrden(e.target.value)} aria-label="Orden" style={{ ...campo, width: "auto" }}>
                 {Object.entries(ORDENES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
+              <Exportar cuantos={lista.length} queContiene={queContiene} accent={accent} onDescargar={descargar} />
             </div>
+            {grupoActivo && (
+              <p style={{ ...nota, marginBottom: 14 }}>
+                {grupoActivo.descripcion} ¿Quieres decirles algo? <a href={`/${slug}/avisos`} style={{ color: accent, fontWeight: 600 }}>Avisos</a>.
+              </p>
+            )}
 
             <div style={{ overflowX: "auto" }}>
               <table style={tabla}>
@@ -288,7 +234,7 @@ export default function PanelCrm({ slug, inicial }) {
               )}
               {!lista.length && (
                 <p style={{ color: C.suave, fontSize: 14 }}>
-                  {busca ? "Ningún cliente con ese nombre o código." : "Todavía no hay clientes."}
+                  {busca || grupo ? "Ningún cliente con esa búsqueda." : "Todavía no hay clientes."}
                 </p>
               )}
             </div>
@@ -310,13 +256,6 @@ export default function PanelCrm({ slug, inicial }) {
   );
 }
 
-const tarjetaGrupo = (activa, accent, hay) => ({
-  ...panel, padding: 14, textAlign: "left", cursor: hay ? "pointer" : "default",
-  borderColor: activa ? accent : C.borde,
-  background: activa ? `${accent}0c` : hay ? "#fff" : C.panelSuave,
-  opacity: hay ? 1 : 0.55,
-  font: "inherit", color: C.texto,
-});
 const tabla = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
 const marcaFila = { display: "inline-flex", verticalAlign: "-2px", marginLeft: 6, color: C.suave };
 const th = {

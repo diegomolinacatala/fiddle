@@ -26,6 +26,9 @@ import { RESERVADOS } from "./negocios";
 //   /api/google/guardar/<serial>           "Añadir a Google Wallet"
 //   /api/imagen/<tipo>                     iconos y banda: los descargan Google
 //                                          Wallet y Android, sin sesión
+//   /api/cron/avisos                       el reloj de los avisos automáticos: no
+//                                          hay sesión, lo protege CRON_SECRET en
+//                                          su handler (sin él, no hace nada)
 const PUBLICAS = [
   /^\/$/,
   /^\/login$/,
@@ -43,6 +46,7 @@ const PUBLICAS = [
   /^\/api\/push\/[^/]+$/,
   /^\/api\/google\/guardar\/[^/]+$/,
   /^\/api\/imagen\/[^/]+$/,
+  /^\/api\/cron\/avisos$/,
 ];
 
 // Qué primeros segmentos NO son un negocio: RESERVADOS vive en negocios.js para
@@ -63,8 +67,9 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
 
   // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager,
-  // /<slug>/crm. El CRM es del manager: ve a todos los clientes y manda avisos.
-  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm))?\/?$/);
+  // /<slug>/crm, /<slug>/avisos. Todo lo que no es la caja es del manager: ve a
+  // todos los clientes y les manda avisos.
+  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos))?\/?$/);
   if (pagina && !RESERVADOS.has(pagina[1])) {
     if (!pagina[2]) return { tipo: "publica" };
     return { tipo: "negocio", slug: pagina[1], rol: pagina[2] === "caja" ? "caja" : "manager" };
@@ -78,11 +83,11 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   if (pathname === "/api/crear") return { tipo: "negocio", slug: b, rol: "manager" };
   // El manager puede cambiar la contraseña de SU caja (un empleado que se va).
   if (pathname === "/api/accesos/caja") return { tipo: "negocio", slug: b, rol: "manager" };
-  // CRM: quién es quién, en bloque o cliente a cliente. Solo el manager.
+  // CRM y avisos automáticos: quién es quién y qué se le dice. Solo el manager.
   // Las dos que llevan ?b= se comprueban aquí; /api/crm/campana (el negocio va
   // en el cuerpo, como en /api/promo) y /api/crm/cliente/<serial> (sale del
   // propio cliente) caen abajo, en "sesión", y las valida su handler.
-  if (pathname === "/api/crm" || pathname === "/api/crm/export") {
+  if (pathname === "/api/crm" || pathname === "/api/automatizaciones") {
     return { tipo: "negocio", slug: b, rol: "manager" };
   }
 

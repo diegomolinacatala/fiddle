@@ -28,7 +28,8 @@ describe("negocios", () => {
     const g = await store.saveNegocio("nube", { meta: 5, ubicaciones: [{ lat: 1, lng: 2 }] });
     expect(g).toMatchObject({ meta: 5, premio: "café gratis", ubicaciones: [{ lat: 1, lng: 2 }] });
     expect(await store.getNegocio("nube")).toMatchObject({ meta: 5 });
-    expect((await store.listNegocios()).map((n) => n.slug)).toEqual(["fade", "forno", "nube"]);
+    // Por nombre: Fade Room, Forno Nostro, La Delicantería, Nube Café.
+    expect((await store.listNegocios()).map((n) => n.slug)).toEqual(["fade", "forno", "delicanteria", "nube"]);
     expect(await store.saveNegocio("nope", {})).toBeNull();
   });
 });

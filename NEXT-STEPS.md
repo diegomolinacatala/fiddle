@@ -11,7 +11,8 @@ Comprobado contra el sitio real:
 | Actualizaciones en el iPhone | web service + avisos APNs activos |
 | Base de datos | Supabase conectado, 6 tablas |
 | Login | usuario + contraseña por negocio, sesión firmada |
-| Tres negocios | Nube Café, Fade Room, Forno Nostro |
+| Tienda | **La Delicantería** (las de ejemplo, fuera desde el 24-09-2026) |
+| Avisos automáticos | hechos; **falta encender el reloj** ([guía](docs/AVISOS.md#encender-el-reloj-una-vez-lo-hace-fiddle)) |
 | Android | tarjeta web instalable, en vivo y con avisos del navegador (probado contra FCM) |
 | Google Wallet | código listo; **faltan las credenciales** ([guía](docs/GOOGLE-WALLET.md)) |
 
@@ -20,7 +21,7 @@ Comprobado contra el sitio real:
 ## Para enseñarlo (guion de 5 minutos)
 
 Hace falta: un iPhone, un Android con Chrome y un tercer móvil (o el ordenador) haciendo
-de caja con `nube-caja` abierto en `/nube/caja`.
+de caja con `delicanteria-caja` abierto en `/delicanteria/caja`.
 
 1. **El cliente de iPhone** toca el tag (o escanea el QR del manager): sale "Añadir a
    Apple Wallet" directamente. Añadir.
@@ -31,9 +32,13 @@ de caja con `nube-caja` abierto en `/nube/caja`.
    tarjeta abierta, vibra y se rellena el sello al momento; con la pantalla apagada,
    llega la notificación "Sello 1 de 8. Te faltan 7 para café gratis".
 4. Lo mismo con el iPhone: el pase de Wallet se actualiza y avisa en la pantalla de bloqueo.
-5. **Promo**: en el manager, escribir "Hoy 2x1 en cafés" → *Lanzar*. Suena en los dos.
-6. **Volver a tocar el tag** con el Android: abre SU tarjeta, no una nueva.
-7. Si hay tiempo: en el manager desde el Android, *Grabar un tag con este móvil*
+5. **Promo**: en *Avisos → Enviar ahora → Todos los clientes*, escribir "Hoy 2x1 en cafés" →
+   *Poner en todas las tarjetas*. Suena en los dos.
+6. **Automáticos**: en *Avisos → Automáticos*, abrir "Te echamos de menos", cambiar 21 días
+   por 14 y ver cómo cambia a cuántos le llegaría; *Enviar ahora* y escanear a uno de
+   ellos en la caja: arriba sale "En su tarjeta pone…".
+7. **Volver a tocar el tag** con el Android: abre SU tarjeta, no una nueva.
+8. Si hay tiempo: en el manager desde el Android, *Grabar un tag con este móvil*
    escribe un tag NFC nuevo sin ninguna app.
 
 Si algo no va: *Estado de la integración* en el manager dice qué falla y qué tocar.
@@ -57,12 +62,13 @@ Necesitas **Node 22 o superior** (`node -v`) y git. Nada más.
 - `/` → lleva directo al **login** (o a tu sitio, si ya has entrado).
 - `/admin` → con **victor** o **diego**: todas las tiendas, crear, editar, archivar
   y comentar los campos del pase para Claude.
-- `/login` → usuario **nube** (manager) o **nube-caja** (caja); la contraseña es igual
-  que el usuario. En local siempre funcionan y salen listados en la propia pantalla.
-- `/nube/caja` escanea pases (o acepta el código de 3 caracteres a mano) ·
-  `/nube/manager` configura, lanza promos, emite y **enseña cómo queda el pase**
+- `/login` → usuario **delicanteria** (manager) o **delicanteria-caja** (caja); la
+  contraseña es igual que el usuario. En local siempre funcionan y salen listados en la propia pantalla.
+- `/delicanteria/caja` escanea pases (o acepta el código de 3 caracteres a mano) ·
+  `/delicanteria/manager` configura la tarjeta y el horario, emite y **enseña cómo queda el pase**
+  · `/delicanteria/crm` los clientes · `/delicanteria/avisos` la promo, los grupos y los automáticos
   en Apple y en Google.
-- `/nube` es la landing pública de la tienda (lo que abre el tag NFC).
+- `/delicanteria` es la landing pública de la tienda (lo que abre el tag NFC).
 - `/p/<serial>` es la página del pase de un cliente.
 
 ```bash
@@ -119,6 +125,8 @@ pero perdéis la revisión.
 | Pantallas de caja / manager | [`src/app/[negocio]`](src/app/[negocio]) |
 | La tarjeta de Android (lo que ve el cliente) | [`src/app/p/[serial]`](src/app/p/[serial]) · ver [docs/ANDROID.md](docs/ANDROID.md) |
 | Qué dicen los avisos de Android | [`src/lib/avisos.js`](src/lib/avisos.js) |
+| Un tipo nuevo de aviso automático | [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js) (`DISPAROS`) · ver [docs/AVISOS.md](docs/AVISOS.md) |
+| Los avisos, el horario o los textos de UNA tienda | no toques código: su manager, en *Avisos* y *Tienda → Horario* |
 | Lo que sale en Google Wallet | [`src/lib/google/pase.js`](src/lib/google/pase.js) · ver [docs/GOOGLE-WALLET.md](docs/GOOGLE-WALLET.md) |
 | Guardar datos nuevos | [`src/lib/store.js`](src/lib/store.js) + [`supabase/schema.sql`](supabase/schema.sql) |
 
@@ -132,6 +140,25 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 
 > Las tareas sueltas van aquí; el orden y el porqué, en
 > [docs/ROADMAP.md](docs/ROADMAP.md).
+
+### Pedido el 24-09-2026: avisos automáticos y solo La Delicantería
+- [x] Exportar en **un solo sitio**: junto a la lista de Clientes, y baja lo que se ve
+      (búsqueda + grupo). Fuera el botón de cada pestaña y el de cada grupo.
+- [x] Una cosa, un sitio: pestañas **Tienda · Clientes · Avisos**. La promo (antes en el
+      manager) y los grupos (antes en el CRM) viven juntos en Avisos.
+- [x] **Avisos automáticos** modulares, con los de partida encendidos ([docs/AVISOS.md](docs/AVISOS.md)).
+- [x] Horario de la tienda en *Tienda* (los avisos solo salen con la tienda abierta).
+- [x] Con dos cartillas, el manager cambia la meta y el premio de cada una (antes se perdía).
+- [x] La caja ve el mensaje que trae el cliente en su tarjeta.
+- [x] Solo La Delicantería: Nube, Fade y Forno ya no son semillas (quedan como tiendas de
+      prueba de los tests, en `tests/tiendasDePrueba.js`).
+- [ ] **Encender el reloj**: `CRON_SECRET` en Vercel + el SQL de `pg_cron` en Supabase
+      ([docs/AVISOS.md](docs/AVISOS.md#encender-el-reloj-una-vez-lo-hace-fiddle)).
+- [ ] **Confirmar con La Delicantería** el horario, los festivos y el regalo de la racha
+      (hoy promete una cookie). Todo se cambia desde su manager.
+- [ ] En producción, si Nube, Fade o Forno siguen saliendo en `/admin` (porque tienen fila
+      en la base), **archivarlas** desde ahí. Sus pases de prueba dejan de actualizarse.
+- [ ] Quitar de Vercel las `CLAVE_NUBE_*`, `CLAVE_FADE_*` y `CLAVE_FORNO_*`.
 
 ### Contraseñas en la base — hecho (23-09-2026)
 - [x] Tabla `accesos` (hash scrypt). Se generan al crear la tienda; se cambian en
@@ -155,7 +182,7 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [ ] Confirmar en el iPhone la notificación de **promo** y la de **sello**.
 - [ ] Grabar los tags NFC (manager → *Tag NFC / emitir* → Copiar URL → app NFC Tools).
 - [ ] Instalar la caja en el móvil de cada tienda (*Añadir a pantalla de inicio*).
-- [ ] Poner la **ubicación** de cada negocio desde su manager (aviso en pantalla de bloqueo).
+- [ ] Poner la **ubicación** de La Delicantería desde su manager (aviso en pantalla de bloqueo).
 
 ### Android
 - [ ] **Google Wallet**: sacar las credenciales y ponerlas en Vercel (20 minutos,
