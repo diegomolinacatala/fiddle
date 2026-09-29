@@ -166,6 +166,10 @@ function fusionarConfig(actual, patch) {
     cartillas: patch.cartillas !== undefined ? patch.cartillas : actual.cartillas,
     notas: patch.notas ?? actual.notas,
     archivado: patch.archivado ?? actual.archivado,
+    // Avisos automáticos (lib/automatizaciones.js) y el horario del que dependen.
+    horario: patch.horario !== undefined ? patch.horario : actual.horario,
+    automatizaciones: patch.automatizaciones ?? actual.automatizaciones,
+    pausaAvisos: patch.pausaAvisos ?? actual.pausaAvisos,
   };
   return config;
 }
@@ -305,15 +309,17 @@ export const clientePublico = (c) =>
   };
 
 /**
- * @param {{serial:string, negocio:string, authToken:string, origen?:string}} datos
+ * @param {{serial:string, negocio:string, authToken:string, origen?:string, nombre?:string|null}} datos
  *   `origen`: de dónde salió el pase ("tap" en el tag NFC, "manager" desde el
  *   mostrador). Responde a "¿de dónde vienen mis clientes?" sin preguntárselo.
+ *   `nombre`: el que escribe el cliente al sacarla. Se guarda cifrado, como siempre.
  */
-export async function crearCliente({ serial, negocio, authToken, origen = null }) {
+export async function crearCliente({ serial, negocio, authToken, origen = null, nombre = null }) {
   const ts = ahoraISO();
   const base = {
     serial, negocio, auth_token: authToken,
-    sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0, nombre: null, actualizado: ts, creado: ts,
+    sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0,
+    nombre: cifrarCampo(serial, "nombre", nombre), actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
     origen, mensaje: null, nota: null,
   };
@@ -748,19 +754,21 @@ export async function crearCampana({ negocio, grupo, texto, seriales, avisados =
   });
 }
 
-/** Campañas de una tienda, la más reciente primero. */
-export async function listCampanas(negocio, { limite = 20 } = {}) {
+/**
+ * Campañas de una tienda, la más reciente primero. `desde` (ISO) acota por
+ * fecha: los avisos automáticos miran un año atrás para no repetirse.
+ */
+export async function listCampanas(negocio, { limite = 20, desde = null } = {}) {
   if (hasSupabase()) {
-    const data = sinError(
-      await supa().from("campanas").select("id, grupo, texto, destinatarios, avisados, seriales, creado")
-        .eq("negocio", negocio).order("creado", { ascending: false }).limit(limite),
-      "listar campañas",
-    );
+    let q = supa().from("campanas").select("id, grupo, texto, destinatarios, avisados, seriales, creado")
+      .eq("negocio", negocio);
+    if (desde) q = q.gt("creado", desde);
+    const data = sinError(await q.order("creado", { ascending: false }).limit(limite), "listar campañas");
     return data || [];
   }
   const all = await enFila(() => leer("campanas", []));
   return all
-    .filter((c) => c.negocio === negocio)
+    .filter((c) => c.negocio === negocio && (!desde || (c.creado || "") > desde))
     .sort((a, b) => (b.creado || "").localeCompare(a.creado || ""))
     .slice(0, limite);
 }
@@ -1198,6 +1206,22 @@ export async function registrarIntento(clave) {
     const all = await leer("intentos", []);
     await escribir("intentos", [...all.filter((i) => Date.parse(i.ts) > limite), { clave, ts: ahoraISO() }]);
   });
+}
+
+/**
+ * Cuándo se apuntó por última vez `clave` (ISO), o null. El reloj de los avisos
+ * automáticos deja aquí su latido: así la pantalla sabe si está en marcha.
+ */
+export async function ultimoIntento(clave) {
+  if (hasSupabase()) {
+    const fila = sinError(
+      await supa().from("intentos").select("ts").eq("clave", clave).order("ts", { ascending: false }).limit(1).maybeSingle(),
+      "leer último intento",
+    );
+    return fila?.ts ?? null;
+  }
+  const all = await enFila(() => leer("intentos", []));
+  return all.filter((i) => i.clave === clave).map((i) => i.ts).sort().at(-1) ?? null;
 }
 
 export async function contarIntentos(clave, desdeMs) {

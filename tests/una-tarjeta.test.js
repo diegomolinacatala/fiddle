@@ -150,7 +150,7 @@ describe("el web service de Apple lo llama al registrar", () => {
     const unificarTarjeta = vi.fn(async () => ({ fusionada: null }));
     let ya = false;
     const deps = {
-      config: { passTypeId: "pass.x" },
+      configDe: (passType) => (passType === "pass.x" ? { passTypeId: "pass.x" } : null),
       getCliente: async () => ({ serial: "s1", negocio: "nube", auth_token: TOKEN, instalado: null }),
       registrarPase: async () => { const nuevo = !ya; ya = true; return nuevo; },
       marcarInstalacion: async () => {},

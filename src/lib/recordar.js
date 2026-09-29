@@ -1,15 +1,15 @@
 // ============================================================================
 // RECORDAR LA TARJETA DE ESTE TELÉFONO
 // ----------------------------------------------------------------------------
-// El tap del tag deja una cookie con el serial de la tarjeta que se llevó este
-// teléfono en esa tienda. Con ella:
+// Al sacar la tarjeta (el nombre en la página de la tienda) queda una cookie con
+// el serial de la tarjeta que se llevó este teléfono en esa tienda. Con ella:
 //   - volver a tocar el tag devuelve la MISMA tarjeta, no una nueva con los
 //     sellos a cero (era el fallo número uno en una cafetería de verdad);
-//   - la página de la tienda ofrece "Abrir mi tarjeta" a quien ya la tiene.
+//   - la página de la tienda le enseña su tarjeta en vez de pedirle el nombre.
 //
 // Una cookie por tienda: el mismo teléfono puede tener la de Nube y la de Fade.
 // Si se borra, no se pierde nada: la tarjeta sigue existiendo, solo que el
-// siguiente tap emite otra.
+// siguiente tap pide el nombre y emite otra.
 // ============================================================================
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

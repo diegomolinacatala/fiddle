@@ -13,10 +13,11 @@ funcionan a la vez:
 
 ## Lo que ve el cliente
 
-1. Toca el tag NFC (o escanea el QR del mostrador) → `/api/tap?b=<tienda>`.
-2. En Android, **si Google Wallet está activo, va directo a guardarla en Google Wallet**
-   (como el iPhone, que recibe el pase sin pasar por ninguna página). Si Google falla
-   en ese momento, o no está configurado, le lleva a **su tarjeta** (`/p/<serial>`). Se dibuja con las mismas
+1. Toca el tag NFC (o escanea el QR del mostrador) → `/api/tap?b=<tienda>` → la página
+   de la tienda, que **le pide el nombre**. Al darlo se crea la tarjeta.
+2. En Android, **si Google Wallet está activo, el botón es "Añadir a Google Wallet"**
+   (y debajo, "Abrir en el navegador"). Si no está configurado, "Abrir mi tarjeta"
+   le lleva a **su tarjeta** (`/p/<serial>`). Se dibuja con las mismas
    funciones que el pase de Apple (`camposDelPase`, `stripDelPase`, `svgLogo`):
    misma banda de sellos, mismos textos, mismo QR y código de 3 letras.
 3. Debajo, según lo que permita su teléfono:
@@ -28,10 +29,10 @@ funcionan a la vez:
 4. Mientras la tiene abierta en caja, la tarjeta **se pone al día sola** (cada 3 s
    los primeros minutos, luego cada 10 s, nada si está en segundo plano). Cuando la
    caja sella, el teléfono vibra, la banda se anima y sale "Sello añadido".
-5. **Si vuelve a tocar el tag**, se le abre SU tarjeta, no una nueva: el tap deja
-   una cookie por tienda (`tarjeta_<slug>`, 1 año). En iPhone pasa lo mismo: se le
-   vuelve a dar su pase y iOS lo reconoce por el serial. `?nuevo=1` fuerza una nueva
-   (para probar desde el mostrador).
+5. **Si vuelve a tocar el tag**, se le abre SU tarjeta, sin volver a pedirle el nombre:
+   el alta deja una cookie por tienda (`tarjeta_<slug>`, 1 año). En iPhone pasa lo
+   mismo: se le vuelve a dar su pase y iOS lo reconoce por el serial. `?nuevo=1` pide
+   otra (para probar desde el mostrador).
 
 ## Avisos del navegador (web push)
 

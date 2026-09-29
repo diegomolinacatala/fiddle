@@ -27,16 +27,16 @@ const tokenDeCabecera = (authorization) => {
 };
 
 /**
- * Carga el cliente si el passType es el nuestro y el token coincide.
+ * Carga el cliente si el token coincide y el passType es uno con que se firman
+ * los pases de SU tienda (el propio o el general). El de otra tienda no vale.
  * @returns {Promise<object|null>}
  */
 async function clienteAutenticado(deps, passType, serial, authorization) {
-  if (passType !== deps.config.passTypeId) return null;
   const token = tokenDeCabecera(authorization);
   if (!token) return null;
   const cliente = await deps.getCliente(serial);
-  if (!cliente?.auth_token) return null;
-  return igualSeguro(token, cliente.auth_token) ? cliente : null;
+  if (!cliente?.auth_token || !igualSeguro(token, cliente.auth_token)) return null;
+  return deps.configDe(passType, cliente.negocio) ? cliente : null;
 }
 
 const noAutorizado = () => ({ status: 401, json: { error: "No autorizado" } });
@@ -93,7 +93,7 @@ export async function desregistrar(deps, { dispositivo, passType, serial, author
  */
 export async function pasesActualizados(deps, { dispositivo, passType, desde }) {
   if (!dispositivoValido(dispositivo)) return dispositivoInvalido();
-  if (passType !== deps.config.passTypeId) return { status: 404, json: {} };
+  // Sin comprobar el passType: uno que no es nuestro no tiene registros y sale 204.
   const desdeMs = /^\d+$/.test(desde || "") ? Number(desde) : 0;
   const pases = await deps.pasesDeDispositivo({ dispositivo, passType });
   const cambiados = pases
@@ -120,7 +120,9 @@ export async function paseActual(deps, { passType, serial, authorization }) {
   if (!cliente) return noAutorizado();
   const negocio = await deps.getNegocio(cliente.negocio);
   if (!negocio) return { status: 404, json: { error: "Negocio no encontrado" } };
-  const body = await deps.generarPkpass(cliente, negocio);
+  // Con el Pass Type ID del pase instalado: si la tienda estrenó uno propio
+  // después, este sigue siendo del general y Apple rechazaría otro.
+  const body = await deps.generarPkpass(cliente, negocio, deps.configDe(passType, cliente.negocio));
   const actualizado = new Date(Date.parse(cliente.actualizado) || Date.now());
   return {
     status: 200,

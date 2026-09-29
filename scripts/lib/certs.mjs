@@ -47,6 +47,13 @@ function certificado({ subject, issuer, publicPem, firmanteKeyPem, esCA, dias = 
   return pki.certificateToPem(cert);
 }
 
+const SUJETO_CA = [{ name: "commonName", value: "WWDR de prueba (no es Apple)" }];
+const sujetoPase = (passTypeId, teamId) => [
+  { type: "0.9.2342.19200300.100.1.1", value: passTypeId }, // UID
+  { name: "commonName", value: `Pass Type ID: ${passTypeId}` },
+  { name: "organizationalUnitName", value: teamId },
+];
+
 /**
  * Cadena FALSA (CA "WWDR de prueba" -> certificado de Pass Type ID) para probar
  * la firma y el web service en local. Un iPhone NO acepta estos pases.
@@ -54,20 +61,31 @@ function certificado({ subject, issuer, publicPem, firmanteKeyPem, esCA, dias = 
 export function cadenaDePrueba({ passTypeId = "pass.dev.sellos.prueba", teamId = "ABCDE12345" } = {}) {
   const ca = generarClave();
   const firmante = generarClave();
-  const sujetoCA = [{ name: "commonName", value: "WWDR de prueba (no es Apple)" }];
-  const wwdrPem = certificado({ subject: sujetoCA, issuer: sujetoCA, publicPem: ca.publicPem, firmanteKeyPem: ca.keyPem, esCA: true });
+  const wwdrPem = certificado({ subject: SUJETO_CA, issuer: SUJETO_CA, publicPem: ca.publicPem, firmanteKeyPem: ca.keyPem, esCA: true });
   const certPem = certificado({
-    subject: [
-      { type: "0.9.2342.19200300.100.1.1", value: passTypeId }, // UID
-      { name: "commonName", value: `Pass Type ID: ${passTypeId}` },
-      { name: "organizationalUnitName", value: teamId },
-    ],
-    issuer: sujetoCA,
+    subject: sujetoPase(passTypeId, teamId),
+    issuer: SUJETO_CA,
     publicPem: firmante.publicPem,
     firmanteKeyPem: ca.keyPem,
     esCA: false,
   });
   return { wwdrPem, certPem, keyPem: firmante.keyPem, caKeyPem: ca.keyPem, passTypeId, teamId };
+}
+
+/**
+ * Otro Pass Type ID de la misma cadena y con la MISMA clave, como cuando se pide
+ * a Apple un segundo certificado con el mismo CSR (el de una tienda con ID propio).
+ */
+export function otroPassTypeDePrueba(cadena, passTypeId) {
+  const publicPem = createPublicKey(cadena.keyPem).export({ type: "spki", format: "pem" });
+  const certPem = certificado({
+    subject: sujetoPase(passTypeId, cadena.teamId),
+    issuer: SUJETO_CA,
+    publicPem,
+    firmanteKeyPem: cadena.caKeyPem,
+    esCA: false,
+  });
+  return { certPem, passTypeId };
 }
 
 /** Acepta .cer en DER (lo que descarga Apple) o PEM. */

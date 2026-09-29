@@ -8,7 +8,7 @@ Plantilla completa: [`.env.example`](../.env.example).
 |----------|----------|---------------|
 | `APP_URL` | URL pública HTTPS. Va dentro de cada pase (QR y `webServiceURL`) | **obligatoria** |
 | `AUTH_SECRET` | firma de las sesiones | **obligatoria** (sin ella nadie entra) |
-| `CLAVE_<SLUG>_MANAGER`, `CLAVE_<SLUG>_CAJA` | contraseña de cada usuario (`nube`, `nube-caja`…). `PIN_*` sigue valiendo | **obligatorias** (sin ellas ese usuario no entra) |
+| `CLAVE_<SLUG>_MANAGER`, `CLAVE_<SLUG>_CAJA` | contraseña de cada usuario (`delicanteria`, `delicanteria-caja`…). `PIN_*` sigue valiendo | **obligatorias** (sin ellas ese usuario no entra) |
 | `USUARIOS_DEMO` | `1` = accesos de prueba (contraseña = usuario) visibles en el login | solo para pruebas |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | base de datos (service_role, solo backend) | **obligatorias** |
 | `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_PASS_CERT`, `APPLE_PASS_KEY`, `APPLE_WWDR_CERT` | firma y avisos de Apple Wallet ([guía](APPLE-WALLET.md)) | para pases reales |

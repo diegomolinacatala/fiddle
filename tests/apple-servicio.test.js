@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { registrar, desregistrar, pasesActualizados, paseActual, registrarLogs } from "@/lib/apple/servicio";
 
-const PASS = "pass.dev.sellos";
+const PASS = "pass.dev.sellos"; // el general, compartido
+const PASS_DELI = "pass.dev.deli"; // el propio de la tienda "deli"
 const TOKEN = "t".repeat(48);
 const AUTH = `ApplePass ${TOKEN}`;
 const PUSH = "ab".repeat(32);
@@ -11,14 +12,17 @@ function crearDeps() {
   const clientes = {
     s1: { serial: "s1", negocio: "nube", auth_token: TOKEN, actualizado: "2026-09-01T10:00:00.000Z" },
     s2: { serial: "s2", negocio: "nube", auth_token: "otro".repeat(8), actualizado: "2026-09-02T10:00:00.000Z" },
+    s3: { serial: "s3", negocio: "deli", auth_token: TOKEN, actualizado: "2026-09-03T10:00:00.000Z" },
   };
+  // Como configsDeTienda: la de la tienda (si tiene propia) y la general.
+  const configs = { nube: [{ passTypeId: PASS }], deli: [{ passTypeId: PASS_DELI }, { passTypeId: PASS }] };
   const registros = [];
   return {
     registros,
     clientes,
-    config: { passTypeId: PASS },
+    configDe: (passType, slug) => (configs[slug] || []).find((c) => c.passTypeId === passType) || null,
     getCliente: async (s) => clientes[s] ?? null,
-    getNegocio: async (slug) => (slug === "nube" ? { slug } : null),
+    getNegocio: async (slug) => (configs[slug] ? { slug } : null),
     registrarPase: vi.fn(async (r) => {
       if (registros.some((x) => x.dispositivo === r.dispositivo && x.serial === r.serial)) return false;
       registros.push(r);
@@ -36,8 +40,8 @@ function crearDeps() {
       else c.desinstalado = "2026-09-20T10:00:00.000Z";
     }),
     addEvento: vi.fn(async () => {}),
-    pasesDeDispositivo: async ({ dispositivo }) =>
-      registros.filter((r) => r.dispositivo === dispositivo).map((r) => ({ serial: r.serial, actualizado: clientes[r.serial].actualizado })),
+    pasesDeDispositivo: async ({ dispositivo, passType }) =>
+      registros.filter((r) => r.dispositivo === dispositivo && r.passType === passType).map((r) => ({ serial: r.serial, actualizado: clientes[r.serial].actualizado })),
     generarPkpass: vi.fn(async () => Buffer.from("PKPASS")),
     log: vi.fn(),
   };
@@ -70,6 +74,30 @@ describe("registrar", () => {
     expect((await registrar(deps, args({ cuerpo: {} }))).status).toBe(400);
     expect((await registrar(deps, args({ cuerpo: { pushToken: "no hex!" } }))).status).toBe(400);
     expect((await registrar(deps, args({ dispositivo: "../../x" }))).status).toBe(400);
+  });
+});
+
+// Una tienda con Pass Type ID propio: sus tarjetas van aparte en el Wallet.
+describe("Pass Type ID por tienda", () => {
+  const args = (extra = {}) => ({ dispositivo: "dev1", passType: PASS_DELI, serial: "s3", authorization: AUTH, cuerpo: { pushToken: PUSH }, ...extra });
+
+  it("acepta el suyo y el general (los pases de antes siguen en el general)", async () => {
+    expect((await registrar(deps, args())).status).toBe(201);
+    expect((await registrar(deps, args({ passType: PASS, dispositivo: "dev2" }))).status).toBe(201);
+    expect(deps.registrarPase).toHaveBeenCalledWith(expect.objectContaining({ passType: PASS_DELI, negocio: "deli" }));
+  });
+
+  it("el Pass Type ID de una tienda no vale para los clientes de otra", async () => {
+    expect((await registrar(deps, args({ serial: "s1" }))).status).toBe(401);
+    expect((await paseActual(deps, { passType: PASS_DELI, serial: "s1", authorization: AUTH })).status).toBe(401);
+    expect(deps.generarPkpass).not.toHaveBeenCalled();
+  });
+
+  it("firma el pase con el Pass Type ID con que está instalado", async () => {
+    await paseActual(deps, { passType: PASS_DELI, serial: "s3", authorization: AUTH });
+    expect(deps.generarPkpass.mock.calls[0][2]).toEqual({ passTypeId: PASS_DELI });
+    await paseActual(deps, { passType: PASS, serial: "s3", authorization: AUTH });
+    expect(deps.generarPkpass.mock.calls[1][2]).toEqual({ passTypeId: PASS });
   });
 });
 
@@ -121,7 +149,11 @@ describe("instalación del pase (CRM)", () => {
 
 describe("pasesActualizados", () => {
   beforeEach(async () => {
-    deps.registros.push({ dispositivo: "dev1", serial: "s1" }, { dispositivo: "dev1", serial: "s2" });
+    deps.registros.push(
+      { dispositivo: "dev1", passType: PASS, serial: "s1" },
+      { dispositivo: "dev1", passType: PASS, serial: "s2" },
+      { dispositivo: "dev1", passType: PASS_DELI, serial: "s3" },
+    );
   });
 
   it("sin tag devuelve todos con lastUpdated = el más reciente", async () => {
@@ -129,6 +161,11 @@ describe("pasesActualizados", () => {
     expect(r.status).toBe(200);
     expect(r.json.serialNumbers.sort()).toEqual(["s1", "s2"]);
     expect(r.json.lastUpdated).toBe(String(Date.parse("2026-09-02T10:00:00.000Z")));
+  });
+
+  it("cada Pass Type ID pregunta solo por los suyos", async () => {
+    const r = await pasesActualizados(deps, { dispositivo: "dev1", passType: PASS_DELI, desde: null });
+    expect(r.json.serialNumbers).toEqual(["s3"]);
   });
 
   it("con tag devuelve solo los posteriores; 204 si no hay", async () => {
@@ -139,9 +176,9 @@ describe("pasesActualizados", () => {
     expect(nada.status).toBe(204);
   });
 
-  it("tag no numérico se trata como 0; passType ajeno 404", async () => {
+  it("tag no numérico se trata como 0; passType ajeno 204", async () => {
     expect((await pasesActualizados(deps, { dispositivo: "dev1", passType: PASS, desde: "abc" })).json.serialNumbers).toHaveLength(2);
-    expect((await pasesActualizados(deps, { dispositivo: "dev1", passType: "pass.otro" })).status).toBe(404);
+    expect((await pasesActualizados(deps, { dispositivo: "dev1", passType: "pass.otro" })).status).toBe(204);
     expect((await pasesActualizados(deps, { dispositivo: "dev2", passType: PASS })).status).toBe(204);
   });
 });

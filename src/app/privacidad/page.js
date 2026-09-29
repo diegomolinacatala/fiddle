@@ -17,7 +17,7 @@ export const metadata = { title: "Privacidad", robots: { index: true, follow: fa
 // ello y su fecha también. Nunca prometer aquí algo que el código no hace.
 // ============================================================================
 
-const ACTUALIZADO = "23 de septiembre de 2026";
+const ACTUALIZADO = "25 de septiembre de 2026";
 
 export default async function Privacidad({ searchParams }) {
   const { b } = await searchParams;
@@ -54,7 +54,7 @@ export default async function Privacidad({ searchParams }) {
           <ul style={lista}>
             <li><strong>Tu tarjeta:</strong> un identificador aleatorio y un código corto de 3 caracteres.</li>
             <li><strong>Tu saldo e historial:</strong> sellos, premios, visitas y sus fechas.</li>
-            <li><strong>Tu nombre, solo si lo das</strong> en caja para que te reconozcan. Se guarda cifrado.</li>
+            <li><strong>Tu nombre:</strong> el que escribes al sacar la tarjeta, para que la tienda te reconozca. Se guarda cifrado.</li>
             <li><strong>Notas de la tienda</strong> sobre ti, si las apunta (por ejemplo, una preferencia). Se guardan cifradas.</li>
             <li>
               <strong>Datos técnicos para avisarte:</strong> el identificador que Apple Wallet, Google

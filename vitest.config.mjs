@@ -8,6 +8,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.{js,mjs}"],
+    // Nube, Fade y Forno: los casos de prueba que la app ya no trae (ver el fichero).
+    setupFiles: ["tests/tiendasDePrueba.js"],
     testTimeout: 20_000,
     coverage: {
       provider: "v8",

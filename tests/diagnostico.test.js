@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { diagnosticoApple, diagnosticoSupabase, explicarErrorSupabase, diagnosticoCifrado } from "@/lib/diagnostico";
-import { cadenaDePrueba, generarClave } from "../scripts/lib/certs.mjs";
+import { cadenaDePrueba, otroPassTypeDePrueba, generarClave } from "../scripts/lib/certs.mjs";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -41,6 +41,24 @@ describe("diagnosticoApple", () => {
     const pronto = diagnosticoApple(config(), caduca - 10 * 86_400_000);
     expect(pronto.ok).toBe(true);
     expect(pronto.avisos[0]).toMatch(/caduca en \d+ días/);
+  });
+
+  it("Pass Type ID propio: lo dice y nombra SUS variables", () => {
+    const propio = otroPassTypeDePrueba(cadena, "pass.com.deli");
+    const bien = diagnosticoApple(config({ passTypeId: "pass.com.deli", cert: propio.certPem, tienda: "la-deli" }));
+    expect(bien).toMatchObject({ ok: true, propio: true, passTypeId: "pass.com.deli" });
+    expect(diagnosticoApple(config()).propio).toBe(false);
+
+    const mal = diagnosticoApple(config({ passTypeId: "pass.com.deli", cert: propio.certPem, key: generarClave().keyPem, tienda: "la-deli" }));
+    expect(mal.problemas.join(" | ")).toMatch(/APPLE_PASS_CERT_LA_DELI no se pidió con APPLE_PASS_KEY/);
+  });
+
+  it("Pass Type ID propio a medias: avisa de que va al compartido", () => {
+    vi.stubEnv("APPLE_PASS_TYPE_ID_LA_DELI", "pass.com.deli");
+    vi.stubEnv("APPLE_PASS_CERT_LA_DELI", "");
+    const d = diagnosticoApple(config(), Date.now(), "la-deli");
+    expect(d.ok).toBe(false);
+    expect(d.problemas[0]).toMatch(/Falta APPLE_PASS_CERT_LA_DELI/);
   });
 
   it("sin configuración lista lo que falta", () => {

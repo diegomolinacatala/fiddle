@@ -6,9 +6,9 @@ import { registrarIntento, contarIntentos } from "./store";
 // ----------------------------------------------------------------------------
 // LOGIN  Un PIN de 4 cifras son 10.000 combinaciones: sin límite se adivina en
 //        minutos. 10 fallos por IP+negocio y 100 por negocio en 15 min.
-// TAP    /api/tap es público y cada llamada crea un cliente y firma un pase
-//        (CPU). 30 emisiones por IP en 10 min: de sobra para una tienda con
-//        wifi compartida, corta un bucle de peticiones.
+// TAP    /api/tap es público y cada alta (el POST con el nombre) crea un cliente
+//        que luego se firma como pase (CPU). 30 altas por IP en 10 min: de sobra
+//        para una tienda con wifi compartida, corta un bucle de peticiones.
 // LOG    /api/wallet/v1/log es público por protocolo: 60 por IP en 10 min.
 // PUSH   /api/push/<serial> es público (lo usa la tarjeta del cliente) y cada
 //        alta guarda una fila y manda un aviso: 20 por IP en 10 min.

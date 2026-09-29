@@ -194,6 +194,14 @@ describe("tarjeta pública", () => {
     expect(n).toMatchObject({ slug: "nube", meta: 8, tema: nube.tema });
   });
 
+  it("el horario llega (para decir si está abierta); los avisos automáticos, no", () => {
+    const deli = componerNegocio("delicanteria", null);
+    const n = negocioDeTarjeta(deli);
+    expect(n.horario).toEqual(deli.horario);
+    expect(n).not.toHaveProperty("automatizaciones");
+    expect(negocioDeTarjeta(nube).horario).toBeNull();
+  });
+
   it("el tag recuerda la tarjeta por tienda y solo acepta seriales", () => {
     expect(cookieDeTarjeta("nube")).toBe("tarjeta_nube");
     expect(serialRecordado(SERIAL)).toBe(SERIAL);
@@ -235,6 +243,8 @@ describe("avisos a Android desde wallet.js", () => {
     vi.stubEnv("DATA_DIR", dir);
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("APPLE_PASS_TYPE_ID", "");
+    // resetModules tira las semillas de prueba: se vuelven a meter en el módulo nuevo.
+    await import("./tiendasDePrueba.js");
     push = await import("@/lib/push/enviar");
     wallet = await import("@/lib/wallet");
     store = await import("@/lib/store");
@@ -296,14 +306,15 @@ describe("avisos a Android desde wallet.js", () => {
   });
 });
 
-it("las semillas siguen siendo tres (sanidad del fichero de pruebas)", () => {
-  expect(Object.keys(SEMILLAS)).toEqual(["nube", "fade", "forno"]);
+it("la app trae La Delicantería y los tests sus tres tiendas de prueba", () => {
+  expect(Object.keys(SEMILLAS)).toEqual(["delicanteria", "nube", "fade", "forno"]);
 });
 
 describe("/api/imagen solo dibuja URLs canónicas", () => {
   it("las variantes redirigen a la canónica; la canónica es un PNG inmutable", async () => {
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("DATA_DIR", mkdtempSync(path.join(tmpdir(), "sellos-img-")));
+    await import("./tiendasDePrueba.js");
     const { GET } = await import("@/app/api/imagen/[tipo]/route.js");
     const pedir = (ruta) => GET(new Request(`http://x${ruta}`), { params: Promise.resolve({ tipo: ruta.split("/")[3].split("?")[0] }) });
 

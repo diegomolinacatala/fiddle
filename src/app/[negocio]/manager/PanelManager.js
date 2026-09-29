@@ -6,6 +6,7 @@ import { normalizarCodigo } from "@/lib/codigo";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
+import Horario from "./Horario";
 import MapaUbicacion from "./MapaUbicacion";
 import Recorrido from "@/app/Recorrido";
 import ClaveNueva from "@/app/ClaveNueva";
@@ -13,14 +14,14 @@ import CabeceraGestion from "../CabeceraGestion";
 import Icono from "@/app/Icono";
 import { C, pagina, panel, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo } from "@/app/ui";
 
-// Manager de un negocio: la cartilla, las acciones de la caja, dónde está la
-// tienda, la promo y el tag/QR del mostrador. La vista previa enseña, mientras
-// se edita, cómo queda el pase. Los clientes tienen su propia pestaña (CRM):
-// aquí no se listan, que con cientos la página no acabaría nunca.
-// Llega con el negocio ya cargado en el servidor (page.js).
+// La pestaña TIENDA: cómo es la tarjeta (cartillas y premios), qué botones
+// tiene la caja, dónde está y cuándo abre la tienda, y el tag/QR del
+// mostrador. La vista previa enseña, mientras se edita, cómo queda el pase.
+// Lo que se les DICE a los clientes (la promo, los grupos, los avisos
+// automáticos) vive en Avisos, y la lista de clientes en Clientes: cada cosa en
+// un solo sitio. Llega con el negocio ya cargado en el servidor (page.js).
 export default function PanelManager({ negocio, inicial }) {
   const [n, setN] = useState(inicial);
-  const [promoTexto, setPromoTexto] = useState(inicial.promo || "");
   // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
   const [ubicacion, setUbicacion] = useState(() => inicial.ubicaciones?.[0] || null);
   const [msg, setMsg] = useState(null);
@@ -34,6 +35,8 @@ export default function PanelManager({ negocio, inicial }) {
   }, []);
 
   const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
+  // Con dos cartillas se cambian una a una (meta y premio; nombre y dibujo son del admin).
+  const setCartilla = (i, k, v) => setN((p) => ({ ...p, cartillas: p.cartillas.map((c, j) => (j === i ? { ...c, [k]: v } : c)) }));
   function toggleAccion(key) {
     setN((p) => {
       const on = p.acciones.includes(key);
@@ -81,7 +84,13 @@ export default function PanelManager({ negocio, inicial }) {
     const res = await fetch(`/api/negocio?b=${negocio}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ meta: n.meta, premio: n.premio, acciones: n.acciones, ubicaciones }),
+      body: JSON.stringify({
+        ...(n.cartillas
+          ? { cartillas: n.cartillas.map(({ meta, premio }) => ({ meta, premio })) }
+          : { meta: n.meta, premio: n.premio }),
+        acciones: n.acciones,
+        ubicaciones,
+      }),
     });
     const data = await res.json();
     if (!res.ok) return flash(data.error || "Error al guardar");
@@ -89,15 +98,21 @@ export default function PanelManager({ negocio, inicial }) {
     flash(`Guardado${resumenAviso(data.aviso)}`);
   }
 
-  async function lanzarPromo(texto) {
-    const res = await fetch(`/api/promo`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ b: negocio, texto }) });
+  // Se guarda al tocarlo: no sale en el pase, así que no espera al botón de la cartilla.
+  async function cambiarPedirNombre(pedirNombre) {
+    set("pedirNombre", pedirNombre);
+    const res = await fetch(`/api/negocio?b=${negocio}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pedirNombre }),
+    });
     const data = await res.json();
-    if (!res.ok) return flash(data.error || "Error");
-    setPromoTexto(texto);
-    setN((p) => ({ ...p, promo: data.promo }));
-    if (!texto) return flash("Promo retirada de todas las tarjetas");
-    const avisados = resumenAviso(data);
-    flash(avisados ? `Promo enviada${avisados}` : `Promo puesta en ${data.total} tarjetas`);
+    if (!res.ok) {
+      set("pedirNombre", !pedirNombre);
+      return flash(data.error || "No se pudo guardar");
+    }
+    setN((p) => ({ ...p, pedirNombre: data.pedirNombre }));
+    flash(pedirNombre ? "Al escanear se pedirá el nombre" : "Al escanear irán directos a la Wallet");
   }
 
   async function emitir() {
@@ -135,19 +150,35 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
           {/* ---------------------------------------------------- cartilla */}
           <section style={panel}>
             <div data-recorrido="cartilla">
-            <h2 style={h2}>{esCupon ? "Cupón" : "Cartilla"}</h2>
-            <div style={{ display: "flex", gap: 12 }}>
-              {!esCupon && (
-                <div style={{ flex: 1 }}>
-                  <label style={{ ...etiqueta, marginTop: 0 }}>Sellos</label>
-                  <input type="number" min={1} max={50} value={n.meta} onChange={(e) => set("meta", Number(e.target.value))} style={campo} />
+            <h2 style={h2}>{esCupon ? "Cupón" : n.cartillas ? "Cartillas" : "Cartilla"}</h2>
+            {!esCupon && n.cartillas ? (
+              n.cartillas.map((c, i) => (
+                <div key={c.nombre} style={{ display: "flex", gap: 12, marginTop: i ? 12 : 0 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ ...etiqueta, marginTop: 0 }} htmlFor={`meta-${i}`}>{c.nombre}</label>
+                    <input id={`meta-${i}`} type="number" min={1} max={20} value={c.meta} onChange={(e) => setCartilla(i, "meta", Number(e.target.value))} style={campo} />
+                  </div>
+                  <div style={{ flex: 2 }}>
+                    <label style={{ ...etiqueta, marginTop: 0 }} htmlFor={`premio-${i}`}>Premio</label>
+                    <input id={`premio-${i}`} value={c.premio} onChange={(e) => setCartilla(i, "premio", e.target.value)} style={campo} />
+                  </div>
                 </div>
-              )}
-              <div style={{ flex: 2 }}>
-                <label style={{ ...etiqueta, marginTop: 0 }}>{esCupon ? "Descuento" : "Premio"}</label>
-                <input value={n.premio} onChange={(e) => set("premio", e.target.value)} style={campo} />
+              ))
+            ) : (
+              <div style={{ display: "flex", gap: 12 }}>
+                {!esCupon && (
+                  <div style={{ flex: 1 }}>
+                    <label style={{ ...etiqueta, marginTop: 0 }}>Sellos</label>
+                    <input type="number" min={1} max={50} value={n.meta} onChange={(e) => set("meta", Number(e.target.value))} style={campo} />
+                  </div>
+                )}
+                <div style={{ flex: 2 }}>
+                  <label style={{ ...etiqueta, marginTop: 0 }}>{esCupon ? "Descuento" : "Premio"}</label>
+                  <input value={n.premio} onChange={(e) => set("premio", e.target.value)} style={campo} />
+                </div>
               </div>
-            </div>
+            )}
+
             </div>
 
             <div data-recorrido="botones-caja">
@@ -164,6 +195,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
                 </label>
               ))}
             </div>
+
             </div>
 
             <div data-recorrido="ubicacion">
@@ -206,21 +238,19 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             <PaseVista negocio={n} cliente={clienteVista} qrTexto={`${origin}/w/${clienteVista.serial}`} />
           </section>
 
-          {/* ------------------------------------------------- promo · tag */}
+          {/* ---------------------------------------- horario · tag · caja */}
           <section style={panel}>
-            <div data-recorrido="promo">
-            <h2 style={h2}>Promo</h2>
-            <p style={texto}>Sale en todas las tarjetas y avisa en el móvil.</p>
-            <input value={promoTexto} onChange={(e) => setPromoTexto(e.target.value)} placeholder="Hoy 2x1…" maxLength={200} style={campo} />
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <button onClick={() => lanzarPromo(promoTexto)} style={botonPrimario(accent)}>Lanzar</button>
-              <button onClick={() => lanzarPromo("")} style={botonSecundario}>Quitar</button>
-            </div>
+            <div data-recorrido="horario">
+            <Horario slug={negocio} inicial={n.horario} accent={accent} flash={flash} onGuardado={(data) => setN(data)} />
             </div>
 
             <div data-recorrido="tag">
-            <h2 style={{ ...h2, marginTop: 26 }}>Tag NFC y QR del mostrador</h2>
-            <p style={texto}>Quien lo toque o escanee se lleva su tarjeta.</p>
+            <h2 style={{ ...h2, marginTop: 26, paddingTop: 20, borderTop: `1px solid ${C.borde}` }}>Tag NFC y QR del mostrador</h2>
+            <p style={texto}>
+              {n.pedirNombre
+                ? "Quien lo toque o escanee escribe su nombre y se lleva su tarjeta."
+                : "Quien lo toque o escanee se lleva su tarjeta, sin escribir nada."}
+            </p>
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
               {origin && <QrImagen texto={tapUrl} lado={104} style={{ border: `1px solid ${C.borde}`, borderRadius: 10, padding: 6 }} />}
               <div style={{ flex: 1, minWidth: 170 }}>
@@ -232,6 +262,16 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               </div>
             </div>
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
+
+            <label style={{ ...accionRow(n.pedirNombre, accent), marginTop: 14 }} data-recorrido="pedir-nombre">
+              <input type="checkbox" checked={Boolean(n.pedirNombre)} onChange={(e) => cambiarPedirNombre(e.target.checked)} />
+              <span>
+                <strong style={{ fontWeight: 600, fontSize: 14 }}>Pedir el nombre al escanear</strong><br />
+                <span style={{ color: C.suave, fontSize: 13 }}>
+                  Un paso más antes de la Wallet, pero la caja sabe quién es cada uno.
+                </span>
+              </span>
+            </label>
             </div>
 
             <h2 style={{ ...h2, marginTop: 26 }}>Acceso de la caja</h2>

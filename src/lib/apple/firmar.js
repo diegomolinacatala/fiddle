@@ -17,10 +17,12 @@ export const MIME_PKPASS = "application/vnd.apple.pkpass";
  * Genera el .pkpass firmado de un cliente.
  * @param {object} cliente  fila de clientes (con auth_token)
  * @param {object} negocio  negocio compuesto (getNegocio)
- * @param {ReturnType<typeof configApple>} [config]  inyectable en tests
+ * @param {ReturnType<typeof configApple>} [config]  por defecto, la de la tienda
+ *   (su Pass Type ID propio o el general). El web service pasa la del pase ya
+ *   instalado, que no puede cambiar.
  * @returns {Promise<Buffer>}
  */
-export async function generarPkpass(cliente, negocio, config = configApple()) {
+export async function generarPkpass(cliente, negocio, config = configApple(negocio.slug)) {
   if (!config) throw new Error("Apple Wallet no está configurado (faltan variables APPLE_*)");
 
   const passJson = construirPassJson(cliente, negocio, {

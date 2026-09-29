@@ -1,6 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
+import { BotonAppleWallet, BotonGoogleWallet } from "@/app/BotonesWallet";
 import { useAvisos } from "./telefono";
 import { useInstalar } from "@/app/instalable";
 
@@ -58,34 +59,6 @@ export default function Acciones({ serial, negocio, plataforma, appleUrl, google
   );
 }
 
-// Los botones de Wallet son los oficiales, sin tocar: ni Apple ni Google dejan
-// cambiarles color, radio ni texto, y Google lo revisa antes de dar acceso de
-// publicación (tests/marcas.test.js). Se escalan enteros, nunca estirados.
-
-// El de Apple en España dice "Cartera de Apple": así se llama Wallet aquí. A 50 px
-// de alto, como el de Google, que no puede quedar más pequeño que el de Apple.
-function BotonAppleWallet({ href }) {
-  return (
-    <a href={href} style={botonMarca}>
-      <img src="/marcas/apple-wallet-anadir.svg" alt="Añadir a Cartera de Apple" width={188} height={50} style={{ display: "block" }} />
-    </a>
-  );
-}
-
-// El de Google no puede bajar de 48 px de alto: el ancho (298) no cabe en
-// teléfonos de menos de 360 px, y ahí va la versión compacta, que es la que
-// Google da para espacios estrechos.
-function BotonGoogleWallet({ href }) {
-  return (
-    <a href={href} style={botonMarca}>
-      <picture>
-        <source media="(max-width: 359px)" srcSet="/marcas/google-wallet-anadir-compacto.svg" width={199} height={55} />
-        <img src="/marcas/google-wallet-anadir.svg" alt="Añadir a Google Wallet" width={298} height={50} style={{ display: "block" }} />
-      </picture>
-    </a>
-  );
-}
-
 function textoAvisos(estado, esCupon) {
   if (estado === "encendido") return `Activados en este móvil. Te llegará ${esCupon ? "cada promo" : "cada sello y cada promo"}.`;
   if (estado === "bloqueado") return "Están bloqueados. Actívalos en los ajustes del navegador, en Notificaciones.";
@@ -118,11 +91,6 @@ const panel = {
   display: "grid",
   gap: 10,
 };
-
-// Google pide 8 px libres alrededor y Apple una décima parte del alto (5 px): ya
-// los dan el gap y el padding del panel. El radio es para que el anillo de foco
-// siga la forma del botón.
-const botonMarca = { justifySelf: "center", lineHeight: 0, borderRadius: 12 };
 
 const fila = { display: "flex", alignItems: "center", gap: 12, padding: "6px 2px" };
 const burbuja = { width: 40, height: 40, borderRadius: 12, display: "grid", placeItems: "center", flexShrink: 0 };

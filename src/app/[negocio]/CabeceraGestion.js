@@ -5,13 +5,18 @@ import Icono from "@/app/Icono";
 import { BotonAyuda } from "@/app/Recorrido";
 import { titulo, solapa } from "@/app/ui";
 
+// Tres pestañas, una por pregunta, y cada cosa en UNA de ellas:
+//   Tienda    cómo es la tarjeta, qué hace la caja, cuándo abre, el QR
+//   Clientes  quién viene (y la exportación, junto a la lista que exporta)
+//   Avisos    qué se les dice: a mano (a todos o a un grupo) y automático
 const SECCIONES = [
-  ["manager", "Tarjeta y promos", "cartera"],
+  ["manager", "Tienda", "puerta"],
   ["crm", "Clientes", "clientes"],
+  ["avisos", "Avisos", "megafono"],
 ];
 
-// Cabecera de las pantallas del dueño (manager y clientes): marca, nombre y
-// las mismas pestañas en las dos, para que se muevan entre ellas sin buscar.
+// Cabecera de las pantallas del dueño: marca, nombre y las mismas pestañas en
+// todas, para que se muevan entre ellas sin buscar.
 // Con <Link>: el cambio no recarga la página y el esqueleto sale al momento.
 // `ayuda`: la pantalla tiene recorrido de bienvenida y sale el (?) para repetirlo.
 export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }) {
