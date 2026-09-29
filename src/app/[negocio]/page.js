@@ -22,7 +22,9 @@ export const dynamic = "force-dynamic";
 // ----------------------------------------------------------------------------
 // El QR del mostrador y el tag NFC llevan a /api/tap, que manda aquí a quien no
 // tiene tarjeta. Dos pasos y nada más:
-//   1. el nombre (PedirNombre): al enviarlo se crea la tarjeta;
+//   1. el nombre (PedirNombre): al enviarlo se crea la tarjeta. Si la tienda no
+//      lo pide, el tap ya la crea y aquí solo se llega con ?nuevo=1 o a mano:
+//      entonces es un botón sin campo;
 //   2. la tarjeta y el botón de SU Wallet: Apple en iPhone, Google en Android si
 //      está activa y, si no, la tarjeta web, que en Android ES la tarjeta.
 // Quien ya tiene tarjeta (cookie) entra directo al paso 2.
@@ -89,7 +91,7 @@ function Bienvenida({ n, slug, nuevo }) {
           {promesa(n).map((linea, i) => <span key={i}>{linea}</span>)}
         </p>
       </header>
-      <PedirNombre slug={slug} nuevo={nuevo} />
+      <PedirNombre slug={slug} nuevo={nuevo} conNombre={n.pedirNombre} />
     </>
   );
 }

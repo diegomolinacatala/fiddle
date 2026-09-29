@@ -11,8 +11,9 @@ import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO } from
 // ============================================================================
 // LOS AVISOS AUTOMÁTICOS DE LA TIENDA
 // ----------------------------------------------------------------------------
-// Arriba, si el reloj anda y cuándo abre la tienda (las dos cosas de las que
-// depende que salgan). Luego la lista de reglas: encender, apagar y editar sin
+// Arriba, el interruptor de la tienda (apagado hasta que el manager lo
+// enciende), si el reloj anda y cuándo abre la tienda: las tres cosas de las
+// que depende que salgan. Luego la lista de reglas: encender, apagar y editar sin
 // salir de la tarjeta. Abajo, añadir una y la pausa entre avisos.
 //
 // Cada cambio guarda la lista entera (PUT /api/automatizaciones) y la pantalla
@@ -33,13 +34,15 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
   // El historial viaja como listas (JSON); aquí se vuelve a Map, como en el servidor.
   const envios = useMemo(() => ({ porRegla: new Map(datos.envios.porRegla), ultimo: new Map(datos.envios.ultimo) }), [datos.envios]);
 
-  async function guardarLista(lista, pausaAvisos = n.pausaAvisos) {
+  const guardarLista = (lista, pausaAvisos = n.pausaAvisos) => guardarCambios({ automatizaciones: lista, pausaAvisos });
+
+  async function guardarCambios(cambios) {
     setOcupado(true);
     try {
       const r = await fetch(`/api/automatizaciones?b=${slug}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ automatizaciones: lista, pausaAvisos }),
+        body: JSON.stringify(cambios),
       });
       const data = await r.json();
       if (!r.ok) { flash(data.error || "No se pudo guardar"); return false; }
@@ -96,6 +99,18 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
     },
   };
 
+  async function alternarTodos() {
+    const encender = !n.avisosActivos;
+    const activas = reglas.filter((r) => r.activa).length;
+    const detalle = activas
+      ? `Empiezan a salir ${activas === 1 ? "el aviso encendido" : `los ${activas} avisos encendidos`} a su hora, a los clientes que encajen.`
+      : "Aún no hay ninguno encendido: enciende los que quieras en la lista.";
+    if (encender && !window.confirm(`¿Encender los avisos automáticos?\n\n${detalle}`)) return;
+    if (await guardarCambios({ avisosActivos: encender })) {
+      flash(encender ? "Avisos automáticos encendidos" : "Avisos automáticos apagados: no sale ninguno solo");
+    }
+  }
+
   function empezar(disparo) {
     setEligiendo(false);
     setAbierta(null);
@@ -104,7 +119,21 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <EstadoReloj ultimo={datos.reloj.ultimo} />
+      <label style={interruptor(n.avisosActivos, n.tema.accent)} data-recorrido="avisos-automaticos">
+        <input type="checkbox" checked={n.avisosActivos} disabled={ocupado} onChange={alternarTodos} />
+        <span>
+          <strong style={{ fontWeight: 650, fontSize: 15 }}>
+            {n.avisosActivos ? "Avisos automáticos encendidos" : "Avisos automáticos apagados"}
+          </strong><br />
+          <span style={{ color: C.suave, fontSize: 13 }}>
+            {n.avisosActivos
+              ? "Los que estén encendidos abajo salen solos, a su hora."
+              : "No sale ninguno solo. Prepáralos abajo, enciende los que quieras y luego este interruptor."}
+          </span>
+        </span>
+      </label>
+
+      {n.avisosActivos && <EstadoReloj ultimo={datos.reloj.ultimo} />}
 
       <p style={{ ...lineaHorario }}>
         <Icono nombre="reloj" tam={16} />
@@ -218,6 +247,10 @@ function resumenEnvio(e) {
   return `Enviado a ${e.destinatarios}${sonaron.length ? ` · avisados: ${sonaron.join(", ")}` : ""}`;
 }
 
+const interruptor = (on, accent) => ({
+  display: "flex", gap: 12, alignItems: "center", padding: "14px 16px", borderRadius: RADIO.boton, cursor: "pointer",
+  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}0f` : "#fff",
+});
 const lineaHorario = {
   display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: 0, fontSize: 13.5, color: C.suave,
   padding: "10px 13px", border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff",

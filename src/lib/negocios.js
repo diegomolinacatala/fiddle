@@ -399,36 +399,36 @@ const LUNES_A_JUEVES = [0, 1, 2, 3];
 const LUNES_A_VIERNES = [0, 1, 2, 3, 4];
 
 // Los avisos de partida, con su voz: cookies y cafés, gente que estudia o
-// trabaja cerca. Ninguno promete nada que no esté ya en su tarjeta salvo la
+// trabaja cerca. Todos apagados: los enciende la tienda cuando los haya leído. Ninguno promete nada que no esté ya en su tarjeta salvo la
 // racha, que es el regalo que decide la tienda (se cambia en Avisos).
 const AVISOS_DELICANTERIA = [
   {
-    id: "racha", nombre: "Premio a la racha", activa: true, disparo: "racha", valor: 4,
+    id: "racha", nombre: "Premio a la racha", activa: false, disparo: "racha", valor: 4,
     hora: "08:00", dias: [], caduca: true,
     texto: "{racha} días seguidos viniendo: hoy la cookie te la invitamos nosotros. Enséñalo en caja.",
   },
   {
-    id: "premio-pendiente", nombre: "Premio sin recoger", activa: true, disparo: "premio_listo", valor: 3,
+    id: "premio-pendiente", nombre: "Premio sin recoger", activa: false, disparo: "premio_listo", valor: 3,
     hora: "10:00", dias: [],
     texto: "Tu {premio} te está esperando en la barra. Pásate cuando quieras.",
   },
   {
-    id: "a-un-paso", nombre: "A un paso del premio", activa: true, disparo: "cerca_premio", valor: 1,
+    id: "a-un-paso", nombre: "A un paso del premio", activa: false, disparo: "cerca_premio", valor: 1,
     hora: "16:00", dias: LUNES_A_JUEVES,
     texto: "Estás a {faltan} de tu {premio}. ¿Merienda esta tarde?",
   },
   {
-    id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: true, disparo: "sin_venir", valor: 21,
+    id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: false, disparo: "sin_venir", valor: 21,
     hora: "12:00", dias: [],
     texto: "Hace unas semanas que no te vemos. ¿Un café esta semana? Tu tarjeta sigue sumando.",
   },
   {
-    id: "segunda-visita", nombre: "Segunda visita", activa: true, disparo: "segunda_visita", valor: 7,
+    id: "segunda-visita", nombre: "Segunda visita", activa: false, disparo: "segunda_visita", valor: 7,
     hora: "09:00", dias: LUNES_A_VIERNES,
     texto: "¿Repetimos? Tu café y tu cookie te esperan, y cada visita suma en tu tarjeta.",
   },
   {
-    id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: true, disparo: "sin_estrenar", valor: 3,
+    id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: false, disparo: "sin_estrenar", valor: 3,
     hora: "11:00", dias: LUNES_A_VIERNES,
     texto: "Tu tarjeta ya está lista: enséñala en caja y empieza a sumar cookies y cafés.",
   },
@@ -500,6 +500,11 @@ export function componerNegocio(slug, guardado) {
     horario: normalizarHorario(guardada(c, "horario", semilla)),
     automatizaciones: normalizarReglas(guardada(c, "automatizaciones", semilla)) ?? normalizarReglas(PLANTILLAS),
     pausaAvisos: normalizarPausa(guardada(c, "pausaAvisos", semilla) ?? PAUSA_POR_DEFECTO),
+    // Los dos, apagados salvo que el manager los encienda. Avisar solo a los
+    // clientes de una tienda es algo que la tienda elige, no algo que le llega
+    // con un despliegue; y pedir el nombre es un paso más antes de la Wallet.
+    avisosActivos: c.avisosActivos === true,
+    pedirNombre: c.pedirNombre === true,
   };
 }
 

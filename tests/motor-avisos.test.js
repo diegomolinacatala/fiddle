@@ -7,17 +7,25 @@ import path from "node:path";
 // visitas en días concretos, un pase instalado y el tiempo avanzando.
 const store = await import("@/lib/store");
 const motor = await import("@/lib/motorAvisos");
+const { SEMILLAS } = await import("@/lib/negocios");
 
 // Valencia en septiembre = UTC+2.
 const valencia = (fecha, hora) => new Date(`${fecha}T${hora}:00+02:00`);
 
+/** La tienda los enciende: el interruptor general y cada uno de sus avisos. */
+const encender = () => store.saveNegocio("delicanteria", {
+  avisosActivos: true,
+  automatizaciones: SEMILLAS.delicanteria.automatizaciones.map((r) => ({ ...r, activa: true })),
+});
+
 let dir;
-beforeEach(() => {
+beforeEach(async () => {
   dir = mkdtempSync(path.join(tmpdir(), "sellos-avisos-"));
   vi.stubEnv("DATA_DIR", dir);
   vi.stubEnv("SUPABASE_URL", "");
   vi.stubEnv("APPLE_PASS_TYPE_ID", "");
   vi.useFakeTimers({ toFake: ["Date"] });
+  await encender();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -50,6 +58,31 @@ async function pasada(fecha, hora) {
 }
 
 const envioDe = (r, regla) => r.find((x) => x.negocio === "delicanteria").envios.find((e) => e.regla === regla);
+
+describe("encendidos o no", () => {
+  it("con el interruptor de la tienda apagado no sale nada solo, aunque las reglas estén encendidas", async () => {
+    await store.saveNegocio("delicanteria", { avisosActivos: false });
+    await cliente(["2026-08-28", "2026-09-01"]);
+    const r = await pasada("2026-09-24", "12:10");
+    expect(r.find((x) => x.negocio === "delicanteria").envios).toEqual([]);
+  });
+
+  it("sin tocar nada (lo de partida) no sale nada", async () => {
+    await store.saveNegocio("delicanteria", { avisosActivos: false, automatizaciones: SEMILLAS.delicanteria.automatizaciones });
+    await cliente(["2026-08-28", "2026-09-01"]);
+    const r = await pasada("2026-09-24", "12:10");
+    expect(r.find((x) => x.negocio === "delicanteria").envios).toEqual([]);
+  });
+
+  it("«Enviar ahora» funciona con el interruptor apagado: lo pide el manager", async () => {
+    await store.saveNegocio("delicanteria", { avisosActivos: false });
+    await cliente(["2026-08-28", "2026-09-01"]);
+    vi.setSystemTime(valencia("2026-09-24", "12:10"));
+    const negocio = await store.getNegocio("delicanteria");
+    const r = await motor.repasarNegocio(negocio, { soloRegla: "te-echamos-de-menos" });
+    expect(r.envios[0]).toMatchObject({ destinatarios: 1 });
+  });
+});
 
 describe("te echamos de menos (21 días, a las 12:00)", () => {
   it("sale a su hora, una sola vez, y deja rastro en la ficha", async () => {

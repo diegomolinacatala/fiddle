@@ -26,9 +26,11 @@ export const RECORRIDOS = {
     { ancla: "botones-caja", titulo: "Lo que puede hacer la caja", texto: "Activa los botones que verá quien atienda: añadir sello, quitar uno si se equivoca, canjear el premio." },
     { ancla: "ubicacion", titulo: "Dónde está la tienda", texto: "Pon el punto en tu puerta. Cuando un cliente pase cerca, el iPhone le saca la tarjeta en la pantalla de bloqueo." },
     { ancla: "vista-previa", titulo: "Así la ve el cliente", texto: "La tarjeta tal cual sale en el móvil, en Apple y en Google. Escribe el código de un cliente para ver la suya." },
-    { ancla: "promo", titulo: "Promos", texto: "Escribe algo como «Hoy 2x1 en cafés» y lánzalo: sale en todas las tarjetas y les suena en el móvil." },
+    { ancla: "horario", titulo: "Cuándo abres", texto: "Tu horario y los festivos. Los avisos automáticos solo salen con la tienda abierta, y la tarjeta web dice si estás abierto." },
     { ancla: "tag", titulo: "El tag y el QR del mostrador", texto: "Quien lo toque o lo escanee se lleva su tarjeta. Graba el tag desde aquí o imprime el QR." },
-    { ancla: "pestana-clientes", titulo: "Tus clientes", texto: "Quién viene, quién ha dejado de venir y a quién le falta un sello. Desde ahí también se avisa por grupos." },
+    { ancla: "pedir-nombre", titulo: "¿Pedir el nombre?", texto: "Apagado, el cliente va directo a la Wallet. Encendido, escribe su nombre antes: un paso más, pero la caja sabe quién es." },
+    { ancla: "pestana-clientes", titulo: "Tus clientes", texto: "Quién viene, quién ha dejado de venir y a quién le falta un sello." },
+    { ancla: "pestana-avisos", titulo: "Avisos", texto: "Promos para todos, mensajes a un grupo y avisos automáticos. Los automáticos van apagados hasta que tú los enciendas." },
     { ancla: "ayuda", titulo: "¿Otra vez?", texto: "Este botón vuelve a enseñar el recorrido cuando quieras." },
   ],
   caja: [

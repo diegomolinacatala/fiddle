@@ -46,19 +46,17 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   (`configsDeTienda()`), y cada aviso sale con el certificado de su ID.
 - El QR lleva el `serial`; debajo va el **código de 3 caracteres**, único dentro
   de su tienda (`lib/codigo.js`).
-- **Hoy todas las tiendas comparten Pass Type ID** y el Wallet las apila. Está
-  decidido pasar a uno por tienda: ver
-  [NEXT-STEPS.md](NEXT-STEPS.md#un-pass-type-id-por-tienda) antes de tocar la firma,
-  el web service o APNs, que hoy dan por hecho que solo hay uno.
 
-## El alta: primero el nombre
+## El alta: ¿nombre o directo?
 
 El QR y el tag llevan a `/api/tap`. Quien ya tiene tarjeta (cookie) va directo a
-ella; al resto lo manda a `/<slug>`, que pide SOLO el nombre y luego enseña la
-tarjeta con el botón de su Wallet.
+ella. Al resto, según `pedirNombre` de la tienda (Tienda → "Pedir el nombre al
+escanear"; **apagado de partida**):
 
-- **La tarjeta la crea el POST de `/api/tap`, nunca el GET**: quien escanea y se va
-  no deja un cliente vacío.
+- **Apagado**: el GET crea la tarjeta sin nombre y va directo a la Wallet. Un paso
+  menos en el mostrador; a cambio, quien escanea y se va deja un cliente vacío.
+- **Encendido**: el GET no crea nada y manda a `/<slug>`, que pide SOLO el nombre;
+  la tarjeta la crea el POST y luego enseña el botón de su Wallet.
 - Es lo primero que ve el cliente: pocas palabras, los colores de la tienda y los
   botones oficiales de Wallet (`app/BotonesWallet.js`) sin tocar.
 - La tarjeta de esa página es `app/CaraDelPase.js`, la misma que la tarjeta web.
@@ -158,6 +156,11 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
 ## Avisos automáticos
 
 Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js).
+
+- **Todo apagado de partida.** Nada sale solo sin el interruptor de la tienda
+  (`avisosActivos`) Y la regla encendida (`activa`) Y horario. Plantillas y semillas
+  van con `activa: false`, y una regla guardada sin `activa` cuenta como apagada.
+  No cambiar eso: un despliegue no puede empezar a escribir a los clientes de nadie.
 
 - **Un tipo de aviso = una entrada en `DISPAROS`.** Sale solo en el selector del
   manager y en el motor. Cualquier grupo del CRM ya vale con el disparo `grupo`.

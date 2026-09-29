@@ -3,7 +3,13 @@
 Mensajes que la tienda deja programados y salen solos: *"a quien lleva 21 días sin
 venir, a las 12:00, mándale «…»"*. El manager los ve, enciende, apaga y cambia en
 **Avisos → Automáticos** sin tocar código: a quién, cuántos días, a qué hora, qué
-días y qué dice. Si nunca entra, los de partida ya trabajan por él.
+días y qué dice.
+
+**Todo empieza apagado.** Salen solos solo si se cumplen las tres: la tienda encendió
+el interruptor de arriba (`avisosActivos`), ese aviso está encendido (`activa`) y la
+tienda tiene horario. Una tienda que nunca entra no manda nada: avisar a sus clientes
+es algo que elige, no algo que le llega con un despliegue. «Enviar ahora» funciona
+siempre, porque lo pide el manager.
 
 Código: [`src/lib/automatizaciones.js`](../src/lib/automatizaciones.js) (las reglas,
 funciones puras), [`src/lib/horario.js`](../src/lib/horario.js) (cuándo abre la
@@ -132,7 +138,7 @@ nueva = una entrada en `VARIABLES` y su valor en `contextoDe()`.
 
 ## Los de La Delicantería
 
-Salen de lo que se sabe de ella por internet (septiembre de 2026): café bistró en
+Vienen apagados, como todos: son la propuesta para enseñársela. Salen de lo que se sabe de ella por internet (septiembre de 2026): café bistró en
 Av. dels Tarongers 1, junto al campus; estudiantes y gente que teletrabaja; abre
 **L–J 7:30–18:30 · V 7:30–16:30 · S 8:30–13:00**, domingo cerrado. **Hay que
 confirmarlo con ellos** (horario y festivos se cambian en **Tienda → Horario**).
@@ -147,4 +153,4 @@ confirmarlo con ellos** (horario y festivos se cambian en **Tienda → Horario**
 | Tarjeta sin estrenar | la tiene hace 3 días y nunca la usó | 11:00, de lunes a viernes |
 
 **La racha promete una cookie gratis.** Es la única que da algo que no está ya en su
-tarjeta: confirmad con la tienda el regalo (o cambiad el texto) antes de encender el reloj.
+tarjeta: confirmad con la tienda el regalo (o cambiad el texto) antes de encenderla.

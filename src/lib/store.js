@@ -170,6 +170,8 @@ function fusionarConfig(actual, patch) {
     horario: patch.horario !== undefined ? patch.horario : actual.horario,
     automatizaciones: patch.automatizaciones ?? actual.automatizaciones,
     pausaAvisos: patch.pausaAvisos ?? actual.pausaAvisos,
+    avisosActivos: patch.avisosActivos ?? actual.avisosActivos,
+    pedirNombre: patch.pedirNombre ?? actual.pedirNombre,
   };
   return config;
 }

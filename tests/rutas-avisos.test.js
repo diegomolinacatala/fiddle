@@ -92,7 +92,36 @@ describe("/api/automatizaciones", () => {
   });
 });
 
+describe("el interruptor de los avisos automáticos", () => {
+  it("empieza apagado; el manager lo enciende y lo apaga sin tocar las reglas", async () => {
+    const antes = await (await autos.GET(await pedir("/api/automatizaciones?b=delicanteria"))).json();
+    expect(antes.negocio.avisosActivos).toBe(false);
+
+    const on = await autos.PUT(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "PUT", cuerpo: { avisosActivos: true } }));
+    expect(on.status).toBe(200);
+    const datos = await on.json();
+    expect(datos.negocio.avisosActivos).toBe(true);
+    expect(datos.negocio.automatizaciones).toEqual(antes.negocio.automatizaciones);
+
+    const off = await autos.PUT(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "PUT", cuerpo: { avisosActivos: false } }));
+    expect((await off.json()).negocio.avisosActivos).toBe(false);
+  });
+
+  it("un PUT vacío no guarda nada", async () => {
+    const r = await autos.PUT(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "PUT", cuerpo: {} }));
+    expect(r.status).toBe(400);
+  });
+});
+
 describe("PUT /api/negocio desde el manager", () => {
+  it("pedir el nombre al escanear: apagado de partida, se enciende sin mover los teléfonos", async () => {
+    expect((await store.getNegocio("delicanteria")).pedirNombre).toBe(false);
+    const r = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { pedirNombre: true } }));
+    const data = await r.json();
+    expect(data.pedirNombre).toBe(true);
+    expect(data.aviso).toBeNull();
+  });
+
   it("el horario se guarda sin mover los teléfonos", async () => {
     const { horario } = await store.getNegocio("delicanteria");
     const semana = horario.semana.map((t, i) => (i === 5 ? null : t)); // cierra también los sábados
