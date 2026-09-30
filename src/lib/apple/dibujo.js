@@ -33,6 +33,7 @@
 
 import { svgTextoCuadrado, anchoDeTexto, ALTO as ALTO_GLIFO, GROSOR } from "./glifos";
 import { cartillasDe } from "../cartillas";
+import { svgTexto } from "./texto";
 
 export const TAM = {
   icon: 29, // + @2x 58, @3x 87 (obligatorio)
@@ -1103,12 +1104,15 @@ const PINTAR_BANDA = {
   cifra: bandaCifra,
 };
 
-export function svgStripSellos(tema, meta, sellos) {
-  const [w, h] = TAM.strip.storeCard.map((v) => v * 3);
+export function svgStripSellos(tema, meta, sellos, estado = null) {
+  const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
+  const arriba = estado ? ALTO_ESTADO * 3 : 0;
+  const h = alto - arriba;
   const llenos = Math.min(Math.max(0, sellos), meta);
   const pintar = PINTAR_BANDA[modo(tema)] || bandaCasillas;
   const id = idDe(tema, meta, llenos);
-  return svg(w, h, fondoDeBanda(tema, w, h, id) + pintar(tema, meta, llenos, w, h));
+  return svg(w, alto, lineaDeEstado(tema, estado, w)
+    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + pintar(tema, meta, llenos, w, h)}</g>`);
 }
 
 export function svgStripCupon(tema, usado) {
@@ -1141,9 +1145,11 @@ export function svgStripCupon(tema, usado) {
  * @param {object} tema
  * @param {{marca:string, meta:number, sellos:number}[]} filas
  */
-export function svgStripCartillas(tema, filas) {
-  const [w, h] = TAM.strip.storeCard.map((v) => v * 3);
-  const margen = 24; // arriba y abajo
+export function svgStripCartillas(tema, filas, estado = null) {
+  const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
+  const arriba = estado ? ALTO_ESTADO * 3 : 0;
+  const h = alto - arriba;
+  const margen = estado ? 16 : 24; // arriba y abajo; con la línea de estado, algo menos
   const lateral = w * 0.09; // ~34 pt por lado: lo que el iPhone puede recortar, y aire
   const altoFila = (h - margen * 2) / filas.length;
   const oscura = esOscura(tema);
@@ -1170,18 +1176,57 @@ export function svgStripCartillas(tema, filas) {
     }).join("");
   }).join("");
 
-  return svg(w, h, fondoDeBanda(tema, w, h, id) + cuerpo);
+  return svg(w, alto, lineaDeEstado(tema, estado, w) + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + cuerpo}</g>`);
+}
+
+// ------------------------------------------------------ abierto / cerrado
+// Un pase no tiene sitio para una línea bajo el nombre de la tienda: la cabecera
+// es logo + nombre + campos a la derecha. Así que se DIBUJA en lo alto de la
+// banda, sobre el color de la tarjeta (el mismo `backgroundColor` del pase): se
+// lee como parte de la cabecera y la "foto" de la banda siguen siendo los
+// sellos, que bajan un poco para dejarle sitio.
+//
+// Un punto verde o rojo y la frase, como en Mapas. Las letras son las de Inter
+// dibujadas (lib/apple/texto.js): nada de <text>, que en serverless no hay fuentes.
+
+/** Alto de la línea, en puntos (de los 123 de la banda). */
+export const ALTO_ESTADO = 22;
+// Dónde empieza la frase: bajo el nombre de la tienda, que en el iPhone va a la
+// derecha del logo; el punto queda colgando a su izquierda, como en Mapas.
+// Wallet recorta algo los lados de la banda, así que no se pega al borde.
+const X_ESTADO = 56;
+const TAM_ESTADO = 12.5;
+// Los de sistema de iOS: se ven en tarjetas claras y oscuras (como AbiertoAhora).
+const PUNTO_ESTADO = { abierta: "#34c759", cerrada: "#ff453a" };
+
+function lineaDeEstado(tema, estado, w) {
+  if (!estado) return "";
+  const alto = ALTO_ESTADO * 3;
+  const tam = TAM_ESTADO * 3;
+  const base = alto * 0.66;
+  const r = 3.4 * 3;
+  const x = X_ESTADO * 3;
+  const tinta = tema.ink || "#111111";
+  return `<rect width="${w}" height="${alto}" fill="${tema.cardBg || "#ffffff"}"/>`
+    + `<circle cx="${x - r - 5 * 3}" cy="${n2(base - tam * 0.36)}" r="${r}" fill="${estado.abierta ? PUNTO_ESTADO.abierta : PUNTO_ESTADO.cerrada}"/>`
+    + svgTexto(estado.texto, { x, y: base, tam, color: tinta, opacidad: 0.72 });
 }
 
 /** La banda que le toca a este cliente, con su tamaño en puntos. */
-export function stripDelPase(negocio, cliente) {
+/**
+ * `estado` ({abierta, texto} de estadoParaPase): la línea "● Abierto hasta las
+ * 14:00" en lo alto. Solo en el pase de Wallet y su vista previa; la tarjeta web
+ * lo dice sola (AbiertoAhora). Los cupones no la llevan: su banda va bajo el
+ * descuento, no bajo el nombre.
+ */
+export function stripDelPase(negocio, cliente, { estado = null } = {}) {
   const esCupon = negocio.tipo === "descuento";
   const [ancho, alto] = esCupon ? TAM.strip.coupon : TAM.strip.storeCard;
-  let svgTexto;
-  if (esCupon) svgTexto = svgStripCupon(negocio.tema, (cliente.premios || 0) > 0);
-  else if (negocio.cartillas) svgTexto = svgStripCartillas(negocio.tema, cartillasDe(cliente, negocio));
-  else svgTexto = svgStripSellos(negocio.tema, negocio.meta, Math.min(cliente.sellos ?? 0, negocio.meta));
-  return { svg: svgTexto, ancho, alto };
+  let dibujo;
+  if (esCupon) dibujo = svgStripCupon(negocio.tema, (cliente.premios || 0) > 0);
+  else if (negocio.cartillas) dibujo = svgStripCartillas(negocio.tema, cartillasDe(cliente, negocio), estado);
+  else dibujo = svgStripSellos(negocio.tema, negocio.meta, Math.min(cliente.sellos ?? 0, negocio.meta), estado);
+  return { svg: dibujo, ancho, alto };
 }
 
 /** SVG -> data URI, para pintarlo en un <img>. */

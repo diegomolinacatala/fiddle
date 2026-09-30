@@ -149,7 +149,7 @@ export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = 
 }
 
 /**
- * El estado del pase ("ABIERTO hasta 14:00") de una tienda, si ha cambiado
+ * El estado del pase ("Abierto hasta las 14:00") de una tienda, si ha cambiado
  * desde la última pasada: se apunta en su config y se empuja a sus iPhone, que
  * vuelven a pedir el pase y lo ven ya cambiado (lib/apple/firmar.js lo calcula
  * al firmar). Idempotente como el resto: si el valor es el mismo, nada.
@@ -157,7 +157,7 @@ export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = 
  */
 export async function refrescarEstadoDelPase(negocio, ahora = Date.now()) {
   const estado = estadoParaPase(negocio.horario, ahora);
-  const clave = estado ? `${estado.label} ${estado.value}` : null;
+  const clave = estado?.texto ?? null;
   if (clave === (negocio.estadoPase ?? null)) return null;
   await saveNegocio(negocio.slug, { estadoPase: clave });
   // Sin texto ni sonido: el pase se pone al día en silencio.

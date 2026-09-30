@@ -305,30 +305,25 @@ export function estadoAhora(horario, ms) {
 }
 
 // ------------------------------------------------------------- en el pase
-// El estado en la cabecera del pase de Wallet: "ABIERTO · hasta 14:00". Un pase
-// no cambia solo con la hora, así que lo pone al día el reloj de los avisos
-// (lib/motorAvisos.js) cada vez que este valor cambia: al abrir, al cerrar y a
-// medianoche ("abre mañana" pasa a "abre 9:00"). Sin "pronto": eso sería otro
-// empujón a todos los iPhone por cada cambio de color.
+// La línea bajo el nombre en el pase de Wallet, dibujada en lo alto de la banda
+// (lib/apple/dibujo.js): un punto verde o rojo y "Abierto hasta las 14:00". Un
+// pase no cambia solo con la hora, así que lo pone al día el reloj de los avisos
+// (lib/motorAvisos.js) cada vez que el texto cambia: al abrir, al cerrar y a
+// medianoche ("Cerrado hasta mañana" pasa a "Cerrado hasta las 7:30").
 //
-// Cabe poco (la cabecera la comparte con el contador de premios), así que la
-// etiqueta dice el estado y el valor, lo siguiente: "hasta 14:00", "abre 17:00",
-// "abre mañana", "abre el lunes".
+// Como la de la tarjeta web (estadoAhora) pero sin "pronto": ese ámbar sería
+// otro empujón a todos los iPhone por cada cambio de color.
 
 /**
- * @returns {{abierta:boolean, label:string, value:string}|null} null sin horario
+ * @returns {{abierta:boolean, texto:string}|null} null sin horario
  */
 export function estadoParaPase(horario, ms) {
   if (!horario) return null;
   const { fecha, minutos } = relojLocal(ms, horario.zona);
   const hoy = tramoEn(horario, fecha, minutos);
-  if (hoy) return { abierta: true, label: "ABIERTO", value: `hasta ${horaCorta(aHora(hoy.cierra))}` };
+  if (hoy) return { abierta: true, texto: `Abierto hasta ${lasHoras(hoy.cierra)}` };
   const abre = aperturaTras(horario, fecha, minutos);
-  const cerrado = (value) => ({ abierta: false, label: "CERRADO", value });
-  if (!abre) return cerrado("por ahora");
-  if (abre.fecha === fecha) return cerrado(`abre ${horaCorta(aHora(abre.minutos))}`);
-  if (abre.fecha === sumarDias(fecha, 1)) return cerrado("abre mañana");
-  const dentro = Math.round((Date.parse(`${abre.fecha}T12:00:00Z`) - Date.parse(`${fecha}T12:00:00Z`)) / DIA_MS);
-  if (dentro < 7) return cerrado(`abre el ${DIAS[diaDeFecha(abre.fecha)]}`);
-  return cerrado(`abre el ${Number(abre.fecha.slice(8))}/${Number(abre.fecha.slice(5, 7))}`);
+  if (!abre) return { abierta: false, texto: "Cerrado" };
+  const cuando = abre.fecha === fecha ? lasHoras(abre.minutos) : cuandoTexto(abre.fecha, fecha);
+  return { abierta: false, texto: `Cerrado hasta ${cuando}` };
 }

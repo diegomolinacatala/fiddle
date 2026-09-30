@@ -119,22 +119,32 @@ describe("utilidades", () => {
   });
 });
 
-describe("ABIERTO / CERRADO en la cabecera", () => {
-  const estado = { abierta: true, label: "ABIERTO", value: "hasta 14:00" };
-
-  it("va delante del contador de premios, sin sonar", () => {
-    const p = construirPassJson(cliente(), negocio("nube"), { ...opciones, estado });
-    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["estado", "canjeados"]);
-    expect(p.storeCard.headerFields[0]).toEqual({ key: "estado", label: "ABIERTO", value: "hasta 14:00" });
-  });
-
-  it("en un cupón (sin contador) va solo", () => {
-    const p = construirPassJson(cliente(), negocio("forno"), { ...opciones, estado });
-    expect(p.coupon.headerFields.map((f) => f.key)).toEqual(["estado"]);
-  });
-
-  it("sin estado (sin horario o sin reloj), el pase es el de siempre", () => {
+describe("abierto / cerrado va en la banda, no en los campos", () => {
+  it("la cabecera del pase sigue siendo solo el contador", async () => {
     const p = construirPassJson(cliente(), negocio("nube"), opciones);
     expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["canjeados"]);
   });
+
+  it("con estado, la banda lleva arriba el color de la tarjeta, el punto y la frase dibujada (sin <text>)", async () => {
+    const { stripDelPase, ALTO_ESTADO } = await import("@/lib/apple/dibujo");
+    const n = negocio("nube");
+    const sin = stripDelPase(n, cliente()).svg;
+    const abierta = stripDelPase(n, cliente(), { estado: { abierta: true, texto: "Abierto hasta las 14:00" } }).svg;
+    const cerrada = stripDelPase(n, cliente(), { estado: { abierta: false, texto: "Cerrado hasta las 17:00" } }).svg;
+    expect(abierta).not.toBe(sin);
+    expect(abierta).toContain(`height="${ALTO_ESTADO * 3}" fill="${n.tema.cardBg}"`);
+    expect(abierta).toContain("#34c759");
+    expect(cerrada).toContain("#ff453a");
+    expect(abierta).not.toContain("<text");
+    // Mismo tamaño de imagen: los sellos bajan, la banda no crece.
+    expect(abierta.match(/viewBox="([^"]+)"/)[1]).toBe(sin.match(/viewBox="([^"]+)"/)[1]);
+  });
+
+  it("también con dos cartillas; los cupones no la llevan", async () => {
+    const { stripDelPase } = await import("@/lib/apple/dibujo");
+    const estado = { abierta: true, texto: "Abierto hasta las 14:00" };
+    expect(stripDelPase(negocio("delicanteria"), cliente(), { estado }).svg).toContain("#34c759");
+    expect(stripDelPase(negocio("forno"), cliente(), { estado }).svg).not.toContain("#34c759");
+  });
 });
+

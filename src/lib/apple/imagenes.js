@@ -54,19 +54,21 @@ function fijas(negocio) {
   );
 }
 
-function strip(negocio, cliente) {
+function strip(negocio, cliente, estado) {
   const esCupon = negocio.tipo === "descuento";
   const usado = (cliente.premios || 0) > 0;
   const sellos = Math.min(cliente.sellos, negocio.meta);
   // Con dos cartillas la banda depende de las dos cuentas (y de sus metas).
   const segunda = negocio.cartillas ? `:${negocio.cartillas[1].meta}:${cliente.sellos2 || 0}` : "";
-  const clave = esCupon ? `${negocio.slug}:cupon:${usado}` : `${negocio.slug}:${negocio.meta}:${sellos}${segunda}`;
+  // La línea de abierto/cerrado también es parte del dibujo: otra frase, otra imagen.
+  const linea = estado && !esCupon ? `:${estado.abierta ? 1 : 0}${estado.texto}` : "";
+  const clave = esCupon ? `${negocio.slug}:cupon:${usado}` : `${negocio.slug}:${negocio.meta}:${sellos}${segunda}${linea}`;
   if (!cacheStrips.has(clave) && cacheStrips.size >= MAX_STRIPS) {
     cacheStrips.delete(cacheStrips.keys().next().value); // la menos usada recientemente
   }
   return cachear(cacheStrips, clave, () => {
     const [w, h] = esCupon ? TAM.strip.coupon : TAM.strip.storeCard;
-    return escalas("strip", stripDelPase(negocio, cliente).svg, w, h);
+    return escalas("strip", stripDelPase(negocio, cliente, { estado }).svg, w, h);
   });
 }
 
@@ -74,7 +76,7 @@ function strip(negocio, cliente) {
  * Todas las imágenes del pase, como { "icon.png": Buffer, ... }.
  * @returns {Promise<Record<string, Buffer>>}
  */
-export async function imagenesDelPase(negocio, cliente) {
-  const [a, b] = await Promise.all([fijas(negocio), strip(negocio, cliente)]);
+export async function imagenesDelPase(negocio, cliente, { estado = null } = {}) {
+  const [a, b] = await Promise.all([fijas(negocio), strip(negocio, cliente, estado)]);
   return { ...a, ...b };
 }
