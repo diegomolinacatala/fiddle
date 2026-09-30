@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getNegocio } from "@/lib/store";
+import { relojVivo } from "@/lib/relojAvisos";
 import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
@@ -18,12 +19,14 @@ export default async function Page({ params }) {
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/manager`);
 
   let n;
+  let reloj;
   try {
-    n = await getNegocio(slug);
+    [n, reloj] = await Promise.all([getNegocio(slug), relojVivo()]);
   } catch (e) {
     console.error(`[manager ${slug}] no se pudo leer la base de datos:`, e);
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
   }
   if (!n) notFound();
-  return <PanelManager negocio={slug} inicial={n} />;
+  // `reloj`: si anda, el pase lleva "ABIERTO / CERRADO" y la vista previa también.
+  return <PanelManager negocio={slug} inicial={n} reloj={reloj} />;
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { LISTA_ACCIONES } from "@/lib/acciones";
 import { normalizarCodigo } from "@/lib/codigo";
+import { estadoParaPase } from "@/lib/horario";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
@@ -20,7 +21,7 @@ import { C, pagina, panel, campo, etiqueta, h2, botonPrimario, botonSecundario, 
 // Lo que se les DICE a los clientes (la promo, los grupos, los avisos
 // automáticos) vive en Avisos, y la lista de clientes en Clientes: cada cosa en
 // un solo sitio. Llega con el negocio ya cargado en el servidor (page.js).
-export default function PanelManager({ negocio, inicial }) {
+export default function PanelManager({ negocio, inicial, reloj = false }) {
   const [n, setN] = useState(inicial);
   // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
   const [ubicacion, setUbicacion] = useState(() => inicial.ubicaciones?.[0] || null);
@@ -137,6 +138,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
     catch { flash(`${origin}/api/tap?b=${negocio}`); }
   }
 
+  // El estado del pase con la hora de la tienda. `origin` vacío = aún en el
+  // servidor: sin hora, para que el HTML de servidor y el del navegador casen.
+  const estadoVista = reloj && origin ? estadoParaPase(n.horario, Date.now()) : null;
   const accent = n.tema.accent;
   const tapUrl = `${origin}/api/tap?b=${negocio}`;
   const esCupon = n.tipo === "descuento";
@@ -235,7 +239,12 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               </div>
             )}
 
-            <PaseVista negocio={n} cliente={clienteVista} qrTexto={`${origin}/w/${clienteVista.serial}`} />
+            <PaseVista negocio={n} cliente={clienteVista} qrTexto={`${origin}/w/${clienteVista.serial}`} estado={estadoVista} />
+            {n.horario && !reloj && (
+              <p style={{ ...texto, margin: "10px 0 0" }}>
+                Con el reloj de los avisos en marcha, el pase dirá también si la tienda está abierta.
+              </p>
+            )}
           </section>
 
           {/* ---------------------------------------- horario · tag · caja */}

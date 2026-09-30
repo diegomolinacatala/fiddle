@@ -282,3 +282,23 @@ describe("frases y piezas", () => {
     expect(etiquetaEnvio("riesgo", [])).toBe("En riesgo");
   });
 });
+
+describe("con horario partido", () => {
+  const partido = {
+    zona: "Europe/Madrid",
+    semana: [...Array(6).fill([{ abre: "09:00", cierra: "14:00" }, { abre: "17:00", cierra: "20:30" }]), null],
+    cerrados: [],
+  };
+  const aviso = { ...regla("te-echamos-de-menos"), dias: [] };
+
+  it("un aviso de las 15:00 (en el descanso) sale al volver a abrir, a las 17:00", () => {
+    expect(momentoDelDia({ ...aviso, hora: "15:00" }, partido, "2026-09-24")).toBe(17 * 60);
+    expect(momentoDelDia({ ...aviso, hora: "21:00" }, partido, "2026-09-24")).toBeNull();
+  });
+
+  it("no sale en el descanso aunque esté dentro de su ventana", () => {
+    const r = { ...aviso, hora: "13:30" };
+    expect(tocaAhora(r, partido, { fecha: "2026-09-24", minutos: 13 * 60 + 45 })).toBe(true);
+    expect(tocaAhora(r, partido, { fecha: "2026-09-24", minutos: 14 * 60 + 30 })).toBe(false);
+  });
+});

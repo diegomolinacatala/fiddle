@@ -118,3 +118,23 @@ describe("utilidades", () => {
     expect(r[0]).toEqual({ latitude: 0, longitude: 0, relevantText: "hola" });
   });
 });
+
+describe("ABIERTO / CERRADO en la cabecera", () => {
+  const estado = { abierta: true, label: "ABIERTO", value: "hasta 14:00" };
+
+  it("va delante del contador de premios, sin sonar", () => {
+    const p = construirPassJson(cliente(), negocio("nube"), { ...opciones, estado });
+    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["estado", "canjeados"]);
+    expect(p.storeCard.headerFields[0]).toEqual({ key: "estado", label: "ABIERTO", value: "hasta 14:00" });
+  });
+
+  it("en un cupón (sin contador) va solo", () => {
+    const p = construirPassJson(cliente(), negocio("forno"), { ...opciones, estado });
+    expect(p.coupon.headerFields.map((f) => f.key)).toEqual(["estado"]);
+  });
+
+  it("sin estado (sin horario o sin reloj), el pase es el de siempre", () => {
+    const p = construirPassJson(cliente(), negocio("nube"), opciones);
+    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["canjeados"]);
+  });
+});

@@ -201,6 +201,23 @@ export async function avisarSeriales(seriales, { negocio = null, texto = null } 
  * @param {{promoNueva?:string|null, cartilla?:boolean}} [opciones]
  * @returns {Promise<{proveedor:string, total:number, enviadas:number, fallidas:object[], web:number, google:number}>}
  */
+/**
+ * Pone al día en silencio los pases de Apple de una tienda: los marca como
+ * cambiados y avisa a sus iPhone, que vuelven a pedirlos. Sin tocar Android ni
+ * la tarjeta web (esa ya calcula "Abierto" sola). Lo usa el reloj para el
+ * estado ABIERTO / CERRADO de la cabecera. Nunca lanza.
+ */
+export async function refrescarPasesApple(negocio) {
+  if (proveedorWallet() !== "apple") return { enviados: 0, tokens: 0 };
+  try {
+    await tocarClientesDeNegocio(negocio.slug);
+    return await avisarApple({ negocio: negocio.slug }, negocio.slug);
+  } catch (e) {
+    console.error(`[wallet] no se pudieron refrescar los pases de ${negocio.slug}:`, e);
+    return { enviados: 0, tokens: 0, error: String(e?.message || e) };
+  }
+}
+
 export async function notificarNegocio(negocio, { promoNueva = null, cartilla = false } = {}) {
   const proveedor = proveedorWallet();
 

@@ -505,6 +505,7 @@ export function componerNegocio(slug, guardado) {
     // con un despliegue; y pedir el nombre es un paso más antes de la Wallet.
     avisosActivos: c.avisosActivos === true,
     pedirNombre: c.pedirNombre === true,
+    estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,
   };
 }
 

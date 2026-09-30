@@ -31,7 +31,7 @@ import { GRUPOS, LISTA_GRUPOS, esGrupo } from "./crm";
 import { cartillasDe } from "./cartillas";
 import { singular } from "./acciones";
 import {
-  DIAS, aMinutos, aHora, horaCorta, esHora, relojLocal, fechaLocal, tramoDe, sumarDias, diaDeFecha, rachaDe, cuandoTexto,
+  DIAS, aMinutos, aHora, horaCorta, esHora, relojLocal, fechaLocal, tramosDe, tramoEn, sumarDias, diaDeFecha, rachaDe, cuandoTexto,
   inicioDelDia, cierreTras,
 } from "./horario";
 
@@ -45,6 +45,11 @@ export const MAX_PAUSA = 30;
 // Si el reloj llega tarde más de esto, ese día ya no sale: un "¿merienda?" a
 // las 20:00 no es lo que se programó.
 export const VENTANA_MIN = 120;
+// El reloj de fuera deja su latido con esta clave a cada pasada (cada 15 min):
+// con 40 sin latido, está parado. Aquí y no en lib/relojAvisos.js porque la
+// pantalla también lo mira, y este módulo es puro (sin la base).
+export const CLAVE_RELOJ = "reloj:avisos";
+export const RELOJ_VIVO_MIN = 40;
 
 const GRUPO_AUTO = "auto:";
 export const grupoDeRegla = (id) => `${GRUPO_AUTO}${id}`;
@@ -292,23 +297,21 @@ export function elegibles(regla, contextos, envios = SIN_ENVIOS, { ahora = Date.
 // ------------------------------------------------------------------- el reloj
 /**
  * A qué minuto del día `fecha` sale la regla, o null si ese día no sale: no es
- * uno de sus días, la tienda cierra, o a esa hora ya ha cerrado. Si aún no ha
- * abierto, sale al abrir.
+ * uno de sus días, la tienda cierra, o a esa hora ya ha cerrado del todo. Si aún
+ * no ha abierto (o está en el descanso de mediodía), sale al abrir.
  */
 export function momentoDelDia(regla, horario, fecha) {
   if (regla.dias?.length && !regla.dias.includes(diaDeFecha(fecha))) return null;
-  const tramo = tramoDe(horario, fecha);
-  if (!tramo) return null;
-  const m = Math.max(aMinutos(regla.hora) ?? 0, tramo.abre);
-  return m < tramo.cierra ? m : null;
+  const hora = aMinutos(regla.hora) ?? 0;
+  const tramo = tramosDe(horario, fecha).find((t) => hora < t.cierra);
+  return tramo ? Math.max(hora, tramo.abre) : null;
 }
 
 /** ¿Le toca salir en este repaso? Desde su hora y durante la ventana, con la tienda abierta. */
 export function tocaAhora(regla, horario, reloj) {
   const m = momentoDelDia(regla, horario, reloj.fecha);
   if (m === null) return false;
-  const cierra = tramoDe(horario, reloj.fecha).cierra;
-  return reloj.minutos >= m && reloj.minutos < Math.min(m + VENTANA_MIN, cierra);
+  return reloj.minutos >= m && reloj.minutos < m + VENTANA_MIN && Boolean(tramoEn(horario, reloj.fecha, reloj.minutos));
 }
 
 /**

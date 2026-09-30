@@ -172,6 +172,8 @@ function fusionarConfig(actual, patch) {
     pausaAvisos: patch.pausaAvisos ?? actual.pausaAvisos,
     avisosActivos: patch.avisosActivos ?? actual.avisosActivos,
     pedirNombre: patch.pedirNombre ?? actual.pedirNombre,
+    // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
+    estadoPase: patch.estadoPase !== undefined ? patch.estadoPase : actual.estadoPase,
   };
   return config;
 }

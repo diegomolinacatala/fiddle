@@ -30,7 +30,9 @@ import { C } from "@/app/ui";
  *                                     campo se puede tocar para comentarlo.
  * @param {string} [props.campoActivo] clave del campo que se está comentando
  */
-export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null }) {
+// `estado`: el "ABIERTO hasta 14:00" de la cabecera, cuando el pase de verdad lo
+// lleva (estadoParaPase, solo con el reloj en marcha). Lo decide quien la usa.
+export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null }) {
   const [cual, setCual] = useState("apple");
   const anota = { notas, onCampo, campoActivo };
 
@@ -54,7 +56,7 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
       </div>
 
       {cual === "apple"
-        ? <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />
+        ? <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} estado={estado} />
         : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />}
 
       {pie && <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>{pie}</p>}
@@ -110,10 +112,10 @@ const puntoNota = {
 // sangre, secundarios, auxiliares y el código abajo. En los cupones los
 // primaryFields van ENCIMA de la banda (por eso su dibujo deja hueco a la
 // izquierda); en las cartillas no hay primarios y la banda se ve entera.
-function TarjetaApple({ negocio, cliente, qrTexto, anota }) {
+function TarjetaApple({ negocio, cliente, qrTexto, anota, estado }) {
   const t = negocio.tema;
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields, backFields } =
-    camposDelPase(cliente, negocio);
+    camposDelPase(cliente, negocio, { estado });
   const strip = stripDelPase(negocio, cliente);
 
   return (
