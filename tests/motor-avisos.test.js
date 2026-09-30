@@ -202,16 +202,16 @@ describe("una tienda sin horario", () => {
   });
 });
 
-describe("el estado del pase (ABIERTO / CERRADO)", () => {
+describe("el estado del pase (abierto / cerrado)", () => {
   it("se apunta y se empuja solo cuando cambia: al abrir, al cerrar y a medianoche", async () => {
     const r = async (fecha, hora) => (await pasada(fecha, hora)).find((x) => x.negocio === "delicanteria").estadoPase;
-    expect(await r("2026-09-24", "12:00")).toBe("ABIERTO hasta 18:30");
+    expect(await r("2026-09-24", "12:00")).toBe("Abierto hasta las 18:30");
     expect(await r("2026-09-24", "12:15")).toBeNull(); // igual: nada que empujar
-    expect(await r("2026-09-24", "18:30")).toBe("CERRADO abre mañana");
+    expect(await r("2026-09-24", "18:30")).toBe("Cerrado hasta mañana");
     expect(await r("2026-09-24", "23:45")).toBeNull();
-    expect(await r("2026-09-25", "00:00")).toBe("CERRADO abre 7:30");
-    expect(await r("2026-09-25", "07:30")).toBe("ABIERTO hasta 16:30"); // viernes cierra antes
-    expect((await store.getNegocio("delicanteria")).estadoPase).toBe("ABIERTO hasta 16:30");
+    expect(await r("2026-09-25", "00:00")).toBe("Cerrado hasta las 7:30");
+    expect(await r("2026-09-25", "07:30")).toBe("Abierto hasta las 16:30"); // viernes cierra antes
+    expect((await store.getNegocio("delicanteria")).estadoPase).toBe("Abierto hasta las 16:30");
   });
 
   it("sin horario no hay estado que poner", async () => {

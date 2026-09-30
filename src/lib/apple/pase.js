@@ -107,7 +107,7 @@ export function ubicacionesApple(negocio) {
  * mismo que acaba dentro del .pkpass, sin poder desviarse.
  * @returns {{headerFields:object[], primaryFields:object[], secondaryFields:object[], auxiliaryFields:object[], backFields:object[]}}
  */
-export function camposDelPase(cliente, negocio, { estado = null } = {}) {
+export function camposDelPase(cliente, negocio) {
   // Tarjeta sustituida por otra en el mismo iPhone (lib/unaTarjeta.js): ya no
   // cuenta nada, solo dice dónde están los sellos.
   if (cliente.fusionado_en) {
@@ -164,15 +164,7 @@ export function camposDelPase(cliente, negocio, { estado = null } = {}) {
     { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
   ];
 
-  // ABIERTO / CERRADO en la cabecera, delante del contador: se ve también con
-  // los pases apilados. Solo si quien firma lo pide (lib/apple/firmar.js, y solo
-  // con el reloj en marcha: es él quien lo pone al día). Sin changeMessage: que
-  // la tienda abra no es motivo para sonar en el bolsillo de nadie.
-  const headerFields = estado
-    ? [{ key: "estado", label: estado.label, value: estado.value }, ...campos.headerFields]
-    : campos.headerFields;
-
-  return { ...campos, headerFields, auxiliaryFields, backFields };
+  return { ...campos, auxiliaryFields, backFields };
 }
 
 /** Clave corta del cliente ("K7M"). Los pases antiguos caen a los 3 primeros del serial. */
@@ -184,13 +176,13 @@ const codigoDe = (cliente) => cliente.codigo || String(cliente.serial || "").sli
  * @param {{passTypeId:string, teamId:string, appUrl:string}} opciones
  * @returns {object} pass.json
  */
-export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl, estado = null }) {
+export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl }) {
   if (!cliente?.auth_token || cliente.auth_token.length < 16) {
     throw new Error("El cliente no tiene authenticationToken válido (mín. 16 caracteres)");
   }
   const t = negocio.tema;
   const esCupon = negocio.tipo === "descuento";
-  const { backFields, ...cara } = camposDelPase(cliente, negocio, { estado });
+  const { backFields, ...cara } = camposDelPase(cliente, negocio);
 
   const pase = {
     formatVersion: 1,

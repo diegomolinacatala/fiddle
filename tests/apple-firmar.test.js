@@ -216,10 +216,9 @@ describe("el estado de la tienda en el pase firmado", () => {
     ...negocio("nube"),
     horario: { zona: "Europe/Madrid", semana: Array(7).fill([{ abre: "00:00", cierra: "23:55" }]), cerrados: [] },
   };
-  const cabecera = async () =>
-    JSON.parse(leerZip(await generarPkpass(cliente, conHorario))["pass.json"].toString("utf8")).storeCard.headerFields.map((f) => f.key);
+  const firmar = async () => leerZip(await generarPkpass(cliente, conHorario));
 
-  it("solo con el reloj en marcha: sin él, el pase diría «ABIERTO» toda la noche", async () => {
+  it("solo con el reloj en marcha va en la banda; sin él, el pase diría «Abierto» toda la noche", async () => {
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const path = await import("node:path");
@@ -228,14 +227,20 @@ describe("el estado de la tienda en el pase firmado", () => {
       stubApple();
       vi.stubEnv("DATA_DIR", dir);
       vi.stubEnv("SUPABASE_URL", "");
-      expect(await cabecera()).toEqual(["canjeados"]);
+      const sinReloj = await firmar();
 
       const { registrarIntento } = await import("@/lib/store");
       const { CLAVE_RELOJ } = await import("@/lib/relojAvisos");
       await registrarIntento(CLAVE_RELOJ);
-      expect(await cabecera()).toEqual(["estado", "canjeados"]);
+      const conReloj = await firmar();
+
+      expect(Buffer.compare(conReloj["strip@2x.png"], sinReloj["strip@2x.png"])).not.toBe(0);
+      // Los campos no cambian: la línea es parte del dibujo.
+      const cabecera = (f) => JSON.parse(f["pass.json"].toString("utf8")).storeCard.headerFields;
+      expect(cabecera(conReloj)).toEqual(cabecera(sinReloj));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 });
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icono from "@/app/Icono";
 import { DIAS, ZONA_POR_DEFECTO, MAX_TRAMOS, aMinutos, aHora, fechaLocal, resumenHorario } from "@/lib/horario";
 import CalendarioCerrados from "./CalendarioCerrados";
@@ -17,6 +17,10 @@ import { C, campo, h2, botonPrimario, RADIO } from "@/app/ui";
 //   - cada día, uno o dos tramos: "+ tarde" parte el día en mañana y tarde;
 //   - "copiar" pasa las horas de un día a todos los que abren;
 //   - los festivos se tocan en un calendario: un toque cierra el día, otro lo abre.
+//
+// Plegado de partida: se pone una vez y se toca poco, y ocupaba media columna.
+// Cerrado enseña el resumen ("L–V 9:00–14:00 y 17:00–20:30"); el calendario va
+// plegado dentro. Se abre solo si llegan con #horario (el enlace de Avisos).
 // Guardarlo no toca ningún pase a mano: el estado del pase lo mueve el reloj.
 // ============================================================================
 
@@ -44,6 +48,12 @@ function partir(t) {
 export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
   const [h, setH] = useState(inicial || PARTIDA);
   const [guardando, setGuardando] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+  const [calendario, setCalendario] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hash === "#horario") setAbierto(true);
+  }, []);
   const hoy = fechaLocal(Date.now(), h.zona);
   const cambiado = !inicial || JSON.stringify(h) !== JSON.stringify(inicial);
   const roto = h.semana.some((dia) => dia?.some((t) => !tramoValido(t)));
@@ -88,12 +98,22 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
     }
   }
 
+  const proximos = h.cerrados.filter((f) => f >= hoy).length;
+
   return (
     <div id="horario" style={{ scrollMarginTop: 20 }}>
-      <h2 style={h2}>Horario</h2>
-      <p style={texto}>
-        {inicial ? resumenHorario(inicial) : "Sin horario: los avisos automáticos no salen hasta que lo guardes."}
-      </p>
+      <button type="button" onClick={() => setAbierto((v) => !v)} aria-expanded={abierto} aria-controls="horario-cuerpo" style={plegable}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ ...h2, display: "block", margin: 0 }}>Horario</span>
+          <span style={{ display: "block", fontSize: 13, color: inicial ? C.suave : C.mal, marginTop: 3 }}>
+            {inicial ? resumenHorario(inicial) : "Sin horario: los avisos automáticos no salen hasta que lo pongas."}
+          </span>
+        </span>
+        <Flecha abierta={abierto} />
+      </button>
+
+      {abierto && (
+      <div id="horario-cuerpo" style={{ marginTop: 12 }}>
 
       <div style={{ display: "grid", gap: 6 }}>
         {DIAS.map((dia, i) => {
@@ -144,8 +164,24 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
       </p>
       {roto && <p role="alert" style={{ fontSize: 13, color: C.mal, margin: "8px 0 0" }}>Hay un tramo que cierra antes de abrir.</p>}
 
-      <p style={{ ...texto, margin: "18px 0 8px" }}>Festivos y vacaciones: toca un día para cerrarlo.</p>
-      <CalendarioCerrados horario={h} hoy={hoy} accent={accent} onAlternar={alternarCerrado} />
+      <button
+        type="button" onClick={() => setCalendario((v) => !v)} aria-expanded={calendario} aria-controls="horario-calendario"
+        style={{ ...plegable, marginTop: 16, padding: "10px 12px", border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff" }}
+      >
+        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600 }}>
+          Festivos y vacaciones
+          <span style={{ fontWeight: 400, color: proximos ? C.mal : C.tenue, marginLeft: 6 }}>
+            {proximos ? `· ${proximos} ${proximos === 1 ? "día cerrado" : "días cerrados"}` : "· ninguno"}
+          </span>
+        </span>
+        <Flecha abierta={calendario} />
+      </button>
+      {calendario && (
+        <div id="horario-calendario" style={{ marginTop: 8 }}>
+          <p style={{ ...texto, margin: "0 0 8px" }}>Toca un día para cerrarlo; otra vez, para abrirlo.</p>
+          <CalendarioCerrados horario={h} hoy={hoy} accent={accent} onAlternar={alternarCerrado} />
+        </div>
+      )}
 
       <button
         type="button" onClick={guardar} disabled={guardando || !cambiado || roto}
@@ -153,7 +189,18 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
       >
         {guardando ? "Guardando…" : "Guardar horario"}
       </button>
+      </div>
+      )}
     </div>
+  );
+}
+
+// La de "volver", girada: apunta abajo plegado y arriba desplegado.
+function Flecha({ abierta }) {
+  return (
+    <span aria-hidden style={{ display: "inline-flex", color: C.suave, transform: `rotate(${abierta ? 90 : -90}deg)`, transition: "transform .15s" }}>
+      <Icono nombre="volver" tam={18} />
+    </span>
   );
 }
 
@@ -171,6 +218,10 @@ function Tramo({ dia, tramo, parte, onCambio }) {
 }
 
 const texto = { color: C.suave, fontSize: 13, margin: "-6px 0 10px" };
+const plegable = {
+  display: "flex", alignItems: "center", gap: 10, width: "100%", padding: 0, border: 0, background: "transparent",
+  textAlign: "left", cursor: "pointer", fontFamily: "inherit", color: C.texto,
+};
 const fila = { display: "flex", alignItems: "center", gap: 5, minHeight: 38 };
 const nombreDia = { display: "flex", alignItems: "center", gap: 7, width: 58, flexShrink: 0, fontSize: 14, cursor: "pointer", textTransform: "capitalize" };
 // Las dos horas se reparten lo que quede de fila: en la columna estrecha del

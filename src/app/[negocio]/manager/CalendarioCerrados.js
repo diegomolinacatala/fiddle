@@ -44,7 +44,6 @@ export default function CalendarioCerrados({ horario, hoy, accent, onAlternar })
   const hueco = diaDeFecha(dias[0]);
   const cerrados = new Set(horario.cerrados);
   const enEsteMes = dias.filter((f) => cerrados.has(f)).length;
-  const proximos = horario.cerrados.filter((f) => f >= hoy).length;
 
   return (
     <div style={caja}>
@@ -97,7 +96,6 @@ export default function CalendarioCerrados({ horario, hoy, accent, onAlternar })
       <p style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", margin: "10px 0 0", fontSize: 12, color: C.tenue }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={muestra("cerrado")} /> Cerrado</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={muestra("apagado")} /> Cierra siempre</span>
-        <span style={{ marginLeft: "auto" }}>{proximos ? `${proximos} ${proximos === 1 ? "día cerrado" : "días cerrados"} por delante` : "Ningún festivo marcado"}</span>
       </p>
     </div>
   );

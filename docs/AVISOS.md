@@ -89,8 +89,9 @@ Cada 15 minutos, por tienda, el motor:
    - desde su hora (o desde que abre, si a esa hora aún no había abierto o estaba en
      el descanso de mediodía) y durante 2 horas, siempre con la tienda abierta. Si el
      reloj pasa tarde de más, ese día no sale.
-3. **Pone al día el ABIERTO / CERRADO del pase** si ha cambiado (al abrir, al cerrar,
-   a medianoche): lo apunta y empuja en silencio los iPhone de la tienda.
+3. **Pone al día el "● Abierto hasta las 14:00" del pase** (dibujado en lo alto de la
+   banda) si ha cambiado (al abrir, al cerrar, a medianoche): lo apunta y empuja en
+   silencio los iPhone de la tienda.
 
 A cada cliente que encaja, **solo si**:
 
@@ -117,7 +118,7 @@ tarjeta pone…"*), y al sumar la visita se quita del pase, como siempre.
 | Las reglas de una tienda | `negocios.config.automatizaciones` (lista) |
 | La pausa entre avisos | `negocios.config.pausaAvisos` (días) |
 | El horario | `negocios.config.horario` = `{ zona, semana[7], cerrados[] }`; cada día, null o uno o dos tramos `{abre, cierra}` (horario partido) |
-| Lo último que el reloj empujó al pase | `negocios.config.estadoPase` ("ABIERTO hasta 14:00") |
+| Lo último que el reloj empujó al pase | `negocios.config.estadoPase` ("Abierto hasta las 14:00") |
 | Lo enviado | tabla `campanas`, `grupo = "auto:<id>"` |
 | El latido del reloj | tabla `intentos`, `clave = "reloj:avisos"` |
 
