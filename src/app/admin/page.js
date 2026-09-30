@@ -8,6 +8,7 @@ import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/ne
 import Selector from "@/app/admin/Selector";
 import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
 import ClaveNueva from "@/app/ClaveNueva";
+import Invitar from "@/app/admin/Invitar";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
 
@@ -73,7 +74,7 @@ export default function Admin() {
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(960px, 96vw)" }}>
+      <div style={{ width: "min(960px, 100%)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div>
             <h1 style={titulo}>Plataforma</h1>
@@ -84,7 +85,7 @@ export default function Admin() {
         {/* Certificados, base de datos, avisos, cifrado: es cosa de la plataforma, no de cada tienda. */}
         <EstadoIntegracion accent={AZUL} />
 
-        <div style={{ display: "flex", gap: 8, margin: "18px 0 14px" }}>
+        <div style={{ display: "flex", gap: 8, margin: "18px 0 14px", flexWrap: "wrap" }}>
           {[["activas", "Tiendas"], ["archivadas", "Archivadas"]].map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
           ))}
@@ -111,6 +112,8 @@ export default function Admin() {
               : <p style={{ color: C.mal, fontSize: 14, margin: "8px 0 0" }}>
                   No se pudieron crear las contraseñas. Genéralas desde <a href={`/admin/${creada.slug}`}>su ficha</a>.
                 </p>}
+            {/* Lo normal tras crearla: que el dueño elija las suyas. */}
+            <Invitar slug={creada.slug} />
           </div>
         )}
 
@@ -251,7 +254,7 @@ function NuevaTienda({ onCreada }) {
   return (
     <form onSubmit={crear} style={{ ...panel, marginBottom: 16 }}>
       <h2 style={h2}>Nueva tienda</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 12 }}>
         <div>
           <label style={{ ...etiqueta, marginTop: 0 }}>Nombre</label>
           <input value={f.nombre} onChange={(e) => ponNombre(e.target.value)} placeholder="Panadería Rosa" style={campo} autoFocus />
@@ -294,7 +297,7 @@ function NuevaTienda({ onCreada }) {
         ancho={132}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12, alignItems: "flex-end" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))", gap: 12, alignItems: "flex-end" }}>
         <Selector
           titulo="Marca"
           valor={f.tema.marca}

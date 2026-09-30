@@ -92,6 +92,15 @@ Los seis de arriba. **~3 días de trabajo.**
 El listón son dos frases: que nadie tenga que tocar Vercel para que esa tienda
 funcione, y que un cliente que pierde el móvil no pierda los sellos.
 
+Pensado para que una tienda que no es nuestra entre sola — ✅ hecho el 24-09-2026
+(detalle y pasos de despliegue en [NEXT-STEPS.md](../NEXT-STEPS.md#pedido-el-23-09-2026-después--hecho-24-09-2026-rama-featmovil-mapa-invitacion-tutorial)):
+
+- ✅ **Invitación por correo** con enlace de un solo uso: el dueño elige la suya para el
+  manager y la de la caja. Sustituye a pasarle la clave por otro canal.
+- ✅ **Onboarding** guiado la primera vez, con botón (?) para repetirlo.
+- ✅ **Ubicación con mapa** en el manager, en vez de latitud y longitud.
+- ✅ **Revisión de la vista en el móvil** de manager, caja, CRM y `/admin`.
+
 ### Fase 2 — piloto abierto: 3-5 tiendas de pago
 
 | Trabajo | Coste | Por qué |
@@ -100,7 +109,7 @@ funcione, y que un cliente que pierde el móvil no pierda los sellos.
 | Export CSV + copias de seguridad | ~3 h | Un `borrarNegocio` mal dado hoy no se deshace |
 | Playwright del camino feliz | ~4 h | login → escanear → sellar → canjear |
 | Badge oficial de Apple Wallet | ~1 h | Lo exigen sus identity guidelines para publicar |
-| Quitar WalletWallet y `ww_serial` | ~1 h | Código muerto |
+| ~~Quitar WalletWallet y `ww_serial`~~ ✅ 24-09 | ~1 h | Código muerto (falta borrar la columna tras el deploy) |
 
 Si el piloto va bien, las métricas suben de prioridad por encima del resto.
 

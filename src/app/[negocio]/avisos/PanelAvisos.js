@@ -43,7 +43,7 @@ export default function PanelAvisos({ slug, inicial }) {
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(1100px, 96vw)" }}>
+      <div style={{ width: "min(1100px, 100%)" }}>
         <CabeceraGestion negocio={d.negocio} slug={slug} activa="avisos" />
 
         <div role="tablist" style={{ display: "flex", gap: 8, margin: "20px 0 16px", flexWrap: "wrap", paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>

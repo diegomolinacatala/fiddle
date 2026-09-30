@@ -152,8 +152,10 @@ const cajon = {
   padding: "22px 22px 40px", position: "relative", boxShadow: "-8px 0 30px rgba(16,20,28,.18)",
 };
 const cerrar = {
-  position: "absolute", top: 14, right: 14, border: 0, background: "transparent",
+  position: "absolute", top: 6, right: 6, border: 0, background: "transparent",
   fontSize: 18, color: C.suave, cursor: "pointer", lineHeight: 1,
+  // 40 px: con el dedo, la X de 18 no se acierta a la primera.
+  width: 40, height: 40, display: "grid", placeItems: "center", borderRadius: 10,
 };
 const linea = {
   display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "start",

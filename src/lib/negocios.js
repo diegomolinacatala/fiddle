@@ -32,7 +32,6 @@ const TEMA_DE_ESTILO = {
     marca: "coffee",
     forma: "circulo",
     banda: "clara",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#ffd1dc 0%,#c3f0e0 40%,#a1c4fd 100%)",
     pageInk: "#2b2430",
     cardBg: "#fff7f2",
@@ -46,7 +45,6 @@ const TEMA_DE_ESTILO = {
     marca: "barber",
     forma: "redondeado",
     banda: "oscura",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#0d0d0f,#17171c)",
     pageInk: "#e9e9ec",
     cardBg: "#141416",
@@ -60,7 +58,6 @@ const TEMA_DE_ESTILO = {
     marca: "pizza",
     forma: "circulo",
     banda: "clara",
-    preset: "red",
     pageBg: "radial-gradient(circle at 30% 20%,#ffd54a,#ff7a18 55%,#c1121f 100%)",
     pageInk: "#ffffff",
     cardBg: "#fff3e0",
@@ -76,7 +73,6 @@ const TEMA_DE_ESTILO = {
     texto: "",
     forma: "cuadrado",
     banda: "clara",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#f5efe6 0%,#e8dccb 55%,#d8c7ae 100%)",
     pageInk: "#3a2f26",
     cardBg: "#faf6f0",
@@ -92,7 +88,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "degradado",
     modo: "relleno",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#f7f1e8 0%,#e9dcc9 55%,#cbb79b 100%)",
     pageInk: "#3a2f26",
     cardBg: "#fdfaf5",
@@ -106,7 +101,6 @@ const TEMA_DE_ESTILO = {
     marca: "croissant",
     forma: "circulo",
     banda: "clara",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#fff3dd 0%,#ffe0b8 55%,#f6c98a 100%)",
     pageInk: "#4a3319",
     cardBg: "#fff8ec",
@@ -121,7 +115,6 @@ const TEMA_DE_ESTILO = {
     forma: "redondeado",
     banda: "oscura",
     modo: "relleno",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#101015,#1c1a16)",
     pageInk: "#ece7dc",
     cardBg: "#17161a",
@@ -135,7 +128,6 @@ const TEMA_DE_ESTILO = {
     marca: "huella",
     forma: "hexagono",
     banda: "clara",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#e7f8f1 0%,#c9ece0 55%,#9fd8c6 100%)",
     pageInk: "#14352c",
     cardBg: "#f2fbf7",
@@ -149,7 +141,6 @@ const TEMA_DE_ESTILO = {
     marca: "pesa",
     forma: "cuadrado",
     banda: "oscura",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#0e0e10,#1a1614)",
     pageInk: "#eaeaea",
     cardBg: "#141416",
@@ -163,7 +154,6 @@ const TEMA_DE_ESTILO = {
     marca: "flor",
     forma: "rombo",
     banda: "rayas",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#ffeaf4 0%,#ffd6e8 55%,#e7b7d6 100%)",
     pageInk: "#43203a",
     cardBg: "#fff5fa",
@@ -181,7 +171,6 @@ const TEMA_DE_ESTILO = {
     forma: "cuadrado",
     banda: "oscura",
     modo: "pesas",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#0b0f0d,#13201a)",
     pageInk: "#e8f5ee",
     cardBg: "#0f1512",
@@ -196,7 +185,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "degradado",
     modo: "pizza",
-    preset: "red",
     pageBg: "radial-gradient(circle at 30% 20%,#ffd54a,#ff7a18 55%,#c1121f 100%)",
     pageInk: "#ffffff",
     cardBg: "#fff3e0",
@@ -211,7 +199,6 @@ const TEMA_DE_ESTILO = {
     marca: "galleta",
     forma: "circulo",
     banda: "clara",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#fbf1e3 0%,#f1dcc0 55%,#d9b48a 100%)",
     pageInk: "#3b2314",
     cardBg: "#fbf1e3",
@@ -226,7 +213,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "degradado",
     modo: "porciones",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#ffe3f1 0%,#d8ecff 55%,#c9f2e9 100%)",
     pageInk: "#3b2740",
     cardBg: "#fff8fc",
@@ -243,7 +229,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "degradado",
     modo: "anillos",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#eef3ec 0%,#d7e4d3 55%,#b9cdb4 100%)",
     pageInk: "#2a382a",
     cardBg: "#f6faf4",
@@ -260,7 +245,6 @@ const TEMA_DE_ESTILO = {
     forma: "redondeado",
     banda: "oscura",
     modo: "barra",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#0d0d10,#1a1712)",
     pageInk: "#ece7dc",
     cardBg: "#141416",
@@ -275,7 +259,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "degradado",
     modo: "planta",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#f0f6ec 0%,#dbe9d4 55%,#bcd4b2 100%)",
     pageInk: "#25331f",
     cardBg: "#f8fbf5",
@@ -291,7 +274,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "oscura",
     modo: "luna",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#06070d,#141a2e)",
     pageInk: "#e6e9f5",
     cardBg: "#0b0d16",
@@ -306,7 +288,6 @@ const TEMA_DE_ESTILO = {
     forma: "cuadrado",
     banda: "oscura",
     modo: "aguja",
-    preset: "dark",
     pageBg: "linear-gradient(160deg,#0d0d0f,#1d1712)",
     pageInk: "#f0ece6",
     cardBg: "#141414",
@@ -321,7 +302,6 @@ const TEMA_DE_ESTILO = {
     forma: "redondeado",
     banda: "clara",
     modo: "escalera",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#eef2fb 0%,#d9e2f5 55%,#b9c8e8 100%)",
     pageInk: "#1f2a44",
     cardBg: "#f7f9fe",
@@ -336,7 +316,6 @@ const TEMA_DE_ESTILO = {
     forma: "circulo",
     banda: "blanca",
     modo: "pulso",
-    preset: "purple",
     pageBg: "linear-gradient(135deg,#eaf6fb 0%,#d2ecf5 55%,#aed9ea 100%)",
     pageInk: "#10333f",
     cardBg: "#f5fcff",
@@ -375,7 +354,7 @@ export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, mod
 // Primeros segmentos de la URL que NO pueden ser un negocio.
 // "crm" está reservado aunque no sea una ruta de primer nivel: /admin/crm es la
 // vista de la plataforma, y una tienda con ese slug la taparía.
-export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad"]);
+export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion"]);
 
 /**
  * ¿Es un slug válido para un negocio? Solo mira la FORMA (minúsculas, guiones,
@@ -420,36 +399,36 @@ const LUNES_A_JUEVES = [0, 1, 2, 3];
 const LUNES_A_VIERNES = [0, 1, 2, 3, 4];
 
 // Los avisos de partida, con su voz: cookies y cafés, gente que estudia o
-// trabaja cerca. Ninguno promete nada que no esté ya en su tarjeta salvo la
+// trabaja cerca. Todos apagados: los enciende la tienda cuando los haya leído. Ninguno promete nada que no esté ya en su tarjeta salvo la
 // racha, que es el regalo que decide la tienda (se cambia en Avisos).
 const AVISOS_DELICANTERIA = [
   {
-    id: "racha", nombre: "Premio a la racha", activa: true, disparo: "racha", valor: 4,
+    id: "racha", nombre: "Premio a la racha", activa: false, disparo: "racha", valor: 4,
     hora: "08:00", dias: [], caduca: true,
     texto: "{racha} días seguidos viniendo: hoy la cookie te la invitamos nosotros. Enséñalo en caja.",
   },
   {
-    id: "premio-pendiente", nombre: "Premio sin recoger", activa: true, disparo: "premio_listo", valor: 3,
+    id: "premio-pendiente", nombre: "Premio sin recoger", activa: false, disparo: "premio_listo", valor: 3,
     hora: "10:00", dias: [],
     texto: "Tu {premio} te está esperando en la barra. Pásate cuando quieras.",
   },
   {
-    id: "a-un-paso", nombre: "A un paso del premio", activa: true, disparo: "cerca_premio", valor: 1,
+    id: "a-un-paso", nombre: "A un paso del premio", activa: false, disparo: "cerca_premio", valor: 1,
     hora: "16:00", dias: LUNES_A_JUEVES,
     texto: "Estás a {faltan} de tu {premio}. ¿Merienda esta tarde?",
   },
   {
-    id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: true, disparo: "sin_venir", valor: 21,
+    id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: false, disparo: "sin_venir", valor: 21,
     hora: "12:00", dias: [],
     texto: "Hace unas semanas que no te vemos. ¿Un café esta semana? Tu tarjeta sigue sumando.",
   },
   {
-    id: "segunda-visita", nombre: "Segunda visita", activa: true, disparo: "segunda_visita", valor: 7,
+    id: "segunda-visita", nombre: "Segunda visita", activa: false, disparo: "segunda_visita", valor: 7,
     hora: "09:00", dias: LUNES_A_VIERNES,
     texto: "¿Repetimos? Tu café y tu cookie te esperan, y cada visita suma en tu tarjeta.",
   },
   {
-    id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: true, disparo: "sin_estrenar", valor: 3,
+    id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: false, disparo: "sin_estrenar", valor: 3,
     hora: "11:00", dias: LUNES_A_VIERNES,
     texto: "Tu tarjeta ya está lista: enséñala en caja y empieza a sumar cookies y cafés.",
   },
@@ -521,6 +500,11 @@ export function componerNegocio(slug, guardado) {
     horario: normalizarHorario(guardada(c, "horario", semilla)),
     automatizaciones: normalizarReglas(guardada(c, "automatizaciones", semilla)) ?? normalizarReglas(PLANTILLAS),
     pausaAvisos: normalizarPausa(guardada(c, "pausaAvisos", semilla) ?? PAUSA_POR_DEFECTO),
+    // Los dos, apagados salvo que el manager los encienda. Avisar solo a los
+    // clientes de una tienda es algo que la tienda elige, no algo que le llega
+    // con un despliegue; y pedir el nombre es un paso más antes de la Wallet.
+    avisosActivos: c.avisosActivos === true,
+    pedirNombre: c.pedirNombre === true,
   };
 }
 

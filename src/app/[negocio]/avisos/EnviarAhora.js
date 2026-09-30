@@ -29,7 +29,7 @@ export default function EnviarAhora({ datos, flash, onEnviado }) {
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
-      <div role="radiogroup" aria-label="A quién" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
+      <div role="radiogroup" aria-label="A quién" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(210px, 100%), 1fr))", gap: 10 }}>
         {destinos.map((g) => {
           const activo = g.key === destino.key;
           const hay = g.total > 0;

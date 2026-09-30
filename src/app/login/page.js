@@ -63,7 +63,7 @@ function LoginForm() {
 
   return (
     <main style={paginaCentrada}>
-      <div style={{ width: "min(400px, 94vw)" }}>
+      <div style={{ width: "min(400px, 100%)" }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <h1 style={{ fontSize: "1.6rem", margin: "0 0 2px", letterSpacing: "-0.01em" }}>Sellos</h1>
           <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>

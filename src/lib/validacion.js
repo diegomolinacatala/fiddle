@@ -65,6 +65,7 @@ export function patchNegocio(body, accionesValidas, { cartillasActuales = null }
     if (!horario) return { error: "Horario no válido: siete días, cada uno cerrado o con su hora de abrir y de cerrar" };
     patch.horario = horario;
   }
+  if (typeof b.pedirNombre === "boolean") patch.pedirNombre = b.pedirNombre;
   if (Array.isArray(b.cartillas) && cartillasActuales) {
     const cartillas = normalizarCartillas(cartillasActuales.map((c, i) => ({
       ...c,

@@ -113,14 +113,14 @@ export default function AdminNegocio() {
     premios: 0,
   }), [n?.meta, n?.cartillas]);
 
-  if (error) return <main style={pagina}><div style={{ width: "min(700px,94vw)" }}><a href="/admin" style={volver}>← Plataforma</a><div style={{ ...aviso(false), marginTop: 12 }}>{error}</div></div></main>;
+  if (error) return <main style={pagina}><div style={{ width: "min(700px, 100%)" }}><a href="/admin" style={volver}>← Plataforma</a><div style={{ ...aviso(false), marginTop: 12 }}>{error}</div></div></main>;
   if (!n) return <main style={pagina}><p style={{ color: C.suave }}>Cargando…</p></main>;
 
   const notas = Object.entries(n.notas || {});
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(1080px, 96vw)" }}>
+      <div style={{ width: "min(1080px, 100%)" }}>
         <a href="/admin" style={volver}>← Plataforma</a>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 6 }}>
           <div>
@@ -132,7 +132,7 @@ export default function AdminNegocio() {
 
         <div style={{ marginTop: 18 }}><Accesos slug={n.slug} /></div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
           {/* ------------------------------------------------ datos */}
           <section style={panel}>
             <h2 style={h2}>Datos</h2>
@@ -359,7 +359,8 @@ export default function AdminNegocio() {
   );
 }
 
-const volver = { fontSize: 13, color: C.suave, textDecoration: "none" };
+// Alto de dedo (36 px) aunque el texto sea pequeño.
+const volver = { fontSize: 13, color: C.suave, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 36 };
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
   background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,

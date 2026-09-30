@@ -34,7 +34,7 @@ export default function AdminCRM() {
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(1060px, 96vw)" }}>
+      <div style={{ width: "min(1060px, 100%)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <h1 style={titulo}>Clientes de la plataforma</h1>

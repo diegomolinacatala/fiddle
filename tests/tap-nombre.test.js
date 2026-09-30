@@ -15,14 +15,17 @@ const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)";
 const ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/128 Mobile";
 
 let dir;
-beforeEach(() => {
+beforeEach(async () => {
   dir = mkdtempSync(path.join(tmpdir(), "sellos-tap-"));
   vi.stubEnv("DATA_DIR", dir);
   vi.stubEnv("SUPABASE_URL", "");
   vi.stubEnv("APPLE_PASS_TYPE_ID", "");
-  vi.stubEnv("WALLETWALLET_API_KEY", "");
   vi.stubEnv("GOOGLE_WALLET_ISSUER_ID", "");
   vi.stubEnv("CIFRADO_CLAVE", Buffer.alloc(32, 7).toString("base64"));
+  // Casi todo este fichero es el recorrido CON nombre: las dos tiendas lo piden.
+  // Lo de partida (sin pedirlo) va en su propio bloque, al final.
+  await store.saveNegocio("nube", { pedirNombre: true });
+  await store.saveNegocio("fade", { pedirNombre: true });
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -163,5 +166,45 @@ describe("POST /api/tap", () => {
   it("tienda que no existe: 404", async () => {
     const res = await tap.POST(pedir("/api/tap?b=noexiste", { metodo: "POST", json: { nombre: "Marta" } }));
     expect(res.status).toBe(404);
+  });
+});
+
+describe("sin pedir el nombre (lo de partida)", () => {
+  beforeEach(async () => {
+    await store.saveNegocio("nube", { pedirNombre: false });
+  });
+
+  it("una tienda nueva no lo pide", async () => {
+    await store.saveNegocio("nube", { pedirNombre: undefined });
+    const { componerNegocio } = await import("@/lib/negocios");
+    expect(componerNegocio("nube", { nombre: "Nube", tipo: "sellos", config: {} }).pedirNombre).toBe(false);
+  });
+
+  it("el tap crea la tarjeta ahí mismo y va directo a ella", async () => {
+    const res = await tap.GET(pedir("/api/tap?b=nube", { ua: ANDROID }));
+    expect(res.status).toBe(302);
+    const serial = tarjetaDe(res);
+    expect(serial).toBeTruthy();
+    expect(destino(res)).toBe(`https://sellos.app/p/${serial}`);
+    const [c] = await store.listClientes("nube");
+    expect(c).toMatchObject({ serial, nombre: null, origen: "tap" });
+  });
+
+  it("volver a escanear da la misma, no otra", async () => {
+    const serial = tarjetaDe(await tap.GET(pedir("/api/tap?b=nube", { ua: ANDROID })));
+    const otra = await tap.GET(pedir("/api/tap?b=nube", { ua: ANDROID, cookie: cookieDe(serial) }));
+    expect(tarjetaDe(otra)).toBe(serial);
+    expect(await store.listClientes("nube")).toHaveLength(1);
+  });
+
+  it("el botón de la página (POST sin nombre) también la crea", async () => {
+    const res = await tap.POST(pedir("/api/tap?b=nube", { metodo: "POST", json: {} }));
+    expect(res.status).toBe(200);
+    expect(tarjetaDe(res)).toBeTruthy();
+  });
+
+  it("si aun así escribe su nombre, se guarda", async () => {
+    const { serial } = await alta("Marta");
+    expect((await store.getCliente(serial)).nombre).toBe("Marta");
   });
 });

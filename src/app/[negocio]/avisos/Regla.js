@@ -131,7 +131,7 @@ function Editor({ inicial, negocio, grupos, contextos, envios, pausa, nueva, ocu
 
   return (
     <article style={{ ...panel, borderColor: accent, boxShadow: `0 0 0 3px ${accent}1a` }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 22, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(290px, 100%), 1fr))", gap: 22, alignItems: "start" }}>
         <div>
           <label style={{ ...etiqueta, marginTop: 0 }} htmlFor={`nombre-${r.id}`}>Nombre del aviso</label>
           <input id={`nombre-${r.id}`} value={r.nombre} maxLength={40} onChange={(e) => set("nombre", e.target.value)} style={campo} />

@@ -36,7 +36,7 @@ export default function EstadoIntegracion({ accent }) {
   const filas = [
     {
       ok: estado.proveedor === "apple" && apple.ok,
-      aviso: estado.proveedor === "walletwallet" || (apple.ok && apple.avisos.length > 0),
+      aviso: apple.ok && apple.avisos.length > 0,
       titulo: "iPhone · Apple Wallet",
       detalle: detalleApple(estado),
     },
@@ -78,7 +78,7 @@ export default function EstadoIntegracion({ accent }) {
 
   return (
     <details open={!todoBien} style={{ ...panel, borderColor: todoBien ? "#bfe5cd" : `${accent}66` }}>
-      <summary style={{ cursor: "pointer", fontSize: 14 }}>
+      <summary style={{ cursor: "pointer", fontSize: 14, padding: "6px 0" }}>
         Estado de la integración · {filas.filter((f) => f.ok).length}/{filas.length} listo
       </summary>
       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
@@ -95,8 +95,7 @@ export default function EstadoIntegracion({ accent }) {
   );
 }
 
-function detalleApple({ proveedor, apple }) {
-  if (proveedor === "walletwallet") return "Usando WalletWallet (plan B). Configura APPLE_* para firmar con tu cuenta.";
+function detalleApple({ apple }) {
   if (!apple.ok) return apple.problemas.join(" · ");
   const base = `Firma propia · ${apple.passTypeId} (compartido) · caduca ${apple.caduca}`;
   return apple.avisos.length ? `${base} · ${apple.avisos.join(" · ")}` : base;

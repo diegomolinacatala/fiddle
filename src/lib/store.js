@@ -23,7 +23,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -170,6 +170,8 @@ function fusionarConfig(actual, patch) {
     horario: patch.horario !== undefined ? patch.horario : actual.horario,
     automatizaciones: patch.automatizaciones ?? actual.automatizaciones,
     pausaAvisos: patch.pausaAvisos ?? actual.pausaAvisos,
+    avisosActivos: patch.avisosActivos ?? actual.avisosActivos,
+    pedirNombre: patch.pedirNombre ?? actual.pedirNombre,
   };
   return config;
 }
@@ -218,6 +220,8 @@ export async function borrarNegocio(slug) {
     sinError(await db.from("campanas").delete().eq("negocio", slug), "borrar campañas");
     sinError(await db.from("tarjetas_de_dispositivo").delete().eq("negocio", slug), "borrar tarjetas de dispositivo");
     sinError(await db.from("accesos").delete().eq("negocio", slug), "borrar accesos");
+    sinError(await db.from("invitaciones").delete().eq("negocio", slug), "borrar invitaciones");
+    sinError(await db.from("tutoriales").delete().eq("negocio", slug), "borrar tutoriales");
     sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
     sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
     return { borrados: seriales.length };
@@ -238,13 +242,17 @@ export async function borrarNegocio(slug) {
     await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => t.negocio !== slug)));
     const accesos = await leer("accesos", {});
     await escribir("accesos", Object.fromEntries(Object.entries(accesos).filter(([, a]) => a.negocio !== slug)));
+    for (const tabla of ["invitaciones", "tutoriales"]) {
+      const filas = await leer(tabla, {});
+      await escribir(tabla, Object.fromEntries(Object.entries(filas).filter(([, f]) => f.negocio !== slug)));
+    }
     return { borrados: seriales.length };
   });
 }
 
 // ============================ CLIENTES ============================
 const CAMPOS_CLIENTE =
-  "serial, negocio, codigo, ww_serial, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
+  "serial, negocio, codigo, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
   "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en";
 
 // Datos personales de un cliente: van cifrados en la base (lib/cifrado.js). Se
@@ -264,7 +272,6 @@ function normalizarCliente(c) {
         negocio: c.negocio,
         // Clientes creados antes del código corto: se deduce del serial (estable).
         codigo: c.codigo || codigoDesdeSerial(c.serial),
-        ww_serial: c.ww_serial ?? null,
         sellos: c.sellos ?? 0,
         // La segunda cartilla, en las tiendas que llevan dos (ver lib/cartillas.js).
         sellos2: c.sellos2 ?? 0,
@@ -290,7 +297,7 @@ function normalizarCliente(c) {
     : null;
 }
 
-/** Lo que puede salir hacia el navegador: sin auth_token ni ww_serial. */
+/** Lo que puede salir hacia el navegador: sin auth_token. */
 export const clientePublico = (c) =>
   c && {
     serial: c.serial, negocio: c.negocio, codigo: c.codigo, sellos: c.sellos, sellos2: c.sellos2 ?? 0, premios: c.premios,
@@ -304,15 +311,15 @@ export const clientePublico = (c) =>
   };
 
 /**
- * @param {{serial:string, negocio:string, authToken:string, wwSerial?:string|null, origen?:string, nombre?:string|null}} datos
+ * @param {{serial:string, negocio:string, authToken:string, origen?:string, nombre?:string|null}} datos
  *   `origen`: de dónde salió el pase ("tap" en el tag NFC, "manager" desde el
  *   mostrador). Responde a "¿de dónde vienen mis clientes?" sin preguntárselo.
  *   `nombre`: el que escribe el cliente al sacarla. Se guarda cifrado, como siempre.
  */
-export async function crearCliente({ serial, negocio, authToken, wwSerial = null, origen = null, nombre = null }) {
+export async function crearCliente({ serial, negocio, authToken, origen = null, nombre = null }) {
   const ts = ahoraISO();
   const base = {
-    serial, negocio, ww_serial: wwSerial, auth_token: authToken,
+    serial, negocio, auth_token: authToken,
     sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0,
     nombre: cifrarCampo(serial, "nombre", nombre), actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
@@ -1006,6 +1013,86 @@ export async function guardarAcceso({ usuario, negocio, rol, hash }) {
   return enFila(async () => {
     const todos = await leer("accesos", {});
     await escribir("accesos", { ...todos, [usuario]: fila });
+  });
+}
+
+// ============================ INVITACIONES (ver invitaciones.js) ============================
+// Un enlace por tienda para que su dueño elija sus contraseñas. Se guarda la
+// huella del token, no el token: quien lea la tabla no puede usar el enlace.
+
+/** Guarda la invitación nueva y anula las anteriores sin usar de esa tienda: solo vale el último enlace. */
+export async function crearInvitacion({ huella, negocio, caduca }) {
+  const fila = { huella, negocio, caduca, creado: ahoraISO(), usada: null };
+  if (hasSupabase()) {
+    const db = supa();
+    sinError(await db.from("invitaciones").delete().eq("negocio", negocio).is("usada", null), "anular invitaciones");
+    sinError(await db.from("invitaciones").insert(fila), "crear invitación");
+    return;
+  }
+  return enFila(async () => {
+    const todas = await leer("invitaciones", {});
+    const quedan = Object.fromEntries(Object.entries(todas).filter(([, i]) => i.negocio !== negocio || i.usada));
+    await escribir("invitaciones", { ...quedan, [huella]: fila });
+  });
+}
+
+/** @returns {Promise<{huella:string, negocio:string, caduca:string, creado:string, usada:string|null}|null>} */
+export async function getInvitacion(huella) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("invitaciones").select("huella, negocio, caduca, creado, usada").eq("huella", huella).maybeSingle(),
+      "leer invitación",
+    ) ?? null;
+  }
+  return (await enFila(() => leer("invitaciones", {})))[huella] ?? null;
+}
+
+/**
+ * Gasta la invitación. Condicional (solo si seguía sin usar): con dos pestañas
+ * a la vez, solo una fija las contraseñas.
+ * @returns {Promise<boolean>} true si era la primera vez
+ */
+export async function gastarInvitacion(huella) {
+  const ts = ahoraISO();
+  if (hasSupabase()) {
+    const filas = sinError(
+      await supa().from("invitaciones").update({ usada: ts }).eq("huella", huella).is("usada", null).select("huella"),
+      "gastar invitación",
+    );
+    return Boolean(filas?.length);
+  }
+  return enFila(async () => {
+    const todas = await leer("invitaciones", {});
+    if (!todas[huella] || todas[huella].usada) return false;
+    await escribir("invitaciones", { ...todas, [huella]: { ...todas[huella], usada: ts } });
+    return true;
+  });
+}
+
+// ============================ TUTORIALES VISTOS ============================
+// Qué recorridos de bienvenida ha visto cada usuario (`nube`, `nube-caja`,
+// `admin`). En la base y no en el navegador: la caja cambia de móvil y el
+// dueño entra desde el ordenador y desde el teléfono.
+
+/** @returns {Promise<string[]>} claves de los recorridos que ya vio */
+export async function tutorialesVistos(usuario) {
+  if (hasSupabase()) {
+    const filas = sinError(await supa().from("tutoriales").select("recorrido").eq("usuario", usuario), "leer tutoriales");
+    return (filas || []).map((f) => f.recorrido);
+  }
+  const todos = await enFila(() => leer("tutoriales", {}));
+  return Object.values(todos).filter((t) => t.usuario === usuario).map((t) => t.recorrido);
+}
+
+export async function marcarTutorial({ usuario, negocio, recorrido }) {
+  const fila = { usuario, negocio, recorrido, visto: ahoraISO() };
+  if (hasSupabase()) {
+    sinError(await supa().from("tutoriales").upsert(fila, { onConflict: "usuario,recorrido" }), "marcar tutorial");
+    return;
+  }
+  return enFila(async () => {
+    const todos = await leer("tutoriales", {});
+    await escribir("tutoriales", { ...todos, [`${usuario}|${recorrido}`]: fila });
   });
 }
 

@@ -14,6 +14,8 @@ import { registrarIntento, contarIntentos } from "./store";
 //        alta guarda una fila y manda un aviso: 20 por IP en 10 min.
 // GOOGLE /api/google/guardar/<serial> firma un JWT y llama a la API de Google
 //        (gasta cuota de la tienda): 30 por IP en 10 min.
+// INVITACION /api/invitacion es público (lo abre el dueño antes de tener
+//        contraseña) y cada alta calcula dos scrypt: 20 por IP en 10 min.
 //
 // La tarjeta en vivo (/api/tarjeta) se consulta cada pocos segundos por diseño:
 // apuntar cada consulta en la base costaría más que la consulta. Para eso está
@@ -28,6 +30,7 @@ export const LIMITES = {
   log: { max: 60, ventanaMs: 10 * 60 * 1000 },
   push: { max: 20, ventanaMs: 10 * 60 * 1000 },
   google: { max: 30, ventanaMs: 10 * 60 * 1000 },
+  invitacion: { max: 20, ventanaMs: 10 * 60 * 1000 },
 };
 export const MAX_POR_IP = LIMITES.loginIp.max;
 
@@ -63,7 +66,7 @@ export async function anotarFalloLogin(slug, ip) {
 
 /**
  * Cuenta un uso de un recurso público y dice si se pasó del límite.
- * @param {"tap"|"log"|"push"|"google"} recurso
+ * @param {"tap"|"log"|"push"|"google"|"invitacion"} recurso
  * @returns {Promise<boolean>} true si hay que rechazar (429)
  */
 export async function usoExcedido(recurso, ip, ahora = Date.now()) {

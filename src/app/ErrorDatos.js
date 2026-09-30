@@ -6,7 +6,7 @@ import { C, paginaCentrada, aviso } from "./ui";
 export default function ErrorDatos({ detalle }) {
   return (
     <main style={paginaCentrada}>
-      <div style={{ width: "min(560px, 92vw)", textAlign: "center" }}>
+      <div style={{ width: "min(560px, 100%)", textAlign: "center" }}>
         <div style={{ fontSize: 44 }}>🔌</div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 6 }}>No se puede conectar con la base de datos</h1>
         <p style={{ color: C.suave, fontSize: 15 }}>

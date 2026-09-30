@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DISPAROS, LISTA_DISPAROS, PLANTILLAS, VARIABLES, renderTexto, variablesDesconocidas, contextoDe, enviosDe, conEnvio,
-  elegibles, candidatos, momentoDelDia, tocaAhora, proximoEnvio, porRetirar, validarReglas, normalizarReglas,
+  elegibles, candidatos, momentoDelDia, tocaAhora, proximoEnvio, porRetirar, validarReglas, normalizarReglas, normalizarRegla,
   diasTexto, fraseRegla, reglaNueva, idNuevo, grupoDeRegla, reglaDeGrupo, etiquetaEnvio, normalizarPausa, VENTANA_MIN,
 } from "@/lib/automatizaciones";
 import { componerNegocio, SEMILLAS } from "@/lib/negocios";
@@ -11,7 +11,8 @@ import { relojLocal } from "@/lib/horario";
 const DIA = 24 * 60 * 60 * 1000;
 const deli = componerNegocio("delicanteria", null);
 const nube = componerNegocio("nube", null);
-const regla = (id) => deli.automatizaciones.find((r) => r.id === id);
+// Encendida: las de partida vienen apagadas, y aquí se prueba cuándo saldrían.
+const regla = (id) => ({ ...deli.automatizaciones.find((r) => r.id === id), activa: true });
 
 // Jueves 24-09-2026, 12:05 en Valencia.
 const AHORA = Date.parse("2026-09-24T10:05:00Z");
@@ -33,10 +34,18 @@ describe("los avisos de partida de La Delicantería", () => {
     ]);
   });
 
-  it("vienen encendidos para que funcionen aunque nadie entre al panel", () => {
-    expect(deli.automatizaciones.every((r) => r.activa)).toBe(true);
-    // Una tienda cualquiera arranca con los de partida, y la racha (promete un regalo) apagada.
-    expect(nube.automatizaciones.find((r) => r.id === "racha").activa).toBe(false);
+  it("vienen apagados: avisar solo es algo que la tienda enciende, no que llega con un despliegue", () => {
+    expect(deli.avisosActivos).toBe(false);
+    expect(deli.automatizaciones.some((r) => r.activa)).toBe(false);
+    // Una tienda cualquiera arranca con los de partida, todos apagados.
+    expect(nube.avisosActivos).toBe(false);
+    expect(nube.automatizaciones.length).toBeGreaterThan(0);
+    expect(nube.automatizaciones.some((r) => r.activa)).toBe(false);
+  });
+
+  it("una regla guardada sin `activa` cuenta como apagada", () => {
+    expect(normalizarRegla({ id: "x", disparo: "sin_venir", texto: "Hola" }).activa).toBe(false);
+    expect(normalizarRegla({ id: "x", disparo: "sin_venir", texto: "Hola", activa: true }).activa).toBe(true);
   });
 
   it("lo guardado en la base manda sobre la semilla, incluso vacío", () => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ClaveNueva from "@/app/ClaveNueva";
+import Invitar from "@/app/admin/Invitar";
 import { C, h2, panel, botonPequeno } from "@/app/ui";
 
 const ROTULO = { manager: "Dueño / manager", caja: "Móvil de la caja" };
@@ -57,6 +58,7 @@ export default function Accesos({ slug }) {
         </div>
       ))}
       {nuevas.length > 0 && <ClaveNueva accesos={nuevas} onCerrar={() => setNuevas([])} />}
+      <Invitar slug={slug} />
     </section>
   );
 }

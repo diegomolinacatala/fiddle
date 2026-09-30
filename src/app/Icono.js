@@ -107,6 +107,18 @@ const TRAZOS = {
   fantasma: <path d="M6 20.5V11a6 6 0 0 1 12 0v9.5l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5zM10 10.5v1M14 10.5v1" />,
   trofeo: <path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M10 17h4l.5 3h-5z" />,
   puerta: <path d="M6 21V3.5h9V21M15 5l4 1.5V21M11.5 12v1M3.5 21h17" />,
+  correo: (
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <path d="M3.5 7l8.5 6.5L20.5 7" />
+    </>
+  ),
+  ayuda: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7M12 16.8v.3" />
+    </>
+  ),
   movil: (
     <>
       <rect x="6.5" y="2.5" width="11" height="19" rx="2.5" />

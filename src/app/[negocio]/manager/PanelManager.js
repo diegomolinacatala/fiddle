@@ -7,6 +7,8 @@ import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
 import Horario from "./Horario";
+import MapaUbicacion from "./MapaUbicacion";
+import Recorrido from "@/app/Recorrido";
 import ClaveNueva from "@/app/ClaveNueva";
 import CabeceraGestion from "../CabeceraGestion";
 import Icono from "@/app/Icono";
@@ -20,10 +22,8 @@ import { C, pagina, panel, campo, etiqueta, h2, botonPrimario, botonSecundario, 
 // un solo sitio. Llega con el negocio ya cargado en el servidor (page.js).
 export default function PanelManager({ negocio, inicial }) {
   const [n, setN] = useState(inicial);
-  const [ubicacion, setUbicacion] = useState(() => {
-    const u = inicial.ubicaciones?.[0];
-    return u ? { lat: String(u.lat), lng: String(u.lng) } : { lat: "", lng: "" };
-  });
+  // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
+  const [ubicacion, setUbicacion] = useState(() => inicial.ubicaciones?.[0] || null);
   const [msg, setMsg] = useState(null);
   const [origin, setOrigin] = useState("");
   const [real, setReal] = useState(null); // cliente real en la vista previa (null = ejemplo)
@@ -80,8 +80,7 @@ export default function PanelManager({ negocio, inicial }) {
   }
 
   async function guardar() {
-    const hayUbicacion = ubicacion.lat.trim() || ubicacion.lng.trim();
-    const ubicaciones = hayUbicacion ? [{ lat: ubicacion.lat, lng: ubicacion.lng }] : [];
+    const ubicaciones = ubicacion ? [ubicacion] : [];
     const res = await fetch(`/api/negocio?b=${negocio}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -99,12 +98,21 @@ export default function PanelManager({ negocio, inicial }) {
     flash(`Guardado${resumenAviso(data.aviso)}`);
   }
 
-  function usarMiUbicacion() {
-    if (!navigator.geolocation) return flash("Este navegador no da la ubicación");
-    navigator.geolocation.getCurrentPosition(
-      (p) => setUbicacion({ lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6) }),
-      () => flash("No se pudo obtener la ubicación (da permiso)"),
-    );
+  // Se guarda al tocarlo: no sale en el pase, así que no espera al botón de la cartilla.
+  async function cambiarPedirNombre(pedirNombre) {
+    set("pedirNombre", pedirNombre);
+    const res = await fetch(`/api/negocio?b=${negocio}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pedirNombre }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      set("pedirNombre", !pedirNombre);
+      return flash(data.error || "No se pudo guardar");
+    }
+    setN((p) => ({ ...p, pedirNombre: data.pedirNombre }));
+    flash(pedirNombre ? "Al escanear se pedirá el nombre" : "Al escanear irán directos a la Wallet");
   }
 
   async function emitir() {
@@ -135,12 +143,13 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
 
   return (
     <main style={pagina}>
-      <div style={{ width: "min(1080px, 96vw)" }}>
-        <CabeceraGestion negocio={n} slug={negocio} activa="manager" />
+      <div style={{ width: "min(1080px, 100%)" }}>
+        <CabeceraGestion negocio={n} slug={negocio} activa="manager" ayuda />
 
         <div style={grid}>
           {/* ---------------------------------------------------- cartilla */}
           <section style={panel}>
+            <div data-recorrido="cartilla">
             <h2 style={h2}>{esCupon ? "Cupón" : n.cartillas ? "Cartillas" : "Cartilla"}</h2>
             {!esCupon && n.cartillas ? (
               n.cartillas.map((c, i) => (
@@ -170,6 +179,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               </div>
             )}
 
+            </div>
+
+            <div data-recorrido="botones-caja">
             <label style={etiqueta}>Botones de la caja</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {LISTA_ACCIONES.map((a) => (
@@ -184,20 +196,23 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
               ))}
             </div>
 
-            <label style={etiqueta}>Ubicación de la tienda</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={ubicacion.lat} onChange={(e) => setUbicacion((u) => ({ ...u, lat: e.target.value }))} placeholder="Latitud" inputMode="decimal" style={campo} />
-              <input value={ubicacion.lng} onChange={(e) => setUbicacion((u) => ({ ...u, lng: e.target.value }))} placeholder="Longitud" inputMode="decimal" style={campo} />
             </div>
-            <button onClick={usarMiUbicacion} style={{ ...botonPequeno, marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Icono nombre="ubicacion" tam={16} /> Usar mi ubicación
-            </button>
+
+            <div data-recorrido="ubicacion">
+            <label style={etiqueta}>Ubicación de la tienda</label>
+            <MapaUbicacion
+              valor={ubicacion}
+              onChange={(v) => setUbicacion(v && { ...ubicacion, ...v })}
+              accent={accent}
+              flash={flash}
+            />
+            </div>
 
             <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar y actualizar pases</button></div>
           </section>
 
           {/* ------------------------------------------------ vista previa */}
-          <section style={panel}>
+          <section style={panel} data-recorrido="vista-previa">
             <h2 style={h2}>Vista previa del pase</h2>
             <form onSubmit={verCliente} style={{ display: "flex", gap: 8, marginBottom: 14 }}>
               <input
@@ -225,21 +240,39 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
 
           {/* ---------------------------------------- horario · tag · caja */}
           <section style={panel}>
+            <div data-recorrido="horario">
             <Horario slug={negocio} inicial={n.horario} accent={accent} flash={flash} onGuardado={(data) => setN(data)} />
+            </div>
 
+            <div data-recorrido="tag">
             <h2 style={{ ...h2, marginTop: 26, paddingTop: 20, borderTop: `1px solid ${C.borde}` }}>Tag NFC y QR del mostrador</h2>
-            <p style={texto}>Quien lo toque o escanee se lleva su tarjeta.</p>
+            <p style={texto}>
+              {n.pedirNombre
+                ? "Quien lo toque o escanee escribe su nombre y se lleva su tarjeta."
+                : "Quien lo toque o escanee se lleva su tarjeta, sin escribir nada."}
+            </p>
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
               {origin && <QrImagen texto={tapUrl} lado={104} style={{ border: `1px solid ${C.borde}`, borderRadius: 10, padding: 6 }} />}
               <div style={{ flex: 1, minWidth: 170 }}>
                 <div style={{ fontSize: 12, color: C.tenue, wordBreak: "break-all", marginBottom: 8 }}>{tapUrl}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={copiarTap} style={botonPequeno}>Copiar enlace</button>
-                  <button onClick={emitir} style={botonPequeno}>Emitir una</button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={copiarTap} style={{ ...botonPequeno, whiteSpace: "nowrap" }}>Copiar enlace</button>
+                  <button onClick={emitir} style={{ ...botonPequeno, whiteSpace: "nowrap" }}>Emitir una</button>
                 </div>
               </div>
             </div>
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
+
+            <label style={{ ...accionRow(n.pedirNombre, accent), marginTop: 14 }} data-recorrido="pedir-nombre">
+              <input type="checkbox" checked={Boolean(n.pedirNombre)} onChange={(e) => cambiarPedirNombre(e.target.checked)} />
+              <span>
+                <strong style={{ fontWeight: 600, fontSize: 14 }}>Pedir el nombre al escanear</strong><br />
+                <span style={{ color: C.suave, fontSize: 13 }}>
+                  Un paso más antes de la Wallet, pero la caja sabe quién es cada uno.
+                </span>
+              </span>
+            </label>
+            </div>
 
             <h2 style={{ ...h2, marginTop: 26 }}>Acceso de la caja</h2>
             <p style={texto}>Usuario <strong style={{ color: C.texto }}>{negocio}-caja</strong></p>
@@ -249,12 +282,13 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
         </div>
 
         {msg && <div role="status" style={toast}>{msg}</div>}
+        <Recorrido recorrido="manager" accent={accent} />
       </div>
     </main>
   );
 }
 
-const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginTop: 20, alignItems: "start" };
+const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20, marginTop: 20, alignItems: "start" };
 const texto = { color: C.suave, fontSize: 13, margin: "-6px 0 10px" };
 const accionRow = (on, accent) => ({
   display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", borderRadius: 10,

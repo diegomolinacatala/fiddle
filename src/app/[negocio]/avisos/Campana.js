@@ -67,7 +67,7 @@ export default function Campana({ negocio, destino, onEnviada, flash }) {
   const bloqueado = enviando || sinNadie || !texto.trim();
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 20, alignItems: "start" }}>
       <div>
         <h2 style={{ ...h2, display: "flex", alignItems: "center", gap: 8 }}><Icono nombre={destino.icon} tam={18} /> {destino.label}</h2>
         <p style={{ fontSize: 13, color: C.suave, margin: "0 0 4px" }}>{destino.descripcion}</p>

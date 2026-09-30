@@ -4,9 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { normalizarUbicaciones, patchNegocio } from "@/lib/validacion";
 import { loginBloqueado, anotarFalloLogin, ipDe, MAX_POR_IP, usoExcedido, LIMITES } from "@/lib/limitador";
-import { buildPassBody } from "@/lib/walletwallet";
 import { rutaGuardarGoogle, hayGoogle } from "@/lib/googlewallet";
-import { esSlug, SEMILLAS, temaPorDefecto } from "@/lib/negocios";
+import { esSlug, temaPorDefecto } from "@/lib/negocios";
 import { appUrl, urlCaja } from "@/lib/url";
 import { generarClave } from "../scripts/lib/certs.mjs";
 
@@ -90,21 +89,6 @@ describe("negocios y url", () => {
     vi.stubEnv("APP_URL", "https://a.b///");
     expect(appUrl()).toBe("https://a.b");
     expect(urlCaja("s1")).toBe("https://a.b/w/s1");
-  });
-});
-
-describe("walletwallet buildPassBody", () => {
-  const nube = { ...SEMILLAS.nube, promo: "2x1" };
-  it("sellos con nombre y promo", () => {
-    const b = buildPassBody({ serial: "s", sellos: 9, premios: 2, nombre: "Ana" }, nube);
-    expect(b.headerFields[0]).toEqual({ label: "Cliente", value: "Ana" });
-    expect(b.primaryFields[0].value).toBe("8 / 8");
-    expect(b.backFields[0].label).toBe("Promoción");
-    expect(b.backFields.at(-1)).toEqual({ label: "Canjeados", value: "2" });
-  });
-  it("cupón usado", () => {
-    const b = buildPassBody({ serial: "s", sellos: 0, premios: 1 }, { ...SEMILLAS.forno, promo: null });
-    expect(b.secondaryFields[0].value).toBe("Ya usado");
   });
 });
 

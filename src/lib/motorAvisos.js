@@ -112,12 +112,14 @@ async function retirarCaducados(negocio, campanas, clientes, ahora) {
 export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = null } = {}) {
   const reglas = negocio.automatizaciones || [];
   const reloj = relojLocal(ahora, negocio.horario?.zona);
-  // Sin horario no sale nada solo: una tienda que nadie ha configurado (o una de
-  // prueba) no puede empezar a avisar a sus clientes a cualquier hora. A mano
-  // ("Enviar ahora") sí, porque lo pide el manager.
+  // Solo sale nada solo si la tienda encendió los avisos automáticos y tiene
+  // horario: una tienda que nadie ha configurado (o una de prueba) no puede
+  // empezar a avisar a sus clientes por un despliegue, ni a cualquier hora. A
+  // mano ("Enviar ahora") sí, porque lo pide el manager.
+  const solos = negocio.avisosActivos && negocio.horario;
   const tocan = soloRegla
     ? reglas.filter((r) => r.id === soloRegla)
-    : negocio.horario ? reglas.filter((r) => r.activa && tocaAhora(r, negocio.horario, reloj)) : [];
+    : solos ? reglas.filter((r) => r.activa && tocaAhora(r, negocio.horario, reloj)) : [];
   const resultado = { negocio: negocio.slug, retirados: 0, envios: [] };
 
   const campanas = await historial(negocio.slug, ahora);
@@ -188,6 +190,7 @@ export async function datosAvisos(slug, ahora = Date.now()) {
       slug: negocio.slug, nombre: negocio.nombre, tipo: negocio.tipo, meta: negocio.meta, premio: negocio.premio,
       cartillas: negocio.cartillas ?? null, tema: negocio.tema, promo: negocio.promo,
       horario: negocio.horario, automatizaciones: reglas, pausaAvisos: negocio.pausaAvisos,
+      avisosActivos: negocio.avisosActivos,
     },
     contextos,
     envios: { porRegla: [...envios.porRegla], ultimo: [...envios.ultimo] },

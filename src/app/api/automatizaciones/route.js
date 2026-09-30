@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 // Los avisos automáticos de una tienda. Solo su manager (lo exige también el middleware).
 //   GET  ?b=<slug>                                  -> lo que pinta la pestaña Avisos
-//   PUT  ?b=<slug>  { automatizaciones, pausaAvisos } -> guarda las reglas (no toca los pases)
+//   PUT  ?b=<slug>  { automatizaciones?, pausaAvisos?, avisosActivos? } -> guarda (no toca los pases)
 //   POST ?b=<slug>  { regla }                        -> "Enviar ahora": esa regla, ya
 
 async function tienda(request, slug) {
@@ -37,10 +37,16 @@ export async function PUT(request) {
   if (respuesta) return respuesta;
   try {
     const body = await request.json().catch(() => ({}));
-    const r = validarReglas(body.automatizaciones);
-    if (r.error) return jsonError(r.error, 400);
-    const patch = { automatizaciones: r.reglas };
+    const patch = {};
+    if (body.automatizaciones !== undefined) {
+      const r = validarReglas(body.automatizaciones);
+      if (r.error) return jsonError(r.error, 400);
+      patch.automatizaciones = r.reglas;
+    }
     if (body.pausaAvisos !== undefined) patch.pausaAvisos = normalizarPausa(body.pausaAvisos);
+    // El interruptor general: sin él encendido, el reloj no manda nada de esta tienda.
+    if (typeof body.avisosActivos === "boolean") patch.avisosActivos = body.avisosActivos;
+    if (!Object.keys(patch).length) return jsonError("Nada que guardar", 400);
     // Cambiar una regla no cambia ningún pase: nada de avisar a los teléfonos aquí.
     if (!(await saveNegocio(slug, patch))) return jsonError("Ese negocio no existe", 404);
     return NextResponse.json(await datosAvisos(slug));

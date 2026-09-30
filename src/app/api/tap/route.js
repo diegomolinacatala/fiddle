@@ -43,10 +43,12 @@ const recordar = (respuesta, slug, serial, url) => {
 //   actualiza en vez de duplicarlo). Android + Google Wallet -> a guardarla ahí.
 //   Resto -> la tarjeta web (/p/<serial>).
 //
-// Si no, a la página de la tienda, que le pide el nombre y luego le ofrece la
-// Wallet (el POST de abajo). La tarjeta no se crea hasta tener el nombre: quien
-// escanea y se va no deja un cliente vacío. `?nuevo=1` pide otra aunque ya
-// tenga una (para probar desde el mostrador).
+// Si no, depende de la tienda (`pedirNombre`, lo cambia el manager en Tienda):
+//   - Sin pedirlo (lo de partida): se crea la tarjeta aquí mismo y va directa a
+//     la Wallet, como la suya. Un paso menos en el mostrador.
+//   - Pidiéndolo: a la página de la tienda, que pide el nombre y luego ofrece la
+//     Wallet (el POST de abajo). Así quien escanea y se va no deja un cliente vacío.
+// `?nuevo=1` pide otra aunque ya tenga una (para probar desde el mostrador).
 export async function GET(request) {
   const url = new URL(request.url);
   const slug = url.searchParams.get("b");
@@ -54,8 +56,17 @@ export async function GET(request) {
   const nuevo = url.searchParams.get("nuevo") === "1";
 
   try {
-    const suya = nuevo ? null : await tarjetaRecordada(request, slug);
-    if (!suya) return NextResponse.redirect(new URL(`/${slug}${nuevo ? "?nuevo=1" : ""}`, request.url), 302);
+    let suya = nuevo ? null : await tarjetaRecordada(request, slug);
+    if (!suya) {
+      const negocio = await getNegocio(slug);
+      if (!negocio || negocio.pedirNombre) {
+        return NextResponse.redirect(new URL(`/${slug}${nuevo ? "?nuevo=1" : ""}`, request.url), 302);
+      }
+      if (await usoExcedido("tap", ipDe(request))) {
+        return jsonError("Demasiadas tarjetas desde esta conexión. Prueba en unos minutos.", 429);
+      }
+      suya = (await emitirPase(slug, { origen: "tap" })).cliente;
+    }
 
     const plataforma = plataformaDe(request.headers.get("user-agent"));
     const respuesta = plataforma === "ios" && hayApple()
@@ -70,6 +81,7 @@ export async function GET(request) {
 }
 
 // POST /api/tap?b=<slug>[&nuevo=1]  { nombre } -> crea la tarjeta con ese nombre.
+// Sin nombre solo si la tienda no lo pide (el botón de su página, sin campo).
 //
 // Lo manda el formulario de la página de la tienda: con JavaScript va en JSON y
 // responde `{ ir }`; sin él (el cliente escribió antes de que cargara) es un
@@ -88,23 +100,24 @@ export async function POST(request) {
   const esJson = (request.headers.get("content-type") || "").includes("application/json");
   const datos = esJson ? await request.json().catch(() => null) : await request.formData().then(Object.fromEntries, () => null);
   const nombre = nombreDeCliente(datos?.nombre);
-  if (!nombre) return esJson ? jsonError("Escribe tu nombre", 400) : NextResponse.redirect(new URL(pagina, request.url), 303);
 
   try {
+    const negocio = await getNegocio(slug);
+    if (!negocio) return jsonError("Esta tienda no existe", 404);
+    if (!nombre && negocio.pedirNombre) {
+      return esJson ? jsonError("Escribe tu nombre", 400) : NextResponse.redirect(new URL(pagina, request.url), 303);
+    }
     let cliente = nuevo ? null : await tarjetaRecordada(request, slug);
-    let ir = `/${slug}`;
+    const ir = `/${slug}`;
     if (cliente) {
       // Ya tenía (otra pestaña, o volvió atrás y lo envió de nuevo): la misma, no otra.
-      if (!cliente.nombre) await guardarNombre(cliente.serial, nombre);
+      if (nombre && !cliente.nombre) await guardarNombre(cliente.serial, nombre);
     } else {
-      if (!(await getNegocio(slug))) return jsonError("Esta tienda no existe", 404);
       if (await usoExcedido("tap", ipDe(request))) {
         return jsonError("Demasiadas tarjetas desde esta conexión. Prueba en unos minutos.", 429);
       }
       const r = await emitirPase(slug, { origen: "tap", nombre });
       cliente = r.cliente;
-      // Plan B sin cuenta de Apple: su página es la que sabe meterla en la Wallet.
-      if (r.proveedor === "walletwallet") ir = r.shareUrl;
     }
 
     const respuesta = esJson ? NextResponse.json({ ok: true, ir }) : NextResponse.redirect(new URL(ir, request.url), 303);

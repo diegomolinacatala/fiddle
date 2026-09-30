@@ -34,7 +34,6 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 | `nombre` | text? | personalización (sale en el pase) |
 | `auth_token` | text | `authenticationToken` del pase (secreto, nunca al navegador) |
 | `actualizado` | timestamptz | se marca en cada cambio; Apple pregunta "¿qué cambió desde…?" |
-| `ww_serial` | text? | solo plan B WalletWallet |
 | `creado` | timestamptz | |
 | `visitas`, `ultima_visita` | int · timestamptz? | **resumen del historial**, mantenido al vuelo por `registrarVisita`. Sin esto, agrupar clientes por comportamiento obligaría a recorrer `eventos` entero en cada pantalla |
 | `instalado`, `desinstalado` | timestamptz? | cuándo entró el pase en un Wallet y cuándo salió del último iPhone. Lo apunta el web service de Apple, que es el único que se entera |
@@ -85,11 +84,20 @@ PK (`dispositivo`, `pass_type`, `serial`).
 fallidos), `tap:<ip>` (emisiones), `log:<ip>` (logs de Apple). Ver
 [`limitador.js`](../src/lib/limitador.js).
 
+### `invitaciones` — enlaces para que el dueño elija sus contraseñas
+`huella` (sha256 del token, PK: el token no se guarda) · `negocio` · `caduca` · `creado` ·
+`usada` (null hasta que se usa). Crear una anula las anteriores sin usar de esa tienda.
+Ver [`invitaciones.js`](../src/lib/invitaciones.js).
+
+### `tutoriales` — recorridos de bienvenida vistos
+`usuario` (`nube`, `nube-caja`, `admin`) · `negocio` (para borrarlos con la tienda) ·
+`recorrido` (`manager` | `caja`) · `visto`. PK (`usuario`, `recorrido`).
+
 ## API del store
 
 ```
 Negocios:     getNegocio(slug) · listNegocios() · saveNegocio(slug, patch)
-Clientes:     crearCliente({serial, negocio, authToken, wwSerial?}) · getCliente(serial)
+Clientes:     crearCliente({serial, negocio, authToken, origen?}) · getCliente(serial)
               saveCliente({serial, sellos, premios}, {esperado?}) -> guardado?
                 (marca actualizado; con `esperado` solo escribe si el estado no cambió:
                  dos cajas canjeando a la vez no entregan el premio dos veces)
@@ -109,10 +117,15 @@ Apple Wallet: registrarPase({dispositivo, pushToken, passType, serial, negocio})
               pasesDeDispositivo({dispositivo, passType}) -> [{serial, actualizado}]
               pushTokens({seriales?, negocio?}) · borrarDispositivosPorToken(tokens)
 Límites:      registrarIntento(clave) · contarIntentos(clave, desdeMs)
+Accesos:      getAcceso(usuario) · accesosDeNegocio(slug) · guardarAcceso({usuario, negocio, rol, hash})
+Invitaciones: crearInvitacion({huella, negocio, caduca}) · getInvitacion(huella)
+              gastarInvitacion(huella) -> bool   (condicional: solo la primera vez)
+Tutoriales:   tutorialesVistos(usuario) -> [recorrido] · marcarTutorial({usuario, negocio, recorrido})
 ```
 
 ## Backend demo (ficheros)
-`.data/{negocios,clientes,eventos,dispositivos,registros,intentos,campanas}.json`. En `.gitignore`.
+`.data/<tabla>.json`, una por tabla. En `.gitignore`. El arranque `demo` del preview
+(`.claude/launch.json`) usa `.data/demo/` y deja fuera la base de `.env.local`.
 (`.data/` de la versión anterior de un solo negocio no es compatible: bórrala si ves clientes raros.)
 Todas las operaciones van en fila dentro del proceso. Vale para local; **no** para
 Vercel (el sistema de ficheros no persiste). La carpeta se cambia con `DATA_DIR` (tests).

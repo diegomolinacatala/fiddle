@@ -30,6 +30,9 @@ export const pagina = {
   color: C.texto,
   padding: "2rem 1rem 3rem",
   display: "grid",
+  // Sin esto la columna crece con lo más ancho de dentro (una tabla del CRM) y
+  // en el móvil TODA la página se sale por la derecha, no solo la tabla.
+  gridTemplateColumns: "minmax(0, 1fr)",
   placeItems: "start center",
 };
 

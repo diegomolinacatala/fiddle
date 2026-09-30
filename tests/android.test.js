@@ -243,7 +243,6 @@ describe("avisos a Android desde wallet.js", () => {
     vi.stubEnv("DATA_DIR", dir);
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("APPLE_PASS_TYPE_ID", "");
-    vi.stubEnv("WALLETWALLET_API_KEY", "");
     // resetModules tira las semillas de prueba: se vuelven a meter en el módulo nuevo.
     await import("./tiendasDePrueba.js");
     push = await import("@/lib/push/enviar");

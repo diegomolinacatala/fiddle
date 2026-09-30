@@ -401,7 +401,7 @@ export function normalizarRegla(r) {
   return {
     id: r.id,
     nombre: textoCorto(r.nombre, 40) || d.label,
-    activa: r.activa !== false,
+    activa: r.activa === true,
     disparo: r.disparo,
     valor: valorDe(d, r.valor),
     hora: esHora(r.hora) ? r.hora : "12:00",
@@ -483,16 +483,16 @@ export function reglaNueva(disparo, reglas) {
 }
 
 /**
- * Las de partida de cualquier tienda que no haya tocado nada. La de la racha
- * sale apagada: promete un regalo, y eso lo decide la tienda.
+ * Las de partida de cualquier tienda que no haya tocado nada. Todas apagadas:
+ * son ideas para encender, no avisos que salen solos. La tienda elige cuáles.
  */
 export const PLANTILLAS = [
   { id: "racha", nombre: "Premio a la racha", activa: false, disparo: "racha", valor: 4, hora: "09:00", dias: [], caduca: true, texto: DISPAROS.racha.sugerencia },
-  { id: "premio-pendiente", nombre: "Premio sin recoger", activa: true, disparo: "premio_listo", valor: 3, hora: "10:00", dias: [], texto: DISPAROS.premio_listo.sugerencia },
-  { id: "a-un-paso", nombre: "A un paso del premio", activa: true, disparo: "cerca_premio", valor: 1, hora: "17:00", dias: [], texto: DISPAROS.cerca_premio.sugerencia },
-  { id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: true, disparo: "sin_venir", valor: 21, hora: "12:00", dias: [], texto: DISPAROS.sin_venir.sugerencia },
-  { id: "segunda-visita", nombre: "Segunda visita", activa: true, disparo: "segunda_visita", valor: 7, hora: "10:00", dias: [], texto: DISPAROS.segunda_visita.sugerencia },
-  { id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: true, disparo: "sin_estrenar", valor: 3, hora: "11:00", dias: [], texto: DISPAROS.sin_estrenar.sugerencia },
+  { id: "premio-pendiente", nombre: "Premio sin recoger", activa: false, disparo: "premio_listo", valor: 3, hora: "10:00", dias: [], texto: DISPAROS.premio_listo.sugerencia },
+  { id: "a-un-paso", nombre: "A un paso del premio", activa: false, disparo: "cerca_premio", valor: 1, hora: "17:00", dias: [], texto: DISPAROS.cerca_premio.sugerencia },
+  { id: "te-echamos-de-menos", nombre: "Te echamos de menos", activa: false, disparo: "sin_venir", valor: 21, hora: "12:00", dias: [], texto: DISPAROS.sin_venir.sugerencia },
+  { id: "segunda-visita", nombre: "Segunda visita", activa: false, disparo: "segunda_visita", valor: 7, hora: "10:00", dias: [], texto: DISPAROS.segunda_visita.sugerencia },
+  { id: "sin-estrenar", nombre: "Tarjeta sin estrenar", activa: false, disparo: "sin_estrenar", valor: 3, hora: "11:00", dias: [], texto: DISPAROS.sin_estrenar.sugerencia },
 ];
 
 /** Etiqueta de un envío guardado: el grupo del CRM o el nombre de la regla automática. */

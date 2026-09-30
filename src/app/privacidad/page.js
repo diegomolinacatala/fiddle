@@ -27,7 +27,7 @@ export default async function Privacidad({ searchParams }) {
 
   return (
     <main style={pagina}>
-      <article style={{ width: "min(720px, 94vw)", lineHeight: 1.6, fontSize: 15 }}>
+      <article style={{ width: "min(720px, 100%)", lineHeight: 1.6, fontSize: 15 }}>
         <h1 style={titulo}>Privacidad de tu tarjeta{n ? ` de ${n.nombre}` : ""}</h1>
         <p style={{ color: C.tenue, fontSize: 13, margin: "6px 0 20px" }}>Última actualización: {ACTUALIZADO}</p>
 

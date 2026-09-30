@@ -26,6 +26,8 @@ import { RESERVADOS } from "./negocios";
 //   /api/google/guardar/<serial>           "Añadir a Google Wallet"
 //   /api/imagen/<tipo>                     iconos y banda: los descargan Google
 //                                          Wallet y Android, sin sesión
+//   /invitacion  /api/invitacion           el dueño de una tienda nueva elige sus
+//                                          contraseñas (vale el token del enlace)
 //   /api/cron/avisos                       el reloj de los avisos automáticos: no
 //                                          hay sesión, lo protege CRON_SECRET en
 //                                          su handler (sin él, no hace nada)
@@ -33,6 +35,8 @@ const PUBLICAS = [
   /^\/$/,
   /^\/login$/,
   /^\/privacidad$/,
+  /^\/invitacion$/,
+  /^\/api\/invitacion$/,
   /^\/api\/login$/,
   /^\/api\/logout$/,
   /^\/api\/tap$/,

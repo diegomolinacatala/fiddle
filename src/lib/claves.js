@@ -10,6 +10,7 @@ import { promisify } from "node:util";
 // Las generamos nosotros, legibles y sin caracteres que se confundan al
 // dictarlas en el mostrador (0/O, 1/I/L): "K7MP-X3QR-9HTB", 12 caracteres de
 // 31 posibles, ~59 bits. Con 10 intentos por IP cada 15 minutos, sobra.
+// La excepción es la invitación: ahí el dueño elige las suyas.
 //
 // Solo Node (route handlers): el middleware no toca contraseñas, solo sesiones.
 // ============================================================================
@@ -26,10 +27,14 @@ export function generarClave() {
   return Array.from({ length: 3 }, () => Array.from({ length: 4 }, letra).join("")).join("-");
 }
 
-/** "scrypt$<sal hex>$<hash hex>": lo único que se guarda. */
+/**
+ * "scrypt$<sal hex>$<hash hex>": lo único que se guarda. Se normaliza igual que
+ * al comprobar: una que elija el dueño y tenga forma de generada ("cafe12345678")
+ * se compara como "CAFE-1234-5678", y el hash tiene que ser de eso.
+ */
 export async function hashClave(clave) {
   const sal = randomBytes(16);
-  const hash = await scrypt(String(clave), sal, LARGO_HASH, PARAMS);
+  const hash = await scrypt(normalizarClave(clave), sal, LARGO_HASH, PARAMS);
   return `scrypt$${sal.toString("hex")}$${hash.toString("hex")}`;
 }
 
@@ -48,6 +53,21 @@ export async function comprobarClave(clave, guardado) {
     return false;
   }
 }
+
+/**
+ * Una que elige el dueño (invitación, lib/invitaciones.js). Larga antes que
+ * rara: diez caracteres ya no se adivinan con 10 intentos cada 15 minutos.
+ * @returns {string|null} el problema, o null si vale
+ */
+export function problemaClaveElegida(clave, usuario) {
+  const s = String(clave ?? "");
+  if (s.trim().length < MIN_ELEGIDA) return `Tiene que tener al menos ${MIN_ELEGIDA} caracteres`;
+  if (s.length > 200) return "Demasiado larga";
+  if (s.trim().toLowerCase() === String(usuario).toLowerCase()) return "No puede ser igual que el usuario";
+  if (/^(.)\1+$/.test(s.trim())) return "No puede ser el mismo carácter repetido";
+  return null;
+}
+export const MIN_ELEGIDA = 10;
 
 /** Las generadas se comparan sin mayúsculas, espacios ni guiones. */
 function normalizarClave(clave) {

@@ -123,7 +123,7 @@ src/lib/
 ├─ push/           vapid.js · suscripcion.js · enviar.js   avisos del navegador
 ├─ auth.js · acceso.js · limitador.js · http.js   login y permisos
 ├─ store.js        Supabase o ficheros locales
-└─ walletwallet.js · googlewallet.js · validacion.js · url.js · tarjeta.js · recordar.js
+└─ googlewallet.js · validacion.js · url.js · tarjeta.js · recordar.js
 scripts/apple-setup.mjs   CSR + certificado de Apple -> variables (sin Mac)
 supabase/schema.sql       esquema idempotente
 tests/                    vitest
