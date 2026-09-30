@@ -1,10 +1,11 @@
 import {
-  getNegocio, listNegocios, listClientes, serialesRegistrados, listEventosDeNegocio, listCampanas,
+  getNegocio, saveNegocio, listNegocios, listClientes, serialesRegistrados, listEventosDeNegocio, listCampanas,
   guardarMensajes, crearCampana, addEventos, registrarIntento, ultimoIntento,
 } from "./store";
-import { avisarSeriales } from "./wallet";
+import { avisarSeriales, refrescarPasesApple } from "./wallet";
+import { CLAVE_RELOJ } from "./relojAvisos";
 import { perfilDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
-import { relojLocal } from "./horario";
+import { relojLocal, estadoParaPase } from "./horario";
 import {
   contextoDe, fechasDeVisita, enviosDe, conEnvio, elegibles, candidatos, tocaAhora, porRetirar,
   renderTexto, grupoDeRegla, etiquetaEnvio, MAX_POR_REGLA,
@@ -28,8 +29,7 @@ import {
 // ============================================================================
 
 const DIA = 24 * 60 * 60 * 1000;
-/** Lo que deja el reloj en `intentos` a cada pasada: la pantalla lo mira para saber si anda. */
-export const CLAVE_RELOJ = "reloj:avisos";
+export { CLAVE_RELOJ };
 const HISTORIAL_DIAS = 365;   // "¿ya se lo dijimos?" mira un año atrás
 const LIMITE_CAMPANAS = 1000; // lo que devuelve Supabase de una vez
 const EVENTOS_DIAS = 120;     // como el CRM: rachas y "¿volvió?"
@@ -149,15 +149,38 @@ export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = 
 }
 
 /**
+ * El estado del pase ("ABIERTO hasta 14:00") de una tienda, si ha cambiado
+ * desde la última pasada: se apunta en su config y se empuja a sus iPhone, que
+ * vuelven a pedir el pase y lo ven ya cambiado (lib/apple/firmar.js lo calcula
+ * al firmar). Idempotente como el resto: si el valor es el mismo, nada.
+ * @returns {Promise<string|null>} el valor nuevo si hubo que empujar
+ */
+export async function refrescarEstadoDelPase(negocio, ahora = Date.now()) {
+  const estado = estadoParaPase(negocio.horario, ahora);
+  const clave = estado ? `${estado.label} ${estado.value}` : null;
+  if (clave === (negocio.estadoPase ?? null)) return null;
+  await saveNegocio(negocio.slug, { estadoPase: clave });
+  // Sin texto ni sonido: el pase se pone al día en silencio.
+  await refrescarPasesApple(negocio);
+  return clave;
+}
+
+/**
  * Pasada completa: todas las tiendas. Deja el latido primero, así la pantalla
- * sabe que el reloj anda aunque hoy no toque nada.
+ * sabe que el reloj anda aunque hoy no toque nada (y el pase, al firmarse
+ * justo después, ya puede llevar su estado).
  */
 export async function repasarTodas({ ahora = Date.now() } = {}) {
   await registrarIntento(CLAVE_RELOJ).catch((e) => console.error("[avisos] no se pudo apuntar el latido:", e));
   const resultados = [];
   for (const negocio of await listNegocios()) {
     try {
-      resultados.push(await repasarNegocio(negocio, { ahora }));
+      const r = await repasarNegocio(negocio, { ahora });
+      r.estadoPase = await refrescarEstadoDelPase(negocio, ahora).catch((e) => {
+        console.error(`[avisos] ${negocio.slug}: no se pudo poner al día el estado del pase:`, e);
+        return null;
+      });
+      resultados.push(r);
     } catch (e) {
       console.error(`[avisos] ${negocio.slug} falló:`, e);
       resultados.push({ negocio: negocio.slug, error: String(e?.message || e) });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import Icono from "@/app/Icono";
 import Regla from "./Regla";
-import { LISTA_DISPAROS, MAX_REGLAS, MAX_PAUSA, reglaNueva } from "@/lib/automatizaciones";
+import { LISTA_DISPAROS, MAX_REGLAS, MAX_PAUSA, RELOJ_VIVO_MIN, reglaNueva } from "@/lib/automatizaciones";
 import { resumenHorario } from "@/lib/horario";
 import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO } from "@/app/ui";
 
@@ -20,7 +20,6 @@ import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO } from
 // se queda con lo que devuelve el servidor: lo que se ve es lo guardado.
 // ============================================================================
 
-const RELOJ_VIVO_MIN = 40; // pasa cada 15 min: con 40 sin latido, algo va mal
 
 export default function Automaticos({ slug, datos, onDatos, flash }) {
   const { negocio: n, contextos } = datos;

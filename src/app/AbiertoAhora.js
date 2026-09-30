@@ -11,8 +11,9 @@ import { estadoAhora } from "@/lib/horario";
 // última hora antes de cerrar o de abrir, y rojo cerrada; el texto va en la
 // tinta de la tarjeta, bajado, para que no compita con el premio.
 //
-// Solo en la tarjeta web: Wallet no puede tener algo que cambia solo con la
-// hora (el pase se queda como se instaló hasta que el servidor lo empuja).
+// Esta línea es la de la tarjeta web, que se calcula sola a cada minuto. El pase
+// de Wallet lleva su propio "ABIERTO / CERRADO" en la cabecera, más corto y sin
+// "pronto": ese lo empuja el reloj al abrir y al cerrar (estadoParaPase).
 //
 // Se calcula en el navegador y se repasa al cambiar el minuto: una tarjeta
 // instalada en la pantalla de inicio puede quedarse abierta horas.

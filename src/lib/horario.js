@@ -12,7 +12,10 @@
 //
 //   horario = {
 //     zona:     "Europe/Madrid",
-//     semana:   [ {abre:"07:30", cierra:"18:30"} | null ] × 7   (0 = lunes)
+//     semana:   [ [ {abre:"09:00", cierra:"14:00"}, {abre:"17:00", cierra:"20:30"} ] | null ] × 7
+//               (0 = lunes). Uno o dos tramos por día: el horario partido de
+//               tantas tiendas de aquí. Los guardados antes eran un tramo suelto
+//               ({abre, cierra}); normalizarHorario los pasa a lista.
 //     cerrados: ["2026-10-09", …]   festivos y vacaciones
 //   }
 //
@@ -29,6 +32,7 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 const HORA = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_CERRADOS = 120; // un año de festivos y vacaciones sobra
+export const MAX_TRAMOS = 2; // mañana y tarde; más no lo pide nadie y no cabe en la fila
 
 /** "07:30" -> 450. null si no es una hora. */
 export function aMinutos(hora) {
@@ -58,16 +62,32 @@ export function esZona(zona) {
 const esFecha = (v) => typeof v === "string" && FECHA.test(v) && new Date(`${v}T12:00:00Z`).toISOString().startsWith(v);
 
 /**
- * Deja un horario limpio, o null si no vale. Un día sin tramo (o con el cierre
- * antes de la apertura) cuenta como cerrado: mejor eso que inventarse la hora.
+ * Los tramos de un día, limpios y en orden, o null si ese día cierra. Acepta el
+ * tramo suelto de antes. Un tramo con el cierre antes de la apertura no cuenta
+ * (mejor eso que inventarse la hora) y dos que se pisan se juntan en uno.
+ */
+export function normalizarDia(dia) {
+  const lista = Array.isArray(dia) ? dia : dia ? [dia] : [];
+  const tramos = lista
+    .map((t) => ({ abre: aMinutos(t?.abre), cierra: aMinutos(t?.cierra) }))
+    .filter((t) => t.abre !== null && t.cierra !== null && t.abre < t.cierra)
+    .sort((a, b) => a.abre - b.abre);
+  const juntos = [];
+  for (const t of tramos) {
+    const ultimo = juntos.at(-1);
+    if (ultimo && t.abre <= ultimo.cierra) ultimo.cierra = Math.max(ultimo.cierra, t.cierra);
+    else juntos.push({ ...t });
+  }
+  return juntos.length ? juntos.slice(0, MAX_TRAMOS).map((t) => ({ abre: aHora(t.abre), cierra: aHora(t.cierra) })) : null;
+}
+
+/**
+ * Deja un horario limpio, o null si no vale. Un día sin tramos válidos cuenta
+ * como cerrado.
  */
 export function normalizarHorario(h) {
   if (!h || typeof h !== "object" || !Array.isArray(h.semana) || h.semana.length !== 7) return null;
-  const semana = h.semana.map((t) => {
-    const abre = aMinutos(t?.abre);
-    const cierra = aMinutos(t?.cierra);
-    return abre !== null && cierra !== null && abre < cierra ? { abre: aHora(abre), cierra: aHora(cierra) } : null;
-  });
+  const semana = h.semana.map(normalizarDia);
   const cerrados = Array.isArray(h.cerrados)
     ? [...new Set(h.cerrados.filter(esFecha))].sort().slice(0, MAX_CERRADOS)
     : [];
@@ -124,6 +144,8 @@ export function inicioDelDia(fecha, zona) {
  * (un domingo, de noche), dura hasta el cierre del siguiente día que abre.
  */
 export function cierreTras(horario, ms) {
+  // Con horario partido, "el cierre" es el último del día: un mensaje de "solo
+  // hoy" no se quita a mediodía para volver por la tarde.
   const { fecha, minutos } = partes(ms, horario?.zona);
   for (let i = 0; i < 15; i += 1) {
     const f = sumarDias(fecha, i);
@@ -134,18 +156,32 @@ export function cierreTras(horario, ms) {
 }
 
 /**
- * Tramo abierto de ese día en minutos, o null si cierra (día libre o festivo).
- * Sin horario: abierta todo el día.
+ * Los tramos abiertos de ese día en minutos, en orden; [] si cierra (día libre o
+ * festivo). Sin horario: abierta todo el día.
+ * @returns {{abre:number, cierra:number}[]}
  */
-export function tramoDe(horario, fecha) {
-  if (!horario) return { abre: 0, cierra: 24 * 60 };
-  if (horario.cerrados?.includes(fecha)) return null;
-  const t = horario.semana?.[diaDeFecha(fecha)];
-  if (!t) return null;
-  return { abre: aMinutos(t.abre), cierra: aMinutos(t.cierra) };
+export function tramosDe(horario, fecha) {
+  if (!horario) return [{ abre: 0, cierra: 24 * 60 }];
+  if (horario.cerrados?.includes(fecha)) return [];
+  return (normalizarDia(horario.semana?.[diaDeFecha(fecha)]) || [])
+    .map((t) => ({ abre: aMinutos(t.abre), cierra: aMinutos(t.cierra) }));
 }
 
-export const abreEl = (horario, fecha) => tramoDe(horario, fecha) !== null;
+/**
+ * De la primera apertura al último cierre del día, o null si cierra. Con
+ * horario partido incluye el descanso: sirve para "¿abre ese día?" y "¿cuándo
+ * cierra del todo?", no para "¿está abierta a las 15:00?" (eso, `tramoEn`).
+ */
+export function tramoDe(horario, fecha) {
+  const tramos = tramosDe(horario, fecha);
+  return tramos.length ? { abre: tramos[0].abre, cierra: tramos.at(-1).cierra } : null;
+}
+
+/** El tramo en que está abierta a esos minutos del día, o null (cerrada o en el descanso). */
+export const tramoEn = (horario, fecha, minutos) =>
+  tramosDe(horario, fecha).find((t) => minutos >= t.abre && minutos < t.cierra) || null;
+
+export const abreEl = (horario, fecha) => tramosDe(horario, fecha).length > 0;
 
 /**
  * Los `n` días de apertura anteriores a `fecha` (sin contarla), del más cercano
@@ -185,8 +221,9 @@ export function rachaDe(fechas, horario, hoy, tope = 30) {
 export function resumenHorario(horario) {
   if (!horario) return "Sin horario";
   const bloques = [];
-  horario.semana.forEach((t, i) => {
-    const clave = t ? `${horaCorta(t.abre)}–${horaCorta(t.cierra)}` : null;
+  horario.semana.forEach((dia, i) => {
+    const tramos = normalizarDia(dia);
+    const clave = tramos ? tramos.map((t) => `${horaCorta(t.abre)}–${horaCorta(t.cierra)}`).join(" y ") : null;
     const ultimo = bloques.at(-1);
     if (ultimo && ultimo.clave === clave && ultimo.hasta === i - 1) ultimo.hasta = i;
     else bloques.push({ clave, desde: i, hasta: i });
@@ -225,12 +262,12 @@ const PRONTO_MIN = 60;
 /** 1110 -> "las 18:30"; 105 -> "la 1:45". */
 const lasHoras = (min) => `${Math.floor(min / 60) === 1 ? "la" : "las"} ${horaCorta(aHora(min))}`;
 
-/** Próxima apertura desde `minutos` de `fecha` (hoy incluido): {fecha, minutos} o null. */
+/** Próxima apertura desde `minutos` de `fecha` (hoy incluido, también la de la tarde): {fecha, minutos} o null. */
 function aperturaTras(horario, fecha, minutos) {
   for (let i = 0; i < 15; i += 1) {
     const f = sumarDias(fecha, i);
-    const tramo = tramoDe(horario, f);
-    if (tramo && (i > 0 || minutos < tramo.abre)) return { fecha: f, minutos: tramo.abre };
+    const tramo = tramosDe(horario, f).find((t) => i > 0 || minutos < t.abre);
+    if (tramo) return { fecha: f, minutos: tramo.abre };
   }
   return null;
 }
@@ -246,10 +283,11 @@ function aperturaTras(horario, fecha, minutos) {
 export function estadoAhora(horario, ms) {
   if (!horario) return null;
   const { fecha, minutos } = relojLocal(ms, horario.zona);
-  const hoy = tramoDe(horario, fecha);
+  // El tramo de AHORA: con horario partido, a las 15:00 está cerrada aunque abra ese día.
+  const hoy = tramoEn(horario, fecha, minutos);
   const hora = (min) => horaCorta(aHora(min));
 
-  if (hoy && minutos >= hoy.abre && minutos < hoy.cierra) {
+  if (hoy) {
     return hoy.cierra - minutos <= PRONTO_MIN
       ? { abierta: true, tono: "pronto", corto: "Cierra pronto", texto: `Cierra pronto · ${hora(hoy.cierra)}` }
       : { abierta: true, tono: "abierto", corto: "Abierto", texto: `Abierto hasta ${lasHoras(hoy.cierra)}` };
@@ -264,4 +302,33 @@ export function estadoAhora(horario, ms) {
     return { abierta: false, tono: "pronto", corto: "Abre pronto", texto: `Abre pronto · ${hora(abre.minutos)}` };
   }
   return cerrado(`Cerrado hasta ${dias === 0 ? lasHoras(abre.minutos) : cuandoTexto(abre.fecha, fecha)}`);
+}
+
+// ------------------------------------------------------------- en el pase
+// El estado en la cabecera del pase de Wallet: "ABIERTO · hasta 14:00". Un pase
+// no cambia solo con la hora, así que lo pone al día el reloj de los avisos
+// (lib/motorAvisos.js) cada vez que este valor cambia: al abrir, al cerrar y a
+// medianoche ("abre mañana" pasa a "abre 9:00"). Sin "pronto": eso sería otro
+// empujón a todos los iPhone por cada cambio de color.
+//
+// Cabe poco (la cabecera la comparte con el contador de premios), así que la
+// etiqueta dice el estado y el valor, lo siguiente: "hasta 14:00", "abre 17:00",
+// "abre mañana", "abre el lunes".
+
+/**
+ * @returns {{abierta:boolean, label:string, value:string}|null} null sin horario
+ */
+export function estadoParaPase(horario, ms) {
+  if (!horario) return null;
+  const { fecha, minutos } = relojLocal(ms, horario.zona);
+  const hoy = tramoEn(horario, fecha, minutos);
+  if (hoy) return { abierta: true, label: "ABIERTO", value: `hasta ${horaCorta(aHora(hoy.cierra))}` };
+  const abre = aperturaTras(horario, fecha, minutos);
+  const cerrado = (value) => ({ abierta: false, label: "CERRADO", value });
+  if (!abre) return cerrado("por ahora");
+  if (abre.fecha === fecha) return cerrado(`abre ${horaCorta(aHora(abre.minutos))}`);
+  if (abre.fecha === sumarDias(fecha, 1)) return cerrado("abre mañana");
+  const dentro = Math.round((Date.parse(`${abre.fecha}T12:00:00Z`) - Date.parse(`${fecha}T12:00:00Z`)) / DIA_MS);
+  if (dentro < 7) return cerrado(`abre el ${DIAS[diaDeFecha(abre.fecha)]}`);
+  return cerrado(`abre el ${Number(abre.fecha.slice(8))}/${Number(abre.fecha.slice(5, 7))}`);
 }

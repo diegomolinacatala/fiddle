@@ -3,6 +3,8 @@ import { configApple } from "./config";
 import { construirPassJson } from "./pase";
 import { imagenesDelPase } from "./imagenes";
 import { appUrl } from "../url";
+import { estadoParaPase } from "../horario";
+import { relojVivo } from "../relojAvisos";
 
 // ============================================================================
 // APPLE WALLET — firma del .pkpass
@@ -25,10 +27,15 @@ export const MIME_PKPASS = "application/vnd.apple.pkpass";
 export async function generarPkpass(cliente, negocio, config = configApple(negocio.slug)) {
   if (!config) throw new Error("Apple Wallet no está configurado (faltan variables APPLE_*)");
 
+  // "ABIERTO hasta 14:00" en la cabecera, con la hora de la tienda al firmar.
+  // Solo con el reloj en marcha: es el que lo vuelve a firmar al abrir y al
+  // cerrar. Sin él, el pase diría "ABIERTO" toda la noche.
+  const estado = negocio.horario && (await relojVivo()) ? estadoParaPase(negocio.horario, Date.now()) : null;
   const passJson = construirPassJson(cliente, negocio, {
     passTypeId: config.passTypeId,
     teamId: config.teamId,
     appUrl: appUrl(),
+    estado,
   });
   const imagenes = await imagenesDelPase(negocio, cliente);
 

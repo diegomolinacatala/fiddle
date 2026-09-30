@@ -2,44 +2,69 @@
 
 import { useState } from "react";
 import Icono from "@/app/Icono";
-import { DIAS, ZONA_POR_DEFECTO, fechaLocal, resumenHorario } from "@/lib/horario";
-import { C, campo, h2, botonPrimario, botonPequeno, RADIO } from "@/app/ui";
+import { DIAS, ZONA_POR_DEFECTO, MAX_TRAMOS, aMinutos, aHora, fechaLocal, resumenHorario } from "@/lib/horario";
+import CalendarioCerrados from "./CalendarioCerrados";
+import { C, campo, h2, botonPrimario, RADIO } from "@/app/ui";
 
 // ============================================================================
 // CUÁNDO ABRE LA TIENDA
 // ----------------------------------------------------------------------------
-// Lo usan los avisos automáticos: solo salen con la tienda abierta, y los
-// "días seguidos" de la racha cuentan días de apertura (el domingo cerrado no
-// la rompe). Y la tarjeta web dice con él si está abierta (app/AbiertoAhora.js).
-// Guardarlo no toca ningún pase: Wallet no lo enseña, y la tarjeta web lo lee sola.
+// Lo usan los avisos automáticos (solo salen con la tienda abierta, y la racha
+// cuenta días de apertura), la tarjeta web ("Abierto hasta las 14:00") y el
+// estado de la cabecera del pase de Wallet, que pone al día el reloj.
+//
+// Pensado para ponerlo en un minuto desde el móvil:
+//   - cada día, uno o dos tramos: "+ tarde" parte el día en mañana y tarde;
+//   - "copiar" pasa las horas de un día a todos los que abren;
+//   - los festivos se tocan en un calendario: un toque cierra el día, otro lo abre.
+// Guardarlo no toca ningún pase a mano: el estado del pase lo mueve el reloj.
 // ============================================================================
 
 // Para una tienda que aún no lo ha puesto: un punto de partida, no un horario inventado.
 const PARTIDA = {
   zona: ZONA_POR_DEFECTO,
-  semana: [...Array(6).fill({ abre: "09:00", cierra: "20:00" }), null],
+  semana: [...Array(6).fill([{ abre: "09:00", cierra: "20:00" }]), null],
   cerrados: [],
 };
 
-const fechaBonita = (f) =>
-  new Date(`${f}T12:00:00Z`).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const tramoValido = (t) => aMinutos(t.abre) !== null && aMinutos(t.cierra) !== null && aMinutos(t.abre) < aMinutos(t.cierra);
+
+/**
+ * Parte un tramo en mañana y tarde. Si cubre la hora de comer (14–17), se corta
+ * ahí, que es lo normal; si no, la tarde empieza una hora después de cerrar.
+ */
+function partir(t) {
+  const abre = aMinutos(t.abre);
+  const cierra = aMinutos(t.cierra);
+  if (abre < 14 * 60 && cierra > 17 * 60) return [{ abre: t.abre, cierra: "14:00" }, { abre: "17:00", cierra: t.cierra }];
+  const tarde = Math.min(cierra + 60, 22 * 60);
+  return [t, { abre: aHora(tarde), cierra: aHora(Math.min(tarde + 3 * 60, 23 * 60 + 55)) }];
+}
 
 export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
   const [h, setH] = useState(inicial || PARTIDA);
-  const [fecha, setFecha] = useState("");
   const [guardando, setGuardando] = useState(false);
   const hoy = fechaLocal(Date.now(), h.zona);
-  const proximos = h.cerrados.filter((f) => f >= hoy);
   const cambiado = !inicial || JSON.stringify(h) !== JSON.stringify(inicial);
+  const roto = h.semana.some((dia) => dia?.some((t) => !tramoValido(t)));
 
-  const cambiarDia = (i, tramo) => setH((p) => ({ ...p, semana: p.semana.map((t, j) => (j === i ? tramo : t)) }));
-  const quitarCerrado = (f) => setH((p) => ({ ...p, cerrados: p.cerrados.filter((x) => x !== f) }));
-  function anadirCerrado(e) {
-    e.preventDefault();
-    if (!fecha || h.cerrados.includes(fecha)) return setFecha("");
-    setH((p) => ({ ...p, cerrados: [...p.cerrados, fecha].sort() }));
-    setFecha("");
+  const cambiarDia = (i, dia) => setH((p) => ({ ...p, semana: p.semana.map((d, j) => (j === i ? dia : d)) }));
+  const cambiarTramo = (i, k, campoTramo, valor) =>
+    cambiarDia(i, h.semana[i].map((t, j) => (j === k ? { ...t, [campoTramo]: valor } : t)));
+
+  function copiarATodos(i) {
+    const dia = h.semana[i];
+    const otros = h.semana.filter((d, j) => j !== i && d).length;
+    if (!otros) return flash("No hay otros días abiertos a los que copiarlo");
+    setH((p) => ({ ...p, semana: p.semana.map((d, j) => (j !== i && d ? dia.map((t) => ({ ...t })) : d)) }));
+    flash(`Horario del ${DIAS[i]} copiado a los demás días que abren`);
   }
+
+  const alternarCerrado = (fecha) =>
+    setH((p) => ({
+      ...p,
+      cerrados: p.cerrados.includes(fecha) ? p.cerrados.filter((f) => f !== fecha) : [...p.cerrados, fecha].sort(),
+    }));
 
   async function guardar() {
     setGuardando(true);
@@ -68,57 +93,63 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
       <h2 style={h2}>Horario</h2>
       <p style={texto}>
         {inicial ? resumenHorario(inicial) : "Sin horario: los avisos automáticos no salen hasta que lo guardes."}
-        {" "}Los avisos automáticos solo salen con la tienda abierta.
       </p>
 
       <div style={{ display: "grid", gap: 6 }}>
         {DIAS.map((dia, i) => {
-          const t = h.semana[i];
+          const tramos = h.semana[i];
           return (
-            <div key={dia} style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 38 }}>
-              {/* "Lun", "Mié": con el nombre entero, la fila no cabe en la columna del manager. */}
-              <label title={dia} style={{ display: "flex", alignItems: "center", gap: 7, width: 62, flexShrink: 0, fontSize: 14, cursor: "pointer", textTransform: "capitalize" }}>
-                <input
-                  type="checkbox" checked={Boolean(t)} aria-label={`${dia}: abre`}
-                  onChange={(e) => cambiarDia(i, e.target.checked ? { abre: "09:00", cierra: "20:00" } : null)}
-                />
-                {dia.slice(0, 3)}
-              </label>
-              {t ? (
-                <>
-                  <input type="time" aria-label={`${dia}: hora de abrir`} value={t.abre} step={300} onChange={(e) => cambiarDia(i, { ...t, abre: e.target.value })} style={hora} />
-                  <span style={{ color: C.tenue }}>a</span>
-                  <input type="time" aria-label={`${dia}: hora de cerrar`} value={t.cierra} step={300} onChange={(e) => cambiarDia(i, { ...t, cierra: e.target.value })} style={hora} />
-                </>
-              ) : (
-                <span style={{ fontSize: 13, color: C.tenue }}>Cerrado</span>
+            <div key={dia} style={{ display: "grid", gap: 4 }}>
+              <div style={fila}>
+                {/* "Lun", "Mié": con el nombre entero, la fila no cabe en la columna del manager. */}
+                <label title={dia} style={nombreDia}>
+                  <input
+                    type="checkbox" checked={Boolean(tramos)} aria-label={`${dia}: abre`}
+                    onChange={(e) => cambiarDia(i, e.target.checked ? [{ abre: "09:00", cierra: "20:00" }] : null)}
+                  />
+                  {dia.slice(0, 3)}
+                </label>
+                {tramos ? (
+                  <>
+                    <Tramo dia={dia} tramo={tramos[0]} parte={tramos.length > 1 ? "mañana" : null} onCambio={(k, v) => cambiarTramo(i, 0, k, v)} />
+                    {tramos.length < MAX_TRAMOS ? (
+                      <button type="button" onClick={() => cambiarDia(i, partir(tramos[0]))} title="Partir en mañana y tarde" aria-label={`${dia}: añadir horario de tarde`} style={iconoBoton}>
+                        <Icono nombre="mas" tam={16} />
+                      </button>
+                    ) : <span style={{ width: 30, flexShrink: 0 }} />}
+                    <button type="button" onClick={() => copiarATodos(i)} title="Copiar a los demás días que abren" aria-label={`Copiar el horario del ${dia} a los demás días`} style={iconoBoton}>
+                      <Icono nombre="copiar" tam={15} />
+                    </button>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 13, color: C.tenue }}>Cerrado</span>
+                )}
+              </div>
+              {tramos?.[1] && (
+                <div style={fila}>
+                  <span style={{ ...nombreDia, cursor: "default" }} />
+                  <Tramo dia={dia} tramo={tramos[1]} parte="tarde" onCambio={(k, v) => cambiarTramo(i, 1, k, v)} />
+                  <button type="button" onClick={() => cambiarDia(i, [tramos[0]])} title="Quitar la tarde" aria-label={`${dia}: quitar el horario de tarde`} style={iconoBoton}>
+                    <Icono nombre="cerrar" tam={14} />
+                  </button>
+                  <span style={{ width: 30, flexShrink: 0 }} />
+                </div>
               )}
             </div>
           );
         })}
       </div>
+      <p style={{ fontSize: 12, color: C.tenue, margin: "8px 0 0", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <Icono nombre="mas" tam={13} /> parte el día en mañana y tarde · <Icono nombre="copiar" tam={13} /> lo copia a los demás días
+      </p>
+      {roto && <p role="alert" style={{ fontSize: 13, color: C.mal, margin: "8px 0 0" }}>Hay un tramo que cierra antes de abrir.</p>}
 
-      <p style={{ ...texto, margin: "14px 0 8px" }}>Días cerrados (festivos, vacaciones):</p>
-      {proximos.length > 0 && (
-        <ul style={{ listStyle: "none", padding: 0, margin: "0 0 8px", display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {proximos.map((f) => (
-            <li key={f} style={chip}>
-              {fechaBonita(f)}
-              <button type="button" onClick={() => quitarCerrado(f)} aria-label={`Quitar ${fechaBonita(f)}`} style={quitar}>
-                <Icono nombre="cerrar" tam={13} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={anadirCerrado} style={{ display: "flex", gap: 8 }}>
-        <input type="date" aria-label="Día cerrado" value={fecha} min={hoy} onChange={(e) => setFecha(e.target.value)} style={{ ...campo, width: "auto", flex: 1 }} />
-        <button type="submit" disabled={!fecha} style={botonPequeno}>Añadir</button>
-      </form>
+      <p style={{ ...texto, margin: "18px 0 8px" }}>Festivos y vacaciones: toca un día para cerrarlo.</p>
+      <CalendarioCerrados horario={h} hoy={hoy} accent={accent} onAlternar={alternarCerrado} />
 
       <button
-        type="button" onClick={guardar} disabled={guardando || !cambiado}
-        style={{ ...botonPrimario(accent), marginTop: 14, opacity: guardando || !cambiado ? 0.45 : 1 }}
+        type="button" onClick={guardar} disabled={guardando || !cambiado || roto}
+        style={{ ...botonPrimario(accent), marginTop: 14, opacity: guardando || !cambiado || roto ? 0.45 : 1 }}
       >
         {guardando ? "Guardando…" : "Guardar horario"}
       </button>
@@ -126,12 +157,26 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
   );
 }
 
+function Tramo({ dia, tramo, parte, onCambio }) {
+  const mal = !tramoValido(tramo);
+  const estilo = mal ? { ...hora, borderColor: C.mal, color: C.mal } : hora;
+  const de = parte ? `${dia} por la ${parte}` : dia;
+  return (
+    <>
+      <input type="time" aria-label={`${de}: hora de abrir`} value={tramo.abre} step={300} onChange={(e) => onCambio("abre", e.target.value)} style={estilo} />
+      <span style={{ color: C.tenue }}>–</span>
+      <input type="time" aria-label={`${de}: hora de cerrar`} value={tramo.cierra} step={300} onChange={(e) => onCambio("cierra", e.target.value)} style={estilo} />
+    </>
+  );
+}
+
 const texto = { color: C.suave, fontSize: 13, margin: "-6px 0 10px" };
+const fila = { display: "flex", alignItems: "center", gap: 5, minHeight: 38 };
+const nombreDia = { display: "flex", alignItems: "center", gap: 7, width: 58, flexShrink: 0, fontSize: 14, cursor: "pointer", textTransform: "capitalize" };
 // Las dos horas se reparten lo que quede de fila: en la columna estrecha del
 // manager, con ancho fijo, el cierre se salía y la página entera hacía scroll.
-const hora = { ...campo, width: "auto", flex: "1 1 0", minWidth: 0, padding: "0.45rem 0.4rem", fontSize: 14 };
-const chip = {
-  display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 9px", fontSize: 13,
-  border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: C.panelSuave,
+const hora = { ...campo, width: "auto", flex: "1 1 0", minWidth: 0, padding: "0.45rem 0.3rem", fontSize: 14 };
+const iconoBoton = {
+  width: 30, height: 30, flexShrink: 0, display: "grid", placeItems: "center", padding: 0, cursor: "pointer",
+  border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff", color: C.suave,
 };
-const quitar = { border: 0, background: "transparent", padding: 4, cursor: "pointer", color: C.suave, display: "inline-flex" };

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   normalizarHorario, relojLocal, fechaLocal, tramoDe, diaDeFecha, sumarDias, diasAbiertosAntes, rachaDe,
   resumenHorario, cuandoTexto, aMinutos, aHora, horaCorta, inicioDelDia, cierreTras, estadoAhora,
+  normalizarDia, tramosDe, estadoParaPase,
 } from "@/lib/horario";
 import { SEMILLAS } from "@/lib/negocios";
 
@@ -178,5 +179,83 @@ describe("¿abierta ahora? (la línea bajo el nombre en la tarjeta)", () => {
 
   it("en invierno la hora sigue siendo la de la tienda", () => {
     expect(a("2026-12-01T17:00:00Z").texto).toBe("Cierra pronto · 18:30"); // martes 18:00 en Valencia (UTC+1)
+  });
+});
+
+describe("horario partido (mañana y tarde)", () => {
+  // Lunes a viernes 9–14 y 17–20:30; sábado solo mañana; domingo cerrado.
+  const partido = normalizarHorario({
+    zona: "Europe/Madrid",
+    semana: [
+      ...Array(5).fill([{ abre: "09:00", cierra: "14:00" }, { abre: "17:00", cierra: "20:30" }]),
+      [{ abre: "10:00", cierra: "14:00" }],
+      null,
+    ],
+    cerrados: [],
+  });
+  const a = (iso) => estadoAhora(partido, Date.parse(iso));
+
+  it("los horarios de antes (un tramo suelto) siguen valiendo", () => {
+    expect(normalizarDia({ abre: "07:30", cierra: "18:30" })).toEqual([{ abre: "07:30", cierra: "18:30" }]);
+    expect(normalizarHorario(SEMILLAS.delicanteria.horario).semana[0]).toEqual([{ abre: "07:30", cierra: "18:30" }]);
+  });
+
+  it("ordena, junta los que se pisan y tira los rotos", () => {
+    expect(normalizarDia([{ abre: "17:00", cierra: "20:00" }, { abre: "09:00", cierra: "14:00" }]))
+      .toEqual([{ abre: "09:00", cierra: "14:00" }, { abre: "17:00", cierra: "20:00" }]);
+    expect(normalizarDia([{ abre: "09:00", cierra: "15:00" }, { abre: "14:00", cierra: "20:00" }])).toEqual([{ abre: "09:00", cierra: "20:00" }]);
+    expect(normalizarDia([{ abre: "20:00", cierra: "09:00" }, { abre: "09:00", cierra: "14:00" }])).toEqual([{ abre: "09:00", cierra: "14:00" }]);
+    expect(normalizarDia([])).toBeNull();
+  });
+
+  it("en el descanso está cerrada y dice a qué hora vuelve", () => {
+    expect(a("2026-09-24T10:00:00Z").texto).toBe("Abierto hasta las 14:00"); // jueves 12:00
+    expect(a("2026-09-24T13:00:00Z")).toMatchObject({ abierta: false, texto: "Cerrado hasta las 17:00" }); // 15:00
+    expect(a("2026-09-24T14:30:00Z").texto).toBe("Abre pronto · 17:00"); // 16:30
+    expect(a("2026-09-24T16:00:00Z").texto).toBe("Abierto hasta las 20:30"); // 18:00
+    expect(a("2026-09-24T19:00:00Z").texto).toBe("Cerrado hasta mañana"); // 21:00
+  });
+
+  it("el resumen lo dice en una línea", () => {
+    expect(resumenHorario(partido)).toBe("L–V 9:00–14:00 y 17:00–20:30 · S 10:00–14:00");
+  });
+
+  it("el cierre de un mensaje de «solo hoy» es el de la tarde, no el de mediodía", () => {
+    expect(cierreTras(partido, Date.parse("2026-09-24T08:00:00Z"))).toEqual({ fecha: "2026-09-24", minutos: 1230 });
+  });
+
+  it("tramosDe da los dos; un festivo, ninguno", () => {
+    expect(tramosDe(partido, "2026-09-24")).toEqual([{ abre: 540, cierra: 840 }, { abre: 1020, cierra: 1230 }]);
+    expect(tramosDe({ ...partido, cerrados: ["2026-09-24"] }, "2026-09-24")).toEqual([]);
+  });
+});
+
+describe("el estado en el pase de Wallet", () => {
+  const e = (iso, horario = deli) => estadoParaPase(horario, Date.parse(iso));
+
+  it("abierta: hasta cuándo", () => {
+    expect(e("2026-09-24T10:00:00Z")).toEqual({ abierta: true, label: "ABIERTO", value: "hasta 18:30" });
+  });
+
+  it("cerrada: cuándo abre, corto para que quepa en la cabecera", () => {
+    expect(e("2026-09-25T03:00:00Z")).toEqual({ abierta: false, label: "CERRADO", value: "abre 7:30" }); // viernes 5:00
+    expect(e("2026-09-24T17:00:00Z").value).toBe("abre mañana"); // jueves 19:00
+    expect(e("2026-09-26T12:00:00Z").value).toBe("abre el lunes"); // sábado 14:00
+  });
+
+  it("de vacaciones largas: la fecha; nunca: «por ahora»", () => {
+    const cerrados = Array.from({ length: 14 }, (_, i) => sumarDias("2026-09-28", i));
+    expect(e("2026-09-28T10:00:00Z", normalizarHorario({ ...deli, cerrados })).value).toBe("abre el 12/10");
+    expect(e("2026-09-24T10:00:00Z", normalizarHorario({ zona: "Europe/Madrid", semana: Array(7).fill(null) })).value).toBe("por ahora");
+  });
+
+  it("sin horario, nada", () => {
+    expect(estadoParaPase(null, Date.now())).toBeNull();
+  });
+
+  it("valores cortos: caben en la cabecera junto a PREMIOS", () => {
+    for (let h = 0; h < 24 * 7; h += 1) {
+      expect(e(new Date(Date.parse("2026-09-21T00:00:00Z") + h * 3_600_000).toISOString()).value.length).toBeLessThanOrEqual(14);
+    }
   });
 });

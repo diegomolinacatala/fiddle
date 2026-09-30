@@ -172,6 +172,16 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
 - **La hora es la de la tienda** (`horario.zona`), nunca la del servidor: todo lo que
   mire el reloj pasa por `lib/horario.js`. **Sin horario, nada sale solo**: el reloj
   pasa por todas las tiendas de la base, también las de prueba.
+- **El horario admite dos tramos por día** (mañana y tarde): `semana[i]` es una lista
+  de `{abre, cierra}` o null. Lo de antes (un tramo suelto) lo pasa a lista
+  `normalizarDia`. "¿Está abierta a las 15:00?" es `tramoEn`, no `tramoDe` (que va de
+  la primera apertura al último cierre, descanso incluido).
+- **ABIERTO / CERRADO en el pase de Wallet**: cabecera, delante de PREMIOS, calculado
+  al firmar (`estadoParaPase`). Un pase no cambia solo, así que el reloj empuja los
+  iPhone de la tienda cada vez que ese valor cambia (`refrescarEstadoDelPase`, lo
+  último empujado en `config.estadoPase`). **Solo si el reloj anda** (`relojVivo`):
+  sin él, el pase diría "ABIERTO" toda la noche. Android no lo necesita: la tarjeta
+  web lo calcula sola (`AbiertoAhora`).
 - **El reloj NO va en `vercel.json`** mientras el plan sea Hobby: un cron de más de
   una vez al día hace fallar el despliegue. Lo llama Supabase (`pg_cron`).
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la

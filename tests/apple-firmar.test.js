@@ -210,3 +210,32 @@ describe("imágenes", () => {
     expect(new Set(rejillaSellos(30, 300, 100, 10).map((p) => p.cy)).size).toBe(3);
   });
 });
+
+describe("el estado de la tienda en el pase firmado", () => {
+  const conHorario = {
+    ...negocio("nube"),
+    horario: { zona: "Europe/Madrid", semana: Array(7).fill([{ abre: "00:00", cierra: "23:55" }]), cerrados: [] },
+  };
+  const cabecera = async () =>
+    JSON.parse(leerZip(await generarPkpass(cliente, conHorario))["pass.json"].toString("utf8")).storeCard.headerFields.map((f) => f.key);
+
+  it("solo con el reloj en marcha: sin él, el pase diría «ABIERTO» toda la noche", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const dir = mkdtempSync(path.join(tmpdir(), "sellos-firmar-"));
+    try {
+      stubApple();
+      vi.stubEnv("DATA_DIR", dir);
+      vi.stubEnv("SUPABASE_URL", "");
+      expect(await cabecera()).toEqual(["canjeados"]);
+
+      const { registrarIntento } = await import("@/lib/store");
+      const { CLAVE_RELOJ } = await import("@/lib/relojAvisos");
+      await registrarIntento(CLAVE_RELOJ);
+      expect(await cabecera()).toEqual(["estado", "canjeados"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
