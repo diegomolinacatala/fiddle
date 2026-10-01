@@ -70,8 +70,8 @@ y nos enteramos por el dueño.
 
 ### 6. Vercel Free es de uso no comercial
 
-Y `USUARIOS_DEMO` sigue siendo un interruptor: mientras esté a `1` en producción,
-`nube/nube` entra desde cualquier sitio. Eso se comprueba hoy, no en una fase.
+`USUARIOS_DEMO` ya no existe en producción (01-10-2026): el código no la lee, así
+que `nube/nube` o `victor/victor` no entran aunque la variable siga en Vercel.
 Plan Pro antes de que lo use una tienda de verdad. **~30 min + dinero**
 
 ---

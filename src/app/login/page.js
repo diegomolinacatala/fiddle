@@ -119,7 +119,7 @@ function LoginForm() {
               ))}
             </div>
             <p style={{ fontSize: 11, color: C.tenue, margin: "10px 0 0" }}>
-              Solo mientras el servidor tenga USUARIOS_DEMO=1. Quítalo antes de abrir al público.
+              Solo en local: en producción no existen.
             </p>
           </div>
         )}

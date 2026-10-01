@@ -42,15 +42,17 @@ describe("contraseñas", () => {
     expect(verificarAcceso("fade", "778899")).toMatchObject({ negocio: "fade", rol: "manager" });
   });
 
-  it("en producción no valen los accesos de prueba salvo con USUARIOS_DEMO=1", () => {
+  it("en producción no valen los accesos de prueba, ni con USUARIOS_DEMO=1", () => {
     vi.stubEnv("NODE_ENV", "production");
     expect(usuariosDemo()).toBe(false);
     expect(claveDe("nube", "caja")).toBeNull();
     expect(verificarAcceso("nube", "nube")).toBeNull();
 
+    // La variable de antes se queda olvidada en Vercel: no puede abrir la puerta.
     vi.stubEnv("USUARIOS_DEMO", "1");
-    expect(usuariosDemo()).toBe(true);
-    expect(verificarAcceso("nube", "nube")).toMatchObject({ negocio: "nube", rol: "manager" });
+    expect(usuariosDemo()).toBe(false);
+    expect(verificarAcceso("nube", "nube")).toBeNull();
+    expect(verificarAcceso("victor", "victor")).toBeNull();
   });
 
   it("la contraseña de un rol no sirve para el otro", () => {

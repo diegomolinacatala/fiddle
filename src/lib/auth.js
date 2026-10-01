@@ -15,10 +15,10 @@
 // La contraseña sale de env: CLAVE_<SLUG>_<ROL> (o PIN_<SLUG>_<ROL>, el mismo
 // valor con el nombre antiguo).
 //
-// MODO PRUEBAS: fuera de producción, o con USUARIOS_DEMO=1, la contraseña puede
-// ser igual que el usuario (nube/nube) y el login los muestra en pantalla.
-// EN PRODUCCIÓN sin USUARIOS_DEMO no hay valores por defecto: sin AUTH_SECRET o
-// sin contraseña configurada, no se puede entrar (falla cerrado).
+// MODO PRUEBAS: SOLO fuera de producción (en local), la contraseña puede ser
+// igual que el usuario (nube/nube) y el login los muestra en pantalla.
+// EN PRODUCCIÓN no hay valores por defecto ni interruptor que los encienda: sin
+// AUTH_SECRET o sin contraseña configurada, no se puede entrar (falla cerrado).
 // ============================================================================
 
 const enc = new TextEncoder();
@@ -38,8 +38,13 @@ const SECRETO_DEMO = "demo-secret-cambia-en-produccion";
 
 const esProduccion = () => process.env.NODE_ENV === "production";
 
-/** ¿Están activos los accesos de prueba (usuario = contraseña, visibles en el login)? */
-export const usuariosDemo = () => process.env.USUARIOS_DEMO === "1" || !esProduccion();
+/**
+ * ¿Están activos los accesos de prueba (usuario = contraseña, visibles en el login)?
+ * Solo en local. Antes los encendía USUARIOS_DEMO=1 también en producción; con
+ * clientes de verdad eso dejaba entrar como admin con victor/victor, así que la
+ * variable ya no se lee: si se queda olvidada en Vercel, no abre nada.
+ */
+export const usuariosDemo = () => !esProduccion();
 
 /** Secreto HMAC, o null si falta en producción (=> nadie puede entrar). */
 export function secretoSesion() {
