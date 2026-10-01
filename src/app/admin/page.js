@@ -144,6 +144,7 @@ export default function Admin() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <a href={`/admin/${n.slug}`} style={{ ...botonPrimario(AZUL), textDecoration: "none" }}>Editar</a>
                   <a href={`/${n.slug}/manager`} style={{ ...botonSecundario, textDecoration: "none" }}>Manager</a>
+                  <a href={`/${n.slug}/caja`} style={{ ...botonSecundario, textDecoration: "none" }}>Caja</a>
                   <button onClick={() => archivar(n.slug, "archivar")} style={botonSecundario}>Archivar</button>
                 </div>
               ) : (

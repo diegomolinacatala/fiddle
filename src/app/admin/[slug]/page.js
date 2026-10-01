@@ -283,6 +283,7 @@ export default function AdminNegocio() {
             <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
               <button onClick={guardar} style={botonPrimario(AZUL)}>Guardar</button>
               <a href={`/${n.slug}/manager`} style={{ ...botonSecundario, textDecoration: "none" }}>Abrir manager</a>
+              <a href={`/${n.slug}/caja`} style={{ ...botonSecundario, textDecoration: "none" }}>Abrir caja</a>
             </div>
           </section>
 

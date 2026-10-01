@@ -1,19 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { MAX_PAUSA, LIMITE_DIA } from "@/lib/automatizaciones";
-import { C, panel, campo, h2, botonPequeno } from "@/app/ui";
+import Icono from "@/app/Icono";
+import { MAX_PAUSA, LIMITE_DIA, PAUSA_CORTA } from "@/lib/automatizaciones";
+import { C, panel, campo, h2, botonPequeno, RADIO } from "@/app/ui";
 
 // ============================================================================
 // PARA NO CANSAR A NADIE: los dos topes que valen para TODO lo que sale solo
 // (automáticos y programados), y lo que ponen Apple y Google por su cuenta.
-// Dos números y ya: la pausa entre avisos y cuántos al día como mucho.
+// Dos números y ya: la pausa entre avisos y cuántos al día como mucho. De
+// partida, escasos (una semana, uno al día); lo que pase de ahí se puede
+// elegir, pero la pantalla dice que cansa.
 // ============================================================================
 
 export default function Limites({ negocio: n, ocupado, guardar, flash, children }) {
   const [pausa, setPausa] = useState(n.pausaAvisos);
   const [dia, setDia] = useState(n.limiteAvisosDia ?? LIMITE_DIA.def);
   const cambiado = (pausa !== "" && Number(pausa) !== n.pausaAvisos) || dia !== n.limiteAvisosDia;
+  const avisos = [
+    pausa !== "" && Number(pausa) < PAUSA_CORTA
+      && (Number(pausa) === 0 ? "Sin pausa, alguien puede recibir un aviso detrás de otro." : `Con ${pausa} ${Number(pausa) === 1 ? "día" : "días"} de pausa, a quien encaje en varios le llegan casi seguidos.`),
+    dia > 1 && `${dia} avisos al día a la misma persona es mucho: cansa, y la tarjeta acaba silenciada o borrada.`,
+  ].filter(Boolean);
 
   return (
     <section style={{ ...panel, background: C.panelSuave }}>
@@ -51,6 +59,11 @@ export default function Limites({ negocio: n, ocupado, guardar, flash, children 
           <span>al día.</span>
           {cambiado && <button type="submit" disabled={ocupado} style={botonPequeno}>Guardar</button>}
         </div>
+        {avisos.map((t) => (
+          <p key={t} role="alert" style={alerta}>
+            <Icono nombre="alerta" tam={15} style={{ marginTop: 1 }} /><span>{t} Lo recomendable: una semana de pausa y uno al día.</span>
+          </p>
+        ))}
         <p style={{ margin: 0, fontSize: 12.5, color: C.tenue, lineHeight: 1.5 }}>
           Cuentan también los que mandes a mano. Un aviso programado puede saltarse la pausa (se elige en él), pero
           nunca el máximo del día. <strong style={{ color: C.suave }}>Google Wallet</strong> suena como mucho 3 veces al
@@ -61,3 +74,8 @@ export default function Limites({ negocio: n, ocupado, guardar, flash, children 
     </section>
   );
 }
+
+const alerta = {
+  display: "flex", gap: 7, alignItems: "flex-start", margin: 0, fontSize: 12.5, lineHeight: 1.45, color: "#9a5b00",
+  background: "#fff6e5", border: "1px solid #f5d9a8", borderRadius: RADIO.boton, padding: "8px 10px",
+};

@@ -53,7 +53,7 @@ export function seccionDe(clave) {
 
 const TITULO = {
   colores: "Colores y plantilla", logo: "Logo", nombre: "Nombre de la tienda", sellos: "Los sellos",
-  estado: "«Abierto ahora»", premio: "Premio", reverso: "Texto del reverso", contacto: "Teléfono, web e Instagram",
+  estado: "«Abierto ahora»", premio: "Premio", reverso: "«Cómo funciona»", contacto: "Teléfono, web e Instagram",
   promo: "Promo", contador: "Premios del cliente", fijo: "Lo pone la tarjeta",
 };
 
@@ -316,7 +316,7 @@ function Pista({ lado }) {
     <div className="ed-pista">
       <strong style={{ display: "block", marginBottom: 6 }}>¿Qué se puede cambiar?</strong>
       El logo (un dibujo o tu propia imagen), el nombre, los colores, una o dos cartillas y cómo cuenta cada
-      una, cuántos sellos hacen falta y el premio. Y detrás, «Cómo funciona», el teléfono, la web y el
+      una, cuántos sellos hacen falta y el premio. Y en su información (la i), «Cómo funciona», el teléfono, la web y el
       Instagram. Toca el trozo que quieras{lado === "las dos" ? ", en Apple o en Google" : ""}.
     </div>
   );
@@ -382,7 +382,7 @@ function Seccion(props) {
   if (seccion === "reverso") {
     return (
       <>
-        <p style={ayuda}>Lo que lee el cliente al dar la vuelta a la tarjeta (Apple) o al abrir los detalles (Google), en «Cómo funciona».</p>
+        <p style={ayuda}>Lo que lee el cliente al tocar la (i) de la tarjeta (Apple) o al abrir los detalles (Google), en «Cómo funciona».</p>
         <textarea value={t.atras || ""} maxLength={200} rows={4} onChange={(e) => setTema("atras", e.target.value)}
           style={{ ...campo, resize: "vertical", fontFamily: "inherit" }} />
         <p style={{ ...ayuda, textAlign: "right" }}>{(t.atras || "").length}/200</p>
@@ -395,7 +395,7 @@ function Seccion(props) {
     const poner = (k, v) => set("contacto", { ...d.contacto, [k]: v });
     return (
       <>
-        <p style={ayuda}>Sale detrás de la tarjeta. En el iPhone se toca para llamar o abrir; en Android son botones.</p>
+        <p style={ayuda}>Sale en la información de la tarjeta: la (i) en el iPhone, donde se toca para llamar o abrir; en Android son botones.</p>
         <label style={etiqueta}>Teléfono</label>
         <input value={d.contacto.telefono} onChange={(e) => poner("telefono", e.target.value)} inputMode="tel" placeholder="+34 960 00 00 00" maxLength={20} style={campo} />
         <label style={etiqueta}>Web</label>

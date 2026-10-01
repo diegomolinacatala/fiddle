@@ -123,6 +123,15 @@ describe("registros de Apple Wallet", () => {
     expect(await store.pushTokens({ negocio: "fade" })).toEqual([]);
   });
 
+  it("sabe con qué Pass Type ID está instalada cada tarjeta (sin web ni google)", async () => {
+    await nuevo("s1");
+    await reg("d1", "s1");
+    await store.registrarPase({ dispositivo: "d2", pushToken: "pt", passType: "pass.y", serial: "s1", negocio: "nube" });
+    await store.registrarPase({ dispositivo: "web-1", pushToken: "{}", passType: "web", serial: "s1", negocio: "nube" });
+    expect((await store.tiposDePaseInstalados("s1")).sort()).toEqual(["pass.x", "pass.y"]);
+    expect(await store.tiposDePaseInstalados("otra")).toEqual([]);
+  });
+
   it("al darse de baja del último pase se borra el dispositivo", async () => {
     await nuevo("s1");
     await reg("d1", "s1");
@@ -146,12 +155,21 @@ describe("CRM", () => {
     const c = await store.crearCliente({ serial: "s1", negocio: "nube", authToken: "t".repeat(20), origen: "tap" });
     expect(c).toMatchObject({ visitas: 0, ultima_visita: null, origen: "tap" });
 
-    expect(await store.registrarVisita("s1")).toBe(true);
-    await store.registrarVisita("s1");
+    expect(await store.registrarVisita("s1", "2026-09-21T09:00:00.000Z")).toBe(true);
+    await store.registrarVisita("s1", "2026-09-21T17:30:00.000Z");
     const leido = await store.getCliente("s1");
     expect(leido.visitas).toBe(2);
-    expect(Date.parse(leido.ultima_visita)).toBeGreaterThan(0);
+    expect(leido.ultima_visita).toBe("2026-09-21T17:30:00.000Z");
     expect(await store.registrarVisita("nope")).toBe(false);
+  });
+
+  it("diez sellos seguidos en el mostrador son UNA visita (pero mueven la fecha)", async () => {
+    await store.crearCliente({ serial: "s1", negocio: "nube", authToken: "t".repeat(20) });
+    for (let i = 0; i < 10; i++) await store.registrarVisita("s1", `2026-09-21T09:00:${String(i * 5).padStart(2, "0")}.000Z`);
+    await store.registrarVisita("s1", "2026-09-21T11:30:00.000Z"); // el canje, un rato después
+    const leido = await store.getCliente("s1");
+    expect(leido.visitas).toBe(1);
+    expect(leido.ultima_visita).toBe("2026-09-21T11:30:00.000Z");
   });
 
   it("venir retira el mensaje de la campaña: ya cumplió", async () => {

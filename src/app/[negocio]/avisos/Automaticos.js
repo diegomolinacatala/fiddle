@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import Icono from "@/app/Icono";
 import Regla from "./Regla";
+import { FilaInterruptor } from "@/app/Interruptor";
 import { LISTA_DISPAROS, MAX_REGLAS, RELOJ_VIVO_MIN, reglaNueva, esProgramado } from "@/lib/automatizaciones";
 import Limites from "./Limites";
 import { resumenHorario } from "@/lib/horario";
@@ -121,19 +122,14 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <label style={interruptor(n.avisosActivos, n.tema.accent)} data-recorrido="avisos-automaticos">
-        <input type="checkbox" checked={n.avisosActivos} disabled={ocupado} onChange={alternarTodos} />
-        <span>
-          <strong style={{ fontWeight: 650, fontSize: 15 }}>
-            {n.avisosActivos ? "Avisos automáticos encendidos" : "Avisos automáticos apagados"}
-          </strong><br />
-          <span style={{ color: C.suave, fontSize: 13 }}>
-            {n.avisosActivos
-              ? "Los que estén encendidos abajo salen solos, a su hora."
-              : "No sale ninguno solo. Prepáralos abajo, enciende los que quieras y luego este interruptor."}
-          </span>
-        </span>
-      </label>
+      <FilaInterruptor
+        on={n.avisosActivos} onClick={alternarTodos} disabled={ocupado} accent={n.tema.accent} data-recorrido="avisos-automaticos"
+        style={{ padding: "14px 16px" }}
+        titulo={n.avisosActivos ? "Avisos automáticos encendidos" : "Avisos automáticos apagados"}
+        texto={n.avisosActivos
+          ? "Los que estén encendidos abajo salen solos, a su hora."
+          : "No sale ninguno solo. Prepáralos abajo, enciende los que quieras y luego este interruptor."}
+      />
 
       {n.avisosActivos && <EstadoReloj ultimo={datos.reloj.ultimo} />}
 
@@ -231,10 +227,6 @@ function resumenEnvio(e) {
   return `Enviado a ${e.destinatarios}${sonaron.length ? ` · avisados: ${sonaron.join(", ")}` : ""}`;
 }
 
-const interruptor = (on, accent) => ({
-  display: "flex", gap: 12, alignItems: "center", padding: "14px 16px", borderRadius: RADIO.boton, cursor: "pointer",
-  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}0f` : "#fff",
-});
 const lineaHorario = {
   display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: 0, fontSize: 13.5, color: C.suave,
   padding: "10px 13px", border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff",

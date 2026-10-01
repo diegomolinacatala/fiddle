@@ -99,7 +99,9 @@ A cada cliente que encaja, **solo si**:
 - no se le ha dicho **esa** regla desde su última visita (o, en la racha, desde que
   empezó la racha): una vez por ausencia, no cada día;
 - no le llegó **ningún** aviso (automático o a mano) en los últimos `pausaAvisos`
-  días (3 por defecto, se cambia en la pantalla);
+  días (una semana de partida; se cambia en la pantalla, que avisa por debajo de 3);
+- no ha llegado a su máximo del día (`limiteAvisosDia`, de partida 1; 2 o 3 se pueden
+  elegir, con aviso de que cansa);
 - no le ha llegado ya otra regla en esta misma pasada (en el pase cabe un mensaje).
 
 El envío es el de una campaña: el texto (con sus variables rellenas) se escribe en
@@ -137,9 +139,26 @@ dato del cliente que el contexto no tiene, se añade en `contextoDe()`.
 Cualquier grupo del CRM ya sirve sin tocar nada: el disparo **"Está en un grupo de
 clientes"** usa `GRUPOS` de `lib/crm.js`.
 
-Variables del texto: `{premio}`, `{faltan}` ("1 cookie", "2 cafés"), `{dias}`,
-`{racha}`, `{nombre}` (si falta, se quita con su coma) y `{tienda}`. Una variable
-nueva = una entrada en `VARIABLES` y su valor en `contextoDe()`.
+Variables del texto. El manager no ve llaves sueltas: ve botones con nombre ("Su
+premio · cookie gratis") y el texto ya relleno debajo (`TextoAviso.js`). Dos tipos:
+
+- **Datos** (`VARIABLES`): `{premio}`, `{faltan}` ("1 cookie", "2 cafés"), `{dias}`,
+  `{racha}`, `{visitas}`, `{nombre}` (si falta, se quita con su coma) y `{tienda}`.
+- **Frases** (`FRASES`): una frase entera que solo ven los que encajan; al resto no
+  les sale nada. `{si_cerca}` ("Te falta 1 cookie para tu cookie gratis."),
+  `{si_premio}`, `{si_ausente}` y `{si_habitual}`. Así un mismo aviso a todos le
+  dice algo más a quien está a un sello, sin otro aviso.
+
+Una variable nueva = una entrada en `VARIABLES` (o `FRASES`, con su `frase(x)`) y,
+si hace falta, su dato en `contextoDe()`. Lleva `nombre`: es lo que ve el manager.
+
+## Programados: lo escaso, de partida
+
+Uno nuevo sale **un día** (el próximo que abre). "Cada semana" es **un** día de la
+semana; para más hay que elegir "Varios días", y la pantalla avisa según cuántos
+(`frecuenciaSemanal`): dos ya es mucho, tres o más casi a diario, todos los que abre
+es un aviso **diario**. La idea de "lo más tranquilo" de Clientes propone el día más
+flojo, no todos.
 
 ## Los de La Delicantería
 

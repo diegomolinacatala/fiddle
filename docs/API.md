@@ -91,6 +91,9 @@ normal (sin JavaScript), `303` a `ir`.
 
 ### `GET /api/pase/<serial>`
 Descarga el `.pkpass` actual (botón "Añadir a Apple Wallet"). `404` si Apple no está configurado.
+Se firma con el Pass Type ID con que esa tarjeta **ya está** en algún iPhone (sus
+`registros`); si no está en ninguno, con el de la tienda. Firmarla con otro mete una
+segunda tarjeta al lado en vez de actualizar la que tiene (`configDeDescarga`).
 
 ## Caja
 
@@ -270,7 +273,7 @@ contextos, envios, conteos: { <regla>: { encajan, llegaria } }, grupos, historia
 Los `contextos` van al navegador para contar al momento a cuántos les llegaría una regla mientras se edita.
 
 ### `PUT /api/automatizaciones?b=<negocio>` · manager
-`{ "automatizaciones": [ … ], "pausaAvisos": 3 }` → guarda la lista entera y devuelve lo mismo que el GET.
+`{ "automatizaciones": [ … ], "pausaAvisos": 7 }` → guarda la lista entera y devuelve lo mismo que el GET.
 `400` con una frase que dice qué regla está mal (`"En «Racha» no existe {premo}"`). No toca los pases.
 
 ### `POST /api/automatizaciones?b=<negocio>` · manager — `{ "regla": "te-echamos-de-menos" }`

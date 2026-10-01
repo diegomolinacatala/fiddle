@@ -22,7 +22,9 @@ describe("lo que dicen los números", () => {
     const obs = observaciones({ rejilla: rejilla(), horario });
     const tranquilo = obs.find((o) => o.id.startsWith("tranquilo"));
     expect(tranquilo.texto).toBe("Lo más tranquilo: las tardes de martes y miércoles.");
-    expect(tranquilo.accion.base).toMatchObject({ disparo: "todos", dias: [1, 2], hora: "16:00", caduca: true });
+    // Un día a la semana (el más flojo), no uno por cada tarde tranquila.
+    expect(tranquilo.accion.base).toMatchObject({ disparo: "todos", dias: [1], hora: "16:00", caduca: true });
+    expect(tranquilo.accion.label).toBe("Programar un aviso los martes");
   });
 
   it("dice cuándo es lo más fuerte, sin botón", () => {

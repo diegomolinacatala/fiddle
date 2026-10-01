@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import TarjetaCaja from "@/app/w/[serial]/TarjetaCaja";
 import Icono from "@/app/Icono";
+import { FilaInterruptor } from "@/app/Interruptor";
 import { LISTA_ACCIONES } from "@/lib/acciones";
 import { OPCIONES_CAJA, normalizarCaja } from "@/lib/caja";
 import { C, botonPrimario, botonSecundario, chipCodigo } from "@/app/ui";
@@ -111,14 +112,14 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
         <section className="caja-opciones">
           <h2 style={h2}>Qué puede hacer</h2>
           {LISTA_ACCIONES.filter((a) => QUE_HACE[a.key]).filter((a) => !(esCupon && ["sellar", "restar"].includes(a.key))).map((a) => (
-            <Interruptor key={a.key} on={acciones.includes(a.key)} onClick={() => toggleAccion(a.key)} accent={accent}
+            <FilaInterruptor key={a.key} style={{ marginTop: 8 }} on={acciones.includes(a.key)} onClick={() => toggleAccion(a.key)} accent={accent}
               titulo={esCupon && a.key === "canjear" ? "Aplicar el descuento" : QUE_HACE[a.key].label}
               texto={QUE_HACE[a.key].descripcion} icono={a.icon} />
           ))}
 
           <h2 style={{ ...h2, marginTop: 22 }}>Cómo se ve</h2>
           {opcionesVisibles.map(([k, o]) => (
-            <Interruptor key={k} on={caja[k]} onClick={() => toggleOpcion(k)} accent={accent} titulo={o.label} texto={o.descripcion} />
+            <FilaInterruptor key={k} style={{ marginTop: 8 }} on={caja[k]} onClick={() => toggleOpcion(k)} accent={accent} titulo={o.label} texto={o.descripcion} />
           ))}
         </section>
 
@@ -152,24 +153,6 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
         </section>
       </div>
     </div>
-  );
-}
-
-function Interruptor({ on, onClick, accent, titulo, texto, icono }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} onClick={onClick} style={{
-      display: "flex", gap: 12, alignItems: "center", width: "100%", textAlign: "left", padding: "10px 12px", marginTop: 8,
-      borderRadius: 12, border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}0d` : "#fff", cursor: "pointer", font: "inherit", color: C.texto,
-    }}>
-      {icono && <span style={{ color: accent, display: "inline-flex" }}><Icono nombre={icono} tam={20} /></span>}
-      <span style={{ flex: 1 }}>
-        <strong style={{ fontWeight: 600, fontSize: 14, display: "block" }}>{titulo}</strong>
-        <span style={{ color: C.suave, fontSize: 12.5 }}>{texto}</span>
-      </span>
-      <span aria-hidden style={{ width: 40, height: 24, borderRadius: 12, background: on ? accent : C.bordeFuerte, position: "relative", flexShrink: 0, transition: "background .15s" }}>
-        <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
-      </span>
-    </button>
   );
 }
 

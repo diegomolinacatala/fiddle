@@ -41,6 +41,29 @@ describe("perfilDe", () => {
     expect(perfilDe(cli({ visitas: 0 }), NUBE, AHORA).cadencia).toBeNull();
   });
 
+  it("diez sellos en unos segundos no son un habitual que viene cada segundo", () => {
+    // La tarjeta de prueba del amigo: alta y diez sellos de golpe, hace unas horas.
+    const prueba = {
+      serial: "amigo", creado: new Date(AHORA - 5 * 60 * 60 * 1000).toISOString(),
+      ultima_visita: new Date(AHORA - 5 * 60 * 60 * 1000 + 30_000).toISOString(),
+      visitas: 10, sellos: 8, premios: 0, instalado: haceDias(0),
+    };
+    const p = perfilDe(prueba, NUBE, AHORA);
+    expect(p.visitas).toBe(1);
+    expect(p.cadencia).toBeNull();
+    expect(p.estado).toBe("nuevo");
+    expect(gruposDe(p)).not.toContain("fieles_frios");
+    expect(gruposDe(p)).not.toContain("riesgo");
+  });
+
+  it("el ritmo más rápido es a diario, y nadie está en riesgo por faltar unos días", () => {
+    // Doce visitas en tres días (dos al día): ritmo diario, no cada pocas horas.
+    const p = perfilDe(cli({ alta: 6, ultima: 3, visitas: 12 }), NUBE, AHORA);
+    expect(p.cadencia).toBe(UMBRALES.cadenciaMin);
+    expect(p.estado).toBe("activo"); // 3 días sin venir: un puente, no una huida
+    expect(perfilDe(cli({ alta: 12, ultima: 8, visitas: 8 }), NUBE, AHORA).estado).toBe("riesgo");
+  });
+
   it("sin visitas, el reloj corre desde el alta", () => {
     // Un pase emitido hace un año y nunca usado lleva un año sin usarse.
     const p = perfilDe(cli({ alta: 365, visitas: 0 }), NUBE, AHORA);

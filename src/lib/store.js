@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { SEMILLAS, componerNegocio, configInicial, esSlug } from "./negocios";
 import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
 import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
+import { UMBRALES } from "./crm";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -618,20 +619,25 @@ export async function listEventosDeNegocio(negocio, { dias = 120, limite = 5000 
  * vemos" y ha venido, el mensaje ya cumplió, y dejarlo puesto sería decírselo a
  * la cara cada vez que abre el pase. Va en el mismo UPDATE, sin viaje extra.
  *
+ * Lo que pasa en el mostrador en un rato es UNA visita: un sello y el canje, o
+ * tres sellos de una compra grande, no suman tres (UMBRALES.horasVisita). La
+ * fecha sí se mueve: es la última vez que se le vio.
+ *
  * Lee y escribe (Supabase no incrementa sin RPC). Si dos cajas sellan al mismo
  * cliente en el mismo instante se puede perder un +1: es un contador para
  * agrupar gente, no el saldo de la cartilla —eso sí va con guardado optimista.
  */
 export async function registrarVisita(serial, ts = ahoraISO()) {
+  const visitasTras = (c) => (mismaVisita(c.ultima_visita, ts) ? c.visitas || 0 : (c.visitas || 0) + 1);
   if (hasSupabase()) {
     const actual = sinError(
-      await supa().from("clientes").select("visitas").eq("serial", serial).maybeSingle(),
+      await supa().from("clientes").select("visitas, ultima_visita").eq("serial", serial).maybeSingle(),
       "leer visitas",
     );
     if (!actual) return false;
     sinError(
       await supa().from("clientes")
-        .update({ visitas: (actual.visitas || 0) + 1, ultima_visita: ts, mensaje: null })
+        .update({ visitas: visitasTras(actual), ultima_visita: ts, mensaje: null })
         .eq("serial", serial),
       "registrar visita",
     );
@@ -643,11 +649,16 @@ export async function registrarVisita(serial, ts = ahoraISO()) {
     if (!c) return false;
     await escribir("clientes", {
       ...all,
-      [serial]: { ...c, visitas: (c.visitas || 0) + 1, ultima_visita: ts, mensaje: null },
+      [serial]: { ...c, visitas: visitasTras(c), ultima_visita: ts, mensaje: null },
     });
     return true;
   });
 }
+
+const mismaVisita = (antes, ahora) => {
+  const t = Date.parse(antes || "");
+  return Boolean(t) && Date.parse(ahora) - t < UMBRALES.horasVisita * 60 * 60 * 1000;
+};
 
 /**
  * Marca cuándo el pase entró en un Wallet o salió del último iPhone que lo
@@ -923,6 +934,25 @@ export async function borrarRegistro({ dispositivo, passType, serial }) {
     }
     return { ultimo: !registros.some((r) => r.serial === serial) };
   });
+}
+
+/**
+ * Los Pass Type ID con que esta tarjeta está metida en algún iPhone (sin los
+ * canales "web" y "google"). Lo pregunta la descarga del .pkpass: si se firma
+ * con otro, el iPhone lo toma por un pase distinto y el cliente acaba con dos.
+ * @returns {Promise<string[]>}
+ */
+export async function tiposDePaseInstalados(serial) {
+  const deApple = (t) => t && t !== "web" && t !== "google";
+  if (hasSupabase()) {
+    const data = sinError(
+      await supa().from("registros").select("pass_type").eq("serial", serial),
+      "leer pases instalados",
+    );
+    return [...new Set((data || []).map((r) => r.pass_type).filter(deApple))];
+  }
+  const registros = await enFila(() => leer("registros", []));
+  return [...new Set(registros.filter((r) => r.serial === serial).map((r) => r.pass_type).filter(deApple))];
 }
 
 /**
@@ -1203,7 +1233,7 @@ export async function fusionarClientes(viejo, nuevo, campos) {
   const anulada = { fusionado_en: nuevo.serial, codigo: nuevo.codigo, actualizado: ts, mensaje: null, nombre: null, nota: null };
   for (const k of SALDO) anulada[k] = 0;
   const patch = { actualizado: ts };
-  for (const k of [...SALDO, "codigo", "visitas", "ultima_visita", "instalado", "origen"]) {
+  for (const k of [...SALDO, "codigo", "visitas", "ultima_visita", "instalado", "origen", "creado"]) {
     if (k in campos) patch[k] = campos[k];
   }
   for (const k of PERSONALES) patch[k] = cifrarCampo(nuevo.serial, k, campos[k] ?? null);

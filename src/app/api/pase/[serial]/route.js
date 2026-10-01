@@ -1,6 +1,7 @@
-import { getCliente, getNegocio } from "@/lib/store";
+import { getCliente, getNegocio, tiposDePaseInstalados } from "@/lib/store";
 import { proveedorWallet } from "@/lib/wallet";
 import { generarPkpass, MIME_PKPASS } from "@/lib/apple/firmar";
+import { configDeDescarga } from "@/lib/apple/config";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -19,7 +20,10 @@ export async function GET(_request, { params }) {
     const negocio = await getNegocio(cliente.negocio);
     if (!negocio) return jsonError("Negocio no encontrado", 404);
 
-    return new Response(await generarPkpass(cliente, negocio), {
+    // Con el Pass Type ID con que ya la tiene: si no, el iPhone la toma por otra
+    // y se queda con dos tarjetas iguales (ver configDeDescarga).
+    const config = configDeDescarga(negocio.slug, await tiposDePaseInstalados(cliente.serial));
+    return new Response(await generarPkpass(cliente, negocio, config), {
       headers: {
         "content-type": MIME_PKPASS,
         "content-disposition": `attachment; filename="${negocio.slug}.pkpass"`,

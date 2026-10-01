@@ -71,9 +71,9 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
 
   // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager,
-  // /<slug>/crm, /<slug>/avisos. Todo lo que no es la caja es del manager: ve a
-  // todos los clientes y les manda avisos.
-  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos))?\/?$/);
+  // /<slug>/crm, /<slug>/avisos, /<slug>/ajustes. Todo lo que no es la caja es del
+  // manager: ve a todos los clientes, les manda avisos y cambia las contraseñas.
+  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos|ajustes))?\/?$/);
   if (pagina && !RESERVADOS.has(pagina[1])) {
     if (!pagina[2]) return { tipo: "publica" };
     return { tipo: "negocio", slug: pagina[1], rol: pagina[2] === "caja" ? "caja" : "manager" };

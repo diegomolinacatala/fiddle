@@ -31,6 +31,8 @@ describe("reglaDeRuta", () => {
   it("páginas de caja y manager exigen su negocio y rol", () => {
     expect(regla("/nube/caja")).toEqual({ tipo: "negocio", slug: "nube", rol: "caja" });
     expect(regla("/fade/manager")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });
+    // Ajustes cambia la contraseña de la caja: del manager, nunca de la caja.
+    expect(regla("/fade/ajustes")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });
   });
 
   it("el CRM es del manager: pantalla y APIs", () => {

@@ -7,7 +7,7 @@ import { svgBandaOpaca, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
 import { construirClase, construirObjeto } from "@/lib/google/pase";
 import { enlacesDeContacto } from "@/lib/contacto";
-import { encajar, repartir, medirAprox } from "@/lib/vistaWallet";
+import { colocarFila, medirAprox } from "@/lib/vistaWallet";
 import { C } from "@/app/ui";
 
 // ============================================================================
@@ -24,8 +24,9 @@ import { C } from "@/app/ui";
 // Lo que NO decidimos nosotros es cómo lo coloca el teléfono. Eso se ha copiado
 // de capturas de pases de verdad (octubre 2026):
 //   APPLE   tarjeta de alto fijo; la fila bajo la banda reparte el sitio como
-//           iOS (lib/vistaWallet.js: encoge, pasa a dos líneas, acaba en "…");
-//           el reverso es la hoja de (i), en oscuro.
+//           iOS (lib/vistaWallet.js: la fila encoge entera, luego el campo largo
+//           pasa a dos líneas, y acaba en "…"); la (i) abre la hoja de
+//           información de la tarjeta, en oscuro.
 //   GOOGLE  una sola pantalla que se desplaza: logo, nombre enorme, QR, puntos,
 //           la banda abajo y luego los detalles en tarjetitas.
 // Todo a escala de un iPhone/Android de ~390 pt, con la tarjeta a 300 px.
@@ -42,7 +43,7 @@ const FUENTE_GOOGLE = '"Google Sans", Roboto, system-ui, sans-serif';
  *                                     campo se puede tocar (comentar o editar).
  * @param {string} [props.campoActivo] clave del campo que se está tocando
  * @param {object} [props.estado]      la línea "● Abierto hasta las 14:00" (estadoParaPase)
- * @param {"delante"|"detras"} [props.cara]  si quien la usa quiere mandar en el lado de Apple
+ * @param {"delante"|"detras"} [props.cara]  la tarjeta o su hoja de información (i), si quien la usa quiere mandar
  */
 // `plataforma`: "apple" o "google" para enseñar solo esa (el editor pone las dos
 // una al lado de otra); sin ella, un conmutador.
@@ -67,18 +68,6 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
         ))}
       </div>}
 
-      {/* En Apple se le da la vuelta con (i). Google no tiene "detrás": todo va
-          en la misma pantalla, desplazándose hacia abajo. */}
-      {cual === "apple" && (
-        <div style={{ ...conmutador, maxWidth: 220, padding: 3, margin: "-6px auto 14px" }}>
-          {[["delante", "Delante"], ["detras", "Detrás"]].map(([id, texto]) => (
-            <button key={id} type="button" onClick={() => setCara(id)} aria-pressed={cara === id} style={{ ...opcion(cara === id), fontSize: 12, padding: "0.3rem 0.5rem" }}>
-              {texto}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* En una columna estrecha la pantalla se ENCOGE entera (zoom), no se
           recoloca: las medidas de iOS y Google están hechas para 300 px. */}
       <div style={{ zoom: escala }}>
@@ -89,8 +78,12 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
             // Sin marco de teléfono: la tarjeta sola, como se la imagina el dueño.
             <div style={{ width: ANCHO, margin: "0 auto" }}>
               <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} estado={estado} medir={medir} />
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-                <button type="button" onClick={() => setCara("detras")} aria-label="Ver el reverso" style={botonInfo}>i</button>
+              {/* En el iPhone la (i) abre la hoja de información de la tarjeta
+                  (no hay "detrás"). Aquí se ve que se puede tocar: lleva su nombre. */}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                <button type="button" onClick={() => setCara("detras")} style={botonInfo}>
+                  <span style={circuloInfo} aria-hidden>i</span> Información
+                </button>
               </div>
             </div>
           ))
@@ -186,7 +179,8 @@ const tocable = (anota) => (anota?.onCampo ? { cursor: "pointer" } : {});
 // Medidas sacadas de una captura de iPhone, pasadas a una tarjeta de 300 px.
 const A = {
   alto: 422, margen: 12, logo: 32, nombre: 14.5,
-  etiqueta: 9.5, valor: 20, valorMin: 11, cabecera: 17, hueco: 12, qr: 112,
+  // valorMin: hasta ahí encoge la fila antes de partir el campo largo en dos líneas.
+  etiqueta: 9.5, valor: 20, valorMin: 8, cabecera: 17, hueco: 12, qr: 112,
 };
 
 // Orden real: cabecera (logo + nombre | headerFields), banda a sangre (con la
@@ -256,21 +250,22 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
 
 /**
  * La fila bajo la banda, como la pinta iOS: cada campo mide lo que su texto,
- * el primero a la izquierda y el último a la derecha (space-between). Un valor
- * largo encoge, pasa a dos líneas y acaba en "…" (lib/vistaWallet.js).
+ * el primero a la izquierda y el último a la derecha (space-between). Si no
+ * cabe, encoge la fila entera; luego el campo largo pasa a dos líneas y acaba
+ * en "…" (lib/vistaWallet.js).
  */
 function FilaApple({ campos, accent, anota, medir }) {
   if (!campos.length) return null;
-  const total = ANCHO - A.margen * 2;
   const mide = (texto, tam, peso) => medir(texto, tam, peso, FUENTE_APPLE);
-  const naturales = campos.map((f) => Math.ceil(Math.max(mide(f.label, A.etiqueta, 600) * 1.08, mide(f.value, A.valor))) + 1);
-  const anchos = repartir(naturales, total, A.hueco);
+  const fila = colocarFila(campos, {
+    total: ANCHO - A.margen * 2, hueco: A.hueco, max: A.valor, min: A.valorMin,
+    medir: (x, tam) => mide(x, tam), etiquetas: campos.map((f) => mide(f.label, A.etiqueta, 600) * 1.08),
+  });
 
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: A.hueco, padding: `11px ${A.margen}px 0` }}>
       {campos.map((f, i) => {
-        const ancho = anchos[i];
-        const v = encajar(f.value, ancho, (x, tam) => mide(x, tam), { max: A.valor, min: A.valorMin });
+        const { ancho, ...v } = fila[i];
         const derecha = campos.length > 1 && i === campos.length - 1;
         return (
           <Anotable key={f.key} clave={`apple.${f.key}`} etiqueta={f.label} anota={anota}
@@ -286,9 +281,10 @@ function FilaApple({ campos, accent, anota, medir }) {
   );
 }
 
-// El reverso de Apple: la hoja que sale con (i), en modo oscuro como en el
-// iPhone. Una miniatura de la tarjeta, sus interruptores y los campos: el valor
-// corto va a la derecha de la etiqueta; el largo, debajo.
+// La hoja de información de Apple: la que sale con (i), en modo oscuro como en
+// el iPhone. Una miniatura de la tarjeta, sus interruptores y los campos del
+// reverso (backFields): el valor corto va a la derecha de la etiqueta; el largo,
+// debajo.
 function ReversoApple({ negocio, cliente, qrTexto, anota, medir, origen, estado, onHecho }) {
   const { backFields } = camposDelPase(cliente, negocio);
   const contactos = new Set(enlacesDeContacto(negocio.contacto).map((e) => e.id));
@@ -532,9 +528,16 @@ const filaApple = (ultima) => ({ padding: "10px 14px", borderBottom: ultima ? "n
 const interruptor = { width: 38, height: 23, borderRadius: 12, background: "#34c759", flexShrink: 0, position: "relative" };
 const bolita = { position: "absolute", right: 2, top: 2, width: 19, height: 19, borderRadius: "50%", background: "#fff" };
 
+// Azul de iOS, como la (i) de verdad, y con su palabra al lado: un círculo gris
+// solo parecía parte del dibujo.
+const AZUL_IOS = "#0a84ff";
 const botonInfo = {
-  width: 26, height: 26, borderRadius: "50%", border: `1.6px solid ${C.suave}`, background: "#fff", color: C.suave,
-  fontFamily: "Georgia, serif", fontStyle: "italic", fontWeight: 700, fontSize: 14, lineHeight: 1, cursor: "pointer",
+  display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 12px 5px 6px", borderRadius: 999,
+  border: `1px solid ${AZUL_IOS}55`, background: `${AZUL_IOS}10`, color: AZUL_IOS, fontSize: 13, fontWeight: 600, cursor: "pointer",
+};
+const circuloInfo = {
+  width: 20, height: 20, borderRadius: "50%", border: `1.6px solid ${AZUL_IOS}`, display: "grid", placeItems: "center",
+  fontFamily: "Georgia, serif", fontStyle: "italic", fontWeight: 700, fontSize: 12, lineHeight: 1,
 };
 
 const puntoNota = {

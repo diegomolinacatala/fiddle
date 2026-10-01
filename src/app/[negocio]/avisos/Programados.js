@@ -5,10 +5,12 @@ import Icono from "@/app/Icono";
 import PaseVista from "@/app/PaseVista";
 import Regla from "./Regla";
 import Limites from "./Limites";
+import TextoAviso from "./TextoAviso";
 import {
-  VARIABLES, MAX_TEXTO, MAX_REGLAS, renderTexto, candidatos, elegibles, variablesDesconocidas, esProgramado, programadoNuevo,
+  MAX_REGLAS, renderTexto, candidatos, elegibles, variablesDesconocidas, esProgramado, programadoNuevo, varsDeEjemplo,
+  proximoDiaAbierto, frecuenciaSemanal, diasTexto,
 } from "@/lib/automatizaciones";
-import { DIAS, DIAS_CORTOS, relojLocal } from "@/lib/horario";
+import { DIAS, DIAS_CORTOS, relojLocal, diaDeFecha } from "@/lib/horario";
 import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, RADIO } from "@/app/ui";
 
 // ============================================================================
@@ -16,7 +18,9 @@ import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, RADIO } from
 // ----------------------------------------------------------------------------
 // Lo que la tienda decide cuándo sale, no lo que salta solo por algo que hace
 // el cliente (eso son los automáticos). Un día concreto o cada semana, a todos
-// o a un grupo. Por dentro son reglas como las automáticas (mismo motor, misma
+// o a un grupo. Lo escaso viene de partida (un día suelto; "cada semana" es UN
+// día): varios días a la semana se eligen aparte y la pantalla avisa de que
+// cansa, hasta decir que es un aviso diario. Por dentro son reglas como las automáticas (mismo motor, misma
 // hora de la tienda, mismo "solo con la tienda abierta"), con dos diferencias:
 // salen cada vez que les toca y pueden saltarse la pausa entre avisos.
 // Nunca el tope del día (Limites.js), que es lo que protege al cliente.
@@ -35,12 +39,14 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
   const envios = useMemo(() => ({ porRegla: new Map(datos.envios.porRegla), ultimo: new Map(datos.envios.ultimo), veces: new Map(datos.envios.veces || []) }), [datos.envios]);
   const topes = { pausaDias: n.pausaAvisos, inicioHoy: datos.inicioHoy, limiteDia: n.limiteAvisosDia };
   const sembrado = useRef(false);
+  const nuevoDesde = (base) => programadoNuevo(reglas, base, { horario: n.horario, hoy: relojLocal(Date.now(), n.horario?.zona).fecha });
 
   useEffect(() => {
     if (semilla && !sembrado.current) {
       sembrado.current = true;
-      setNueva(programadoNuevo(reglas, semilla));
+      setNueva(nuevoDesde(semilla));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [semilla, reglas]);
 
   async function guardarCambios(cambios) {
@@ -99,8 +105,8 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <p style={{ ...panel, margin: 0, fontSize: 13.5, color: C.suave, padding: "12px 14px" }}>
-        Un mensaje que sale <strong style={{ color: C.texto }}>cuando tú digas</strong>: un día concreto o cada semana, a todos o a
-        un grupo. Sale solo con la tienda abierta y con los avisos automáticos encendidos (pestaña Automáticos)
+        Un mensaje que sale <strong style={{ color: C.texto }}>cuando tú digas</strong>: un día concreto o uno a la semana, a todos o
+        a un grupo. Sale solo con la tienda abierta y con los avisos automáticos encendidos (pestaña Automáticos)
         {!n.avisosActivos && <strong style={{ color: C.mal }}> — ahora están apagados: no saldrá ninguno solo</strong>}.
       </p>
 
@@ -116,7 +122,7 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
         <p style={{ ...panel, color: C.suave, fontSize: 14, margin: 0 }}>No hay ninguno programado.</p>
       )}
       {!nueva && reglas.length < MAX_REGLAS && (
-        <button type="button" onClick={() => { setAbierta(null); setNueva(programadoNuevo(reglas)); }}
+        <button type="button" onClick={() => { setAbierta(null); setNueva(nuevoDesde({})); }}
           style={{ ...botonSecundario, display: "inline-flex", alignItems: "center", gap: 8, justifySelf: "start" }}>
           <Icono nombre="mas" tam={18} /> Programar un aviso
         </button>
@@ -132,37 +138,41 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
 /** El formulario de un programado: qué, a quién, cuándo. */
 function EditorProgramado({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocupado, acciones }) {
   const [r, setR] = useState(inicial);
-  const texto = useRef(null);
   const accent = negocio.tema.accent;
   const set = (k, v) => setR((p) => ({ ...p, [k]: v }));
   const hoy = relojLocal(Date.now(), negocio.horario?.zona).fecha;
-  const unDia = Boolean(r.fecha);
-
   const abiertos = negocio.horario ? negocio.horario.semana.map((t, i) => (t ? i : null)).filter((i) => i !== null) : [0, 1, 2, 3, 4, 5, 6];
-  const marcados = r.dias.length ? r.dias : abiertos;
-  function alternarDia(i) {
-    const lista = marcados.includes(i) ? marcados.filter((x) => x !== i) : [...marcados, i].sort((a, b) => a - b);
-    if (!lista.length) return;
-    set("dias", abiertos.every((x) => lista.includes(x)) && lista.length === abiertos.length ? [] : lista);
+  // "Cada semana" es UN día; con más, "Varios días". Se recuerda aparte: con
+  // un solo día marcado en "Varios", no salta solo a "Cada semana".
+  const [modo, setModo] = useState(inicial.fecha ? "dia" : inicial.dias.length === 1 ? "semana" : "varios");
+  const marcados = (r.dias.length ? r.dias : abiertos).filter((i) => abiertos.includes(i));
+
+  function cambiarModo(m) {
+    setModo(m);
+    const proximo = proximoDiaAbierto(negocio.horario, hoy);
+    setR(({ fecha, ...p }) => {
+      if (m === "dia") return { ...p, fecha: fecha || proximo };
+      // De un día suelto a semanal: ese mismo día de la semana.
+      const uno = fecha ? diaDeFecha(fecha) : marcados[0] ?? diaDeFecha(proximo);
+      return { ...p, dias: m === "semana" ? [uno] : p.dias.length ? p.dias : [uno] };
+    });
   }
-  function meterVariable(clave) {
-    const el = texto.current;
-    const trozo = `{${clave}}`;
-    const desde = el?.selectionStart ?? r.texto.length;
-    const hasta = el?.selectionEnd ?? r.texto.length;
-    set("texto", (r.texto.slice(0, desde) + trozo + r.texto.slice(hasta)).slice(0, MAX_TEXTO));
-    requestAnimationFrame(() => el?.focus());
+  function tocarDia(i) {
+    if (modo === "semana") return set("dias", [i]);
+    const lista = marcados.includes(i) ? marcados.filter((x) => x !== i) : [...marcados, i].sort((a, b) => a - b);
+    if (lista.length) set("dias", lista);
   }
 
   const encajan = candidatos(r, contextos);
   const llegan = elegibles(r, contextos, envios, { ahora: Date.now(), ...topes });
   const muestra = llegan[0] || encajan[0] || null;
-  const vars = muestra ? muestra.vars : { premio: negocio.premio, faltan: "1 sello", dias: "21", racha: "4", nombre: "", tienda: negocio.nombre };
+  const vars = muestra ? muestra.vars : varsDeEjemplo(r, negocio);
   const malas = variablesDesconocidas(r.texto);
-  const pasado = unDia && r.fecha < hoy;
+  const pasado = modo === "dia" && r.fecha < hoy;
   const cambiada = nueva || JSON.stringify(r) !== JSON.stringify(inicial);
   const valida = r.texto.trim() && !malas.length && r.hora && !pasado;
-  const diaCerrado = unDia && negocio.horario && !negocio.horario.semana[(new Date(`${r.fecha}T12:00:00Z`).getUTCDay() + 6) % 7];
+  const diaCerrado = modo === "dia" && negocio.horario && !negocio.horario.semana[diaDeFecha(r.fecha)];
+  const frecuencia = modo === "dia" ? null : frecuenciaSemanal(marcados.length, abiertos.length);
 
   const clienteVista = {
     serial: "ejemplo-0000-0000-0000-000000000000", codigo: "ABC", nombre: null,
@@ -187,41 +197,41 @@ function EditorProgramado({ inicial, negocio, grupos, contextos, envios, topes, 
           )}
 
           <label style={etiqueta}>Cuándo</label>
-          <Segmentos accent={accent} valor={unDia ? "dia" : "semana"} opciones={[["dia", "Un día"], ["semana", "Cada semana"]]}
-            onChange={(v) => setR((p) => (v === "dia" ? { ...p, fecha: p.fecha || hoy } : (({ fecha, ...resto }) => { void fecha; return resto; })(p)))} />
+          <Segmentos accent={accent} valor={modo} onChange={cambiarModo} ancho={380}
+            opciones={[["dia", "Un día"], ["semana", "Cada semana"], ["varios", "Varios días"]]} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-            {unDia && (
+            {modo === "dia" && (
               <input type="date" min={hoy} value={r.fecha} onChange={(e) => set("fecha", e.target.value)} style={{ ...campo, width: 160 }} aria-label="Día" />
             )}
+            {modo !== "dia" && <span style={{ fontSize: 14 }}>{mayuscula(diasTexto(marcados.length === abiertos.length ? [] : marcados))},</span>}
             <span style={{ fontSize: 14 }}>a las</span>
             <input type="time" step={300} value={r.hora} onChange={(e) => set("hora", e.target.value)} style={{ ...campo, width: 118 }} aria-label="Hora" />
           </div>
-          {!unDia && (
-            <div role="group" aria-label="Qué días" style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+          {modo !== "dia" && (
+            <div role={modo === "semana" ? "radiogroup" : "group"} aria-label="Qué días" style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
               {DIAS_CORTOS.map((letra, i) => {
                 const abre = abiertos.includes(i);
                 const on = abre && marcados.includes(i);
                 return (
-                  <button key={letra} type="button" disabled={!abre} aria-pressed={on} onClick={() => alternarDia(i)}
+                  <button key={letra} type="button" disabled={!abre} onClick={() => tocarDia(i)}
+                    {...(modo === "semana" ? { role: "radio", "aria-checked": on } : { "aria-pressed": on })}
                     aria-label={abre ? DIAS[i] : `${DIAS[i]}: cerrado`} style={chipDia(on, abre, accent)}>{letra}</button>
                 );
               })}
             </div>
           )}
+          {frecuencia && (
+            <p role={frecuencia.nivel === "bien" ? undefined : "alert"} style={{ ...avisoFrecuencia[frecuencia.nivel], display: "flex", gap: 7, alignItems: "flex-start" }}>
+              <Icono nombre={frecuencia.nivel === "bien" ? "check" : "alerta"} tam={15} style={{ marginTop: 1 }} />
+              <span>{frecuencia.texto}</span>
+            </p>
+          )}
           {pasado && <p style={{ ...ayuda, color: C.mal }}>Ese día ya ha pasado.</p>}
           {diaCerrado && <p style={{ ...ayuda, color: C.mal }}>Ese día la tienda cierra: no saldría.</p>}
           <p style={ayuda}>Solo con la tienda abierta: si a esa hora aún no ha abierto, sale al abrir.</p>
 
-          <label style={etiqueta} htmlFor={`pt-${r.id}`}>Lo que le llega</label>
-          <textarea id={`pt-${r.id}`} ref={texto} rows={3} value={r.texto} maxLength={MAX_TEXTO}
-            onChange={(e) => set("texto", e.target.value)} style={{ ...campo, resize: "vertical", fontFamily: "inherit" }} />
-          <div style={{ fontSize: 12, color: r.texto.length > MAX_TEXTO - 20 ? C.mal : C.tenue, marginTop: 4 }}>{r.texto.length}/{MAX_TEXTO}</div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-            {VARIABLES.map((v) => (
-              <button key={v.clave} type="button" onClick={() => meterVariable(v.clave)} title={v.ayuda} style={chipVariable}>{`{${v.clave}}`}</button>
-            ))}
-          </div>
-          {malas.length > 0 && <p style={{ ...ayuda, color: C.mal }}>No existe {`{${malas[0]}}`}. Usa las de arriba.</p>}
+          <TextoAviso id={`pt-${r.id}`} valor={r.texto} onChange={(v) => set("texto", v)} vars={vars} ejemplo={varsDeEjemplo(r, negocio)}
+            encajan={encajan} quien={muestra?.vars.nombre || null} accent={accent} />
 
           <label style={opcionCheck}>
             <input type="checkbox" checked={r.caduca} onChange={(e) => set("caduca", e.target.checked)} style={{ marginTop: 3 }} />
@@ -269,9 +279,9 @@ function EditorProgramado({ inicial, negocio, grupos, contextos, envios, topes, 
   );
 }
 
-function Segmentos({ valor, opciones, onChange, accent }) {
+function Segmentos({ valor, opciones, onChange, accent, ancho = 320 }) {
   return (
-    <div role="radiogroup" style={{ display: "flex", gap: 4, padding: 3, background: C.fondo, border: `1px solid ${C.borde}`, borderRadius: 10, maxWidth: 320 }}>
+    <div role="radiogroup" style={{ display: "flex", gap: 4, padding: 3, background: C.fondo, border: `1px solid ${C.borde}`, borderRadius: 10, maxWidth: ancho }}>
       {opciones.map(([id, t]) => (
         <button key={id} type="button" role="radio" aria-checked={id === valor} onClick={() => onChange(id)} style={{
           flex: 1, padding: "7px 8px", borderRadius: 8, border: 0, cursor: "pointer", fontSize: 13, fontWeight: id === valor ? 650 : 500,
@@ -282,12 +292,14 @@ function Segmentos({ valor, opciones, onChange, accent }) {
   );
 }
 
+const mayuscula = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const ayuda = { fontSize: 12.5, color: C.tenue, margin: "6px 0 0", lineHeight: 1.45 };
 const opcionCheck = { display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, marginTop: 12, cursor: "pointer" };
 const cuenta = { display: "flex", alignItems: "baseline", gap: 10, marginTop: 14, padding: "12px 14px", border: "1px solid", borderRadius: RADIO.fila };
-const chipVariable = {
-  padding: "4px 8px", borderRadius: 7, border: `1px solid ${C.borde}`, background: C.panelSuave, color: C.texto,
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12.5, cursor: "pointer",
+const avisoFrecuencia = {
+  bien: { ...ayuda, color: C.ok },
+  ojo: { ...ayuda, color: "#9a5b00", background: "#fff6e5", border: "1px solid #f5d9a8", borderRadius: RADIO.boton, padding: "8px 10px", marginTop: 10 },
+  mal: { ...ayuda, color: C.mal, background: C.malFondo, border: "1px solid #f7c9c3", borderRadius: RADIO.boton, padding: "8px 10px", marginTop: 10 },
 };
 const chipDia = (on, abre, accent) => ({
   width: 36, height: 34, borderRadius: RADIO.boton, fontWeight: 600, fontSize: 13,

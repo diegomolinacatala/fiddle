@@ -3,7 +3,7 @@ import { inflateRawSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import forge from "node-forge";
 import { generarPkpass } from "@/lib/apple/firmar";
-import { configApple, configsDeTienda, faltanVariablesTienda, tiendasConPassTypePropio, variablesDe, leerPem, hayApple, faltanVariablesApple } from "@/lib/apple/config";
+import { configApple, configsDeTienda, configDeDescarga, faltanVariablesTienda, tiendasConPassTypePropio, variablesDe, leerPem, hayApple, faltanVariablesApple } from "@/lib/apple/config";
 import { imagenesDelPase, rejillaSellos } from "@/lib/apple/imagenes";
 import { SEMILLAS, componerNegocio } from "@/lib/negocios";
 import { cadenaDePrueba, otroPassTypeDePrueba, aBase64 } from "../scripts/lib/certs.mjs";
@@ -86,6 +86,20 @@ describe("Pass Type ID propio de una tienda", () => {
     expect(c).toMatchObject({ passTypeId: "pass.dev.deli", cert: propio.certPem, tienda: "la-deli", teamId: cadena.teamId });
     expect(c.key).toBe(configApple().key);
     expect(configsDeTienda("la-deli").map((x) => x.passTypeId)).toEqual(["pass.dev.deli", cadena.passTypeId]);
+  });
+
+  it("volver a descargar una tarjeta usa el ID con que ya está instalada (si no, salen dos)", () => {
+    stubApple();
+    stubTienda("la-deli", "pass.dev.deli");
+    // Instalada antes de que la tienda tuviera ID propio: sigue en el general.
+    expect(configDeDescarga("la-deli", [cadena.passTypeId]).passTypeId).toBe(cadena.passTypeId);
+    // Nueva, o instalada ya con el propio: el de la tienda.
+    expect(configDeDescarga("la-deli", []).passTypeId).toBe("pass.dev.deli");
+    expect(configDeDescarga("la-deli", ["pass.dev.deli"]).passTypeId).toBe("pass.dev.deli");
+    // Ya duplicada (con los dos): el de la tienda, que es hacia donde va.
+    expect(configDeDescarga("la-deli", [cadena.passTypeId, "pass.dev.deli"]).passTypeId).toBe("pass.dev.deli");
+    // Un ID que no es de esta tienda no cuenta.
+    expect(configDeDescarga("nube", ["pass.dev.deli"]).passTypeId).toBe(cadena.passTypeId);
   });
 
   it("sin ellas (u otra tienda), la general", () => {

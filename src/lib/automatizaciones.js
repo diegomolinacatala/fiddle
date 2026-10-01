@@ -17,8 +17,8 @@
 //      sin horario no manda nada solo (lo decide el motor).
 //   2. Cada regla, una vez por ausencia: hasta que el cliente vuelve a pasar
 //      por caja no se le repite lo mismo.
-//   3. Una pausa entre avisos a la misma persona (`pausaAvisos`, 3 días), sean
-//      automáticos o mandados a mano.
+//   3. Una pausa entre avisos a la misma persona (`pausaAvisos`, una semana de
+//      partida), sean automáticos o mandados a mano. Y como mucho uno al día.
 //
 // Funciones PURAS: las usan el motor (lib/motorAvisos.js), la pantalla y los
 // tests. El envío de verdad va por el mismo camino que una campaña: el texto se
@@ -27,12 +27,12 @@
 // se lo dijimos?" y "¿volvió?".
 // ============================================================================
 
-import { GRUPOS, LISTA_GRUPOS, esGrupo } from "./crm";
+import { GRUPOS, LISTA_GRUPOS, UMBRALES, esGrupo } from "./crm";
 import { cartillasDe } from "./cartillas";
 import { singular } from "./acciones";
 import {
   DIAS, aMinutos, aHora, horaCorta, esHora, relojLocal, fechaLocal, tramosDe, tramoEn, sumarDias, diaDeFecha, rachaDe, cuandoTexto,
-  inicioDelDia, cierreTras,
+  inicioDelDia, cierreTras, abreEl,
 } from "./horario";
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -41,14 +41,17 @@ export const MAX_TEXTO = 120;      // lo mismo que una campaña: una línea en l
 export const MAX_REGLAS = 20;      // automáticos y programados, juntos
 // Avisos al día a la misma persona, como mucho. Google corta en 3 por tarjeta y
 // día (los que pasen de ahí llegan en silencio); Apple no pone tope, pero un
-// pase que suena mucho se silencia o se borra. De partida, 2.
-export const LIMITE_DIA = { min: 1, max: 3, def: 2 };
+// pase que suena mucho se silencia o se borra. De partida, 1: más ya cansa.
+export const LIMITE_DIA = { min: 1, max: 3, def: 1 };
 export const normalizarLimiteDia = (v) => {
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= LIMITE_DIA.min ? Math.min(LIMITE_DIA.max, n) : LIMITE_DIA.def;
 };
 export const MAX_POR_REGLA = 400;  // tope por envío, como las campañas (tiempo de una función serverless)
-export const PAUSA_POR_DEFECTO = 3;
+// Días entre dos avisos a la misma persona. Por debajo de PAUSA_CORTA, la
+// pantalla avisa: a ese ritmo la tarjeta se vuelve ruido.
+export const PAUSA_POR_DEFECTO = 7;
+export const PAUSA_CORTA = 3;
 export const MAX_PAUSA = 30;
 // Si el reloj llega tarde más de esto, ese día ya no sale: un "¿merienda?" a
 // las 20:00 no es lo que se programó.
@@ -164,26 +167,79 @@ export const esProgramado = (r) => r?.cada === "vez";
 export const esDisparo = (k) => typeof k === "string" && Object.hasOwn(DISPAROS, k);
 
 // ----------------------------------------------------------------- variables
-// Lo que se puede meter en el texto entre llaves. Cada cliente recibe el suyo.
+// Lo que se puede meter en el texto entre llaves. Cada cliente recibe lo suyo.
+//   DATOS   se cambian por lo de cada uno: {premio} -> "cookie gratis".
+//   FRASES  una frase entera que solo ven los que encajan; a los demás no les
+//           sale nada. Así un mismo aviso le dice algo más a quien está a un
+//           sello del premio, sin montar otro aviso para él.
+// `nombre` es como lo ve el manager: las llaves son cosa de dentro.
 export const VARIABLES = [
-  { clave: "premio", ejemplo: "cookie gratis", ayuda: "el premio que tiene más cerca" },
-  { clave: "faltan", ejemplo: "1 cookie", ayuda: "lo que le falta para ese premio" },
-  { clave: "dias", ejemplo: "21", ayuda: "días que lleva sin venir" },
-  { clave: "racha", ejemplo: "4", ayuda: "días seguidos que ha venido" },
-  { clave: "nombre", ejemplo: "Marta", ayuda: "su nombre, si la caja lo apuntó (si no, se quita solo)" },
-  { clave: "tienda", ejemplo: "La Delicantería", ayuda: "el nombre de la tienda" },
+  { clave: "nombre", nombre: "Su nombre", ejemplo: "Marta", ayuda: "si la caja lo apuntó; si no, se quita solo" },
+  { clave: "premio", nombre: "Su premio", ejemplo: "cookie gratis", ayuda: "el que tiene más cerca" },
+  { clave: "faltan", nombre: "Lo que le falta", ejemplo: "1 cookie", ayuda: "para ese premio" },
+  { clave: "dias", nombre: "Días sin venir", ejemplo: "21", ayuda: "desde su última visita" },
+  { clave: "racha", nombre: "Días seguidos", ejemplo: "4", ayuda: "que lleva viniendo sin saltarse ninguno" },
+  { clave: "visitas", nombre: "Sus visitas", ejemplo: "12", ayuda: "las veces que ha venido" },
+  { clave: "tienda", nombre: "La tienda", ejemplo: "La Delicantería", ayuda: "su nombre" },
 ];
-const CLAVES_VARIABLE = new Set(VARIABLES.map((v) => v.clave));
+
+const ESTADOS_LEJOS = ["riesgo", "dormido", "perdido"];
+const teFalta = (faltan, texto) => `Te ${faltan === 1 ? "falta" : "faltan"} ${texto}`;
+
+export const FRASES = [
+  {
+    clave: "si_cerca", nombre: "Si está cerca del premio", ayuda: `Solo a quien le faltan ${UMBRALES.aPuntoFaltan} o menos`,
+    frase: (x) => (x.cercana && !x.pendiente && x.cercana.faltan <= UMBRALES.aPuntoFaltan
+      ? `${teFalta(x.cercana.faltan, x.vars.faltan)} para tu ${x.cercana.premio}.` : ""),
+  },
+  {
+    clave: "si_premio", nombre: "Si tiene un premio sin recoger", ayuda: "Solo a quien tiene la cartilla llena o un premio guardado",
+    frase: (x) => (x.pendiente ? `Tu ${x.vars.premio} te está esperando.` : ""),
+  },
+  {
+    clave: "si_ausente", nombre: "Si hace tiempo que no viene", ayuda: "Solo a quien lleva sin venir más de lo normal en él",
+    frase: (x) => (x.perfil.visitas > 0 && ESTADOS_LEJOS.includes(x.perfil.estado) ? "¡Cuánto tiempo sin verte!" : ""),
+  },
+  {
+    clave: "si_habitual", nombre: "Si es de los de siempre", ayuda: "Solo a los habituales y a los mejores clientes",
+    frase: (x) => (GRUPOS.habituales.incluye(x.perfil) || GRUPOS.campeones.incluye(x.perfil) ? "Gracias por venir siempre." : ""),
+  },
+];
+const CLAVES_VARIABLE = new Set([...VARIABLES, ...FRASES].map((v) => v.clave));
 
 /** Variables escritas en el texto que no existen ("{premo}"): se avisan antes de guardar. */
 export const variablesDesconocidas = (texto) =>
   [...String(texto || "").matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((k) => !CLAVES_VARIABLE.has(k));
 
 /**
+ * Las variables de muestra cuando no le toca a nadie: las de la tienda, sin
+ * inventar un nombre, y con TODAS las frases puestas para que se vea qué dicen.
+ */
+export function varsDeEjemplo(regla, negocio) {
+  const c = negocio?.cartillas?.[0];
+  const premio = c?.premio ?? negocio?.premio ?? "premio";
+  const faltan = c ? `1 ${singular(c.nombre.toLowerCase())}` : "1 sello";
+  const x = { cercana: { faltan: 1, premio }, pendiente: false, perfil: { visitas: 12, estado: "riesgo" }, vars: { premio, faltan } };
+  return {
+    premio,
+    faltan,
+    dias: String(["sin_venir", "segunda_visita"].includes(regla?.disparo) ? regla.valor : 21),
+    racha: String(regla?.disparo === "racha" ? regla.valor : 4),
+    visitas: "12",
+    nombre: "",
+    tienda: negocio?.nombre ?? "",
+    si_cerca: FRASES[0].frase(x),
+    si_premio: FRASES[1].frase({ ...x, pendiente: true }),
+    si_ausente: FRASES[2].frase(x),
+    si_habitual: "Gracias por venir siempre.",
+  };
+}
+
+/**
  * Rellena las variables y deja la frase bien escrita aunque falte alguna: sin
  * nombre, "{nombre}, te falta 1" queda "Te falta 1", no ", te falta 1".
  */
-export function renderTexto(plantilla, vars = {}) {
+export function renderTexto(plantilla, vars = {}, { max = MAX_TEXTO } = {}) {
   const lleno = String(plantilla || "").replace(/\{(\w+)\}/g, (todo, k) => (Object.hasOwn(vars, k) ? String(vars[k] ?? "") : todo));
   const limpio = lleno
     .replace(/[ \t]{2,}/g, " ")
@@ -193,8 +249,12 @@ export function renderTexto(plantilla, vars = {}) {
     .replace(/,([.!?])/g, "$1")
     .trim()
     .replace(/^([¡¿]?)(\p{Ll})/u, (_, signo, letra) => signo + letra.toUpperCase());
-  return limpio.length > MAX_TEXTO ? `${limpio.slice(0, MAX_TEXTO - 1).trimEnd()}…` : limpio;
+  return limpio.length > max ? `${limpio.slice(0, max - 1).trimEnd()}…` : limpio;
 }
+
+/** Lo que mide el texto como le llega a quien más le sale (frases incluidas), sin cortar. */
+export const largoMaximo = (plantilla, listaVars) =>
+  Math.max(0, ...listaVars.map((v) => renderTexto(plantilla, v, { max: Infinity }).length));
 
 // ------------------------------------------------------------------ contexto
 /** La cartilla sin completar a la que menos le falta (null si no hay ninguna a medias). */
@@ -226,7 +286,7 @@ export function contextoDe(cliente, perfil, negocio, { fechas = new Set(), hoy }
   const cercana = cartillaCercana(cliente, negocio);
   const { racha, inicio } = rachaDe(fechas, negocio?.horario ?? null, hoy);
   const nombre = String(cliente.nombre || "").trim().split(/\s+/)[0] || "";
-  return {
+  const x = {
     serial: cliente.serial,
     perfil,
     cercana,
@@ -245,10 +305,14 @@ export function contextoDe(cliente, perfil, negocio, { fechas = new Set(), hoy }
       faltan: faltanTexto(cercana, negocio),
       dias: perfil.diasSinVenir === null || perfil.diasSinVenir === undefined ? "" : String(Math.floor(perfil.diasSinVenir)),
       racha: String(racha),
+      visitas: String(perfil.visitas || 0),
       nombre,
       tienda: negocio?.nombre ?? "",
     },
   };
+  // Las frases se arman con lo de arriba: una frase vacía es "a este no le toca".
+  for (const f of FRASES) x.vars[f.clave] = f.frase(x);
+  return x;
 }
 
 /** Días (fecha local de la tienda) en los que vino cada cliente, desde el historial. */
@@ -526,8 +590,11 @@ export function idNuevo(disparo, reglas) {
 /**
  * Aviso programado nuevo: a todos, a una hora, el día que se diga (o cada semana).
  * `base` permite empezarlo ya relleno (las ideas del CRM: "los martes por la tarde…").
+ * Sin día en `base`, de partida sale UNA vez: el próximo día que abra la tienda
+ * (con `hoy`). Lo frecuente se elige a propósito, nunca viene puesto.
  */
-export function programadoNuevo(reglas, base = {}) {
+export function programadoNuevo(reglas, base = {}, { horario = null, hoy = null } = {}) {
+  const cuando = base.fecha || Array.isArray(base.dias) || !hoy ? {} : { fecha: proximoDiaAbierto(horario, hoy) };
   const disparo = base.disparo && esDisparo(base.disparo) ? base.disparo : "todos";
   return {
     id: idNuevo(`prog-${disparo}`, reglas),
@@ -541,7 +608,34 @@ export function programadoNuevo(reglas, base = {}) {
     caduca: base.caduca !== false,
     cada: "vez",
     ...(base.fecha ? { fecha: base.fecha } : {}),
+    ...cuando,
   };
+}
+
+/** El primer día a partir de mañana en que abre la tienda (mañana, sin horario). */
+export function proximoDiaAbierto(horario, hoy) {
+  for (let i = 1; i <= 14; i += 1) {
+    const fecha = sumarDias(hoy, i);
+    if (!horario || abreEl(horario, fecha)) return fecha;
+  }
+  return sumarDias(hoy, 1);
+}
+
+/**
+ * ¿Cuánto es "a menudo"? Lo que dice la pantalla de un programado según los días
+ * por semana que sale: uno es lo recomendable; desde dos, se avisa; todos los
+ * que abre la tienda es un aviso DIARIO.
+ * @param {number} dias     días marcados a la semana
+ * @param {number} abiertos días que abre la tienda a la semana
+ * @returns {{nivel:"bien"|"ojo"|"mal", texto:string}}
+ */
+export function frecuenciaSemanal(dias, abiertos) {
+  if (dias <= 1) return { nivel: "bien", texto: "Una vez a la semana: lo recomendable." };
+  if (dias >= abiertos || dias >= 5) {
+    return { nivel: "mal", texto: "Es un aviso DIARIO. A ese ritmo la tarjeta se vuelve ruido: la gente la silencia o la borra, y ya no le llega nada." };
+  }
+  if (dias === 2) return { nivel: "ojo", texto: "Dos días a la semana a todos ya es mucho. Úsalo solo si cada día dice algo distinto." };
+  return { nivel: "mal", texto: `${dias} días a la semana es casi a diario: cansa, y la gente acaba silenciando la tarjeta. Mejor uno.` };
 }
 
 /** Regla nueva de un disparo, lista para editar: su valor y su texto de partida. */

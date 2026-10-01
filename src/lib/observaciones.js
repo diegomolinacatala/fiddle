@@ -99,15 +99,18 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
       porBloque.sort((x, y) => y.dias.length - x.dias.length);
       if (porBloque.length) {
         const { b, dias } = porBloque[0];
-        const hora = aperturaEn(abiertas, dias, b);
+        // El aviso, UN día a la semana: el más flojo. Uno cada tarde tranquila
+        // sería un aviso casi diario a todos los clientes.
+        const dia = flojas.filter((c) => c.b.id === b.id).sort((x, y) => x.ritmo - y.ritmo || x.d - y.d)[0].d;
+        const hora = aperturaEn(abiertas, [dia], b);
         out.push({
           id: `tranquilo-${b.id}`,
           texto: `Lo más tranquilo: ${enBloque(b, dias)}.`,
           detalle: "Viene menos de la mitad de gente que en una hora normal de la tienda.",
           accion: {
             tipo: "programar",
-            label: "Programar un aviso para esas horas",
-            base: { nombre: `${b.plural.charAt(0).toUpperCase()}${b.plural.slice(1)} tranquilas`, disparo: "todos", dias, hora: hhmm(hora), texto: b.texto, caduca: true },
+            label: `Programar un aviso ${listaDias([dia])}`,
+            base: { nombre: `${b.plural.charAt(0).toUpperCase()}${b.plural.slice(1)} tranquilas`, disparo: "todos", dias: [dia], hora: hhmm(hora), texto: b.texto, caduca: true },
           },
         });
       }

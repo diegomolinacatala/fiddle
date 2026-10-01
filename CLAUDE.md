@@ -18,7 +18,10 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   mensajes de commit. Los comentarios explican *por qué*, no *qué*.
 - **La vista previa sale de las funciones de verdad.** `PaseVista` usa
   `camposDelPase()`, `stripDelPase()` y `svgLogo()` — los mismos que arman el
-  `.pkpass`. Nunca hacer una maqueta paralela: si se separan, mienten.
+  `.pkpass`. Nunca hacer una maqueta paralela: si se separan, mienten. Cómo coloca
+  iOS la fila bajo la banda (`lib/vistaWallet.js`, visto en un iPhone): si no cabe,
+  encoge la fila ENTERA hasta un 40 % y solo entonces el campo largo pasa a dos
+  líneas; un «PARA TI» de unas 100 letras cabe junto al premio.
 - **Nada de `<text>` en los SVG del pase.** En serverless no hay fuentes
   fiables; las letras se dibujan (`lib/apple/glifos.js`).
 - **`npm test` y `npm run build` antes de abrir el PR.** Los dos, siempre.
@@ -26,14 +29,26 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   Y ejecutarlo uno mismo, no pasárselo al usuario para que lo pegue.
 - **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
   pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
-  (tarjeta, caja, horario, QR), **Clientes** (quién viene; exportar va junto a la lista
-  y baja lo que se ve) y **Avisos** (promo, grupos y automáticos). Antes de añadir un
+  (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
+  a la lista y baja lo que se ve) y **Avisos** (promo, grupos y automáticos). Y aparte,
+  al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
+- **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
+  su cuadrado, título, una línea de cómo está y UN botón pequeño debajo. Lo que se pone
+  una vez (horario, mapa) va plegado. Nada de títulos, colores o botones distintos
+  para cosas del mismo nivel.
+- **Encender/apagar = interruptor** (`app/Interruptor.js`), nunca una casilla: una
+  casilla vacía no se lee como "apagado".
 - **Lo que se VE en la tarjeta se cambia tocándolo en ella**: Tienda → "Editar tarjeta"
   (`manager/EditorTarjeta.js`). Cada trozo de `PaseVista` abre su panel (`seccionDe`).
   Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. Enseña
   Apple y Google A LA VEZ (con sitio): lo de una sola plataforma lo dice su panel. El
   manager NO cambia cupón ↔ cartilla (el pase de Apple no puede cambiar de tipo).
+  Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene también su
+  interruptor en Tienda → Horario, que es donde se piensa en ello. La tarjeta web lo
+  respeta igual que Wallet.
+- **En Apple no hay "detrás"**: la (i) abre la hoja de información de la tarjeta. La
+  vista previa la abre con su botón «ⓘ Información», que tiene que verse tocable.
 
 ## Lo que hay que saber del pase de Apple
 
@@ -49,6 +64,10 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   `lib/apple/config.js`). Un pase instalado no cambia nunca de ID: por eso el
   web service y los avisos aceptan el de la tienda Y el general
   (`configsDeTienda()`), y cada aviso sale con el certificado de su ID.
+- **Para Wallet, un pase es Pass Type ID + serial.** Volver a descargar una tarjeta
+  firmada con otro ID NO la actualiza: mete otra al lado (mismos sellos, sin apilar).
+  `/api/pase/<serial>` firma con el ID con que ya está registrada
+  (`configDeDescarga`, mirando `registros`). Toda descarga nueva tiene que pasar por ahí.
 - El QR lleva el `serial`; debajo va el **código de 3 caracteres**, único dentro
   de su tienda (`lib/codigo.js`).
 
@@ -128,7 +147,7 @@ Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WAL
   una corrección, y no suena.
 - **El reverso es de las dos**: `negocio.contacto` (teléfono, web, Instagram; `lib/contacto.js`)
   sale en los `backFields` de Apple y en `linksModuleData` de la clase de Google. La vista
-  previa enseña delante y detrás de las dos, y todo se edita desde ahí.
+  previa enseña la cara y la información (la i) de las dos, y todo se edita desde ahí.
 - **Ningún canal tumba la acción.** Apple, web push y Google se llaman después de
   guardar y nunca lanzan hacia fuera.
 - **Endpoints de push**: solo servicios reales (`push/suscripcion.js`). Aflojar esa
@@ -169,6 +188,13 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 Ver [`src/lib/crm.js`](src/lib/crm.js). Quien viene a diario y lleva una semana
 sin aparecer está tan perdido como quien viene una vez al mes y lleva cuatro: casi
 nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadencia.
+
+- **Una visita es un rato en el mostrador, no un sello.** `registrarVisita` no suma si
+  la anterior fue hace menos de `UMBRALES.horasVisita` (3 h), y `perfilDe` no cree más
+  visitas de las que caben en el tiempo pasado (los contadores viejos sí sumaban cada
+  sello). La cadencia no baja de un día y nadie está "en riesgo" por faltar menos de
+  `riesgoMinDias` (7). Sin esto, diez sellos de prueba = "habitual que viene cada
+  segundo y lleva horas sin venir".
 
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.
@@ -222,7 +248,14 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
 - **Programados** (Avisos → Programados): reglas con `cada: "vez"` en la misma lista,
   un día (`fecha`) o cada semana, a todos (disparo `todos`, solo programado) o a un grupo.
   Salen una vez por envío (no por ausencia) y pueden saltarse la pausa (`ignorarPausa`),
-  pero NUNCA `limiteAvisosDia` (1–3, de partida 2: Google suena como mucho 3 al día).
+  pero NUNCA `limiteAvisosDia` (1–3, de partida 1: Google suena como mucho 3 al día).
+- **Lo escaso viene de partida; lo frecuente se elige y la pantalla avisa.** Un
+  programado nuevo sale UN día; "Cada semana" es UN día; varios días se eligen aparte
+  con aviso (`frecuenciaSemanal`: todos los que abre = aviso DIARIO). Pausa de partida
+  7 días, máximo 1 al día; menos pausa o más al día, con aviso (`Limites.js`).
+- **El texto de un aviso no enseña llaves sueltas** (`avisos/TextoAviso.js`): botones
+  con nombre (`VARIABLES[].nombre`), el texto ya relleno debajo y las `FRASES`, que
+  solo ven los que encajan (`{si_cerca}`…). Una variable nueva lleva su `nombre`.
 - **Lo que dicen los números** (Clientes → Resumen, `lib/observaciones.js`): reglas fijas,
   sin IA, sobre la rejilla horaria y el horario. Su botón abre Avisos ya relleno
   (`?programar=<base64>` o `?grupo=<clave>`): aquí se ve a quién, allí se dice qué.

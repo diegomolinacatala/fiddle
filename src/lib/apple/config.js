@@ -121,3 +121,18 @@ export function configsDeTienda(slug) {
   const propia = configApple(slug);
   return propia.passTypeId === general.passTypeId ? [general] : [propia, general];
 }
+
+/**
+ * Con qué firmar la DESCARGA de una tarjeta (botón de Wallet, volver a escanear
+ * el QR). Para Wallet, un pase es Pass Type ID + serial: si la tarjeta ya está
+ * en un iPhone con el general y la tienda estrenó uno propio, firmarla con el
+ * propio NO la actualiza, mete otra al lado (mismo serial, mismos sellos, sin
+ * apilarse). Así que manda el que ya tiene instalado; sin ninguno, el de la tienda.
+ * @param {string} slug
+ * @param {string[]} instalados Pass Type ID de sus registros (store.tiposDePaseInstalados)
+ */
+export function configDeDescarga(slug, instalados = []) {
+  const validas = configsDeTienda(slug);
+  // Si está con los dos (ya se duplicó), el de la tienda: es hacia donde va.
+  return validas.find((c) => instalados.includes(c.passTypeId)) || configApple(slug);
+}

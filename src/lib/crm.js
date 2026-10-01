@@ -18,7 +18,8 @@
 //            misma persona muchas veces, y las dos cosas merecen un aviso.
 // ============================================================================
 
-const DIA = 24 * 60 * 60 * 1000;
+const HORA = 60 * 60 * 1000;
+const DIA = 24 * HORA;
 
 /** Qué evento significa "el cliente estuvo en la tienda". `restar` es una corrección, no una visita. */
 export const TIPOS_VISITA = [
@@ -38,6 +39,11 @@ export const UMBRALES = {
   perdidoDias: 120,   // cuatro meses: dejó de ser cliente
   fielVisitas: 4,     // a partir de aquí ya era de la casa (y duele perderlo)
   aPuntoFaltan: 2,    // a dos sellos o menos del premio
+  // Dos sellos con menos de esto entre medias son LA MISMA visita: diez sellos
+  // seguidos en el mostrador no son diez visitas "cada pocos segundos".
+  horasVisita: 3,
+  cadenciaMin: 1,     // el ritmo más rápido que se mide: a diario
+  riesgoMinDias: 7,   // nadie está en riesgo por faltar menos de una semana (cierres, puentes)
 };
 
 const dias = (desde, hasta) => (desde && hasta ? Math.max(0, (hasta - desde) / DIA) : null);
@@ -50,7 +56,14 @@ const ms = (v) => (v ? Date.parse(v) || null : null);
  * La CADENCIA es el hueco medio entre visitas. Sale de (última − alta) ÷ huecos,
  * que es exactamente la media de los huecos si el alta coincidió con la primera
  * visita — y coincide: el pase se emite en el mostrador, con el cliente delante.
- * Con una visita o ninguna no hay ritmo que medir y vale `null`.
+ * Con una visita o ninguna no hay ritmo que medir y vale `null`, y nunca baja de
+ * `cadenciaMin`: nadie "viene cada pocos segundos".
+ *
+ * Las VISITAS no pueden ser más de las que caben en el tiempo que ha pasado
+ * (una cada `horasVisita`). La caja ya no cuenta dos veces la misma visita
+ * (store.registrarVisita), pero los contadores de antes sí lo hacían: una
+ * tarjeta de prueba con diez sellos seguidos cuenta como una visita, no como un
+ * habitual que lleva horas sin venir.
  *
  * @param {object} cliente fila de `clientes`
  * @param {object} negocio ficha del negocio (meta, tipo)
@@ -59,9 +72,10 @@ const ms = (v) => (v ? Date.parse(v) || null : null);
 export function perfilDe(cliente, negocio, ahora = Date.now()) {
   const alta = ms(cliente.creado);
   const ultima = ms(cliente.ultima_visita);
-  const visitas = cliente.visitas || 0;
+  const caben = alta && ultima && ultima >= alta ? Math.floor((ultima - alta) / (UMBRALES.horasVisita * HORA)) + 1 : Infinity;
+  const visitas = Math.min(cliente.visitas || 0, caben);
 
-  const cadencia = visitas > 1 && ultima && alta ? dias(alta, ultima) / (visitas - 1) : null;
+  const cadencia = visitas > 1 && ultima && alta ? Math.max(UMBRALES.cadenciaMin, dias(alta, ultima) / (visitas - 1)) : null;
   // Sin visitas, el reloj corre desde el alta: un pase emitido hace un año y
   // nunca usado lleva un año sin usarse, no "cero días".
   const diasSinVenir = dias(ultima || alta, ahora);
@@ -117,7 +131,7 @@ export function estadoDe(p) {
   if (d > UMBRALES.perdidoDias) return "perdido";
   if (d > UMBRALES.dormidoDias) return "dormido";
   // Con ritmo conocido manda el ritmo; sin él, el mes de gracia de siempre.
-  if (p.retraso !== null) return p.retraso > UMBRALES.retraso ? "riesgo" : "activo";
+  if (p.retraso !== null) return p.retraso > UMBRALES.retraso && d >= UMBRALES.riesgoMinDias ? "riesgo" : "activo";
   return d > UMBRALES.nuevoDias ? "riesgo" : "activo";
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizarCodigo } from "@/lib/codigo";
-import { estadoDeTienda } from "@/lib/horario";
+import { estadoDeTienda, resumenHorario } from "@/lib/horario";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
@@ -11,37 +11,51 @@ import MapaUbicacion from "./MapaUbicacion";
 import EditorTarjeta from "./EditorTarjeta";
 import EditorCaja from "./EditorCaja";
 import { normalizarCaja } from "@/lib/caja";
-import MarcaTienda from "@/app/MarcaTienda";
 import Recorrido from "@/app/Recorrido";
-import ClaveNueva from "@/app/ClaveNueva";
+import { FilaInterruptor } from "@/app/Interruptor";
 import CabeceraGestion from "../CabeceraGestion";
+import Bloque from "../Bloque";
 import Icono from "@/app/Icono";
-import { C, pagina, panel, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo } from "@/app/ui";
+import { C, pagina, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo, RADIO } from "@/app/ui";
 
 // La pestaña TIENDA: cómo es la tarjeta (cartillas y premios), qué botones
-// tiene la caja, dónde está y cuándo abre la tienda, y el tag/QR del
-// mostrador. La vista previa enseña, mientras se edita, cómo queda el pase.
-// Lo que se les DICE a los clientes (la promo, los grupos, los avisos
-// automáticos) vive en Avisos, y la lista de clientes en Clientes: cada cosa en
-// un solo sitio. Llega con el negocio ya cargado en el servidor (page.js).
+// tiene la caja, cuándo abre y dónde está la tienda, y el tag/QR del mostrador.
+// La vista previa enseña, mientras se edita, cómo queda el pase.
+//
+// A la izquierda, una fila por cosa, todas con la misma forma (Bloque.js): lo
+// que se pone una vez (horario, mapa) va plegado y se abre con su botón. Lo de
+// la cuenta (la contraseña de la caja) vive en Ajustes; lo que se les DICE a los
+// clientes, en Avisos; la lista de clientes, en Clientes. Cada cosa en un solo
+// sitio. Llega con el negocio ya cargado en el servidor (page.js).
 export default function PanelManager({ negocio, inicial, reloj = false }) {
   const [n, setN] = useState(inicial);
   // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
-  const [ubicacion, setUbicacion] = useState(() => inicial.ubicaciones?.[0] || null);
+  const guardada = n.ubicaciones?.[0] || null;
+  const [ubicacion, setUbicacion] = useState(guardada);
   const [msg, setMsg] = useState(null);
   const [origin, setOrigin] = useState("");
   const [real, setReal] = useState(null); // cliente real en la vista previa (null = ejemplo)
   const [codigo, setCodigo] = useState("");
-  const [claveCaja, setClaveCaja] = useState(null); // contraseña nueva de la caja, se ve una vez
+  const [abierto, setAbierto] = useState(null); // "horario" | "mapa" | null: lo plegado que está abierto
+  const [editando, setEditando] = useState(false);
+  const [editandoCaja, setEditandoCaja] = useState(false);
+  const temporizador = useRef(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
+    // El enlace de Avisos ("Poner horario") llega con #horario: abierto y a la vista.
+    if (window.location.hash === "#horario") {
+      setAbierto("horario");
+      requestAnimationFrame(() => document.getElementById("horario")?.scrollIntoView({ behavior: "smooth" }));
+    }
   }, []);
 
   const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
-  const [editando, setEditando] = useState(false);
-  const [editandoCaja, setEditandoCaja] = useState(false);
-  function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3000); }
+  function flash(m) {
+    setMsg(m);
+    clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => setMsg(null), 3000);
+  }
   // Cuántos teléfonos se enteraron: iPhone (APNs) y Android (avisos web + Google Wallet).
   const resumenAviso = (a) => {
     if (!a) return "";
@@ -51,6 +65,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
     if (android) partes.push(`${android} Android`);
     return partes.length ? ` · avisados: ${partes.join(", ")}` : "";
   };
+  const plegar = (que) => setAbierto((a) => (a === que ? null : que));
 
   // Cliente de ejemplo a medida de la cartilla que se está editando: con dos
   // cartillas, las dos a medias (antes solo se rellenaba la primera).
@@ -77,56 +92,53 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
     setReal(data);
   }
 
-  async function guardar() {
-    const ubicaciones = ubicacion ? [ubicacion] : [];
-    const res = await fetch(`/api/negocio?b=${negocio}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ubicaciones }),
-    });
-    const data = await res.json();
-    if (!res.ok) return flash(data.error || "Error al guardar");
-    setN(data);
-    flash(`Guardado${resumenAviso(data.aviso)}`);
+  /** Guarda una pieza suelta de la tienda (PUT /api/negocio). Devuelve lo guardado o null. */
+  async function guardarPieza(cambios) {
+    try {
+      const res = await fetch(`/api/negocio?b=${negocio}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cambios),
+      });
+      const data = await res.json();
+      if (!res.ok) { flash(data.error || "No se pudo guardar"); return null; }
+      return data;
+    } catch {
+      flash("Sin conexión: no se ha guardado");
+      return null;
+    }
   }
 
-  // Se guarda al tocarlo: no sale en el pase, así que no espera al botón de la cartilla.
+  async function guardarUbicacion() {
+    const data = await guardarPieza({ ubicaciones: ubicacion ? [ubicacion] : [] });
+    if (!data) return;
+    setN(data);
+    setAbierto(null);
+    flash(`Ubicación guardada${resumenAviso(data.aviso)}`);
+  }
+
+  // Se guarda al tocarlo: no sale en el pase, así que no espera a ningún botón.
   async function cambiarPedirNombre(pedirNombre) {
     set("pedirNombre", pedirNombre);
-    const res = await fetch(`/api/negocio?b=${negocio}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pedirNombre }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      set("pedirNombre", !pedirNombre);
-      return flash(data.error || "No se pudo guardar");
-    }
+    const data = await guardarPieza({ pedirNombre });
+    if (!data) return set("pedirNombre", !pedirNombre);
     setN((p) => ({ ...p, pedirNombre: data.pedirNombre }));
     flash(pedirNombre ? "Al escanear se pedirá el nombre" : "Al escanear irán directos a la Wallet");
   }
 
-  async function emitir() {
-    const res = await fetch(`/api/crear?b=${negocio}`, { method: "POST" });
-    const data = await res.json();
-    flash(res.ok ? `Tarjeta emitida · código ${data.codigo}` : data.error);
-  }
-
-  // Un empleado que se va, un móvil perdido: contraseña nueva y la vieja deja de valer.
-  async function cambiarClaveCaja() {
-    if (!window.confirm(`¿Cambiar la contraseña de la caja?
-
-La actual dejará de valer para entrar. Tendrás que escribir la nueva en el móvil de la caja.`)) return;
-    const res = await fetch(`/api/accesos/caja?b=${negocio}`, { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) return flash(data.error || "No se pudo cambiar");
-    setClaveCaja(data);
+  // «● Abierto hasta las…» en la tarjeta: la misma pieza que en Editar tarjeta.
+  async function cambiarEnPase(on) {
+    const antes = n.tema;
+    setN((p) => ({ ...p, tema: { ...p.tema, abierto: on } }));
+    const data = await guardarPieza({ tema: { abierto: on } });
+    if (!data) return setN((p) => ({ ...p, tema: antes }));
+    setN(data);
+    flash(on ? `La tarjeta dirá si estás abierto${resumenAviso(data.aviso)}` : `La tarjeta ya no dice si estás abierto${resumenAviso(data.aviso)}`);
   }
 
   async function copiarTap() {
-    try { await navigator.clipboard.writeText(`${origin}/api/tap?b=${negocio}`); flash("Enlace copiado"); }
-    catch { flash(`${origin}/api/tap?b=${negocio}`); }
+    try { await navigator.clipboard.writeText(tapUrl); flash("Enlace copiado"); }
+    catch { flash(tapUrl); }
   }
 
   // El estado del pase con la hora de la tienda. `origin` vacío = aún en el
@@ -137,6 +149,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
   const accent = n.tema.accent;
   const tapUrl = `${origin}/api/tap?b=${negocio}`;
   const esCupon = n.tipo === "descuento";
+  const mapaCambiado = JSON.stringify(ubicacion) !== JSON.stringify(guardada);
 
   return (
     <main style={pagina}>
@@ -144,55 +157,54 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
         <CabeceraGestion negocio={n} slug={negocio} activa="manager" ayuda />
 
         <div style={grid}>
-          {/* ---------------------------------------------------- cartilla */}
-          <section style={panel}>
+          {/* ------------------------------------------------ la tienda */}
+          <section style={{ ...panel, paddingTop: 6, paddingBottom: 6 }}>
             {/* Sellos, premio, colores, logo… todo lo que se VE en la tarjeta se
                 cambia tocándolo en ella, en el editor. Aquí solo el resumen. */}
-            <div data-recorrido="cartilla">
-            <h2 style={h2}>Tu tarjeta</h2>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <MarcaTienda tema={n.tema} tam={44} icono />
-              <div style={{ flex: 1, minWidth: 160, fontSize: 14 }}>
-                <strong style={{ display: "block" }}>{n.nombre}</strong>
-                <span style={{ color: C.suave, fontSize: 13 }}>
-                  {esCupon
-                    ? `Cupón · ${n.premio}`
-                    : (n.cartillas || [{ meta: n.meta, premio: n.premio }]).map((c) => `${c.meta} sellos · ${c.premio}`).join(" — ")}
-                </span>
-              </div>
-              <button type="button" onClick={() => setEditando(true)} style={{ ...botonPrimario(accent), display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <Icono nombre="editar" tam={16} /> Editar tarjeta
-              </button>
-            </div>
-            </div>
-
-            {/* La caja: qué puede hacer y cómo se ve, en su editor con vista previa. */}
-            <div data-recorrido="botones-caja" style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
-            <h2 style={h2}>La caja</h2>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ width: 44, height: 44, borderRadius: 12, background: `${accent}14`, color: accent, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                <Icono nombre="movil" tam={22} />
-              </span>
-              <div style={{ flex: 1, minWidth: 160, fontSize: 13, color: C.suave }}>
-                {resumenCaja(n)}
-              </div>
-              <button type="button" onClick={() => setEditandoCaja(true)} style={{ ...botonSecundario, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <Icono nombre="editar" tam={16} /> Editar vista de caja
-              </button>
-            </div>
-            </div>
-
-            <div data-recorrido="ubicacion">
-            <label style={etiqueta}>Ubicación de la tienda</label>
-            <MapaUbicacion
-              valor={ubicacion}
-              onChange={(v) => setUbicacion(v && { ...ubicacion, ...v })}
-              accent={accent}
-              flash={flash}
+            <Bloque
+              primero data-recorrido="cartilla" accent={accent} icono="cartera" titulo="Tu tarjeta"
+              resumen={esCupon
+                ? `Cupón · ${n.premio}`
+                : (n.cartillas || [{ meta: n.meta, premio: n.premio }]).map((c) => `${c.meta} sellos · ${c.premio}`).join(" — ")}
+              accion={{ texto: "Editar tarjeta", icono: "editar", onClick: () => setEditando(true) }}
             />
-            </div>
-
-            <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 14 }}>Guardar ubicación</button></div>
+            {/* La caja: qué puede hacer y cómo se ve, en su editor con vista previa. */}
+            <Bloque
+              data-recorrido="botones-caja" accent={accent} icono="movil" titulo="La caja" resumen={resumenCaja(n)}
+              accion={{ texto: "Editar vista de caja", icono: "editar", onClick: () => setEditandoCaja(true) }}
+            />
+            <Bloque
+              id="horario" data-recorrido="horario" accent={accent} icono="reloj" titulo="Horario"
+              resumen={n.horario ? resumenHorario(n.horario) : "Sin horario: los avisos automáticos no salen hasta que lo pongas."}
+              falta={!n.horario} abierto={abierto === "horario"}
+              accion={{
+                texto: abierto === "horario" ? "Cerrar" : n.horario ? "Cambiar horario" : "Poner horario",
+                icono: abierto === "horario" ? "cerrar" : "editar",
+                onClick: () => plegar("horario"),
+              }}
+            >
+              <Horario
+                slug={negocio} inicial={n.horario} accent={accent} flash={flash} reloj={reloj}
+                onGuardado={(data) => { setN(data); setAbierto(null); }}
+                enPase={n.tema.abierto !== false} onEnPase={cambiarEnPase}
+              />
+            </Bloque>
+            <Bloque
+              data-recorrido="ubicacion" accent={accent} icono="ubicacion" titulo="Ubicación"
+              resumen={guardada ? "Puesta: el iPhone saca la tarjeta al pasar cerca." : "Sin poner: la tarjeta no aparece sola al acercarse."}
+              abierto={abierto === "mapa"}
+              accion={{
+                texto: abierto === "mapa" ? (mapaCambiado ? "Descartar" : "Cerrar") : guardada ? "Cambiar" : "Elegir en el mapa",
+                icono: abierto === "mapa" ? "cerrar" : "ubicacion",
+                onClick: () => { setUbicacion(guardada); plegar("mapa"); },
+              }}
+            >
+              <MapaUbicacion valor={ubicacion} onChange={(v) => setUbicacion(v && { ...ubicacion, ...v })} accent={accent} flash={flash} />
+              <button type="button" onClick={guardarUbicacion} disabled={!mapaCambiado}
+                style={{ ...botonPrimario(accent), marginTop: 12, opacity: mapaCambiado ? 1 : 0.45 }}>
+                Guardar ubicación
+              </button>
+            </Bloque>
           </section>
 
           {/* ------------------------------------------------ vista previa */}
@@ -220,21 +232,16 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             )}
 
             <PaseVista negocio={n} cliente={clienteVista} qrTexto={`${origin}/w/${clienteVista.serial}`} estado={estadoVista} />
-            {n.horario && !reloj && (
+            {n.horario && !reloj && n.tema.abierto !== false && (
               <p style={{ ...texto, margin: "10px 0 0" }}>
                 Con el reloj de los avisos en marcha, el pase dirá también si la tienda está abierta.
               </p>
             )}
           </section>
 
-          {/* ---------------------------------------- horario · tag · caja */}
-          <section style={panel}>
-            <div data-recorrido="horario">
-            <Horario slug={negocio} inicial={n.horario} accent={accent} flash={flash} onGuardado={(data) => setN(data)} />
-            </div>
-
-            <div data-recorrido="tag">
-            <h2 style={{ ...h2, marginTop: 26, paddingTop: 20, borderTop: `1px solid ${C.borde}` }}>Tag NFC y QR del mostrador</h2>
+          {/* ------------------------------------------------ el mostrador */}
+          <section style={panel} data-recorrido="tag">
+            <h2 style={h2}>QR y tag del mostrador</h2>
             <p style={texto}>
               {n.pedirNombre
                 ? "Quien lo toque o escanee escribe su nombre y se lleva su tarjeta."
@@ -242,31 +249,24 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             </p>
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
               {origin && <QrImagen texto={tapUrl} lado={104} style={{ border: `1px solid ${C.borde}`, borderRadius: 10, padding: 6 }} />}
-              <div style={{ flex: 1, minWidth: 170 }}>
-                <div style={{ fontSize: 12, color: C.tenue, wordBreak: "break-all", marginBottom: 8 }}>{tapUrl}</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={copiarTap} style={{ ...botonPequeno, whiteSpace: "nowrap" }}>Copiar enlace</button>
-                  <button onClick={emitir} style={{ ...botonPequeno, whiteSpace: "nowrap" }}>Emitir una</button>
-                </div>
+              {/* El enlace con su botón de copiar, como un campo: no hace falta otro botón. */}
+              <div style={enlace}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, color: C.suave }} title={tapUrl}>
+                  {tapUrl}
+                </span>
+                <button type="button" onClick={copiarTap} aria-label="Copiar el enlace" title="Copiar el enlace" style={botonCopiar}>
+                  <Icono nombre="copiar" tam={16} />
+                </button>
               </div>
             </div>
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
 
-            <label style={{ ...accionRow(n.pedirNombre, accent), marginTop: 14 }} data-recorrido="pedir-nombre">
-              <input type="checkbox" checked={Boolean(n.pedirNombre)} onChange={(e) => cambiarPedirNombre(e.target.checked)} />
-              <span>
-                <strong style={{ fontWeight: 600, fontSize: 14 }}>Pedir el nombre al escanear</strong><br />
-                <span style={{ color: C.suave, fontSize: 13 }}>
-                  Un paso más antes de la Wallet, pero la caja sabe quién es cada uno.
-                </span>
-              </span>
-            </label>
-            </div>
-
-            <h2 style={{ ...h2, marginTop: 26 }}>Acceso de la caja</h2>
-            <p style={texto}>Usuario <strong style={{ color: C.texto }}>{negocio}-caja</strong></p>
-            <button onClick={cambiarClaveCaja} style={botonPequeno}>Cambiar contraseña de la caja</button>
-            {claveCaja && <ClaveNueva accesos={[claveCaja]} onCerrar={() => setClaveCaja(null)} />}
+            <FilaInterruptor
+              data-recorrido="pedir-nombre" style={{ marginTop: 14 }}
+              on={Boolean(n.pedirNombre)} onClick={() => cambiarPedirNombre(!n.pedirNombre)} accent={accent}
+              titulo="Pedir el nombre al escanear"
+              texto="Un paso más antes de la Wallet, pero la caja sabe quién es cada uno."
+            />
           </section>
         </div>
 
@@ -313,10 +313,14 @@ function resumenCaja(n) {
 
 const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20, marginTop: 20, alignItems: "start" };
 const texto = { color: C.suave, fontSize: 13, margin: "-6px 0 10px" };
-const accionRow = (on, accent) => ({
-  display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", borderRadius: 10,
-  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}0f` : "#fff", cursor: "pointer",
-});
+const enlace = {
+  flex: "1 1 170px", minWidth: 0, display: "flex", alignItems: "center", gap: 6, padding: "4px 4px 4px 10px",
+  border: `1px solid ${C.bordeFuerte}`, borderRadius: RADIO.boton, background: C.panelSuave,
+};
+const botonCopiar = {
+  width: 34, height: 34, flexShrink: 0, display: "grid", placeItems: "center", padding: 0, cursor: "pointer",
+  border: `1px solid ${C.borde}`, borderRadius: 8, background: "#fff", color: C.texto,
+};
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
   background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,

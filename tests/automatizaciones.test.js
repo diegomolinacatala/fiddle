@@ -3,6 +3,7 @@ import {
   DISPAROS, LISTA_DISPAROS, PLANTILLAS, VARIABLES, renderTexto, variablesDesconocidas, contextoDe, enviosDe, conEnvio,
   elegibles, candidatos, momentoDelDia, tocaAhora, proximoEnvio, porRetirar, validarReglas, normalizarReglas, normalizarRegla,
   diasTexto, fraseRegla, reglaNueva, idNuevo, grupoDeRegla, reglaDeGrupo, etiquetaEnvio, normalizarPausa, VENTANA_MIN,
+  FRASES, varsDeEjemplo, PAUSA_POR_DEFECTO,
 } from "@/lib/automatizaciones";
 import { componerNegocio, SEMILLAS } from "@/lib/negocios";
 import { perfilDe } from "@/lib/crm";
@@ -91,6 +92,28 @@ describe("el texto de cada uno", () => {
     expect(x.vars).toMatchObject({ faltan: "1 café", premio: "café gratis" });
     expect(ctx({ sellos: 6, sellos2: 2, visitas: 8 }).vars.faltan).toBe("2 cookies");
     expect(ctx({ sellos: 7, visitas: 7 }, nube).vars.faltan).toBe("1 sello");
+  });
+
+  it("las frases solo les salen a quienes encajan; al resto, nada", () => {
+    const cerca = ctx({ sellos: 7, visitas: 7, ultima_visita: hace(1) });
+    expect(cerca.vars.si_cerca).toBe("Te falta 1 cookie para tu cookie gratis.");
+    expect(renderTexto("Hoy 2x1 en cafés. {si_cerca}", cerca.vars)).toBe("Hoy 2x1 en cafés. Te falta 1 cookie para tu cookie gratis.");
+    const lejos = ctx({ sellos: 2, visitas: 3, ultima_visita: hace(1) });
+    expect(lejos.vars.si_cerca).toBe("");
+    expect(renderTexto("Hoy 2x1 en cafés. {si_cerca}", lejos.vars)).toBe("Hoy 2x1 en cafés.");
+    // Con un premio esperando, eso manda: no se le dice "te falta".
+    const premio = ctx({ sellos: 7, guardados2: 1, visitas: 12, ultima_visita: hace(1) });
+    expect(premio.vars).toMatchObject({ si_premio: "Tu café gratis te está esperando.", si_cerca: "" });
+    // Viene cada ~9 días y lleva 40 sin venir.
+    expect(ctx({ visitas: 8, creado: hace(100), ultima_visita: hace(40) }).vars.si_ausente).toBe("¡Cuánto tiempo sin verte!");
+    expect(lejos.vars.si_ausente).toBe("");
+  });
+
+  it("cada frase y cada dato tiene su nombre para el manager, y el ejemplo las enseña todas", () => {
+    for (const v of [...VARIABLES, ...FRASES]) expect(v.nombre.length).toBeGreaterThan(3);
+    const ej = varsDeEjemplo({ disparo: "todos" }, deli);
+    for (const f of FRASES) expect(ej[f.clave]).toBeTruthy();
+    expect(variablesDesconocidas("{si_cerca} {si_premio} {visitas}")).toEqual([]);
   });
 
   it("con un premio pendiente, {premio} es ese", () => {
@@ -249,7 +272,8 @@ describe("validar lo que llega del manager", () => {
   });
 
   it("la pausa va de 0 a 30 días", () => {
-    expect([normalizarPausa(-2), normalizarPausa(99), normalizarPausa("x"), normalizarPausa(2)]).toEqual([0, 30, 3, 2]);
+    expect([normalizarPausa(-2), normalizarPausa(99), normalizarPausa("x"), normalizarPausa(2)]).toEqual([0, 30, PAUSA_POR_DEFECTO, 2]);
+    expect(PAUSA_POR_DEFECTO).toBe(7); // de partida, una semana entre avisos a la misma persona
   });
 });
 

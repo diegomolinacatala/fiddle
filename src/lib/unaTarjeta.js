@@ -57,6 +57,9 @@ export function fusionar(viejo, nuevo, negocio) {
     nota: viejo.nota ?? nuevo.nota ?? null,
     visitas: (viejo.visitas || 0) + (nuevo.visitas || 0),
     ultima_visita: ultima(viejo.ultima_visita, nuevo.ultima_visita),
+    // Cliente desde la PRIMERA: con el alta de la nueva, el CRM le mediría el
+    // ritmo (y el tope de visitas) desde ayer.
+    creado: primera(viejo.creado, nuevo.creado),
     instalado: primera(viejo.instalado, nuevo.instalado),
     origen: viejo.origen ?? nuevo.origen ?? null,
   };

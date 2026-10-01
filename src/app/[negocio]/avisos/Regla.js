@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Icono from "@/app/Icono";
 import PaseVista from "@/app/PaseVista";
+import { Interruptor } from "@/app/Interruptor";
+import TextoAviso from "./TextoAviso";
 import {
-  DISPAROS, LISTA_DISPAROS, VARIABLES, MAX_TEXTO, fraseRegla, renderTexto, candidatos, elegibles,
-  proximoEnvio, variablesDesconocidas,
+  DISPAROS, LISTA_DISPAROS, fraseRegla, renderTexto, candidatos, elegibles, proximoEnvio, variablesDesconocidas, varsDeEjemplo,
 } from "@/lib/automatizaciones";
 import { DIAS, DIAS_CORTOS } from "@/lib/horario";
-import { singular } from "@/lib/acciones";
 import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, botonPequeno, RADIO } from "@/app/ui";
 
 // ============================================================================
@@ -75,7 +75,6 @@ export default function Regla({ regla, negocio, grupos, contextos, envios, topes
 
 function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocupado, acciones }) {
   const [r, setR] = useState(inicial);
-  const texto = useRef(null);
   const accent = negocio.tema.accent;
   const d = DISPAROS[r.disparo];
   const set = (k, v) => setR((p) => ({ ...p, [k]: v }));
@@ -101,15 +100,6 @@ function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocu
       nombre: p.nombre === DISPAROS[p.disparo]?.label ? nuevo.label : p.nombre,
       caduca: Boolean(nuevo.caduca),
     }));
-  }
-
-  function meterVariable(clave) {
-    const el = texto.current;
-    const trozo = `{${clave}}`;
-    const desde = el?.selectionStart ?? r.texto.length;
-    const hasta = el?.selectionEnd ?? r.texto.length;
-    set("texto", (r.texto.slice(0, desde) + trozo + r.texto.slice(hasta)).slice(0, MAX_TEXTO));
-    requestAnimationFrame(() => el?.focus());
   }
 
   const encajan = candidatos(r, contextos);
@@ -188,23 +178,8 @@ function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocu
             <span>Quitarlo de la tarjeta al cerrar ese día <span style={{ color: C.tenue }}>(para promos de un día)</span></span>
           </label>
 
-          <label style={etiqueta} htmlFor={`texto-${r.id}`}>Lo que le llega</label>
-          <textarea
-            id={`texto-${r.id}`} ref={texto} rows={3} value={r.texto} maxLength={MAX_TEXTO}
-            onChange={(e) => set("texto", e.target.value)} style={{ ...campo, resize: "vertical", fontFamily: "inherit" }}
-          />
-          <div style={{ fontSize: 12, color: r.texto.length > MAX_TEXTO - 20 ? C.mal : C.tenue, marginTop: 4 }}>
-            {r.texto.length}/{MAX_TEXTO}
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-            {VARIABLES.map((v) => (
-              <button key={v.clave} type="button" onClick={() => meterVariable(v.clave)} title={v.ayuda} style={chipVariable}>
-                {`{${v.clave}}`}
-              </button>
-            ))}
-          </div>
-          <p style={ayuda}>Toca una para meterla: cada cliente recibe la suya (su premio, sus días…).</p>
-          {malas.length > 0 && <p style={{ ...ayuda, color: C.mal }}>No existe {`{${malas[0]}}`}. Usa las de arriba.</p>}
+          <TextoAviso id={`texto-${r.id}`} valor={r.texto} onChange={(v) => set("texto", v)} vars={vars} ejemplo={varsDeEjemplo(r, negocio)}
+            encajan={encajan} quien={muestra?.vars.nombre || null} accent={accent} />
         </div>
 
         <div>
@@ -253,43 +228,9 @@ function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocu
   );
 }
 
-/** Variables de muestra cuando no le toca a nadie: las de la tienda, sin inventar un nombre. */
-function varsDeEjemplo(r, negocio) {
-  const c = negocio.cartillas?.[0];
-  return {
-    premio: negocio.premio,
-    faltan: c ? `1 ${singular(c.nombre)}` : "1 sello",
-    dias: String(["sin_venir", "segunda_visita"].includes(r.disparo) ? r.valor : 21),
-    racha: String(r.disparo === "racha" ? r.valor : 4),
-    nombre: "",
-    tienda: negocio.nombre,
-  };
-}
-
-/** Encendido / apagado. Rectángulo redondeado, no píldora: como el resto de lo que se pulsa. */
-export function Interruptor({ on, onClick, accent, disabled, etiqueta: texto }) {
-  return (
-    <button
-      type="button" role="switch" aria-checked={on} aria-label={`${texto}: ${on ? "encendido" : "apagado"}`}
-      onClick={onClick} disabled={disabled}
-      style={{
-        width: 42, height: 24, borderRadius: 8, border: 0, padding: 3, flexShrink: 0, cursor: disabled ? "default" : "pointer",
-        background: on ? accent : C.bordeFuerte, transition: "background .15s", display: "flex",
-        justifyContent: on ? "flex-end" : "flex-start",
-      }}
-    >
-      <span style={{ width: 18, height: 18, borderRadius: 6, background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.25)" }} />
-    </button>
-  );
-}
-
 const cita = { margin: 0, fontSize: 14, color: C.suave, background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, padding: "9px 12px" };
 const ayuda = { fontSize: 12.5, color: C.tenue, margin: "6px 0 0", lineHeight: 1.45 };
 const cuenta = { display: "flex", alignItems: "baseline", gap: 10, marginTop: 14, padding: "12px 14px", border: "1px solid", borderRadius: RADIO.fila };
-const chipVariable = {
-  padding: "4px 8px", borderRadius: 7, border: `1px solid ${C.borde}`, background: C.panelSuave, color: C.texto,
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12.5, cursor: "pointer",
-};
 const chipDia = (on, abre, accent) => ({
   width: 36, height: 34, borderRadius: RADIO.boton, fontWeight: 600, fontSize: 13,
   border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}14` : abre ? "#fff" : C.panelSuave,

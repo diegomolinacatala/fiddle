@@ -121,6 +121,14 @@ y las vuelva a añadir (mientras tanto, se siguen actualizando con el general).
 
 Cada certificado caduca al año y se renueva por separado (pasos 2–4, mismo ID).
 
+**Las tarjetas que ya estaban instaladas siguen en el general.** Para Wallet un pase
+es Pass Type ID + serial: si una de esas se volviera a descargar firmada con el ID
+nuevo, el iPhone la tomaría por otra y el cliente tendría dos, con los mismos sellos y
+sin apilar. Por eso `/api/pase/<serial>` firma con el ID con que la tarjeta ya está
+registrada (`configDeDescarga`) y solo las que no están en ningún iPhone estrenan el
+de la tienda. Si a alguien ya le pasó, puede borrar cualquiera de las dos: son la
+misma tarjeta.
+
 ## Cómo funciona por dentro
 
 ```

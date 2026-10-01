@@ -24,10 +24,12 @@ const c = (o) => ({ sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2:
 
 describe("fusionar (pura)", () => {
   it("lo normal: la nueva está a cero y se queda con todo lo de la vieja", () => {
-    const viejo = c({ serial: "v", codigo: "AAA", sellos: 5, premios: 2, guardados: 1, nombre: "Ana", visitas: 9, origen: "tap", instalado: "2026-09-01" });
-    const nuevo = c({ serial: "n", codigo: "BBB", instalado: "2026-09-20" });
+    const viejo = c({ serial: "v", codigo: "AAA", sellos: 5, premios: 2, guardados: 1, nombre: "Ana", visitas: 9, origen: "tap", instalado: "2026-09-01", creado: "2026-08-30T10:00:00.000Z" });
+    const nuevo = c({ serial: "n", codigo: "BBB", instalado: "2026-09-20", creado: "2026-09-20T10:00:00.000Z" });
     expect(fusionar(viejo, nuevo, nube)).toMatchObject({
       sellos: 5, premios: 2, guardados: 1, codigo: "AAA", nombre: "Ana", visitas: 9, origen: "tap", instalado: "2026-09-01",
+      // Cliente desde la primera tarjeta: el CRM mide su ritmo desde ahí.
+      creado: "2026-08-30T10:00:00.000Z",
     });
   });
 

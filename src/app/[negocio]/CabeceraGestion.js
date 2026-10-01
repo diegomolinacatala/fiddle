@@ -9,11 +9,13 @@ import { titulo, solapa } from "@/app/ui";
 //   Tienda    cómo es la tarjeta, qué hace la caja, cuándo abre, el QR
 //   Clientes  quién viene (y la exportación, junto a la lista que exporta)
 //   Avisos    qué se les dice: a mano (a todos o a un grupo) y automático
+// Y Ajustes, aparte y al final: lo de la cuenta (contraseñas), que se toca casi nunca.
 const SECCIONES = [
   ["manager", "Tienda", "puerta"],
   ["crm", "Clientes", "clientes"],
   ["avisos", "Avisos", "megafono"],
 ];
+const AJUSTES = ["ajustes", "Ajustes", "ajustes"];
 
 // Cabecera de las pantallas del dueño: marca, nombre y las mismas pestañas en
 // todas, para que se muevan entre ellas sin buscar.
@@ -34,8 +36,9 @@ export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }
         </div>
       </div>
       <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {SECCIONES.map(([ruta, texto, icono]) => (
-          <Link key={ruta} href={`/${slug}/${ruta}`} aria-current={ruta === activa ? "page" : undefined} style={solapa(ruta === activa, accent)}
+        {[...SECCIONES, AJUSTES].map(([ruta, texto, icono]) => (
+          <Link key={ruta} href={`/${slug}/${ruta}`} aria-current={ruta === activa ? "page" : undefined}
+            style={{ ...solapa(ruta === activa, accent), ...(ruta === "ajustes" ? { marginLeft: "auto" } : {}) }}
             data-recorrido={`pestana-${ruta === "crm" ? "clientes" : ruta}`}>
             <Icono nombre={icono} tam={16} /> {texto}
           </Link>

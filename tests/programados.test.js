@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   elegibles, momentoDelDia, normalizarRegla, validarReglas, programadoNuevo, enviosDe, fraseRegla, proximoEnvio,
-  normalizarLimiteDia, esProgramado,
+  normalizarLimiteDia, esProgramado, frecuenciaSemanal, proximoDiaAbierto,
 } from "@/lib/automatizaciones";
 
 const HORA = 60 * 60 * 1000;
@@ -51,9 +51,26 @@ describe("avisos programados", () => {
     expect(vieja).not.toHaveProperty("fecha");
   });
 
-  it("el máximo del día va de 1 a 3 (lo que Google deja sonar)", () => {
-    expect(normalizarLimiteDia(undefined)).toBe(2);
+  it("el máximo del día va de 1 a 3 (lo que Google deja sonar), y de partida 1", () => {
+    expect(normalizarLimiteDia(undefined)).toBe(1);
     expect(normalizarLimiteDia(9)).toBe(3);
-    expect(normalizarLimiteDia(0)).toBe(2);
+    expect(normalizarLimiteDia(0)).toBe(1);
+  });
+
+  it("uno nuevo sale UNA vez, el próximo día que abre: lo frecuente se elige a propósito", () => {
+    // Abre de lunes a sábado. Hoy es sábado 3: el próximo, el lunes 5.
+    const lunesASabado = { ...horario, semana: horario.semana.map((t, i) => (i === 6 ? null : t)) };
+    expect(proximoDiaAbierto(lunesASabado, "2026-10-03")).toBe("2026-10-05");
+    const r = programadoNuevo([], {}, { horario: lunesASabado, hoy: "2026-10-03" });
+    expect(r).toMatchObject({ fecha: "2026-10-05", cada: "vez" });
+    // Lo que llega ya relleno (desde Clientes) manda.
+    expect(programadoNuevo([], { dias: [1] }, { horario, hoy: "2026-10-03" })).not.toHaveProperty("fecha");
+  });
+
+  it("cada semana: uno es lo recomendable; varios, se avisa; todos, es diario", () => {
+    expect(frecuenciaSemanal(1, 6).nivel).toBe("bien");
+    expect(frecuenciaSemanal(2, 6).nivel).toBe("ojo");
+    expect(frecuenciaSemanal(3, 6).nivel).toBe("mal");
+    expect(frecuenciaSemanal(6, 6).texto).toMatch(/DIARIO/);
   });
 });
