@@ -156,9 +156,13 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
       ([docs/AVISOS.md](docs/AVISOS.md#encender-el-reloj-una-vez-lo-hace-fiddle)).
 - [ ] **Confirmar con La Delicantería** el horario, los festivos y el regalo de la racha
       (hoy promete una cookie). Todo se cambia desde su manager.
-- [ ] En producción, si Nube, Fade o Forno siguen saliendo en `/admin` (porque tienen fila
-      en la base), **archivarlas** desde ahí. Sus pases de prueba dejan de actualizarse.
-- [ ] Quitar de Vercel las `CLAVE_NUBE_*`, `CLAVE_FADE_*` y `CLAVE_FORNO_*`.
+- [ ] En producción siguen en la base (01-10-2026) Nube, Fade, Forno y **Project 68**
+      (¿de quién es?): **borrarlas o archivarlas** desde `/admin`. Sus pases de prueba
+      dejan de actualizarse.
+- [ ] Quitar de Vercel las `CLAVE_*` y `PIN_*` de Nube, Fade y Forno: mientras existan esas
+      tiendas, todavía dejan entrar en ellas.
+- [ ] **Cuentas de persona** (lo decidido está en [CLAUDE.md](CLAUDE.md#cuentas-lo-decidido-01-10-2026-sin-empezar)).
+      Antes de empezar: dominio propio, PIN por defecto y si se entra con Google/Apple.
 
 ### Contraseñas en la base — hecho (23-09-2026)
 - [x] Tabla `accesos` (hash scrypt). Se generan al crear la tienda; se cambian en

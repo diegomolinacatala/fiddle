@@ -12,6 +12,10 @@ Google Wallet cuando haya credenciales), multi-tienda, en
 Next.js 15 + Supabase, desplegado en Vercel desde `main`
 (<https://fiddle-zeta.vercel.app>). Los dueños son Victor y Diego.
 
+**Desde el 30-09-2026 hay un cliente de pago: La Delicantería.** Producción ya no es
+un sitio de pruebas: hay clientes de verdad con sus sellos. Nada de accesos de
+prueba, y nada se borra en la base sin preguntar.
+
 ## Reglas de la casa
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
@@ -216,13 +220,49 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - Si un usuario tiene contraseña en la base, **solo vale esa**. Sin fila, vale la
   variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
   también se cae a la variable: una caja sin poder entrar es peor.
-- Los admins (victor, diego) siguen solo con variables.
+- Los admins (victor, diego) siguen solo con variables: `CLAVE_ADMIN_VICTOR` y
+  `CLAVE_ADMIN_DIEGO` en Vercel. Las eligen ellos y es decisión suya: no se cambian
+  ni se "arreglan" desde el código. Una variable cambiada en Vercel **no vale hasta
+  el siguiente despliegue** (Deployments → Redeploy).
+- **Los accesos de prueba solo existen en local** (contraseña = usuario y la lista en
+  el login). `USUARIOS_DEMO` ya no se lee: hasta el 01-10-2026 estaba a `1` en Vercel
+  y `/api/login` publicaba todos los usuarios con su contraseña, también los de La
+  Delicantería. No volver a meter un interruptor que los encienda en producción.
 - Cambiar una contraseña **no cierra las sesiones ya abiertas** (la caja dura 30 días):
   el token de sesión no sabe de contraseñas. Si hiciera falta, bastaría con cambiar
   `AUTH_SECRET` (echa a todos).
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
+
+## Cuentas: lo decidido (01-10-2026, sin empezar)
+
+Hoy una cuenta es una tienda con un rol (`delicanteria`, `delicanteria-caja`) y la
+caja es una contraseña compartida. Vamos a lo más profesional a largo plazo, lo
+cueste lo que cueste (es lo que hacen Square, Loopy o Boomerangme):
+
+- **Cuentas de persona**: cada uno su email y su contraseña. Una tabla
+  `miembros (persona, tienda, rol)` con los roles dueño, encargado y empleado. Un
+  dueño con dos tiendas entra con una sola cuenta; quitar a alguien no toca a nadie más.
+- **Quién entra lo decide Supabase Auth** (verificar el email, recuperar la contraseña,
+  enlace mágico, Google/Apple, doble factor). **Qué puede hacer** lo deciden nuestras
+  tablas, como ahora. Ni login hecho a mano ni Clerk (datos en EE. UU. y un encargado
+  del tratamiento más).
+- **La caja es un dispositivo vinculado**: el dueño pulsa "Añadir caja" en el manager y
+  el móvil del mostrador escanea un código que dura unos minutos. Sin contraseña
+  compartida; el manager ve sus cajas y desconecta la que quiera.
+- **PIN personal por empleado** (4-6 cifras) en la caja. Cada tienda elige cuándo se
+  pide: siempre, solo para dar premios o nunca.
+- **Sesiones guardadas en el servidor**: cambiar la contraseña o quitar a alguien cierra
+  sus sesiones (hoy no pasa).
+- **Registro de actividad**: quién dio cada sello y cada premio, desde qué caja, y quién
+  cambió qué.
+- Invitaciones por email para todos los roles (`lib/invitaciones.js`, ampliado).
+  Victor y Diego pasarán a ser cuentas de persona con rol de plataforma.
+
+Falta decidir: **dominio propio** (sin él los correos de recuperación no llegan bien),
+el **PIN por defecto** (la propuesta es "solo para premios") y si se entra con
+**Google/Apple**.
 
 ## Pantallas en el móvil
 
@@ -240,8 +280,9 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 
 - Las tiendas **viven en la base**, se crean y se borran desde `/admin`.
   `negocios.js` solo aporta semillas y plantillas.
-- **La tienda es La Delicantería**: es la única semilla. Nube, Fade y Forno existen
-  solo para los tests (`tests/tiendasDePrueba.js`, cargado por `setupFiles` de
+- **La tienda es La Delicantería**: es la única semilla. En producción aún quedan
+  Nube, Fade, Forno y "Project 68" en la base (pendiente de borrar desde `/admin`).
+  Nube, Fade y Forno existen solo para los tests (`tests/tiendasDePrueba.js`, cargado por `setupFiles` de
   vitest; un test con `vi.resetModules()` lo vuelve a importar). No devolverlas a
   `negocios.js`.
 - Tres roles: `caja`, `manager`, `admin`. El admin (victor/diego) entra en todo.
