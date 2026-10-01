@@ -23,7 +23,7 @@ import { normalizarCartillas } from "./validacion";
 import { normalizarContacto } from "./contacto";
 import { normalizarCaja } from "./caja";
 import { normalizarHorario } from "./horario";
-import { normalizarReglas, normalizarPausa, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
+import { normalizarReglas, normalizarPausa, normalizarLimiteDia, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
 // de uno de estos y se le cambia el emoji y el color de acento.
@@ -504,6 +504,8 @@ export function componerNegocio(slug, guardado) {
     horario: normalizarHorario(guardada(c, "horario", semilla)),
     automatizaciones: normalizarReglas(guardada(c, "automatizaciones", semilla)) ?? normalizarReglas(PLANTILLAS),
     pausaAvisos: normalizarPausa(guardada(c, "pausaAvisos", semilla) ?? PAUSA_POR_DEFECTO),
+    // Como mucho N avisos al día a la misma persona (Google corta en 3).
+    limiteAvisosDia: normalizarLimiteDia(c.limiteAvisosDia),
     // Los dos, apagados salvo que el manager los encienda. Avisar solo a los
     // clientes de una tienda es algo que la tienda elige, no algo que le llega
     // con un despliegue; y pedir el nombre es un paso más antes de la Wallet.

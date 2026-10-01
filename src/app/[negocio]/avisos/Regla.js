@@ -20,18 +20,20 @@ import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, botonPequeno
 // les llegaría y el pase de muestra cambian solos: se ve lo que se programa.
 // ============================================================================
 
-export default function Regla({ regla, negocio, grupos, contextos, envios, pausa, abierta, nueva, ocupado, acciones }) {
+export default function Regla({ regla, negocio, grupos, contextos, envios, topes, abierta, nueva, ocupado, acciones, Formulario = null }) {
   const accent = negocio.tema.accent;
   const { llegan, muestra } = useMemo(() => {
-    const lista = elegibles(regla, contextos, envios, { ahora: Date.now(), pausaDias: pausa });
+    const lista = elegibles(regla, contextos, envios, { ahora: Date.now(), ...topes });
     return { llegan: lista.length, muestra: lista[0] || candidatos(regla, contextos)[0] || null };
-  }, [regla, contextos, envios, pausa]);
+  }, [regla, contextos, envios, topes]);
 
   if (abierta) {
+    // Un programado tiene su propio formulario (Programados.js): menos piezas.
+    const F = Formulario || Editor;
     return (
-      <Editor
+      <F
         inicial={regla} negocio={negocio} grupos={grupos} contextos={contextos} envios={envios}
-        pausa={pausa} nueva={nueva} ocupado={ocupado} acciones={acciones}
+        topes={topes} nueva={nueva} ocupado={ocupado} acciones={acciones}
       />
     );
   }
@@ -71,7 +73,7 @@ export default function Regla({ regla, negocio, grupos, contextos, envios, pausa
   );
 }
 
-function Editor({ inicial, negocio, grupos, contextos, envios, pausa, nueva, ocupado, acciones }) {
+function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocupado, acciones }) {
   const [r, setR] = useState(inicial);
   const texto = useRef(null);
   const accent = negocio.tema.accent;
@@ -111,7 +113,7 @@ function Editor({ inicial, negocio, grupos, contextos, envios, pausa, nueva, ocu
   }
 
   const encajan = candidatos(r, contextos);
-  const llegan = elegibles(r, contextos, envios, { ahora: Date.now(), pausaDias: pausa });
+  const llegan = elegibles(r, contextos, envios, { ahora: Date.now(), ...topes });
   const muestra = llegan[0] || encajan[0] || null;
   const vars = muestra ? muestra.vars : varsDeEjemplo(r, negocio);
   const malas = variablesDesconocidas(r.texto);
@@ -138,7 +140,7 @@ function Editor({ inicial, negocio, grupos, contextos, envios, pausa, nueva, ocu
 
           <label style={etiqueta} htmlFor={`quien-${r.id}`}>A quién</label>
           <select id={`quien-${r.id}`} value={r.disparo} onChange={(e) => cambiarDisparo(e.target.value)} style={campo}>
-            {LISTA_DISPAROS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+            {LISTA_DISPAROS.filter((x) => !x.soloProgramado).map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
           </select>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
             {d.valor.tipo === "grupo" ? (

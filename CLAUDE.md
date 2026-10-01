@@ -219,6 +219,13 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
   no la lleva en la banda: tiene su propia línea viva (`AbiertoAhora`).
 - **El reloj NO va en `vercel.json`** mientras el plan sea Hobby: un cron de más de
   una vez al día hace fallar el despliegue. Lo llama Supabase (`pg_cron`).
+- **Programados** (Avisos → Programados): reglas con `cada: "vez"` en la misma lista,
+  un día (`fecha`) o cada semana, a todos (disparo `todos`, solo programado) o a un grupo.
+  Salen una vez por envío (no por ausencia) y pueden saltarse la pausa (`ignorarPausa`),
+  pero NUNCA `limiteAvisosDia` (1–3, de partida 2: Google suena como mucho 3 al día).
+- **Lo que dicen los números** (Clientes → Resumen, `lib/observaciones.js`): reglas fijas,
+  sin IA, sobre la rejilla horaria y el horario. Su botón abre Avisos ya relleno
+  (`?programar=<base64>` o `?grupo=<clave>`): aquí se ve a quién, allí se dice qué.
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la
   tarjeta en el teléfono, y la caja lo ve arriba de la ficha ("En su tarjeta pone…").
 

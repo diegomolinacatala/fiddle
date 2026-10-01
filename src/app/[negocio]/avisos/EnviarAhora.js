@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icono from "@/app/Icono";
 import Campana, { TODOS } from "./Campana";
 import { C, panel, RADIO } from "@/app/ui";
@@ -13,9 +13,10 @@ import { C, panel, RADIO } from "@/app/ui";
 // premio y llevar semanas sin venir es la misma persona muchas veces.
 // ============================================================================
 
-export default function EnviarAhora({ datos, flash, onEnviado }) {
+export default function EnviarAhora({ datos, flash, onEnviado, grupoInicial = null }) {
   const { negocio: n } = datos;
-  const [elegido, setElegido] = useState(TODOS);
+  const [elegido, setElegido] = useState(grupoInicial || TODOS);
+  useEffect(() => { if (grupoInicial) setElegido(grupoInicial); }, [grupoInicial]);
   const destinos = [
     {
       key: TODOS, label: "Todos los clientes", icon: "clientes",

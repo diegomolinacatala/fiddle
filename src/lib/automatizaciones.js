@@ -38,7 +38,15 @@ import {
 const DIA = 24 * 60 * 60 * 1000;
 
 export const MAX_TEXTO = 120;      // lo mismo que una campaña: una línea en la pantalla de bloqueo
-export const MAX_REGLAS = 12;
+export const MAX_REGLAS = 20;      // automáticos y programados, juntos
+// Avisos al día a la misma persona, como mucho. Google corta en 3 por tarjeta y
+// día (los que pasen de ahí llegan en silencio); Apple no pone tope, pero un
+// pase que suena mucho se silencia o se borra. De partida, 2.
+export const LIMITE_DIA = { min: 1, max: 3, def: 2 };
+export const normalizarLimiteDia = (v) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= LIMITE_DIA.min ? Math.min(LIMITE_DIA.max, n) : LIMITE_DIA.def;
+};
 export const MAX_POR_REGLA = 400;  // tope por envío, como las campañas (tiempo de una función serverless)
 export const PAUSA_POR_DEFECTO = 3;
 export const MAX_PAUSA = 30;
@@ -118,6 +126,17 @@ export const DISPAROS = {
     incluye: (x, v) => x.perfil.visitas === 0 && (x.perfil.diasDesdeAlta ?? 0) >= v,
     sugerencia: "Tu tarjeta ya está lista: enséñala en caja y empieza a sumar.",
   },
+  // Solo para los PROGRAMADOS (cada === "vez"): un día, a una hora, a todos.
+  todos: {
+    label: "Todos los clientes",
+    icon: "megafono",
+    descripcion: "Todos los que tienen la tarjeta en el teléfono.",
+    valor: { tipo: "ninguno", def: null },
+    frase: () => "tenga la tarjeta",
+    incluye: () => true,
+    sugerencia: "Esta tarde está tranquilo: ven a por tu café con calma.",
+    soloProgramado: true,
+  },
   grupo: {
     label: "Está en un grupo de clientes",
     icon: "clientes",
@@ -131,7 +150,16 @@ export const DISPAROS = {
 
 export const LISTA_DISPAROS = Object.entries(DISPAROS).map(([key, d]) => ({
   key, label: d.label, icon: d.icon, descripcion: d.descripcion, valor: d.valor, sugerencia: d.sugerencia, caduca: Boolean(d.caduca),
+  soloProgramado: Boolean(d.soloProgramado),
 }));
+
+/**
+ * PROGRAMADO = sale cada vez que le toca (un día concreto, o los días marcados
+ * de cada semana), no una vez por ausencia como un automático. Viven en la
+ * misma lista y los manda el mismo motor; cambia la cuenta de "ya se lo dijimos"
+ * (hoy, no desde su última visita) y que pueden saltarse la pausa.
+ */
+export const esProgramado = (r) => r?.cada === "vez";
 
 export const esDisparo = (k) => typeof k === "string" && Object.hasOwn(DISPAROS, k);
 
@@ -245,6 +273,7 @@ export function fechasDeVisita(eventos, tiposVisita, zona) {
 export function enviosDe(campanas) {
   const porRegla = new Map();
   const ultimo = new Map();
+  const veces = new Map(); // serial -> momentos de cada aviso (para el tope del día)
   for (const c of campanas || []) {
     const t = Date.parse(c.creado);
     if (!t) continue;
@@ -252,23 +281,26 @@ export function enviosDe(campanas) {
     for (const s of c.seriales || []) {
       if ((ultimo.get(s) ?? 0) < t) ultimo.set(s, t);
       if (regla && (porRegla.get(`${regla}|${s}`) ?? 0) < t) porRegla.set(`${regla}|${s}`, t);
+      veces.set(s, [...(veces.get(s) || []), t]);
     }
   }
-  return { porRegla, ultimo };
+  return { porRegla, ultimo, veces };
 }
 
 /** Copia del historial con un envío más (el motor lo usa para no repetir en la misma pasada). */
 export function conEnvio(envios, reglaId, seriales, t) {
   const porRegla = new Map(envios.porRegla);
   const ultimo = new Map(envios.ultimo);
+  const veces = new Map(envios.veces || []);
   for (const s of seriales) {
     porRegla.set(`${reglaId}|${s}`, t);
     ultimo.set(s, t);
+    veces.set(s, [...(veces.get(s) || []), t]);
   }
-  return { porRegla, ultimo };
+  return { porRegla, ultimo, veces };
 }
 
-const SIN_ENVIOS = { porRegla: new Map(), ultimo: new Map() };
+const SIN_ENVIOS = { porRegla: new Map(), ultimo: new Map(), veces: new Map() };
 
 /** Los que cumplen la condición de la regla, se les pueda avisar o no. */
 export function candidatos(regla, contextos) {
@@ -281,14 +313,19 @@ export function candidatos(regla, contextos) {
  * teléfono, no se le ha dicho ya desde su última visita (o desde que empezó la
  * racha) y no ha recibido otro aviso hace menos de `pausaDias`.
  */
-export function elegibles(regla, contextos, envios = SIN_ENVIOS, { ahora = Date.now(), pausaDias = PAUSA_POR_DEFECTO } = {}) {
+export function elegibles(regla, contextos, envios = SIN_ENVIOS, { ahora = Date.now(), pausaDias = PAUSA_POR_DEFECTO, inicioHoy = null, limiteDia = null } = {}) {
   const d = DISPAROS[regla.disparo];
   if (!d) return [];
   const pausaMs = pausaDias * DIA;
+  // "Hoy" empieza a medianoche en la tienda; sin ese dato, las últimas 20 horas.
+  const hoy = inicioHoy ?? ahora - 20 * 60 * 60 * 1000;
   return candidatos(regla, contextos).filter((x) => {
     if (!x.perfil.contactable) return false;
     const ya = envios.porRegla.get(`${regla.id}|${x.serial}`);
-    if (ya && ya >= (d.desde ? d.desde(x) : x.desde)) return false;
+    // Un programado sale cada vez que le toca: lo que cuenta es si ya salió HOY.
+    if (ya && ya >= (esProgramado(regla) ? hoy : d.desde ? d.desde(x) : x.desde)) return false;
+    if (limiteDia && (envios.veces?.get(x.serial) || []).filter((t) => t >= hoy).length >= limiteDia) return false;
+    if (regla.ignorarPausa) return true;
     const ultimo = envios.ultimo.get(x.serial);
     return !(pausaMs > 0 && ultimo && ahora - ultimo < pausaMs);
   });
@@ -301,7 +338,10 @@ export function elegibles(regla, contextos, envios = SIN_ENVIOS, { ahora = Date.
  * no ha abierto (o está en el descanso de mediodía), sale al abrir.
  */
 export function momentoDelDia(regla, horario, fecha) {
-  if (regla.dias?.length && !regla.dias.includes(diaDeFecha(fecha))) return null;
+  // Un programado de un día concreto sale ese día y ninguno más.
+  if (regla.fecha) {
+    if (fecha !== regla.fecha) return null;
+  } else if (regla.dias?.length && !regla.dias.includes(diaDeFecha(fecha))) return null;
   const hora = aMinutos(regla.hora) ?? 0;
   const tramo = tramosDe(horario, fecha).find((t) => hora < t.cierra);
   return tramo ? Math.max(hora, tramo.abre) : null;
@@ -321,6 +361,11 @@ export function tocaAhora(regla, horario, reloj) {
 export function proximoEnvio(regla, horario, ahora = Date.now()) {
   if (!regla.activa) return null;
   const reloj = relojLocal(ahora, horario?.zona);
+  // Un día concreto que no está en las dos próximas semanas: ese día, si no ha pasado.
+  if (regla.fecha && regla.fecha > sumarDias(reloj.fecha, 14)) {
+    const m = momentoDelDia(regla, horario, regla.fecha);
+    return m === null ? null : { fecha: regla.fecha, hora: horaCorta(aHora(m)), texto: `${cuandoTexto(regla.fecha, reloj.fecha)} a las ${horaCorta(aHora(m))}` };
+  }
   for (let i = 0; i < 15; i += 1) {
     const fecha = sumarDias(reloj.fecha, i);
     const m = momentoDelDia(regla, horario, fecha);
@@ -376,9 +421,12 @@ export function diasTexto(dias) {
 /** La regla dicha en castellano, en dos trozos: a quién y cuándo. */
 export function fraseRegla(regla) {
   const d = DISPAROS[regla.disparo];
+  const cuando = regla.fecha
+    ? `el ${new Date(`${regla.fecha}T12:00:00Z`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })} a las ${horaCorta(regla.hora)}`
+    : `a las ${horaCorta(regla.hora)}, ${diasTexto(regla.dias)}`;
   return {
-    quien: `A quien ${d ? d.frase(regla.valor) : "…"}`,
-    cuando: `a las ${horaCorta(regla.hora)}, ${diasTexto(regla.dias)}`,
+    quien: regla.disparo === "todos" ? "A todos" : `A quien ${d ? d.frase(regla.valor) : "…"}`,
+    cuando,
   };
 }
 
@@ -386,6 +434,7 @@ export function fraseRegla(regla) {
 const textoCorto = (v, max) => (typeof v === "string" && v.trim() ? v.trim().replace(/\s+/g, " ").slice(0, max) : "");
 
 function valorDe(d, v) {
+  if (d.valor.tipo === "ninguno") return null;
   if (d.valor.tipo === "grupo") return esGrupo(v) ? v : d.valor.def;
   const n = Math.round(Number(v));
   return Number.isFinite(n) ? Math.min(d.valor.max, Math.max(d.valor.min, n)) : d.valor.def;
@@ -411,6 +460,10 @@ export function normalizarRegla(r) {
     dias: dias.length === 7 ? [] : dias,
     texto,
     caduca: r.caduca === true,
+    // Lo de los programados solo se guarda si está: una regla de antes no cambia.
+    ...(r.cada === "vez" ? { cada: "vez" } : {}),
+    ...(r.cada === "vez" && /^\d{4}-\d{2}-\d{2}$/.test(r.fecha || "") ? { fecha: r.fecha } : {}),
+    ...(r.cada === "vez" && r.ignorarPausa === true ? { ignorarPausa: true } : {}),
   };
 }
 
@@ -436,11 +489,12 @@ export function normalizarReglas(lista) {
  */
 export function validarReglas(lista) {
   if (!Array.isArray(lista)) return { error: "Faltan los avisos" };
-  if (lista.length > MAX_REGLAS) return { error: `Como mucho ${MAX_REGLAS} avisos automáticos` };
+  if (lista.length > MAX_REGLAS) return { error: `Como mucho ${MAX_REGLAS} avisos entre automáticos y programados` };
   const reglas = [];
   for (const r of lista) {
     const nombre = textoCorto(r?.nombre, 40) || "sin nombre";
     if (!esDisparo(r?.disparo)) return { error: `El aviso «${nombre}» no dice a quién va` };
+    if (DISPAROS[r.disparo].soloProgramado && r.cada !== "vez") return { error: `«${nombre}»: «a todos» solo vale para un aviso programado` };
     if (!textoCorto(r?.texto, 10_000)) return { error: `El aviso «${nombre}» no tiene texto` };
     if (String(r.texto).trim().length > MAX_TEXTO) return { error: `El texto de «${nombre}» pasa de ${MAX_TEXTO} letras` };
     const malas = variablesDesconocidas(r.texto);
@@ -467,6 +521,27 @@ export function idNuevo(disparo, reglas) {
   let i = 2;
   while (usados.has(`${base}-${i}`)) i += 1;
   return `${base}-${i}`;
+}
+
+/**
+ * Aviso programado nuevo: a todos, a una hora, el día que se diga (o cada semana).
+ * `base` permite empezarlo ya relleno (las ideas del CRM: "los martes por la tarde…").
+ */
+export function programadoNuevo(reglas, base = {}) {
+  const disparo = base.disparo && esDisparo(base.disparo) ? base.disparo : "todos";
+  return {
+    id: idNuevo(`prog-${disparo}`, reglas),
+    nombre: base.nombre || "Aviso programado",
+    activa: true,
+    disparo,
+    valor: base.valor ?? DISPAROS[disparo].valor.def,
+    hora: esHora(base.hora) ? base.hora : "10:00",
+    dias: Array.isArray(base.dias) ? base.dias : [],
+    texto: base.texto || DISPAROS[disparo].sugerencia,
+    caduca: base.caduca !== false,
+    cada: "vez",
+    ...(base.fecha ? { fecha: base.fecha } : {}),
+  };
 }
 
 /** Regla nueva de un disparo, lista para editar: su valor y su texto de partida. */

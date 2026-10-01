@@ -4,6 +4,7 @@ import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
 import CabeceraGestion from "../CabeceraGestion";
 import { serieVisitas, rejillaHoraria, tendencia, haceTexto, cadenciaTexto, GRUPOS } from "@/lib/crm";
+import { observaciones, enlaceDeAccion } from "@/lib/observaciones";
 import { csvClientes } from "@/lib/exportar";
 import { Cifra, Barras, Rejilla, Reparto, Chip } from "./piezas";
 import Ficha from "./Ficha";
@@ -17,16 +18,19 @@ const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 // CRM DE UNA TIENDA
 // ----------------------------------------------------------------------------
 // Dos pestañas, dos preguntas:
-//   RESUMEN   ¿cómo va la tienda? cifras, reparto de clientes, cuándo vienen
-//   CLIENTES  ¿quién es este? la tabla, la búsqueda, los grupos, la ficha de
-//             cada uno y la exportación (de lo que se está viendo, y solo aquí)
-// Lo de hablarles (a un grupo, a todos, en automático) vive en Avisos.
+//   RESUMEN   ¿cómo va la tienda? cifras, reparto de clientes, cuándo vienen y
+//             lo que dicen los números (lib/observaciones.js), con su botón
+//   GRUPOS    los grupos del CRM en tarjetas: quién hay en cada uno y, con un
+//             toque, escribirles (lleva a Avisos con el grupo ya elegido)
+//   CLIENTES  ¿quién es este? la tabla, la búsqueda, la ficha de cada uno y la
+//             exportación (de lo que se está viendo, y solo aquí)
+// Escribir el mensaje vive en Avisos: aquí se ve a quién, allí se dice qué.
 //
 // Todo llega en UNA petición a /api/crm; las cuentas que dependen de la hora
 // local (a qué hora viene la gente) se hacen aquí, con el reloj de la tienda.
 // ============================================================================
 
-const PESTANAS = [["resumen", "Resumen"], ["clientes", "Clientes"]];
+const PESTANAS = [["resumen", "Resumen"], ["grupos", "Grupos"], ["clientes", "Clientes"]];
 const ORDENES = {
   reciente: { label: "Última visita", cmp: (a, b) => (a.perfil.diasSinVenir ?? 1e9) - (b.perfil.diasSinVenir ?? 1e9) },
   visitas: { label: "Más visitas", cmp: (a, b) => b.perfil.visitas - a.perfil.visitas },
@@ -63,6 +67,8 @@ export default function PanelCrm({ slug, inicial }) {
   // Estas dos dependen de la hora del navegador, que es la de la tienda.
   const serie = useMemo(() => (d ? serieVisitas(d.eventos, 30) : []), [d]);
   const rejilla = useMemo(() => (d ? rejillaHoraria(d.eventos) : []), [d]);
+  const ideas = useMemo(() => (d ? observaciones({ rejilla, horario: d.negocio.horario, metricas: d.metricas, grupos: d.grupos }) : []), [d, rejilla]);
+  const [grupoVisto, setGrupoVisto] = useState(null);
 
   const lista = useMemo(() => {
     if (!d) return [];
@@ -145,6 +151,31 @@ export default function PanelCrm({ slug, inicial }) {
               </section>
             </div>
 
+            {ideas.length > 0 && (
+              <section style={panel}>
+                <h2 style={h2}>Lo que dicen los números</h2>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {ideas.map((o) => (
+                    <div key={o.id} style={idea}>
+                      <span style={{ color: accent, display: "inline-flex", marginTop: 2 }}><Icono nombre={o.accion?.tipo === "grupo" ? "clientes" : o.id === "pocos" ? "reloj" : "diana"} tam={18} /></span>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{o.texto}</div>
+                        {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>{o.detalle}</div>}
+                      </div>
+                      {o.accion && (
+                        <a href={enlaceDeAccion(slug, o.accion)} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap", alignSelf: "center" }}>
+                          {o.accion.label}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 12, color: C.tenue, margin: "12px 0 0" }}>
+                  Salen de las visitas de los últimos meses y del horario de la tienda. Son orientativas: mira la rejilla de arriba.
+                </p>
+              </section>
+            )}
+
             {d.cohortes.length > 1 && (
               <section style={panel}>
                 <h2 style={h2}>Por mes de alta</h2>
@@ -173,6 +204,34 @@ export default function PanelCrm({ slug, inicial }) {
                 </div>
               </section>
             )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------- grupos */}
+        {pestana === "grupos" && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <p style={{ ...nota }}>
+              Cada cliente puede estar en varios grupos a la vez: quien está a un sello del premio también puede llevar
+              semanas sin venir. Toca uno para ver quién hay y escribirles.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 12 }}>
+              {grupos.map((g) => (
+                <button key={g.key} type="button" disabled={!g.total} onClick={() => setGrupoVisto(g.key === grupoVisto ? null : g.key)}
+                  style={tarjetaGrupo(g.key === grupoVisto, accent, g.total)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: accent, display: "inline-flex" }}><Icono nombre={g.icon} tam={18} /></span>
+                    <strong style={{ fontSize: 14, fontWeight: 650 }}>{g.label}</strong>
+                    <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}>{g.total}</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: C.suave, margin: "6px 0 0", textAlign: "left" }}>{g.descripcion}</p>
+                  <div style={{ fontSize: 11.5, color: C.tenue, marginTop: 6, textAlign: "left" }}>
+                    {g.contactables} avisable{g.contactables === 1 ? "" : "s"}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {grupoVisto && <DetalleGrupo g={grupos.find((x) => x.key === grupoVisto)} d={d} n={n} slug={slug} accent={accent}
+              onVerFicha={setVerFicha} onVerLista={(k) => { setGrupo(k); setPestana("clientes"); }} />}
           </div>
         )}
 
@@ -258,7 +317,57 @@ export default function PanelCrm({ slug, inicial }) {
   );
 }
 
+/** Un grupo abierto: quién hay y qué hacer con ellos (escribirles es en Avisos). */
+function DetalleGrupo({ g, d, n, slug, accent, onVerFicha, onVerLista }) {
+  const dentro = d.clientes.filter((c) => GRUPOS[g.key]?.incluye(c.perfil));
+  const programar = enlaceDeAccion(slug, {
+    tipo: "programar",
+    base: { nombre: g.label, disparo: "grupo", valor: g.key, texto: (g.idea || "").replace("{premio}", n.premio), hora: "11:00", caduca: false },
+  });
+  return (
+    <section style={panel}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <h2 style={{ ...h2, margin: 0, flex: 1 }}>{g.label} · {g.total}</h2>
+        <a href={`/${slug}/avisos?grupo=${g.key}`} style={botonPrimarioEnlace(accent)}>
+          <Icono nombre="megafono" tam={16} /> Escribirles
+        </a>
+        <a href={programar} style={{ ...botonPequeno, textDecoration: "none" }}>Programarles un aviso</a>
+        <button type="button" onClick={() => onVerLista(g.key)} style={botonPequeno}>Ver en la lista</button>
+      </div>
+      <p style={{ fontSize: 13, color: C.suave, margin: "8px 0 12px" }}>
+        {g.descripcion} Les llega a {g.contactables} de {g.total}: al resto no, porque no tienen la tarjeta en el teléfono.
+      </p>
+      <div style={{ display: "grid", gap: 6 }}>
+        {dentro.slice(0, 8).map((c) => (
+          <button key={c.serial} type="button" onClick={() => onVerFicha(c.serial)} style={filaGrupo}>
+            <span style={chipCodigo(accent)}>{c.codigo}</span>
+            <span style={{ flex: 1, minWidth: 0, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {c.nombre || <span style={{ color: C.tenue }}>sin nombre</span>}
+            </span>
+            <span style={{ fontSize: 13, color: C.suave, whiteSpace: "nowrap" }}>{haceTexto(c.perfil.diasSinVenir)} · {saldoCorto(c, n)}</span>
+          </button>
+        ))}
+        {dentro.length > 8 && <span style={{ fontSize: 13, color: C.suave }}>Y {dentro.length - 8} más: «Ver en la lista».</span>}
+      </div>
+    </section>
+  );
+}
+
 const tabla = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
+const idea = { display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", padding: "12px 14px", border: `1px solid ${C.borde}`, borderRadius: 12, background: C.panelSuave };
+const tarjetaGrupo = (activa, accent, hay) => ({
+  ...panel, padding: 14, textAlign: "left", cursor: hay ? "pointer" : "default",
+  borderColor: activa ? accent : C.borde, background: activa ? `${accent}0c` : hay ? "#fff" : C.panelSuave,
+  opacity: hay ? 1 : 0.55, font: "inherit", color: C.texto,
+});
+const filaGrupo = {
+  display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, border: `1px solid ${C.borde}`,
+  background: "#fff", cursor: "pointer", font: "inherit", color: C.texto, width: "100%",
+};
+const botonPrimarioEnlace = (accent) => ({
+  display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 10, background: accent, color: "#fff",
+  fontWeight: 600, fontSize: 14, textDecoration: "none",
+});
 const marcaFila = { display: "inline-flex", verticalAlign: "-2px", marginLeft: 6, color: C.suave };
 const th = {
   textAlign: "left", fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase",

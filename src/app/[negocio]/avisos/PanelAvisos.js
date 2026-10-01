@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CabeceraGestion from "../CabeceraGestion";
 import Automaticos from "./Automaticos";
 import EnviarAhora from "./EnviarAhora";
 import Enviados from "./Enviados";
+import Programados from "./Programados";
 import { C, pagina, solapa } from "@/app/ui";
 
 // ============================================================================
 // AVISOS — todo lo que se les dice a los clientes, en un solo sitio
 // ----------------------------------------------------------------------------
 //   AUTOMÁTICOS   las reglas que trabajan solas (lib/automatizaciones.js)
+//   PROGRAMADOS   lo que la tienda decide cuándo sale: un día o cada semana
 //   ENVIAR AHORA  un mensaje a mano: a todos (la promo) o a un grupo
 //   ENVIADOS      lo que ya salió, a mano o solo, y quién volvió
 //
@@ -19,12 +21,37 @@ import { C, pagina, solapa } from "@/app/ui";
 // devuelve los datos frescos y se cambian de golpe.
 // ============================================================================
 
-const PESTANAS = [["automaticos", "Automáticos"], ["enviar", "Enviar ahora"], ["enviados", "Enviados"]];
+const PESTANAS = [["automaticos", "Automáticos"], ["programados", "Programados"], ["enviar", "Enviar ahora"], ["enviados", "Enviados"]];
+
+// Se puede llegar con algo ya empezado desde Clientes:
+//   ?grupo=<clave>        Enviar ahora, con ese grupo elegido
+//   ?programar=<base64>   un aviso programado a medias ("los martes por la tarde…")
+function deLaUrl() {
+  if (typeof window === "undefined") return {};
+  const q = new URLSearchParams(window.location.search);
+  let programar = null;
+  try {
+    const crudo = q.get("programar");
+    if (crudo) programar = JSON.parse(decodeURIComponent(escape(atob(crudo.replace(/-/g, "+").replace(/_/g, "/")))));
+  } catch {
+    programar = null;
+  }
+  return { grupo: q.get("grupo"), programar };
+}
 
 export default function PanelAvisos({ slug, inicial }) {
   const [d, setD] = useState(inicial);
   const [pestana, setPestana] = useState("automaticos");
   const [msg, setMsg] = useState(null);
+  const [llegada, setLlegada] = useState({});
+
+  // Lo que viene en la URL se lee al montar (en el servidor no hay URL que leer).
+  useEffect(() => {
+    const u = deLaUrl();
+    if (u.programar) setPestana("programados");
+    else if (u.grupo) setPestana("enviar");
+    setLlegada(u);
+  }, []);
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 4000); }
 
@@ -55,7 +82,8 @@ export default function PanelAvisos({ slug, inicial }) {
         </div>
 
         {pestana === "automaticos" && <Automaticos slug={slug} datos={d} onDatos={setD} flash={flash} />}
-        {pestana === "enviar" && <EnviarAhora slug={slug} datos={d} flash={flash} onEnviado={recargar} />}
+        {pestana === "programados" && <Programados slug={slug} datos={d} onDatos={setD} flash={flash} semilla={llegada.programar} />}
+        {pestana === "enviar" && <EnviarAhora slug={slug} datos={d} flash={flash} onEnviado={recargar} grupoInicial={llegada.grupo} />}
         {pestana === "enviados" && <Enviados datos={d} />}
 
         {msg && <div role="status" style={toast}>{msg}</div>}

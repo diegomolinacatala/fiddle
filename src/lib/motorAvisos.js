@@ -6,7 +6,7 @@ import { avisarSeriales, refrescarPasesApple } from "./wallet";
 import { tiendaEnGoogle } from "./googlewallet";
 import { CLAVE_RELOJ } from "./relojAvisos";
 import { perfilDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
-import { relojLocal, estadoDeTienda } from "./horario";
+import { relojLocal, estadoDeTienda, inicioDelDia } from "./horario";
 import {
   contextoDe, fechasDeVisita, enviosDe, conEnvio, elegibles, candidatos, tocaAhora, porRetirar,
   renderTexto, grupoDeRegla, etiquetaEnvio, MAX_POR_REGLA,
@@ -75,8 +75,14 @@ async function mandar(negocio, regla, texto, seriales) {
 }
 
 /** Manda UNA regla a quien le toque. Cada cliente recibe su texto (con su premio, sus días…). */
+/** Lo que las reglas necesitan saber de "hoy" y del tope diario, con el reloj de la tienda. */
+export function topesDe(negocio, ahora) {
+  const zona = negocio.horario?.zona;
+  return { ahora, pausaDias: negocio.pausaAvisos, inicioHoy: inicioDelDia(relojLocal(ahora, zona).fecha, zona), limiteDia: negocio.limiteAvisosDia };
+}
+
 async function mandarRegla(negocio, regla, contextos, envios, ahora) {
-  const lista = elegibles(regla, contextos, envios, { ahora, pausaDias: negocio.pausaAvisos }).slice(0, MAX_POR_REGLA);
+  const lista = elegibles(regla, contextos, envios, topesDe(negocio, ahora)).slice(0, MAX_POR_REGLA);
   const porTexto = new Map();
   for (const x of lista) {
     const texto = renderTexto(regla.texto, x.vars);
@@ -216,13 +222,14 @@ export async function datosAvisos(slug, ahora = Date.now()) {
       slug: negocio.slug, nombre: negocio.nombre, tipo: negocio.tipo, meta: negocio.meta, premio: negocio.premio,
       cartillas: negocio.cartillas ?? null, tema: negocio.tema, promo: negocio.promo,
       horario: negocio.horario, automatizaciones: reglas, pausaAvisos: negocio.pausaAvisos,
-      avisosActivos: negocio.avisosActivos,
+      avisosActivos: negocio.avisosActivos, limiteAvisosDia: negocio.limiteAvisosDia,
     },
     contextos,
-    envios: { porRegla: [...envios.porRegla], ultimo: [...envios.ultimo] },
+    envios: { porRegla: [...envios.porRegla], ultimo: [...envios.ultimo], veces: [...envios.veces] },
+    inicioHoy: topesDe(negocio, ahora).inicioHoy,
     conteos: Object.fromEntries(reglas.map((r) => [r.id, {
       encajan: candidatos(r, contextos).length,
-      llegaria: elegibles(r, contextos, envios, { ahora, pausaDias: negocio.pausaAvisos }).length,
+      llegaria: elegibles(r, contextos, envios, topesDe(negocio, ahora)).length,
     }])),
     grupos: conteoGrupos(contextos.map((x) => x.perfil)),
     catalogoGrupos: LISTA_GRUPOS,

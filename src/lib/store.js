@@ -172,6 +172,7 @@ function fusionarConfig(actual, patch) {
     horario: patch.horario !== undefined ? patch.horario : actual.horario,
     automatizaciones: patch.automatizaciones ?? actual.automatizaciones,
     pausaAvisos: patch.pausaAvisos ?? actual.pausaAvisos,
+    limiteAvisosDia: patch.limiteAvisosDia ?? actual.limiteAvisosDia,
     avisosActivos: patch.avisosActivos ?? actual.avisosActivos,
     pedirNombre: patch.pedirNombre ?? actual.pedirNombre,
     caja: patch.caja ?? actual.caja,

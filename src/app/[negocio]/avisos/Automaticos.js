@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import Icono from "@/app/Icono";
 import Regla from "./Regla";
-import { LISTA_DISPAROS, MAX_REGLAS, MAX_PAUSA, RELOJ_VIVO_MIN, reglaNueva } from "@/lib/automatizaciones";
+import { LISTA_DISPAROS, MAX_REGLAS, RELOJ_VIVO_MIN, reglaNueva, esProgramado } from "@/lib/automatizaciones";
+import Limites from "./Limites";
 import { resumenHorario } from "@/lib/horario";
 import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO } from "@/app/ui";
 
@@ -28,10 +29,12 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
   const [nueva, setNueva] = useState(null);         // regla sin guardar todavía
   const [eligiendo, setEligiendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [pausa, setPausa] = useState(n.pausaAvisos);
 
   // El historial viaja como listas (JSON); aquí se vuelve a Map, como en el servidor.
-  const envios = useMemo(() => ({ porRegla: new Map(datos.envios.porRegla), ultimo: new Map(datos.envios.ultimo) }), [datos.envios]);
+  const envios = useMemo(() => ({ porRegla: new Map(datos.envios.porRegla), ultimo: new Map(datos.envios.ultimo), veces: new Map(datos.envios.veces || []) }), [datos.envios]);
+  // Los programados viven en la misma lista, pero tienen su pestaña.
+  const automaticas = reglas.filter((r) => !esProgramado(r));
+  const topes = { pausaDias: n.pausaAvisos, inicioHoy: datos.inicioHoy, limiteDia: n.limiteAvisosDia };
 
   const guardarLista = (lista, pausaAvisos = n.pausaAvisos) => guardarCambios({ automatizaciones: lista, pausaAvisos });
 
@@ -146,19 +149,19 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
         </Link>
       </p>
 
-      {reglas.map((r) => (
+      {automaticas.map((r) => (
         <Regla
           key={r.id} regla={r} negocio={n} grupos={datos.catalogoGrupos} contextos={contextos} envios={envios}
-          pausa={n.pausaAvisos} abierta={abierta === r.id} nueva={false} ocupado={ocupado} acciones={acciones}
+          topes={topes} abierta={abierta === r.id} nueva={false} ocupado={ocupado} acciones={acciones}
         />
       ))}
       {nueva && (
         <Regla
           regla={nueva} negocio={n} grupos={datos.catalogoGrupos} contextos={contextos} envios={envios}
-          pausa={n.pausaAvisos} abierta nueva ocupado={ocupado} acciones={acciones}
+          topes={topes} abierta nueva ocupado={ocupado} acciones={acciones}
         />
       )}
-      {!reglas.length && !nueva && (
+      {!automaticas.length && !nueva && (
         <p style={{ ...panel, color: C.suave, fontSize: 14, margin: 0 }}>No hay ningún aviso automático. Añade uno: el primero ya trae un texto de partida.</p>
       )}
 
@@ -170,7 +173,7 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
               <button type="button" onClick={() => setEligiendo(false)} style={{ ...botonPequeno, marginLeft: "auto" }}>Cancelar</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 10 }}>
-              {LISTA_DISPAROS.map((d) => (
+              {LISTA_DISPAROS.filter((d) => !d.soloProgramado).map((d) => (
                 <button key={d.key} type="button" onClick={() => empezar(d.key)} style={opcionDisparo}>
                   <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 650, fontSize: 14 }}>
                     <span style={{ color: n.tema.accent, display: "inline-flex" }}><Icono nombre={d.icon} tam={18} /></span>
@@ -188,28 +191,10 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
         )
       )}
 
-      <section style={{ ...panel, background: C.panelSuave }}>
-        <h2 style={h2}>Para no cansar a nadie</h2>
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5, color: C.suave, lineHeight: 1.6 }}>
-          <li>Cada aviso le llega a la misma persona <strong style={{ color: C.texto }}>una sola vez</strong>, hasta que vuelve a pasar por caja.</li>
-          <li>Si alguien encaja en varios a la vez, le llega el que está más arriba en la lista.</li>
-          <li>Solo les llega a quienes tienen la tarjeta en el teléfono.</li>
-        </ul>
-        <form
-          onSubmit={async (e) => { e.preventDefault(); if (await guardarLista(reglas, pausa)) flash("Pausa guardada"); }}
-          style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 14, fontSize: 14 }}
-        >
-          <label htmlFor="pausa">Como mucho un aviso a la misma persona cada</label>
-          <input
-            id="pausa" type="number" min={0} max={MAX_PAUSA} value={pausa}
-            onChange={(e) => setPausa(e.target.value === "" ? "" : Number(e.target.value))} style={{ ...campo, width: 70 }}
-          />
-          <span>días (también cuentan los que mandes a mano).</span>
-          {Number(pausa) !== n.pausaAvisos && pausa !== "" && (
-            <button type="submit" disabled={ocupado} style={botonPequeno}>Guardar</button>
-          )}
-        </form>
-      </section>
+      <Limites negocio={n} ocupado={ocupado} guardar={guardarCambios} flash={flash}>
+        <li>Cada aviso le llega a la misma persona <strong style={{ color: C.texto }}>una sola vez</strong>, hasta que vuelve a pasar por caja.</li>
+        <li>Si alguien encaja en varios a la vez, le llega el que está más arriba en la lista.</li>
+      </Limites>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNegocio, saveNegocio } from "@/lib/store";
 import { datosAvisos, repasarNegocio } from "@/lib/motorAvisos";
-import { validarReglas, normalizarPausa } from "@/lib/automatizaciones";
+import { validarReglas, normalizarPausa, normalizarLimiteDia } from "@/lib/automatizaciones";
 import { esSlug } from "@/lib/negocios";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
@@ -44,6 +44,7 @@ export async function PUT(request) {
       patch.automatizaciones = r.reglas;
     }
     if (body.pausaAvisos !== undefined) patch.pausaAvisos = normalizarPausa(body.pausaAvisos);
+    if (body.limiteAvisosDia !== undefined) patch.limiteAvisosDia = normalizarLimiteDia(body.limiteAvisosDia);
     // El interruptor general: sin él encendido, el reloj no manda nada de esta tienda.
     if (typeof body.avisosActivos === "boolean") patch.avisosActivos = body.avisosActivos;
     if (!Object.keys(patch).length) return jsonError("Nada que guardar", 400);

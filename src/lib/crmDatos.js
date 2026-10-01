@@ -34,6 +34,8 @@ export async function datosCrm(slug) {
     negocio: {
       slug: negocio.slug, nombre: negocio.nombre, tipo: negocio.tipo, meta: negocio.meta,
       premio: negocio.premio, cartillas: negocio.cartillas ?? null, tema: negocio.tema,
+      // Para las observaciones (qué horas son tranquilas DE LAS QUE ABRE).
+      horario: negocio.horario ?? null,
     },
     metricas: metricas(perfiles, eventos, clientes),
     grupos: conteoGrupos(perfiles),
