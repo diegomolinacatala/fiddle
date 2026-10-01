@@ -72,7 +72,10 @@ export default function AdminNegocio() {
         cartillas: n.cartillas ?? null,
         brief: n.brief,
         tema: {
+          // Todos los colores: el servidor re-siembra la plantilla y lo que no venga
+          // pisaría el fondo y el texto que el manager eligió en su editor.
           estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
+          cardBg: n.tema.cardBg, ink: n.tema.ink, pageInk: n.tema.pageInk,
           marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma,
           banda: n.tema.banda, modo: n.tema.modo,
         },

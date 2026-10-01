@@ -80,9 +80,10 @@ function Anotable({ clave, etiqueta, anota, children, estilo = {} }) {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onCampo(clave, etiqueta); }}
-      title={tiene ? notas[clave] : `Comentar "${etiqueta}"`}
+      title={tiene ? notas[clave] : etiqueta}
+      // El estilo del trozo va DESPUÉS de lo de partida: el logo pide `width: auto`
+      // y la banda va sin margen; antes lo pisaba el 100 % y el logo se comía la fila.
       style={{
-        ...estilo,
         position: "relative",
         display: "block",
         width: "100%",
@@ -93,6 +94,7 @@ function Anotable({ clave, etiqueta, anota, children, estilo = {} }) {
         padding: 2,
         margin: -2,
         borderRadius: 6,
+        ...estilo,
         border: `1px dashed ${activo ? "#2563eb" : tiene ? "#16a34a" : "rgba(127,127,127,.45)"}`,
         background: activo ? "rgba(37,99,235,.10)" : tiene ? "rgba(22,163,74,.08)" : "transparent",
       }}
@@ -102,6 +104,11 @@ function Anotable({ clave, etiqueta, anota, children, estilo = {} }) {
     </button>
   );
 }
+
+// Tocar la tarjeta fuera de cualquier campo es tocar su FONDO (los colores).
+// Los campos paran el clic, así que aquí solo llega el que cae en hueco.
+const fondo = (anota, clave) => (anota?.onCampo ? () => anota.onCampo(clave, "Colores de la tarjeta") : undefined);
+const tocable = (anota) => (anota?.onCampo ? { cursor: "pointer" } : {});
 
 const puntoNota = {
   position: "absolute", top: -4, right: -4, width: 9, height: 9,
@@ -120,7 +127,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado }) {
   const strip = stripDelPase(negocio, cliente, { estado });
 
   return (
-    <div style={{ ...marco, background: t.cardBg, color: t.ink, overflow: "hidden" }}>
+    <div style={{ ...marco, background: t.cardBg, color: t.ink, overflow: "hidden", ...tocable(anota) }} onClick={fondo(anota, "apple.fondo")}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
         <Anotable clave="apple.logo" etiqueta="Logo" anota={anota} estilo={{ width: "auto", flexShrink: 0 }}>
           <img src={comoDataUri(svgLogo(t))} alt="" width={26} height={26} style={{ display: "block" }} />
@@ -220,7 +227,7 @@ function TarjetaGoogle({ negocio, cliente, qrTexto, anota }) {
   const tinta = textoSobre(fondo);
 
   return (
-    <div style={{ ...marco, overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif" }}>
+    <div style={{ ...marco, overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif", ...tocable(anota) }} onClick={fondo(anota, "google.fondo")}>
       <div style={{ background: fondo, color: tinta, opacity: objeto.state === "INACTIVE" ? 0.55 : 1 }}>
         <Anotable clave="google.cabecera" etiqueta="Logo y nombre" anota={anota} estilo={{ padding: "14px 16px 6px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

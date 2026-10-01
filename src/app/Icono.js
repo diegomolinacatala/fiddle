@@ -68,6 +68,7 @@ const TRAZOS = {
     </>
   ),
   megafono: <path d="M4 10v4h3l7.5 4.5v-13L7 10zM18 9a4.2 4.2 0 0 1 0 6" />,
+  editar: <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />,
   nota: <path d="M6 3h9l4 4v14H6zM14.5 3v4.5H19M9.5 12h6M9.5 16h4" />,
   qr: (
     <>

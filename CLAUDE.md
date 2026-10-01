@@ -29,6 +29,10 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   (tarjeta, caja, horario, QR), **Clientes** (quién viene; exportar va junto a la lista
   y baja lo que se ve) y **Avisos** (promo, grupos y automáticos). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
+- **Lo que se VE en la tarjeta se cambia tocándolo en ella**: Tienda → "Editar tarjeta"
+  (`manager/EditorTarjeta.js`). Cada trozo de `PaseVista` abre su panel (`seccionDe`).
+  Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. El
+  manager NO cambia cupón/cartilla ni cuántas cartillas hay: eso es del admin.
 
 ## Lo que hay que saber del pase de Apple
 

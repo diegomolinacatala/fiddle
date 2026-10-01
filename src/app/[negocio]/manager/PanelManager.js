@@ -9,6 +9,8 @@ import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
 import Horario from "./Horario";
 import MapaUbicacion from "./MapaUbicacion";
+import EditorTarjeta from "./EditorTarjeta";
+import MarcaTienda from "@/app/MarcaTienda";
 import Recorrido from "@/app/Recorrido";
 import ClaveNueva from "@/app/ClaveNueva";
 import CabeceraGestion from "../CabeceraGestion";
@@ -36,8 +38,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
   }, []);
 
   const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
-  // Con dos cartillas se cambian una a una (meta y premio; nombre y dibujo son del admin).
-  const setCartilla = (i, k, v) => setN((p) => ({ ...p, cartillas: p.cartillas.map((c, j) => (j === i ? { ...c, [k]: v } : c)) }));
+  const [editando, setEditando] = useState(false);
   function toggleAccion(key) {
     setN((p) => {
       const on = p.acciones.includes(key);
@@ -86,9 +87,6 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...(n.cartillas
-          ? { cartillas: n.cartillas.map(({ meta, premio }) => ({ meta, premio })) }
-          : { meta: n.meta, premio: n.premio }),
         acciones: n.acciones,
         ubicaciones,
       }),
@@ -153,36 +151,24 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
         <div style={grid}>
           {/* ---------------------------------------------------- cartilla */}
           <section style={panel}>
+            {/* Sellos, premio, colores, logo… todo lo que se VE en la tarjeta se
+                cambia tocándolo en ella, en el editor. Aquí solo el resumen. */}
             <div data-recorrido="cartilla">
-            <h2 style={h2}>{esCupon ? "Cupón" : n.cartillas ? "Cartillas" : "Cartilla"}</h2>
-            {!esCupon && n.cartillas ? (
-              n.cartillas.map((c, i) => (
-                <div key={c.nombre} style={{ display: "flex", gap: 12, marginTop: i ? 12 : 0 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ ...etiqueta, marginTop: 0 }} htmlFor={`meta-${i}`}>{c.nombre}</label>
-                    <input id={`meta-${i}`} type="number" min={1} max={20} value={c.meta} onChange={(e) => setCartilla(i, "meta", Number(e.target.value))} style={campo} />
-                  </div>
-                  <div style={{ flex: 2 }}>
-                    <label style={{ ...etiqueta, marginTop: 0 }} htmlFor={`premio-${i}`}>Premio</label>
-                    <input id={`premio-${i}`} value={c.premio} onChange={(e) => setCartilla(i, "premio", e.target.value)} style={campo} />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div style={{ display: "flex", gap: 12 }}>
-                {!esCupon && (
-                  <div style={{ flex: 1 }}>
-                    <label style={{ ...etiqueta, marginTop: 0 }}>Sellos</label>
-                    <input type="number" min={1} max={50} value={n.meta} onChange={(e) => set("meta", Number(e.target.value))} style={campo} />
-                  </div>
-                )}
-                <div style={{ flex: 2 }}>
-                  <label style={{ ...etiqueta, marginTop: 0 }}>{esCupon ? "Descuento" : "Premio"}</label>
-                  <input value={n.premio} onChange={(e) => set("premio", e.target.value)} style={campo} />
-                </div>
+            <h2 style={h2}>Tu tarjeta</h2>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <MarcaTienda tema={n.tema} tam={44} icono />
+              <div style={{ flex: 1, minWidth: 160, fontSize: 14 }}>
+                <strong style={{ display: "block" }}>{n.nombre}</strong>
+                <span style={{ color: C.suave, fontSize: 13 }}>
+                  {esCupon
+                    ? `Cupón · ${n.premio}`
+                    : (n.cartillas || [{ meta: n.meta, premio: n.premio }]).map((c) => `${c.meta} sellos · ${c.premio}`).join(" — ")}
+                </span>
               </div>
-            )}
-
+              <button type="button" onClick={() => setEditando(true)} style={{ ...botonPrimario(accent), display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icono nombre="editar" tam={16} /> Editar tarjeta
+              </button>
+            </div>
             </div>
 
             <div data-recorrido="botones-caja">
@@ -212,7 +198,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             />
             </div>
 
-            <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar y actualizar pases</button></div>
+            <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar</button></div>
           </section>
 
           {/* ------------------------------------------------ vista previa */}
@@ -290,6 +276,16 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
           </section>
         </div>
 
+        {editando && (
+          <EditorTarjeta
+            inicial={n}
+            slug={negocio}
+            origin={origin}
+            estado={estadoVista}
+            onCerrar={() => setEditando(false)}
+            onGuardado={(data) => { setN(data); setEditando(false); setReal(null); flash(`Tarjeta guardada${resumenAviso(data.aviso)}`); }}
+          />
+        )}
         {msg && <div role="status" style={toast}>{msg}</div>}
         <Recorrido recorrido="manager" accent={accent} />
       </div>

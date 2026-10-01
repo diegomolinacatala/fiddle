@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNegocio, saveNegocio } from "@/lib/store";
 import { ACCIONES } from "@/lib/acciones";
-import { esSlug } from "@/lib/negocios";
+import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { notificarNegocio } from "@/lib/wallet";
 import { patchNegocio } from "@/lib/validacion";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Lo de la config que sale en el pase (y por eso obliga a ponerlo al día).
-const PASE = ["meta", "premio", "cartillas", "ubicaciones"];
+const PASE = ["nombre", "tema", "meta", "premio", "cartillas", "ubicaciones"];
 
 // GET /api/negocio?b=<slug>  -> config actual (con tema). Caja o manager.
 export async function GET(request) {
@@ -38,7 +38,7 @@ export async function PUT(request) {
     const body = await request.json().catch(() => ({}));
     const actual = await getNegocio(slug);
     if (!actual) return jsonError("negocio desconocido", 404);
-    const r = patchNegocio(body, Object.keys(ACCIONES), { cartillasActuales: actual.cartillas });
+    const r = patchNegocio(body, Object.keys(ACCIONES), { cartillasActuales: actual.cartillas, ESTILOS, temaPorDefecto });
     if (r.error) return jsonError(r.error, 400);
 
     const nuevo = await saveNegocio(slug, r.patch);

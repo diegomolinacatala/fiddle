@@ -131,19 +131,43 @@ describe("PUT /api/negocio desde el manager", () => {
     expect(notificarNegocio).not.toHaveBeenCalled();
   });
 
-  it("con dos cartillas, el manager cambia meta y premio de cada una; el nombre y el dibujo no", async () => {
+  it("con dos cartillas, el manager cambia nombre, dibujo, meta y premio de cada una, pero no cuántas hay", async () => {
     const r = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", {
       metodo: "PUT",
-      cuerpo: { cartillas: [{ meta: 10, premio: "cookie de regalo" }, { meta: 6, premio: "café gratis", nombre: "Tés", marca: "rayo" }] },
+      cuerpo: { cartillas: [{ meta: 10, premio: "cookie de regalo" }, { meta: 6, premio: "té gratis", nombre: "Tés", marca: "rayo" }, { meta: 3, premio: "otra" }] },
     }));
     expect(r.status).toBe(200);
     const n = await store.getNegocio("delicanteria");
     expect(n.cartillas).toEqual([
       { nombre: "Cookies", marca: "galleta", meta: 10, premio: "cookie de regalo" },
-      { nombre: "Cafés", marca: "taza", meta: 6, premio: "café gratis" },
+      { nombre: "Tés", marca: "rayo", meta: 6, premio: "té gratis" },
     ]);
     expect(n).toMatchObject({ meta: 10, premio: "cookie de regalo" });
     expect(notificarNegocio).toHaveBeenCalledTimes(1); // esto sí sale en el pase
+
+    const quitar = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { cartillas: null } }));
+    expect(quitar.status).toBe(200);
+    expect((await store.getNegocio("delicanteria")).cartillas).toHaveLength(2);
+  });
+
+  it("el editor de la tarjeta cambia nombre, colores y dibujo, y avisa a los teléfonos", async () => {
+    const r = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", {
+      metodo: "PUT",
+      cuerpo: { nombre: "Delicantería", tema: { cardBg: "#101010", ink: "#fafafa", accent: "#00aa55", marca: "taza", banda: "oscura", atras: "Nuevo reverso", pageBg: "url(javascript:x)" } },
+    }));
+    expect(r.status).toBe(200);
+    const n = await store.getNegocio("delicanteria");
+    expect(n.nombre).toBe("Delicantería");
+    expect(n.tema).toMatchObject({ cardBg: "#101010", ink: "#fafafa", accent: "#00aa55", marca: "taza", banda: "oscura", atras: "Nuevo reverso" });
+    expect(n.tema.pageBg).not.toMatch(/javascript/);
+    expect(notificarNegocio).toHaveBeenCalledTimes(1);
+  });
+
+  it("un nombre vacío o un color raro no se guardan", async () => {
+    const vacio = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { nombre: "  " } }));
+    expect(vacio.status).toBe(400);
+    await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { tema: { accent: "red; background:url(x)" } } }));
+    expect((await store.getNegocio("delicanteria")).tema.accent).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
   it("un horario roto se rechaza con una frase que se entiende", async () => {

@@ -42,14 +42,27 @@ export function normalizarUbicaciones(lista) {
 /**
  * Patch de configuración de negocio a partir del body del manager.
  *
- * `cartillasActuales`: con dos cartillas el manager cambia la meta y el premio
- * de cada una, pero no su nombre ni su dibujo (eso es del admin): lo que llega
- * se pone encima de las que ya hay.
+ * El manager edita su tarjeta entera (nombre, colores, dibujo, textos): es su
+ * tienda. Lo que NO toca es la estructura —cupón o cartilla, una o dos
+ * cartillas—, que cambia lo que ya tienen los clientes en el teléfono.
+ *
+ * `cartillasActuales`: con dos cartillas lo que llega de cada una se pone
+ * encima de las que ya hay; nunca añade ni quita una.
+ * `ESTILOS` y `temaPorDefecto`: sin ellos un `tema.estilo` no cambia de plantilla.
  * @returns {{patch:object} | {error:string}}
  */
-export function patchNegocio(body, accionesValidas, { cartillasActuales = null } = {}) {
+export function patchNegocio(body, accionesValidas, { cartillasActuales = null, ESTILOS = [], temaPorDefecto = null } = {}) {
   const b = body && typeof body === "object" ? body : {};
   const patch = {};
+  if (b.nombre !== undefined) {
+    const nombre = texto(b.nombre, 60);
+    if (!nombre) return { error: "El nombre no puede quedar vacío" };
+    patch.nombre = nombre;
+  }
+  if (b.tema && typeof b.tema === "object") {
+    const tema = temaDePatch(b.tema, { ESTILOS, temaPorDefecto });
+    if (Object.keys(tema).length) patch.tema = tema;
+  }
   if (Number.isFinite(b.meta)) patch.meta = Math.max(1, Math.min(50, Math.round(b.meta)));
   if (typeof b.premio === "string" && b.premio.trim()) patch.premio = b.premio.trim().slice(0, 128);
   if (Array.isArray(b.acciones)) patch.acciones = [...new Set(b.acciones.filter((k) => accionesValidas.includes(k)))];
@@ -69,10 +82,12 @@ export function patchNegocio(body, accionesValidas, { cartillasActuales = null }
   if (Array.isArray(b.cartillas) && cartillasActuales) {
     const cartillas = normalizarCartillas(cartillasActuales.map((c, i) => ({
       ...c,
+      nombre: b.cartillas[i]?.nombre ?? c.nombre,
+      marca: b.cartillas[i]?.marca ?? c.marca,
       meta: b.cartillas[i]?.meta ?? c.meta,
       premio: b.cartillas[i]?.premio ?? c.premio,
     })));
-    if (!cartillas) return { error: `Cada cartilla necesita un premio y de 1 a ${MAX_META_CARTILLA} sellos` };
+    if (!cartillas) return { error: `Cada cartilla necesita nombre, dibujo, un premio y de 1 a ${MAX_META_CARTILLA} sellos` };
     // La primera cartilla ES la de siempre: su meta y su premio son los del negocio.
     Object.assign(patch, { cartillas, meta: cartillas[0].meta, premio: cartillas[0].premio });
   }
@@ -168,15 +183,10 @@ export function datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto }) {
  */
 export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPorDefecto = null } = {}) {
   const b = body && typeof body === "object" ? body : {};
-  const r = patchNegocio(b, accionesValidas);
+  const r = patchNegocio(b, accionesValidas, { ESTILOS, temaPorDefecto });
   if (r.error) return r;
   const patch = r.patch;
 
-  const nombre = texto(b.nombre, 60);
-  if (b.nombre !== undefined) {
-    if (!nombre) return { error: "El nombre no puede quedar vacío" };
-    patch.nombre = nombre;
-  }
   if (typeof b.brief === "string") patch.brief = b.brief.trim().slice(0, 4000);
   // null quita la segunda cartilla; una lista tiene que valer entera.
   if (b.cartillas === null) patch.cartillas = null;
@@ -188,22 +198,31 @@ export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPor
     patch.meta = cartillas[0].meta;
     patch.premio = cartillas[0].premio;
   }
-  if (b.tema && typeof b.tema === "object") {
-    const cambiaPlantilla = temaPorDefecto && ESTILOS.includes(b.tema.estilo);
-    const tema = {
-      ...(cambiaPlantilla ? temaPorDefecto({ estilo: b.tema.estilo }) : {}),
-      ...piezasDeDibujo(b.tema),
-    };
-    for (const clave of ["emoji", "atras"]) {
-      const v = texto(b.tema[clave], clave === "emoji" ? 4 : 200);
-      if (v) tema[clave] = v;
-    }
-    for (const clave of ["accent", "cardBg", "ink", "pageInk"]) {
-      if (HEX.test(String(b.tema[clave] || ""))) tema[clave] = b.tema[clave];
-    }
-    if (Object.keys(tema).length) patch.tema = tema;
-  }
   return { patch };
+}
+
+/**
+ * El tema que llega del admin o del editor del manager, limpio.
+ *
+ * Si trae un `estilo` válido se entiende como CAMBIO DE PLANTILLA: se vuelve a
+ * sembrar la paleta entera desde ese estilo y encima se aplican los retoques
+ * que vengan. Por eso quien guarda manda TODOS sus colores: los que no mande
+ * vuelven a ser los de la plantilla.
+ */
+function temaDePatch(t, { ESTILOS, temaPorDefecto }) {
+  const cambiaPlantilla = temaPorDefecto && ESTILOS.includes(t.estilo);
+  const tema = {
+    ...(cambiaPlantilla ? temaPorDefecto({ estilo: t.estilo }) : {}),
+    ...piezasDeDibujo(t),
+  };
+  for (const clave of ["emoji", "atras"]) {
+    const v = texto(t[clave], clave === "emoji" ? 4 : 200);
+    if (v) tema[clave] = v;
+  }
+  for (const clave of ["accent", "cardBg", "ink", "pageInk"]) {
+    if (HEX.test(String(t[clave] || ""))) tema[clave] = t[clave];
+  }
+  return tema;
 }
 
 /**
