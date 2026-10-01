@@ -93,8 +93,8 @@ export const ROTULO_FAMILIA = {
 };
 
 export const ROTULO_DOBLE = {
-  filas: "Una fila de casillas para cada una",
-  llenar: "Se llenan, una a cada lado",
+  filas: "Una encima de otra",
+  lados: "Una al lado de otra",
 };
 
 export const ROTULO_MODO = {

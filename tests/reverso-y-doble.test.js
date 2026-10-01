@@ -74,3 +74,40 @@ describe("contacto del reverso", () => {
     expect(patchNegocio({ tema: { doble: "raro" } }, []).patch).toEqual({});
   });
 });
+
+describe("cada cartilla con su modo", () => {
+  it("lado a lado, cada una pinta su modo en su mitad y sin ids repetidos", () => {
+    const n = tienda({ doble: "lados" }, {
+      cartillas: [{ ...cartillas[0], modo: "anillos" }, { ...cartillas[1], modo: "barra" }],
+    });
+    const { svg } = stripDelPase(n, cliente);
+    expect(svg).toContain("doble-lados");
+    expect(svg.match(/<svg x=/g)).toHaveLength(2);
+    const ids = [...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Todo lo que se pide por url(#…) existe.
+    for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g)) expect(ids).toContain(ref);
+  });
+
+  it("el viejo «llenar» sigue siendo las dos llenándose, una a cada lado", () => {
+    const { svg } = stripDelPase(tienda({ doble: "llenar" }), cliente);
+    expect(svg).toContain("llenar-");
+  });
+});
+
+describe("Google: fondo y «Abierto»", () => {
+  const opciones = { issuerId: "1", appUrl: "https://x" };
+  it("el fondo es el color de la tienda, el de la tarjeta u otro", () => {
+    const n = tienda();
+    expect(construirClase(n, opciones).hexBackgroundColor).toBe(n.tema.accent);
+    expect(construirClase(tienda({ google: "tarjeta" }), opciones).hexBackgroundColor).toBe(n.tema.cardBg);
+    expect(construirClase(tienda({ google: "#123456" }), opciones).hexBackgroundColor).toBe("#123456");
+  });
+
+  it("«Ahora · Abierto hasta…» va el primero de los detalles, salvo que la tienda lo apague", () => {
+    const n = tienda({}, { estadoPase: "Abierto hasta las 18:30" });
+    expect(construirClase(n, opciones).textModulesData[0]).toEqual({ id: "estado", header: "Ahora", body: "Abierto hasta las 18:30" });
+    const apagado = tienda({ abierto: false }, { estadoPase: "Abierto hasta las 18:30" });
+    expect(construirClase(apagado, opciones).textModulesData.map((t) => t.id)).not.toContain("estado");
+  });
+});

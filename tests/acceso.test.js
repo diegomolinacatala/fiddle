@@ -23,6 +23,11 @@ describe("reglaDeRuta", () => {
     expect(regla("/api/push/abc/otra")).toEqual({ tipo: "sesion" });
   });
 
+  it("el logo propio se ve sin sesión, pero subirlo es del manager de esa tienda", () => {
+    expect(regla("/api/logo?b=nube&v=abc&t=256")).toEqual({ tipo: "publica" });
+    expect(regla("/api/logo?b=nube", "POST")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+  });
+
   it("páginas de caja y manager exigen su negocio y rol", () => {
     expect(regla("/nube/caja")).toEqual({ tipo: "negocio", slug: "nube", rol: "caja" });
     expect(regla("/fade/manager")).toEqual({ tipo: "negocio", slug: "fade", rol: "manager" });

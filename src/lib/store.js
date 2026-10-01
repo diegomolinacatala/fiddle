@@ -164,6 +164,8 @@ function fusionarConfig(actual, patch) {
     tema: patch.tema ? { ...actual.tema, ...patch.tema } : actual.tema,
     brief: patch.brief ?? actual.brief,
     cartillas: patch.cartillas !== undefined ? patch.cartillas : actual.cartillas,
+    // La segunda cartilla de una tienda que volvió a una: se recupera tal cual.
+    cartillasAparcadas: patch.cartillasAparcadas !== undefined ? patch.cartillasAparcadas : actual.cartillasAparcadas,
     notas: patch.notas ?? actual.notas,
     archivado: patch.archivado ?? actual.archivado,
     // Avisos automáticos (lib/automatizaciones.js) y el horario del que dependen.
@@ -203,6 +205,53 @@ export async function saveNegocio(slug, patch) {
     await escribir("negocios", { ...all, [slug]: { ...fila, creado } });
     return componer(slug, { ...fila, creado });
   });
+}
+
+// ---------------------------------------------------------- logos propios
+// La imagen que sube una tienda para su logo (lib/logoImagen.js la prepara).
+// En Supabase va a Storage, a un cubo PRIVADO que se crea solo la primera vez:
+// la sirve /api/logo, así que no hace falta que sea público ni tocar la consola.
+// En la demo, un fichero en .data/logos/.
+const CUBO_LOGOS = "logos";
+const rutaLogo = (slug, id) => `${slug}/${id}.png`;
+
+/** Guarda la imagen ya preparada (PNG). Si ya existía la misma, no pasa nada. */
+export async function guardarLogo(slug, id, png) {
+  if (!esSlug(slug) || !/^[0-9a-f]{16,64}$/.test(id)) throw new Error("Logo no válido");
+  if (hasSupabase()) {
+    const almacen = supa().storage;
+    const subir = () => almacen.from(CUBO_LOGOS).upload(rutaLogo(slug, id), png, { contentType: "image/png", upsert: true });
+    let { error } = await subir();
+    if (error && /bucket not found|not found/i.test(error.message || "")) {
+      const creado = await almacen.createBucket(CUBO_LOGOS, { public: false });
+      if (creado.error && !/already exists/i.test(creado.error.message || "")) throw new Error(`Supabase crear cubo de logos: ${creado.error.message}`);
+      ({ error } = await subir());
+    }
+    if (error) throw new Error(`Supabase subir logo: ${error.message}`);
+    return;
+  }
+  const dir = path.join(dataDir(), "logos");
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, `${slug}-${id}.png`), png);
+}
+
+/** La imagen guardada, o null si no está. */
+export async function leerLogo(slug, id) {
+  if (!esSlug(slug) || !/^[0-9a-f]{16,64}$/.test(id)) return null;
+  if (hasSupabase()) {
+    const { data, error } = await supa().storage.from(CUBO_LOGOS).download(rutaLogo(slug, id));
+    if (error) {
+      if (/not found|object not found/i.test(error.message || "") || error.statusCode === "404") return null;
+      throw new Error(`Supabase leer logo: ${error.message}`);
+    }
+    return Buffer.from(await data.arrayBuffer());
+  }
+  try {
+    return await fs.readFile(path.join(dataDir(), "logos", `${slug}-${id}.png`));
+  } catch (e) {
+    if (e.code === "ENOENT") return null;
+    throw e;
+  }
 }
 
 /** Archiva (o desarchiva) un negocio: desaparece de todo, pero no se pierde nada. */

@@ -317,6 +317,13 @@ export function estadoAhora(horario, ms) {
 /**
  * @returns {{abierta:boolean, texto:string}|null} null sin horario
  */
+/**
+ * Lo mismo, pero mirando si la tienda quiere la línea en su tarjeta (Editar
+ * tarjeta → la banda → "Abierto ahora"). Apagada, ningún pase la lleva y el
+ * reloj no empuja nada por ella. Todo lo que pinte o firme un pase pasa por aquí.
+ */
+export const estadoDeTienda = (negocio, ms) => (negocio?.tema?.abierto === false ? null : estadoParaPase(negocio?.horario, ms));
+
 export function estadoParaPase(horario, ms) {
   if (!horario) return null;
   const { fecha, minutos } = relojLocal(ms, horario.zona);

@@ -10,6 +10,9 @@ const MAX_CLIENTES = 200; // las pantallas muestran los más recientes
 
 // GET /api/clientes?b=<slug>            -> últimos clientes de ese negocio.
 // GET /api/clientes?b=<slug>&codigo=K7M  -> UN cliente por su código corto.
+// GET /api/clientes?b=<slug>&segunda=1   -> cuántos tienen algo en la SEGUNDA
+//   cartilla (sellos o premios guardados): lo que el editor avisa que se queda
+//   guardado, sin verse, al pasar a una sola. Solo cuentas, de todos.
 //
 // El código se busca solo dentro de `b`, y la sesión ya tiene que ser de ese
 // negocio: el "K7M" de otra tienda no se puede resolver desde aquí.
@@ -21,6 +24,13 @@ export async function GET(request) {
   const { respuesta } = await exigirNegocio(request, slug, "caja");
   if (respuesta) return respuesta;
   try {
+    if (searchParams.get("segunda") === "1") {
+      const todos = await listClientes(slug);
+      return NextResponse.json({
+        conSellos: todos.filter((c) => (c.sellos2 || 0) > 0).length,
+        conGuardados: todos.filter((c) => (c.guardados2 || 0) > 0).length,
+      });
+    }
     if (codigo) {
       const cliente = await getClientePorCodigo(slug, codigo);
       if (!cliente) return jsonError("Ningún pase de esta tienda con ese código", 404);

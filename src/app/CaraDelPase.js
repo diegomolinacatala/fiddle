@@ -1,5 +1,6 @@
 import { camposDelPase } from "@/lib/apple/pase";
-import { svgLogo, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { LogoApple } from "@/app/LogoTienda";
 import { estadoDe } from "@/lib/resumen";
 import { describirBanda } from "@/lib/cartillas";
 import AbiertoAhora from "@/app/AbiertoAhora";
@@ -30,7 +31,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
   return (
     <article style={{ ...tarjeta, background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
       <header style={cabecera}>
-        <img src={comoDataUri(svgLogo(t))} alt="" width={30} height={30} style={{ display: "block", flexShrink: 0 }} />
+        <LogoApple tema={t} tam={30} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong style={nombreTienda}>{negocio.nombre}</strong>
           {horario && <AbiertoAhora horario={horario} />}

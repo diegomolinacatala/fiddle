@@ -487,6 +487,8 @@ export function componerNegocio(slug, guardado) {
     meta: cartillas?.[0].meta ?? c.meta ?? semilla?.meta ?? (tipo === "descuento" ? 1 : 8),
     premio: cartillas?.[0].premio ?? c.premio ?? semilla?.premio ?? "premio",
     cartillas,
+    // Pasar de dos cartillas a una aparca la segunda aquí (ver patchNegocio).
+    cartillasAparcadas: tipo === "descuento" ? null : normalizarCartillas(c.cartillasAparcadas),
     acciones: c.acciones ?? semilla?.acciones ?? (tipo === "descuento" ? ["canjear"] : ["sellar", "canjear"]),
     promo: c.promo ?? null,
     ubicaciones: Array.isArray(c.ubicaciones) ? c.ubicaciones : [],

@@ -131,23 +131,38 @@ describe("PUT /api/negocio desde el manager", () => {
     expect(notificarNegocio).not.toHaveBeenCalled();
   });
 
-  it("con dos cartillas, el manager cambia nombre, dibujo, meta y premio de cada una, pero no cuántas hay", async () => {
+  it("con dos cartillas, el manager cambia nombre, dibujo, modo, meta y premio de cada una", async () => {
     const r = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", {
       metodo: "PUT",
-      cuerpo: { cartillas: [{ meta: 10, premio: "cookie de regalo" }, { meta: 6, premio: "té gratis", nombre: "Tés", marca: "rayo" }, { meta: 3, premio: "otra" }] },
+      cuerpo: { cartillas: [{ meta: 10, premio: "cookie de regalo" }, { meta: 6, premio: "té gratis", nombre: "Tés", marca: "rayo", modo: "anillos" }] },
     }));
     expect(r.status).toBe(200);
     const n = await store.getNegocio("delicanteria");
     expect(n.cartillas).toEqual([
       { nombre: "Cookies", marca: "galleta", meta: 10, premio: "cookie de regalo" },
-      { nombre: "Tés", marca: "rayo", meta: 6, premio: "té gratis" },
+      { nombre: "Tés", marca: "rayo", meta: 6, premio: "té gratis", modo: "anillos" },
     ]);
     expect(n).toMatchObject({ meta: 10, premio: "cookie de regalo" });
     expect(notificarNegocio).toHaveBeenCalledTimes(1); // esto sí sale en el pase
 
-    const quitar = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { cartillas: null } }));
-    expect(quitar.status).toBe(200);
-    expect((await store.getNegocio("delicanteria")).cartillas).toHaveLength(2);
+    // Tres no: una lista que no son dos no se adivina.
+    const tres = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { cartillas: [{}, {}, {}] } }));
+    expect(tres.status).toBe(400);
+  });
+
+  it("pasar a una cartilla aparca la segunda, y volver a dos la recupera tal cual", async () => {
+    const antes = (await store.getNegocio("delicanteria")).cartillas;
+    const una = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { cartillas: null } }));
+    expect(una.status).toBe(200);
+    let n = await store.getNegocio("delicanteria");
+    expect(n.cartillas).toBeNull();
+    expect(n.cartillasAparcadas).toEqual(antes);
+
+    // Basta decir "dos": la segunda vuelve con su nombre, su dibujo y su premio.
+    const dos = await negocioRuta.PUT(await pedir("/api/negocio?b=delicanteria", { metodo: "PUT", cuerpo: { cartillas: [{}, {}] } }));
+    expect(dos.status).toBe(200);
+    n = await store.getNegocio("delicanteria");
+    expect(n.cartillas).toEqual(antes);
   });
 
   it("el editor de la tarjeta cambia nombre, colores y dibujo, y avisa a los teléfonos", async () => {

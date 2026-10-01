@@ -83,7 +83,9 @@ export async function PUT(request) {
       return NextResponse.json(await saveNegocio(slug, { notas }));
     }
 
-    const r = patchNegocioAdmin(body, Object.keys(ACCIONES), { ESTILOS, temaPorDefecto });
+    const r = patchNegocioAdmin(body, Object.keys(ACCIONES), {
+      ESTILOS, temaPorDefecto, cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas,
+    });
     if (r.error) return jsonError(r.error, 400);
     const nuevo = await saveNegocio(slug, r.patch);
 

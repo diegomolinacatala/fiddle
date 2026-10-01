@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import QrImagen from "@/app/QrImagen";
 import { camposDelPase } from "@/lib/apple/pase";
-import { svgLogo, svgLogoGoogle, svgBandaOpaca, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { svgBandaOpaca, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
 import { construirClase, construirObjeto } from "@/lib/google/pase";
 import { enlacesDeContacto } from "@/lib/contacto";
 import { encajar, repartir, medirAprox } from "@/lib/vistaWallet";
@@ -43,8 +44,11 @@ const FUENTE_GOOGLE = '"Google Sans", Roboto, system-ui, sans-serif';
  * @param {object} [props.estado]      la línea "● Abierto hasta las 14:00" (estadoParaPase)
  * @param {"delante"|"detras"} [props.cara]  si quien la usa quiere mandar en el lado de Apple
  */
-export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara }) {
-  const [cual, setCual] = useState("apple");
+// `plataforma`: "apple" o "google" para enseñar solo esa (el editor pone las dos
+// una al lado de otra); sin ella, un conmutador.
+export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara, plataforma = null }) {
+  const [cualDentro, setCual] = useState("apple");
+  const cual = plataforma || cualDentro;
   const [caraDentro, setCaraDentro] = useState("delante");
   const cara = caraFuera || caraDentro;
   const setCara = onCara || setCaraDentro;
@@ -55,13 +59,13 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
 
   return (
     <div ref={caja}>
-      <div style={conmutador}>
+      {!plataforma && <div style={conmutador}>
         {[["apple", " Apple Wallet"], ["google", "Google Wallet"]].map(([id, texto]) => (
           <button key={id} type="button" onClick={() => setCual(id)} aria-pressed={cual === id} style={opcion(cual === id)}>
             {texto}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* En Apple se le da la vuelta con (i). Google no tiene "detrás": todo va
           en la misma pantalla, desplazándose hacia abajo. */}
@@ -82,14 +86,16 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
         ? (cara === "detras"
           ? <ReversoApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} medir={medir} origen={origen} estado={estado} onHecho={() => setCara("delante")} />
           : (
-            <div style={{ ...pantalla, background: "#000", padding: "14px 12px 16px" }}>
+            // Sin marco de teléfono: la tarjeta sola, como se la imagina el dueño.
+            <div style={{ width: ANCHO, margin: "0 auto" }}>
               <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} estado={estado} medir={medir} />
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
                 <button type="button" onClick={() => setCara("detras")} aria-label="Ver el reverso" style={botonInfo}>i</button>
               </div>
             </div>
           ))
-        : <PantallaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />}
+        // La línea de abierto/cerrado, en Google, es un módulo de la clase (ver google/pase.js).
+        : <PantallaGoogle negocio={{ ...negocio, estadoPase: estado?.texto ?? null }} cliente={cliente} qrTexto={qrTexto} anota={anota} />}
       </div>
 
       {pie && <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>{pie}</p>}
@@ -104,7 +110,7 @@ function useEscala() {
   useEffect(() => {
     const el = caja.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ver = () => setEscala(Math.min(1, el.clientWidth / (ANCHO + 24)));
+    const ver = () => setEscala(Math.min(1, el.clientWidth / (ANCHO + 24)) || 1);
     ver();
     const ro = new ResizeObserver(ver);
     ro.observe(el);
@@ -203,7 +209,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 9, padding: `10px ${A.margen}px 8px` }}>
         <Anotable clave="apple.logo" etiqueta="Logo" anota={anota} estilo={{ width: "auto", flexShrink: 0 }}>
-          <img src={comoDataUri(svgLogo(t))} alt="" width={A.logo} height={A.logo} style={{ display: "block" }} />
+          <LogoApple tema={t} tam={A.logo} />
         </Anotable>
         <Anotable clave="apple.nombre" etiqueta="Nombre del negocio" anota={anota} estilo={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: A.nombre, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -375,7 +381,7 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
     <div style={{ ...pantalla, height: 600, overflowY: "auto", background: oscuro, color: tinta, fontFamily: FUENTE_GOOGLE, ...tocable(anota) }} onClick={fondo(anota, "google.fondo")}>
       <div style={{ background: `linear-gradient(${color}, ${mezclar(color, "#000000", 0.14)})`, borderRadius: "0 0 26px 26px", padding: "22px 16px 18px", position: "relative", zIndex: 1, opacity: objeto.state === "INACTIVE" ? 0.6 : 1 }}>
         <Anotable clave="google.cabecera" etiqueta="Logo y nombre" anota={anota} estilo={{ textAlign: "center" }}>
-          <img src={comoDataUri(svgLogoGoogle(negocio.tema, 132))} alt="" width={66} height={66} style={{ borderRadius: "50%", display: "block", margin: "0 auto" }} />
+          <LogoGoogle tema={negocio.tema} tam={66} style={{ margin: "0 auto" }} />
           <div style={{ fontSize: 11.5, marginTop: 10, opacity: 0.9 }}>{clase.issuerName}</div>
           <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.12, marginTop: 6, overflowWrap: "anywhere" }}>{clase.programName}</div>
         </Anotable>
@@ -527,7 +533,7 @@ const interruptor = { width: 38, height: 23, borderRadius: 12, background: "#34c
 const bolita = { position: "absolute", right: 2, top: 2, width: 19, height: 19, borderRadius: "50%", background: "#fff" };
 
 const botonInfo = {
-  width: 26, height: 26, borderRadius: "50%", border: "1.6px solid #fff", background: "transparent", color: "#fff",
+  width: 26, height: 26, borderRadius: "50%", border: `1.6px solid ${C.suave}`, background: "#fff", color: C.suave,
   fontFamily: "Georgia, serif", fontStyle: "italic", fontWeight: 700, fontSize: 14, lineHeight: 1, cursor: "pointer",
 };
 

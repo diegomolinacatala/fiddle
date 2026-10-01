@@ -12,8 +12,9 @@ import { C, campo, etiqueta } from "@/app/ui";
 // primera pasa a mandar sobre "Sellos" y "Premio".
 // ============================================================================
 
-// Al encender: la primera es la cartilla que ya tenía la tienda.
-const dePartida = (n) => [
+// Al encender: la primera es la cartilla que ya tenía la tienda. Si la tienda
+// ya tuvo dos y volvió a una, la segunda vuelve tal cual (con sus sellos).
+const dePartida = (n) => n.cartillasAparcadas ? [{ ...n.cartillasAparcadas[0], meta: Math.min(n.meta, 20), premio: n.premio }, n.cartillasAparcadas[1]] : [
   { nombre: "Sellos", marca: n.tema.marca === "texto" ? "estrella" : n.tema.marca, meta: n.meta, premio: n.premio },
   { nombre: "Cafés", marca: "taza", meta: 8, premio: "café gratis" },
 ];

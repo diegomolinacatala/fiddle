@@ -180,10 +180,12 @@ export const FORMAS = ["circulo", "redondeado", "cuadrado", "rombo", "hexagono"]
 /** Fondos de la banda. */
 export const BANDAS = ["clara", "oscura", "blanca", "degradado", "rayas"];
 /**
- * Cómo se cuentan DOS cartillas en la misma banda: una fila de casillas por
- * cartilla, o dos dibujos que se llenan, uno a cada lado (la galleta y la taza).
+ * Cómo se REPARTEN dos cartillas en la misma banda: una encima de otra (filas)
+ * o una al lado de otra (lados). Cómo cuenta cada una es cosa suya
+ * (`cartilla.modo`, cualquiera de MODOS), igual que una tienda de una cartilla.
+ * "llenar" es el nombre viejo de "lados con las dos llenándose".
  */
-export const MODOS_DOBLES = ["filas", "llenar"];
+export const MODOS_DOBLES = ["filas", "lados"];
 /** Cómo se cuentan los sellos en la banda. */
 export const MODOS = [
   "casillas", "relleno", "porciones", "pizza", "barra", "pesas", "anillos",
@@ -244,8 +246,17 @@ export function piezasDeTema(tema = {}) {
     forma: FORMAS.includes(tema.forma) ? tema.forma : (tema.estilo === "barber" ? "redondeado" : "circulo"),
     banda: BANDAS.includes(tema.banda) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara"),
     modo: MODOS.includes(tema.modo) ? tema.modo : "casillas",
-    doble: MODOS_DOBLES.includes(tema.doble) ? tema.doble : "filas",
+    doble: tema.doble === "llenar" ? "lados" : MODOS_DOBLES.includes(tema.doble) ? tema.doble : "filas",
   };
+}
+
+/**
+ * Cómo cuenta UNA de las dos cartillas. Las guardadas antes de que cada una
+ * tuviera su modo no lo llevan: casillas, salvo las del viejo "llenar".
+ */
+export function modoDeCartilla(tema, cartilla) {
+  if (MODOS.includes(cartilla?.modo)) return cartilla.modo;
+  return tema?.doble === "llenar" ? "relleno" : "casillas";
 }
 
 /** Qué marca toca y con qué texto. */
@@ -667,7 +678,8 @@ function bandaPesas(tema, meta, sellos, w, h) {
 
   return `<defs>${brillo(`${id}-br`, color)}</defs>` + barra + topes
     + Array.from({ length: n }, (_, i) => disco(i)).join("")
-    + cuenta(sellos, n, color, cx, h * 0.15, h * 0.17, w * 0.3);
+    // La cuenta, encima y sin rozar los discos (los más altos llegan al 22 % del alto).
+    + cuenta(sellos, n, color, cx, h * 0.115, h * 0.15, w * 0.3);
 }
 
 /**
@@ -1168,31 +1180,112 @@ export function svgStripCartillas(tema, filas, estado = null) {
   const margen = estado ? 16 : 24; // arriba y abajo; con la línea de estado, algo menos
   const lateral = w * 0.09; // ~34 pt por lado: lo que el iPhone puede recortar, y aire
   const altoFila = (h - margen * 2) / filas.length;
-  const oscura = esOscura(tema);
-  const casilla = forma(tema);
   const color = String(tema.accent || "").replace(/[^0-9a-z]/gi, "");
   const id = `cartillas-${banda(tema)}-${color}-${filas.map((f) => `${f.marca}${f.meta}-${f.sellos}`).join("-")}`;
 
-  const cuerpo = filas.map((f, fila) => {
-    const conMarca = { ...tema, marca: f.marca };
-    const ancho = (w - lateral * 2) / f.meta;
-    const d = Math.min(ancho, altoFila) * 0.8;
-    const cy = margen + altoFila * (fila + 0.5);
-    return Array.from({ length: f.meta }, (_, i) => {
-      const cx = lateral + ancho * (i + 0.5);
-      if (i < Math.min(f.sellos, f.meta)) {
-        return oscura
-          ? svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}" fill-opacity="0.18" stroke="${tema.accent}" stroke-width="4"`)
-            + colocar(conMarca, tema.accent, cx, cy, d * 0.8)
-          : svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}"`) + colocar(conMarca, "#ffffff", cx, cy, d * 0.78);
-      }
-      const trazo = oscura ? "#ffffff" : tema.accent;
-      return svgCasilla(casilla, cx, cy, d - 6, `fill="none" stroke="${trazo}" stroke-opacity="${oscura ? 0.2 : 0.45}" stroke-width="4" stroke-dasharray="12 9"`)
-        + `<g opacity="${oscura ? 0.16 : 0.2}">${colocar(conMarca, trazo, cx, cy, d * 0.62)}</g>`;
-    }).join("");
-  }).join("");
+  const cuerpo = filas.map((f, fila) =>
+    filaCasillas({ ...tema, forma: f.forma || tema.forma }, f, lateral, margen + altoFila * fila, w - lateral * 2, altoFila)).join("");
 
   return svg(w, alto, lineaDeEstado(tema, estado, w) + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + cuerpo}</g>`);
+}
+
+/**
+ * Una fila de casillas de una cartilla, en la caja (x, y, ancho, alto): llenas
+ * con su marca y vacías con la marca en fantasma, como la tarjeta impresa.
+ */
+function filaCasillas(tema, f, x, y, ancho, alto) {
+  const oscura = esOscura(tema);
+  const casilla = forma(tema);
+  const conMarca = { ...tema, marca: f.marca };
+  const paso = ancho / f.meta;
+  const d = Math.min(paso, alto) * 0.8;
+  const cy = y + alto / 2;
+  return Array.from({ length: f.meta }, (_, i) => {
+    const cx = x + paso * (i + 0.5);
+    if (i < Math.min(f.sellos, f.meta)) {
+      return oscura
+        ? svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}" fill-opacity="0.18" stroke="${tema.accent}" stroke-width="4"`)
+          + colocar(conMarca, tema.accent, cx, cy, d * 0.8)
+        : svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}"`) + colocar(conMarca, "#ffffff", cx, cy, d * 0.78);
+    }
+    const trazo = oscura ? "#ffffff" : tema.accent;
+    return svgCasilla(casilla, cx, cy, d - 6, `fill="none" stroke="${trazo}" stroke-opacity="${oscura ? 0.2 : 0.45}" stroke-width="4" stroke-dasharray="12 9"`)
+      + `<g opacity="${oscura ? 0.16 : 0.2}">${colocar(conMarca, trazo, cx, cy, d * 0.62)}</g>`;
+  }).join("");
+}
+
+/**
+ * Un modo cualquiera dentro de un trozo de la banda: el mismo dibujo que en una
+ * tienda de una cartilla, pero en su caja. Va en un <svg> anidado, que recorta
+ * lo que se salga, y con los ids renombrados: dos cartillas con el mismo modo y
+ * la misma marca no pueden compartir degradados ni recortes.
+ */
+// La forma de caja que aguanta cada modo (ancho ÷ alto). Más estrecha que el
+// mínimo, el dibujo se come la cifra (la tarta mide lo que el alto); más ancha
+// que el máximo, una figura redonda se queda sola en una punta. Lo medido en
+// las hojas de prueba: las de dibujo redondo, entre 2,6 y 3,6; la barra lleva
+// la marca a la izquierda y pide 3; las de fila se estiran lo que haga falta.
+const ASPECTO = {
+  relleno: [2.5, 3.6], porciones: [2.6, 3.6], pizza: [2.6, 3.6], anillos: [2.6, 3.6], luna: [2.6, 3.6],
+  mosaico: [2.6, 3.6], aguja: [2.2, 3.6], planta: [2.2, 3.6], torre: [1.6, 3.8], cifra: [1, 4.5],
+  barra: [3, Infinity], pulso: [2.6, Infinity], escalera: [1.6, Infinity],
+};
+
+function trozoDeBanda(tema, modo, f, x0, y0, anchoCaja, altoCaja, sufijo) {
+  // La caja del modo, centrada en la que le toca: ni más estrecha ni más ancha de lo que aguanta.
+  const [minimo, maximo] = ASPECTO[modo] || [1, Infinity];
+  let ancho = anchoCaja;
+  let alto = altoCaja;
+  if (ancho / alto < minimo) alto = ancho / minimo;
+  if (ancho / alto > maximo) ancho = alto * maximo;
+  const x = x0 + (anchoCaja - ancho) / 2;
+  const y = y0 + (altoCaja - alto) / 2;
+  const pintar = PINTAR_BANDA[modo] || bandaCasillas;
+  const temaTrozo = { ...tema, marca: f.marca, modo, forma: f.forma || tema.forma };
+  const llenos = Math.min(Math.max(0, f.sellos), f.meta);
+  const cuerpo = pintar(temaTrozo, f.meta, llenos, ancho, alto)
+    .replace(/id="([^"]+)"/g, `id="$1-${sufijo}"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#$1-${sufijo})`);
+  return `<svg x="${n2(x)}" y="${n2(y)}" width="${n2(ancho)}" height="${n2(alto)}" overflow="hidden">${cuerpo}</svg>`;
+}
+
+/**
+ * DOS CARTILLAS, CADA UNA CON SU MODO. Arriba y abajo (`filas`) o una al lado de
+ * otra (`lados`). Dos combinaciones tienen dibujo propio, el de siempre: dos
+ * filas de casillas (svgStripCartillas) y dos dibujos que se llenan con las
+ * cuentas en el centro (svgStripLlenar). El resto, cada cartilla pinta su modo
+ * en su mitad, con una raya fina entre las dos.
+ *
+ * Margen lateral ancho: Wallet recorta los lados de la banda en el iPhone.
+ */
+export function svgStripDoble(tema, filas, estado = null) {
+  const { doble } = piezasDeTema(tema);
+  const modos = filas.map((f) => modoDeCartilla(tema, f));
+  if (doble === "filas" && modos.every((m) => m === "casillas")) return svgStripCartillas(tema, filas, estado);
+  if (doble === "lados" && modos.every((m) => m === "relleno")) return svgStripLlenar(tema, filas, estado);
+
+  const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
+  const arriba = estado ? ALTO_ESTADO * 3 : 0;
+  const h = alto - arriba;
+  const hex = String(tema.accent || "").replace(/[^0-9a-z]/gi, "");
+  const id = `doble-${doble}-${banda(tema)}-${hex}-${filas.map((f, i) => `${modos[i]}${f.marca}${f.meta}-${f.sellos}`).join("-")}`;
+  const lateral = w * 0.06;
+  let cuerpo;
+  let raya;
+  if (doble === "filas") {
+    const margen = estado ? 10 : 18;
+    const altoFila = (h - margen * 2) / filas.length;
+    cuerpo = filas.map((f, i) => (modos[i] === "casillas"
+      ? filaCasillas({ ...tema, forma: f.forma || tema.forma }, f, w * 0.09, margen + altoFila * i, w * 0.82, altoFila)
+      : trozoDeBanda(tema, modos[i], f, lateral, margen + altoFila * i, w - lateral * 2, altoFila, `${id}-${i}`))).join("");
+    raya = `<rect x="${n2(w * 0.2)}" y="${n2(h / 2 - 1.5)}" width="${n2(w * 0.6)}" height="3" rx="1.5" fill="${tenue(tema)}" fill-opacity="0.16"/>`;
+  } else {
+    const mitad = (w - lateral * 2) / 2;
+    cuerpo = filas.map((f, i) => trozoDeBanda(tema, modos[i], f, lateral + mitad * i, 0, mitad, h, `${id}-${i}`)).join("");
+    raya = `<rect x="${n2(w / 2 - 3)}" y="${n2(h * 0.2)}" width="6" height="${n2(h * 0.6)}" rx="3" fill="${tenue(tema)}" fill-opacity="0.2"/>`;
+  }
+  return svg(w, alto, lineaDeEstado(tema, estado, w)
+    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + cuerpo + raya}</g>`);
 }
 
 /**
@@ -1297,10 +1390,7 @@ export function stripDelPase(negocio, cliente, { estado = null } = {}) {
   let dibujo;
   if (esCupon) dibujo = svgStripCupon(negocio.tema, (cliente.premios || 0) > 0);
   else if (negocio.cartillas) {
-    const filas = cartillasDe(cliente, negocio);
-    dibujo = piezasDeTema(negocio.tema).doble === "llenar"
-      ? svgStripLlenar(negocio.tema, filas, estado)
-      : svgStripCartillas(negocio.tema, filas, estado);
+    dibujo = svgStripDoble(negocio.tema, cartillasDe(cliente, negocio), estado);
   }
   else dibujo = svgStripSellos(negocio.tema, negocio.meta, Math.min(cliente.sellos ?? 0, negocio.meta), estado);
   return { svg: dibujo, ancho, alto };

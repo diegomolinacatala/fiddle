@@ -1,5 +1,8 @@
 import sharp from "sharp";
 import { TAM, svgIcono, svgLogo, stripDelPase } from "./dibujo";
+import { versionDe } from "../rutasImagen";
+import { bufferDeLogo, componerLogo } from "../logoImagen";
+import { logoImagenDe } from "../logo";
 
 // ============================================================================
 // APPLE WALLET — imágenes del pase (icon, logo, strip)
@@ -44,14 +47,32 @@ function cachear(cache, clave, crear) {
   return p;
 }
 
+// La clave lleva la HUELLA del diseño (marca, colores, logo…): antes era solo
+// la tienda, y tras cambiar el logo esta instancia seguía firmando el viejo.
 function fijas(negocio) {
   const t = negocio.tema;
-  return cachear(cacheFijas, negocio.slug, () =>
-    Promise.all([
-      escalas("icon", svgIcono(t), TAM.icon, TAM.icon),
-      escalas("logo", svgLogo(t), TAM.logo, TAM.logo),
-    ]).then((partes) => Object.assign({}, ...partes)),
-  );
+  return cachear(cacheFijas, `${negocio.slug}:${versionDe(negocio)}`, async () => {
+    const logo = logoImagenDe(t);
+    const buffer = logo ? await bufferDeLogo(t) : null;
+    if (!buffer) {
+      const partes = await Promise.all([
+        escalas("icon", svgIcono(t), TAM.icon, TAM.icon),
+        escalas("logo", svgLogo(t), TAM.logo, TAM.logo),
+      ]);
+      return Object.assign({}, ...partes);
+    }
+    // Con imagen propia: el logo, tal cual y con algo de esquina si es cuadrada
+    // y opaca (como un icono); el icono (avisos), sobre el fondo de la tarjeta.
+    const de = (lado, opciones) => componerLogo(buffer, lado, { opaco: logo.opaco, ...opciones });
+    const [l1, l2, l3, i1, i2, i3] = await Promise.all([
+      ...[1, 2, 3].map((k) => de(TAM.logo * k, { escala: 1, sangre: true, radio: logo.opaco ? TAM.logo * k * 0.18 : 0 })),
+      ...[1, 2, 3].map((k) => de(TAM.icon * k, { fondo: t.cardBg, escala: 0.84, sangre: true })),
+    ]);
+    return {
+      "logo.png": l1, "logo@2x.png": l2, "logo@3x.png": l3,
+      "icon.png": i1, "icon@2x.png": i2, "icon@3x.png": i3,
+    };
+  });
 }
 
 function strip(negocio, cliente, estado) {
@@ -62,7 +83,9 @@ function strip(negocio, cliente, estado) {
   const segunda = negocio.cartillas ? `:${negocio.cartillas[1].meta}:${cliente.sellos2 || 0}` : "";
   // La línea de abierto/cerrado también es parte del dibujo: otra frase, otra imagen.
   const linea = estado && !esCupon ? `:${estado.abierta ? 1 : 0}${estado.texto}` : "";
-  const clave = esCupon ? `${negocio.slug}:cupon:${usado}` : `${negocio.slug}:${negocio.meta}:${sellos}${segunda}${linea}`;
+  // La huella del diseño, también: otro modo u otro color es otra banda.
+  const diseno = versionDe(negocio);
+  const clave = esCupon ? `${negocio.slug}:${diseno}:cupon:${usado}` : `${negocio.slug}:${diseno}:${negocio.meta}:${sellos}${segunda}${linea}`;
   if (!cacheStrips.has(clave) && cacheStrips.size >= MAX_STRIPS) {
     cacheStrips.delete(cacheStrips.keys().next().value); // la menos usada recientemente
   }

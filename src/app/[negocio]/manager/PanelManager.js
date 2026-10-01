@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { LISTA_ACCIONES } from "@/lib/acciones";
 import { normalizarCodigo } from "@/lib/codigo";
-import { estadoParaPase } from "@/lib/horario";
+import { estadoDeTienda } from "@/lib/horario";
 import QrImagen from "@/app/QrImagen";
 import PaseVista from "@/app/PaseVista";
 import GrabarTag from "./GrabarTag";
@@ -138,7 +138,9 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
 
   // El estado del pase con la hora de la tienda. `origin` vacío = aún en el
   // servidor: sin hora, para que el HTML de servidor y el del navegador casen.
-  const estadoVista = reloj && origin ? estadoParaPase(n.horario, Date.now()) : null;
+  // Sin mirar si está apagada: el editor la necesita para enseñar qué pasa al encenderla.
+  const estadoReloj = reloj && origin ? estadoDeTienda({ ...n, tema: { ...n.tema, abierto: true } }, Date.now()) : null;
+  const estadoVista = n.tema.abierto === false ? null : estadoReloj;
   const accent = n.tema.accent;
   const tapUrl = `${origin}/api/tap?b=${negocio}`;
   const esCupon = n.tipo === "descuento";
@@ -281,7 +283,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             inicial={n}
             slug={negocio}
             origin={origin}
-            estado={estadoVista}
+            estado={estadoReloj}
             onCerrar={() => setEditando(false)}
             onGuardado={(data) => { setN(data); setEditando(false); setReal(null); flash(`Tarjeta guardada${resumenAviso(data.aviso)}`); }}
           />

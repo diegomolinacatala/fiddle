@@ -5,6 +5,7 @@ import { FORMAS, BANDAS, MODOS, MODOS_DOBLES, resolverMarca } from "./apple/dibu
 import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
+import { validarLogoImagen } from "./logo";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 const MAX_NOMBRE = 48;
@@ -52,7 +53,7 @@ export function normalizarUbicaciones(lista) {
  * `ESTILOS` y `temaPorDefecto`: sin ellos un `tema.estilo` no cambia de plantilla.
  * @returns {{patch:object} | {error:string}}
  */
-export function patchNegocio(body, accionesValidas, { cartillasActuales = null, ESTILOS = [], temaPorDefecto = null } = {}) {
+export function patchNegocio(body, accionesValidas, { cartillasActuales = null, cartillasAparcadas = null, ESTILOS = [], temaPorDefecto = null } = {}) {
   const b = body && typeof body === "object" ? body : {};
   const patch = {};
   if (b.nombre !== undefined) {
@@ -85,19 +86,33 @@ export function patchNegocio(body, accionesValidas, { cartillasActuales = null, 
     if (c.error) return { error: c.error };
     patch.contacto = c.contacto;
   }
-  if (Array.isArray(b.cartillas) && cartillasActuales) {
-    const cartillas = normalizarCartillas(cartillasActuales.map((c, i) => ({
-      ...c,
-      nombre: b.cartillas[i]?.nombre ?? c.nombre,
-      marca: b.cartillas[i]?.marca ?? c.marca,
-      meta: b.cartillas[i]?.meta ?? c.meta,
-      premio: b.cartillas[i]?.premio ?? c.premio,
-    })));
-    if (!cartillas) return { error: `Cada cartilla necesita nombre, dibujo, un premio y de 1 a ${MAX_META_CARTILLA} sellos` };
+  // UNA O DOS CARTILLAS. Pasar a una no borra nada: la segunda se APARCA en la
+  // config (con su nombre, su dibujo y su premio) y los sellos2 / guardados2 de
+  // cada cliente se quedan donde estaban, sin verse. Volver a dos la recupera
+  // tal cual, con los sellos de cada uno.
+  if (b.cartillas === null) {
+    patch.cartillas = null;
+    // Lo aparcado es lo que manda el editor (con lo que se tocó antes de pasar a
+    // una) o, si no manda nada, las que había guardadas.
+    const aparcar = normalizarCartillas(b.cartillasAparcadas) || cartillasActuales;
+    if (aparcar) patch.cartillasAparcadas = aparcar;
+  } else if (Array.isArray(b.cartillas)) {
+    // Lo que llega se pone encima de lo que había (o de lo aparcado): basta mandar lo que cambia.
+    const base = cartillasActuales || cartillasAparcadas || [];
+    const cartillas = normalizarCartillas(b.cartillas.map((c, i) => ({ ...(base[i] || {}), ...limpiarCartilla(c) })));
+    if (!cartillas) return { error: `Cartillas no válidas: dos, cada una con nombre, dibujo, un premio y de 1 a ${MAX_META_CARTILLA} sellos` };
     // La primera cartilla ES la de siempre: su meta y su premio son los del negocio.
     Object.assign(patch, { cartillas, meta: cartillas[0].meta, premio: cartillas[0].premio });
   }
   return { patch };
+}
+
+/** De una cartilla que llega, solo lo que se puede cambiar (lo que no venga, se queda). */
+function limpiarCartilla(c) {
+  const out = {};
+  if (!c || typeof c !== "object") return out;
+  for (const k of ["nombre", "marca", "meta", "premio", "modo", "forma"]) if (c[k] !== undefined) out[k] = c[k];
+  return out;
 }
 
 // ---------------------------------------------------------------- admin
@@ -122,7 +137,11 @@ export function normalizarCartillas(lista) {
     const marca = resolverMarca(c?.marca);
     const meta = Math.round(Number(c?.meta));
     if (!nombre || !premio || !marca || !(meta >= 1 && meta <= MAX_META_CARTILLA)) return null;
-    out.push({ nombre, marca, meta, premio });
+    // Cómo cuenta y con qué casilla: cada una la suya. Sin ellos, los del tema.
+    const extra = {};
+    if (MODOS.includes(c.modo)) extra.modo = c.modo;
+    if (FORMAS.includes(c.forma)) extra.forma = c.forma;
+    out.push({ nombre, marca, meta, premio, ...extra });
   }
   return out;
 }
@@ -141,7 +160,12 @@ export function piezasDeDibujo(origen) {
   if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
   if (BANDAS.includes(o.banda)) piezas.banda = o.banda;
   if (MODOS.includes(o.modo)) piezas.modo = o.modo;
-  if (MODOS_DOBLES.includes(o.doble)) piezas.doble = o.doble;
+  if (MODOS_DOBLES.includes(o.doble) || o.doble === "llenar") piezas.doble = o.doble;
+  // La línea "● Abierto hasta las 14:00" en la banda: encendida salvo que se apague.
+  if (typeof o.abierto === "boolean") piezas.abierto = o.abierto;
+  // El fondo de la tarjeta en Google Wallet (Google solo deja UN color): el de la
+  // tienda (de partida), el de la tarjeta de Apple, u otro.
+  if (o.google === "acento" || o.google === "tarjeta" || HEX.test(String(o.google || ""))) piezas.google = o.google;
   if (typeof o.texto === "string") piezas.texto = normalizarTextoMarca(o.texto);
   return piezas;
 }
@@ -188,23 +212,13 @@ export function datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto }) {
  *
  * @returns {{patch:object} | {error:string}}
  */
-export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPorDefecto = null } = {}) {
+export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPorDefecto = null, cartillasActuales = null, cartillasAparcadas = null } = {}) {
   const b = body && typeof body === "object" ? body : {};
-  const r = patchNegocio(b, accionesValidas, { ESTILOS, temaPorDefecto });
+  const r = patchNegocio(b, accionesValidas, { ESTILOS, temaPorDefecto, cartillasActuales, cartillasAparcadas });
   if (r.error) return r;
   const patch = r.patch;
 
   if (typeof b.brief === "string") patch.brief = b.brief.trim().slice(0, 4000);
-  // null quita la segunda cartilla; una lista tiene que valer entera.
-  if (b.cartillas === null) patch.cartillas = null;
-  else if (b.cartillas !== undefined) {
-    const cartillas = normalizarCartillas(b.cartillas);
-    if (!cartillas) return { error: `Cartillas no válidas: dos, cada una con nombre, marca, premio y meta de 1 a ${MAX_META_CARTILLA}` };
-    patch.cartillas = cartillas;
-    // La primera cartilla ES la de siempre: su meta y su premio son los del negocio.
-    patch.meta = cartillas[0].meta;
-    patch.premio = cartillas[0].premio;
-  }
   return { patch };
 }
 
@@ -229,6 +243,9 @@ function temaDePatch(t, { ESTILOS, temaPorDefecto }) {
   for (const clave of ["accent", "cardBg", "ink", "pageInk"]) {
     if (HEX.test(String(t[clave] || ""))) tema[clave] = t[clave];
   }
+  // La imagen propia del logo (lib/logo.js): null la quita y vuelve el dibujo.
+  const logo = validarLogoImagen(t.logoImagen);
+  if (logo !== undefined) tema.logoImagen = logo;
   return tema;
 }
 

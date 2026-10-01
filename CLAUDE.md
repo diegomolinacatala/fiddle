@@ -31,8 +31,9 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Lo que se VE en la tarjeta se cambia tocándolo en ella**: Tienda → "Editar tarjeta"
   (`manager/EditorTarjeta.js`). Cada trozo de `PaseVista` abre su panel (`seccionDe`).
-  Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. El
-  manager NO cambia cupón/cartilla ni cuántas cartillas hay: eso es del admin.
+  Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. Enseña
+  Apple y Google A LA VEZ (con sitio): lo de una sola plataforma lo dice su panel. El
+  manager NO cambia cupón ↔ cartilla (el pase de Apple no puede cambiar de tipo).
 
 ## Lo que hay que saber del pase de Apple
 
@@ -136,9 +137,22 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 - **Añadir una marca** = una entrada en `DIBUJOS` (SVG de un color en un lienzo
   512x512). Sale sola en el logo, el icono, los sellos, el modo relleno y el
   selector del admin. Si se usa en modo relleno, añadirla también a `CAJA`.
-- **Dos cartillas**: `tema.doble` = `filas` (una fila de casillas por cartilla, la de
-  siempre) o `llenar` (`svgStripLlenar`: dos dibujos que se llenan, uno a cada lado, y las
-  cuentas hacia el centro). Izquierda/derecha = el orden de sus campos bajo la banda.
+- **Dos cartillas**: `tema.doble` = `filas` (una encima de otra) o `lados`; y CADA
+  cartilla su `modo` y su `forma` (cualquiera de MODOS, como una tienda de una). Cada
+  modo se pinta en su trozo con la caja que aguanta (`ASPECTO` en dibujo.js: un modo
+  nuevo que se coma la cifra en una mitad necesita su entrada ahí). Dos casillas en filas
+  y dos rellenos lado a lado tienen dibujo propio. `llenar` es el nombre viejo de lados+relleno.
+- **De dos cartillas a una no se borra nada**: la segunda se aparca en
+  `cartillasAparcadas` y los `sellos2`/`guardados2` de cada cliente se quedan. Nunca
+  limpiar esas columnas al quitar la segunda cartilla.
+- **Logo propio** (`lib/logo.js`, `lib/logoImagen.js`): `tema.logoImagen = {id, b, opaco}`,
+  la imagen en Storage (cubo privado `logos`, se crea solo) o `.data/logos/`. Se sirve por
+  `/api/logo` y cada sitio la compone a su manera (a sangre si es opaca). Los SELLOS
+  siguen siendo el dibujo. Lo que pinte un logo en el navegador usa `LogoTienda` o
+  `MarcaTienda`, nunca `svgLogo` a pelo.
+- **Google tiene UN color** (el fondo, `fondoGoogle`: el de la tienda, el de la tarjeta u
+  otro, `tema.google`); el texto lo elige Google. «Abierto hasta…» en Google es un módulo
+  de la CLASE (`estadoPase`), que el reloj reescribe con una llamada por tienda.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
 
@@ -191,7 +205,7 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
   los sellos bajan `ALTO_ESTADO` puntos (`lineaDeEstado` en `dibujo.js`). Las letras
   son contornos de Inter generados en `lib/apple/letras.js` (`scripts/gen-letras.mjs`;
   una letra nueva = añadirla ahí y volver a generar), escritos con `lib/apple/texto.js`.
-  Se calcula al firmar (`estadoParaPase`) y el reloj empuja los iPhone cada vez que el
+  Se calcula al firmar (`estadoDeTienda`, que respeta `tema.abierto === false`) y el reloj empuja los iPhone cada vez que el
   texto cambia (`refrescarEstadoDelPase`, lo último en `config.estadoPase`). **Solo si
   el reloj anda** (`relojVivo`): sin él diría "Abierto" toda la noche. La tarjeta web
   no la lleva en la banda: tiene su propia línea viva (`AbiertoAhora`).

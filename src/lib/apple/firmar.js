@@ -3,7 +3,7 @@ import { configApple } from "./config";
 import { construirPassJson } from "./pase";
 import { imagenesDelPase } from "./imagenes";
 import { appUrl } from "../url";
-import { estadoParaPase } from "../horario";
+import { estadoDeTienda } from "../horario";
 import { relojVivo } from "../relojAvisos";
 
 // ============================================================================
@@ -30,7 +30,7 @@ export async function generarPkpass(cliente, negocio, config = configApple(negoc
   // "● Abierto hasta las 14:00" en lo alto de la banda, con la hora de la tienda
   // al firmar. Solo con el reloj en marcha: es el que hace que el iPhone vuelva a
   // pedir el pase al abrir y al cerrar. Sin él, diría "Abierto" toda la noche.
-  const estado = negocio.horario && (await relojVivo()) ? estadoParaPase(negocio.horario, Date.now()) : null;
+  const estado = negocio.horario && (await relojVivo()) ? estadoDeTienda(negocio, Date.now()) : null;
   const passJson = construirPassJson(cliente, negocio, {
     passTypeId: config.passTypeId,
     teamId: config.teamId,

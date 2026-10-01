@@ -38,6 +38,17 @@ const imagen = (uri, descripcion) => ({ sourceUri: { uri }, contentDescription: 
 const colorHex = (c, porDefecto) => (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(c || "")) ? c : porDefecto);
 
 /**
+ * El ÚNICO color que Google deja elegir: el fondo de la tarjeta (el texto lo
+ * pone Google, blanco o negro según ese fondo). De partida, el color de la
+ * tienda; se puede pedir el fondo de la tarjeta de Apple u otro cualquiera.
+ */
+export function fondoGoogle(tema) {
+  if (tema?.google === "tarjeta") return colorHex(tema.cardBg, "#1b1e23");
+  if (/^#[0-9a-f]{6}$/i.test(String(tema?.google || ""))) return tema.google;
+  return colorHex(tema?.accent, "#1b1e23");
+}
+
+/**
  * @param {object} negocio  getNegocio()
  * @param {{issuerId:string, appUrl:string}} opciones
  * @param {{conMensajes?: boolean}} [modo]
@@ -48,14 +59,20 @@ export function construirClase(negocio, { issuerId, appUrl }, { conMensajes = tr
     issuerName: negocio.nombre,
     programName: negocio.nombre,
     programLogo: imagen(`${appUrl}${rutaLogo(negocio)}`, negocio.nombre),
-    hexBackgroundColor: colorHex(negocio.tema?.accent, "#1b1e23"),
+    hexBackgroundColor: fondoGoogle(negocio.tema),
     reviewStatus: "UNDER_REVIEW",
     countryCode: "ES",
     // Un cliente, todos sus teléfonos. Pasarse la tarjeta a otro no tiene sentido.
     multipleDevicesAndHoldersAllowedStatus: "ONE_USER_ALL_DEVICES",
     accountIdLabel: "Código",
     accountNameLabel: "Nombre",
-    textModulesData: negocio.tema?.atras ? [{ id: "como", header: "Cómo funciona", body: negocio.tema.atras }] : [],
+    textModulesData: [
+      // "Abierto hasta las 18:30": en Apple va dibujado en la banda; Google no deja
+      // cambiar su imagen cada hora, así que va el PRIMERO de los detalles. Es de la
+      // clase: el reloj lo cambia con una sola llamada para todas las tarjetas.
+      ...(negocio.tema?.abierto !== false && negocio.estadoPase ? [{ id: "estado", header: "Ahora", body: negocio.estadoPase }] : []),
+      ...(negocio.tema?.atras ? [{ id: "como", header: "Cómo funciona", body: negocio.tema.atras }] : []),
+    ],
     // Tiendas físicas: Google enseña la tarjeta al acercarse (como las ubicaciones de Apple).
     merchantLocations: (negocio.ubicaciones || [])
       .filter((u) => Number.isFinite(u?.lat) && Number.isFinite(u?.lng))

@@ -38,7 +38,7 @@ export async function PUT(request) {
     const body = await request.json().catch(() => ({}));
     const actual = await getNegocio(slug);
     if (!actual) return jsonError("negocio desconocido", 404);
-    const r = patchNegocio(body, Object.keys(ACCIONES), { cartillasActuales: actual.cartillas, ESTILOS, temaPorDefecto });
+    const r = patchNegocio(body, Object.keys(ACCIONES), { cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas, ESTILOS, temaPorDefecto });
     if (r.error) return jsonError(r.error, 400);
 
     const nuevo = await saveNegocio(slug, r.patch);

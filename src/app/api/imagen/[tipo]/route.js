@@ -4,6 +4,9 @@ import { esSlug } from "@/lib/negocios";
 import { svgMarca, svgLogoGoogle, svgBandaOpaca, stripDelPase } from "@/lib/apple/dibujo";
 import { TIPOS_IMAGEN, rutaIcono, rutaInsignia, rutaLogo, rutaBanda } from "@/lib/rutasImagen";
 import { jsonError, errorInterno } from "@/lib/http";
+import { bufferDeLogo, componerLogo } from "@/lib/logoImagen";
+import { logoImagenDe } from "@/lib/logo";
+import { fondoGoogle } from "@/lib/google/pase";
 
 export const runtime = "nodejs";
 
@@ -68,6 +71,29 @@ function dibujo(tipo, negocio, q) {
   return { svg: svgBandaOpaca(stripDelPase(negocio, clienteDeBanda(negocio, q)).svg, tema.cardBg), ancho, alto };
 }
 
+/**
+ * Con logo propio, el icono y el logo de Google salen de la imagen (la insignia
+ * no: Android solo mira la silueta, y una foto en blanco es un cuadrado). null
+ * si esta imagen se dibuja como siempre.
+ */
+async function deLogoPropio(tipo, negocio, q) {
+  const logo = logoImagenDe(negocio.tema);
+  if (!logo || (tipo !== "icono" && tipo !== "logo")) return null;
+  const buffer = await bufferDeLogo(negocio.tema);
+  if (!buffer) return null;
+  const tema = negocio.tema;
+  if (tipo === "logo") {
+    // Google lo recorta en círculo y lo pone sobre su fondo: opaca, a sangre;
+    // con transparencias, centrada con aire sobre el fondo de la tarjeta.
+    return componerLogo(buffer, 660, { opaco: logo.opaco, fondo: tema.cardBg || fondoGoogle(tema), escala: 0.62, sangre: true });
+  }
+  const lado = ladoValido(Number(q.get("t")) || 192);
+  // Adaptable: Android recorta círculo o gota, la imagen dentro del 80 % central.
+  return q.get("m") === "1"
+    ? componerLogo(buffer, lado, { opaco: logo.opaco, fondo: tema.cardBg, escala: 0.62, sangre: false })
+    : componerLogo(buffer, lado, { opaco: logo.opaco, fondo: tema.cardBg, escala: 0.8, sangre: true, radio: lado * 0.22 });
+}
+
 function rasterizar(clave, crear) {
   const hecha = dibujadas.get(clave);
   if (hecha) return hecha;
@@ -99,7 +125,9 @@ export async function GET(request, { params }) {
       });
     }
 
-    const png = await rasterizar(ruta, () => {
+    const png = await rasterizar(ruta, async () => {
+      const propio = await deLogoPropio(tipo, negocio, q);
+      if (propio) return propio;
       const { svg, ancho, alto } = dibujo(tipo, negocio, q);
       return sharp(Buffer.from(svg)).resize(ancho, alto, { fit: "fill" }).png().toBuffer();
     });

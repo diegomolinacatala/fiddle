@@ -3,9 +3,10 @@ import {
   guardarMensajes, crearCampana, addEventos, registrarIntento, ultimoIntento,
 } from "./store";
 import { avisarSeriales, refrescarPasesApple } from "./wallet";
+import { tiendaEnGoogle } from "./googlewallet";
 import { CLAVE_RELOJ } from "./relojAvisos";
 import { perfilDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
-import { relojLocal, estadoParaPase } from "./horario";
+import { relojLocal, estadoDeTienda } from "./horario";
 import {
   contextoDe, fechasDeVisita, enviosDe, conEnvio, elegibles, candidatos, tocaAhora, porRetirar,
   renderTexto, grupoDeRegla, etiquetaEnvio, MAX_POR_REGLA,
@@ -156,12 +157,14 @@ export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = 
  * @returns {Promise<string|null>} el valor nuevo si hubo que empujar
  */
 export async function refrescarEstadoDelPase(negocio, ahora = Date.now()) {
-  const estado = estadoParaPase(negocio.horario, ahora);
+  const estado = estadoDeTienda(negocio, ahora);
   const clave = estado?.texto ?? null;
   if (clave === (negocio.estadoPase ?? null)) return null;
   await saveNegocio(negocio.slug, { estadoPase: clave });
-  // Sin texto ni sonido: el pase se pone al día en silencio.
+  // Sin texto ni sonido: el pase se pone al día en silencio. En Google la línea
+  // vive en la CLASE (una para toda la tienda), así que es una sola llamada.
   await refrescarPasesApple(negocio);
+  await tiendaEnGoogle({ ...negocio, estadoPase: clave });
   return clave;
 }
 
