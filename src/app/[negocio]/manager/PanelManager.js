@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LISTA_ACCIONES } from "@/lib/acciones";
 import { normalizarCodigo } from "@/lib/codigo";
 import { estadoDeTienda } from "@/lib/horario";
 import QrImagen from "@/app/QrImagen";
@@ -10,6 +9,8 @@ import GrabarTag from "./GrabarTag";
 import Horario from "./Horario";
 import MapaUbicacion from "./MapaUbicacion";
 import EditorTarjeta from "./EditorTarjeta";
+import EditorCaja from "./EditorCaja";
+import { normalizarCaja } from "@/lib/caja";
 import MarcaTienda from "@/app/MarcaTienda";
 import Recorrido from "@/app/Recorrido";
 import ClaveNueva from "@/app/ClaveNueva";
@@ -39,12 +40,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
 
   const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
   const [editando, setEditando] = useState(false);
-  function toggleAccion(key) {
-    setN((p) => {
-      const on = p.acciones.includes(key);
-      return { ...p, acciones: on ? p.acciones.filter((a) => a !== key) : [...p.acciones, key] };
-    });
-  }
+  const [editandoCaja, setEditandoCaja] = useState(false);
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3000); }
   // Cuántos teléfonos se enteraron: iPhone (APNs) y Android (avisos web + Google Wallet).
   const resumenAviso = (a) => {
@@ -86,10 +82,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
     const res = await fetch(`/api/negocio?b=${negocio}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        acciones: n.acciones,
-        ubicaciones,
-      }),
+      body: JSON.stringify({ ubicaciones }),
     });
     const data = await res.json();
     if (!res.ok) return flash(data.error || "Error al guardar");
@@ -173,21 +166,20 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             </div>
             </div>
 
-            <div data-recorrido="botones-caja">
-            <label style={etiqueta}>Botones de la caja</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {LISTA_ACCIONES.map((a) => (
-                <label key={a.key} style={accionRow(n.acciones.includes(a.key), accent)}>
-                  <input type="checkbox" checked={n.acciones.includes(a.key)} onChange={() => toggleAccion(a.key)} />
-                  <span style={{ color: accent, display: "inline-flex" }}><Icono nombre={a.icon} tam={20} /></span>
-                  <span>
-                    <strong style={{ fontWeight: 600, fontSize: 14 }}>{a.label}</strong><br />
-                    <span style={{ color: C.suave, fontSize: 13 }}>{a.descripcion}</span>
-                  </span>
-                </label>
-              ))}
+            {/* La caja: qué puede hacer y cómo se ve, en su editor con vista previa. */}
+            <div data-recorrido="botones-caja" style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
+            <h2 style={h2}>La caja</h2>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ width: 44, height: 44, borderRadius: 12, background: `${accent}14`, color: accent, display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <Icono nombre="movil" tam={22} />
+              </span>
+              <div style={{ flex: 1, minWidth: 160, fontSize: 13, color: C.suave }}>
+                {resumenCaja(n)}
+              </div>
+              <button type="button" onClick={() => setEditandoCaja(true)} style={{ ...botonSecundario, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icono nombre="editar" tam={16} /> Editar vista de caja
+              </button>
             </div>
-
             </div>
 
             <div data-recorrido="ubicacion">
@@ -200,7 +192,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             />
             </div>
 
-            <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 18 }}>Guardar</button></div>
+            <div><button onClick={guardar} style={{ ...botonPrimario(accent), marginTop: 14 }}>Guardar ubicación</button></div>
           </section>
 
           {/* ------------------------------------------------ vista previa */}
@@ -288,11 +280,35 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
             onGuardado={(data) => { setN(data); setEditando(false); setReal(null); flash(`Tarjeta guardada${resumenAviso(data.aviso)}`); }}
           />
         )}
+        {editandoCaja && (
+          <EditorCaja
+            negocio={n}
+            slug={negocio}
+            onCerrar={() => setEditandoCaja(false)}
+            onGuardado={(data) => { setN(data); setEditandoCaja(false); flash("Vista de la caja guardada"); }}
+          />
+        )}
         {msg && <div role="status" style={toast}>{msg}</div>}
         <Recorrido recorrido="manager" accent={accent} />
       </div>
     </main>
   );
+}
+
+/** "Suma y quita · da premios · +2 · vuelve al escáner": lo que hace la caja, en una línea. */
+function resumenCaja(n) {
+  const caja = normalizarCaja(n.caja);
+  const a = n.acciones || [];
+  const partes = n.tipo === "descuento"
+    ? [a.includes("canjear") && "aplica el descuento"]
+    : [
+        a.includes("sellar") && (a.includes("restar") ? "suma y quita sellos" : "suma sellos"),
+        a.includes("canjear") && (caja.guardarPremios ? "da o guarda premios" : "da premios"),
+        caja.sumarDos && "botón +2",
+      ];
+  partes.push(a.includes("confirmar") && "confirma visitas", caja.volverAlEscaner && "vuelve sola al escáner");
+  const lista = partes.filter(Boolean);
+  return lista.length ? `${lista[0].charAt(0).toUpperCase()}${lista.join(" · ").slice(1)}.` : "No tiene ningún botón activado.";
 }
 
 const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20, marginTop: 20, alignItems: "start" };

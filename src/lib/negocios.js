@@ -21,6 +21,7 @@ export { MARCAS, FORMAS, BANDAS, MODOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDe
 import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
 import { normalizarCartillas } from "./validacion";
 import { normalizarContacto } from "./contacto";
+import { normalizarCaja } from "./caja";
 import { normalizarHorario } from "./horario";
 import { normalizarReglas, normalizarPausa, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
 
@@ -508,6 +509,8 @@ export function componerNegocio(slug, guardado) {
     // con un despliegue; y pedir el nombre es un paso más antes de la Wallet.
     avisosActivos: c.avisosActivos === true,
     pedirNombre: c.pedirNombre === true,
+    // Cómo se ve la caja (lib/caja.js): lo que no esté, como siempre.
+    caja: normalizarCaja(c.caja),
     // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
     contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,

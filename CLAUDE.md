@@ -94,6 +94,14 @@ Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
   la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
   siendo PURA y sin imports del servidor.
 
+## La caja
+
+Qué PUEDE hacer la caja son las `acciones` de la tienda; cómo se le ENSEÑA, `config.caja`
+(`lib/caja.js`, todo con el valor de siempre de partida). Se edita en Tienda → "Editar vista
+de caja", con la caja de verdad (`TarjetaCaja demo`) al lado. Una FILA por cartilla que suma
+entera, con el "−" pequeño dentro (corregir no merece un botón igual de grande), y el "+2"
+si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, no un botón suelto.
+
 ## El premio: dar o guardar
 
 Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"

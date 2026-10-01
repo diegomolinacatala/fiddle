@@ -196,6 +196,8 @@ const claveDe = (base, i) => (i === 0 ? base : `${base}${i + 1}`);
  */
 export function premiosDe(cliente, negocio) {
   if (negocio.tipo === "descuento" || !negocio.acciones.includes("canjear")) return [];
+  // La tienda puede no querer guardar premios (Editar vista de caja): entonces solo se dan.
+  const guardar = negocio.caja?.guardarPremios !== false;
   return cartillasDe(cliente, negocio)
     .filter((c) => c.completa || c.guardados > 0)
     .map((c) => ({
@@ -204,6 +206,6 @@ export function premiosDe(cliente, negocio) {
       premio: c.premio,
       completa: c.completa,
       guardados: c.guardados,
-      acciones: { dar: claveDe("canjear", c.indice), guardar: claveDe("guardar", c.indice), usar: claveDe("usarGuardado", c.indice) },
+      acciones: { dar: claveDe("canjear", c.indice), guardar: guardar ? claveDe("guardar", c.indice) : null, usar: claveDe("usarGuardado", c.indice) },
     }));
 }

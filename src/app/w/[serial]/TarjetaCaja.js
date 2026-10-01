@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ACCIONES, premiosDe } from "@/lib/acciones";
+import { filasDeCaja, normalizarCaja } from "@/lib/caja";
 import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { cartillasDe, describirBanda } from "@/lib/cartillas";
@@ -23,8 +24,13 @@ import { C, panel, RADIO } from "@/app/ui";
 // página por detrás (historial, visitas) sin tocar lo que ya se ve.
 // ============================================================================
 
-export default function TarjetaCaja({ serial, inicial, negocio, acciones }) {
+// `demo`: la vista previa del manager (Editar vista de caja). Se pulsa y se ve
+// pasar, pero no se guarda nada ni se navega.
+// `volver`: a dónde ir con "Volver al escáner al sumar".
+export default function TarjetaCaja({ serial, inicial, negocio, demo = false, volver = null }) {
   const router = useRouter();
+  const opciones = normalizarCaja(negocio.caja);
+  const vuelta = useRef(null);
   const [cliente, setCliente] = useState(inicial);
   const [toast, setToast] = useState(null);
   // El mensaje que traía en su tarjeta al llegar (la promo de la racha, "hace
@@ -37,17 +43,55 @@ export default function TarjetaCaja({ serial, inicial, negocio, acciones }) {
   // Lo que llegue del servidor al refrescar manda, salvo con algo aún en vuelo.
   useEffect(() => { if (!pendientes.current) setCliente(inicial); }, [inicial]);
 
-  function ejecutar(key) {
-    const r = ACCIONES[key].aplicar(cliente, negocio);
-    if (r.ok === false) {
+  // Se va solo al escáner (si la tienda lo quiere) tras sumar; cualquier otro
+  // toque, o "Quedarme aquí", lo para.
+  function cancelarVuelta() {
+    clearInterval(vuelta.current);
+    vuelta.current = null;
+    setToast((t) => (t ? { ...t, vuelta: null } : t));
+  }
+  function empezarVuelta() {
+    clearInterval(vuelta.current);
+    let quedan = 3;
+    setToast((t) => (t ? { ...t, vuelta: quedan } : t));
+    vuelta.current = setInterval(() => {
+      quedan -= 1;
+      if (quedan > 0) return setToast((t) => (t ? { ...t, vuelta: quedan } : t));
+      clearInterval(vuelta.current);
+      vuelta.current = null;
+      setToast((t) => (t ? { ...t, vuelta: null } : t));
+      if (!demo && volver) router.push(volver);
+    }, 1000);
+  }
+  useEffect(() => () => clearInterval(vuelta.current), []);
+
+  /** Aplica `key` `veces` veces (el "+2"): aquí al momento, y cada una a la fila del servidor. */
+  function ejecutar(key, veces = 1) {
+    cancelarVuelta();
+    let actual = cliente;
+    let r = null;
+    let hechas = 0;
+    for (let i = 0; i < veces; i += 1) {
+      const paso = ACCIONES[key].aplicar(actual, negocio);
+      if (paso.ok === false) { if (!hechas) r = paso; break; }
+      actual = paso.cliente;
+      r = paso;
+      hechas += 1;
+    }
+    if (!hechas) {
       setToast({ ok: false, msg: r.mensaje });
       navigator.vibrate?.([80, 60, 80]);
       return;
     }
-    setCliente(r.cliente);
-    setToast({ ok: true, msg: r.mensaje });
+    setCliente(actual);
+    setToast({ ok: true, msg: hechas > 1 ? `${hechas} sellos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje });
     navigator.vibrate?.(50);
+    if (opciones.volverAlEscaner && /^sellar/.test(key)) empezarVuelta();
+    if (demo) return;
+    for (let i = 0; i < hechas; i += 1) enviar(key);
+  }
 
+  function enviar(key) {
     pendientes.current += 1;
     fila.current = fila.current.then(async () => {
       try {
@@ -127,11 +171,13 @@ export default function TarjetaCaja({ serial, inicial, negocio, acciones }) {
       </div>
 
       <WorkerActions
-        acciones={acciones}
+        filas={filasDeCaja(negocio)}
         premios={premiosDe(cliente, negocio)}
         accent={accent}
         ejecutar={ejecutar}
         toast={toast}
+        grande={opciones.grande}
+        onCancelarVuelta={cancelarVuelta}
       />
     </>
   );

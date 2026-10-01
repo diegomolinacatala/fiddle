@@ -921,7 +921,7 @@ const CSS = `
 }
 `;
 
-const capa = { position: "fixed", inset: 0, zIndex: 50, background: C.fondo, display: "flex", flexDirection: "column", color: C.texto };
+const capa = { position: "fixed", inset: 0, zIndex: 1200, background: C.fondo, display: "flex", flexDirection: "column", color: C.texto };
 const barra = { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#fff", borderBottom: `1px solid ${C.borde}`, flexWrap: "wrap" };
 const cerrar = { width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.borde}`, background: "#fff", fontSize: 20, lineHeight: 1, cursor: "pointer", color: C.suave };
 const chip = { padding: "8px 14px", borderRadius: 999, border: `1px solid ${C.borde}`, background: "#fff", fontSize: 13, cursor: "pointer", color: C.texto, minHeight: 36 };

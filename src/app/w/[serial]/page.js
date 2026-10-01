@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCliente, getNegocio, listEventos, clientePublico } from "@/lib/store";
-import { accionesDe } from "@/lib/acciones";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import { estadoDe } from "@/lib/resumen";
@@ -48,7 +47,6 @@ export default async function Page({ params }) {
 
   const n = await getNegocio(cliente.negocio);
   const eventos = await listEventos(serial);
-  const acciones = accionesDe(n);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
 
@@ -75,17 +73,17 @@ export default async function Page({ params }) {
         <TarjetaCaja
           serial={serial}
           inicial={clientePublico(cliente)}
-          negocio={{ ...negocioDeTarjeta(n), acciones: n.acciones }}
-          acciones={acciones}
+          negocio={{ ...negocioDeTarjeta(n), acciones: n.acciones, caja: n.caja }}
+          volver={`/${n.slug}/caja?escanear=1`}
         />
 
         <a href={`/${n.slug}/caja?escanear=1`} style={siguiente}>
           <Icono nombre="camara" tam={18} /> Escanear al siguiente
         </a>
 
-        <SetNombre serial={serial} nombre={cliente.nombre} />
+        {n.caja.nombre && <SetNombre serial={serial} nombre={cliente.nombre} />}
 
-        {eventos.length > 0 && (
+        {n.caja.historial && eventos.length > 0 && (
           <div style={{ marginTop: 22 }}>
             <div style={{ ...cap, marginBottom: 8 }}>Actividad reciente</div>
             {eventos.map((ev, i) => (

@@ -6,6 +6,7 @@ import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
 import { validarLogoImagen } from "./logo";
+import { normalizarCaja } from "./caja";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 const MAX_NOMBRE = 48;
@@ -81,6 +82,7 @@ export function patchNegocio(body, accionesValidas, { cartillasActuales = null, 
     patch.horario = horario;
   }
   if (typeof b.pedirNombre === "boolean") patch.pedirNombre = b.pedirNombre;
+  if (b.caja && typeof b.caja === "object") patch.caja = normalizarCaja(b.caja);
   if (b.contacto !== undefined) {
     const c = normalizarContacto(b.contacto);
     if (c.error) return { error: c.error };

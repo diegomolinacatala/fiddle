@@ -23,7 +23,7 @@ import { C, botonSecundario } from "@/app/ui";
 export const RECORRIDOS = {
   manager: [
     { ancla: "cartilla", titulo: "Tu tarjeta", texto: "Con «Editar tarjeta» tocas cualquier parte de ella (logo, colores, sellos, premio) y la cambias. Al guardar, cambia en todos los teléfonos." },
-    { ancla: "botones-caja", titulo: "Lo que puede hacer la caja", texto: "Activa los botones que verá quien atienda: añadir sello, quitar uno si se equivoca, canjear el premio." },
+    { ancla: "botones-caja", titulo: "Lo que puede hacer la caja", texto: "Lo que ve quien atiende al escanear una tarjeta. En «Editar vista de caja» eliges sus botones y lo pruebas antes de guardar." },
     { ancla: "ubicacion", titulo: "Dónde está la tienda", texto: "Pon el punto en tu puerta. Cuando un cliente pase cerca, el iPhone le saca la tarjeta en la pantalla de bloqueo." },
     { ancla: "vista-previa", titulo: "Así la ve el cliente", texto: "La tarjeta tal cual sale en el móvil, en Apple y en Google. Escribe el código de un cliente para ver la suya." },
     { ancla: "horario", titulo: "Cuándo abres", texto: "Tu horario y los festivos. Los avisos automáticos solo salen con la tienda abierta, y la tarjeta web dice si estás abierto." },
