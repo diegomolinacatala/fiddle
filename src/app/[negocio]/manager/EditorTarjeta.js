@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PaseVista from "@/app/PaseVista";
 import { comoDataUri } from "@/lib/apple/dibujo";
-import { MARCAS, FORMAS, BANDAS, ESTILOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
-import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA } from "@/app/admin/vistas";
+import { MARCAS, FORMAS, BANDAS, ESTILOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
+import { normalizarContacto } from "@/lib/contacto";
+import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, vistaDoble, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA, ROTULO_DOBLE } from "@/app/admin/vistas";
 import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
 
 // ============================================================================
@@ -14,6 +15,9 @@ import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
 // sellos, el premio, el fondo…) y se abre a su lado un panel con SOLO lo de ese
 // trozo. Así un dueño no se enfrenta a un formulario de veinte campos: cambia
 // lo que está mirando.
+//
+// Delante y detrás, en Apple y en Google: lo que se toque en cualquiera de las
+// cuatro vistas abre el mismo panel (el premio es el mismo dato en las cuatro).
 //
 // La tarjeta es PaseVista, la de siempre (camposDelPase, stripDelPase,
 // svgLogo): lo que se ve aquí es lo que llega al teléfono. Los campos son las
@@ -34,17 +38,19 @@ export function seccionDe(clave) {
   if (/^premio\d?$/.test(k) || k === "descuento" || k === "reverso.premios") return "premio";
   if (k === "como" || k === "reverso.como") return "reverso";
   if (k === "promo" || k.startsWith("mensaje.")) return "promo";
+  if (/^(reverso|enlace)\.(telefono|web|instagram|contacto)$/.test(k)) return "contacto";
   if (["canjeados", "guardados", "nivel", "reverso.guardados"].includes(k)) return "contador";
   return "fijo"; // QR, código, titular, estado del cupón, privacidad
 }
 
 const TITULO = {
   colores: "Colores", logo: "Logo", nombre: "Nombre de la tienda", sellos: "Los sellos",
-  premio: "Premio", reverso: "Texto del reverso", promo: "Promo", contador: "Premios del cliente", fijo: "Lo pone la tarjeta",
+  premio: "Premio", reverso: "Texto del reverso", contacto: "Teléfono, web e Instagram", promo: "Promo", contador: "Premios del cliente", fijo: "Lo pone la tarjeta",
 };
 
 export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
-  const [d, setD] = useState(inicial);
+  // El contacto se edita como TEXTO (lo que va escribiendo) y se limpia al pintar y al guardar.
+  const [d, setD] = useState(() => ({ ...inicial, contacto: contactoEditable(inicial.contacto) }));
   const [activo, setActivo] = useState(null); // { clave, lado: "izq" | "der" }
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
@@ -52,7 +58,14 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
   const tarjeta = useRef(null);
 
   const esCupon = d.tipo === "descuento";
-  const cambiado = JSON.stringify(lo(d)) !== JSON.stringify(lo(inicial));
+  const cambiado = JSON.stringify(lo(d)) !== JSON.stringify(lo({ ...inicial, contacto: contactoEditable(inicial.contacto) }));
+  // La vista previa enseña el contacto limpio; mientras uno está a medio escribir, el último que valía.
+  const contactoLimpio = normalizarContacto(d.contacto);
+  const ultimoBueno = useRef(inicial.contacto ?? null);
+  if (!contactoLimpio.error) ultimoBueno.current = contactoLimpio.contacto;
+  // Con un teléfono a medias no se guarda: el panel ya dice qué le pasa.
+  const listo = cambiado && !contactoLimpio.error;
+  const vista = useMemo(() => ({ ...d, contacto: ultimoBueno.current }), [d, contactoLimpio.error]);
 
   // Pantalla completa: la página de detrás no se mueve mientras se edita.
   useEffect(() => {
@@ -116,8 +129,9 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
           tema: {
             estilo: t.estilo, emoji: t.emoji, atras: t.atras,
             accent: t.accent, cardBg: t.cardBg, ink: t.ink, pageInk: t.pageInk,
-            marca: t.marca, texto: t.texto || "", forma: t.forma, banda: t.banda, modo: t.modo,
+            marca: t.marca, texto: t.texto || "", forma: t.forma, banda: t.banda, modo: t.modo, doble: t.doble,
           },
+          contacto: d.contacto,
           ...(d.cartillas
             ? { cartillas: d.cartillas.map(({ nombre, marca, meta, premio }) => ({ nombre, marca, meta, premio })) }
             : { meta: d.meta, premio: d.premio }),
@@ -154,8 +168,8 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
           <div style={{ fontSize: 12, color: C.suave }}>Toca cualquier parte de la tarjeta para cambiarla.</div>
         </div>
         <button type="button" onClick={salir} style={botonSecundario}>Cancelar</button>
-        <button type="button" onClick={guardar} disabled={!cambiado || guardando}
-          style={{ ...botonPrimario(d.tema.accent), opacity: cambiado ? 1 : 0.5, cursor: cambiado ? "pointer" : "default" }}>
+        <button type="button" onClick={guardar} disabled={!listo || guardando} title={contactoLimpio.error || undefined}
+          style={{ ...botonPrimario(d.tema.accent), opacity: listo ? 1 : 0.5, cursor: listo ? "pointer" : "default" }}>
           {guardando ? "Guardando…" : "Guardar"}
         </button>
       </header>
@@ -166,7 +180,7 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
         <div className="editor-centro">
           <div ref={tarjeta} onPointerDownCapture={apuntar}>
             <PaseVista
-              negocio={d}
+              negocio={vista}
               cliente={cliente}
               qrTexto={`${origin}/w/${cliente.serial}`}
               estado={estado}
@@ -179,7 +193,7 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
             {cambiado && <button type="button" onClick={() => { setD(inicial); setActivo(null); }} style={chip}>Deshacer todo</button>}
           </div>
           <p style={{ fontSize: 12, color: C.tenue, textAlign: "center", margin: "10px 0 0" }}>
-            Al guardar, la tarjeta cambia en todos los teléfonos.
+            Al guardar, la tarjeta cambia en todos los teléfonos. En Android (Google Wallet) puede tardar unos minutos.
           </p>
         </div>
         <div className="editor-lado">
@@ -187,8 +201,9 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
           {!activo && (
             <div className="editor-pista">
               <strong style={{ display: "block", marginBottom: 6 }}>¿Qué se puede cambiar?</strong>
-              El logo, el nombre, los colores, cómo se cuentan los sellos, cuántos hacen falta, el premio y el
-              texto del reverso. Toca el trozo que quieras en la tarjeta.
+              El logo, el nombre, los colores, cómo se cuentan los sellos, cuántos hacen falta y el premio. Y
+              detrás, «Cómo funciona», el teléfono, la web y el Instagram. Toca el trozo que quieras, en Apple o en
+              Google, delante o detrás.
             </div>
           )}
         </div>
@@ -198,7 +213,14 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
 }
 
 /** Lo que se guarda: para saber si hay algo que guardar. */
-const lo = (n) => ({ nombre: n.nombre, meta: n.meta, premio: n.premio, cartillas: n.cartillas, tema: n.tema });
+const lo = (n) => ({ nombre: n.nombre, meta: n.meta, premio: n.premio, cartillas: n.cartillas, tema: n.tema, contacto: n.contacto });
+
+/** El contacto guardado, como textos de formulario (la web sin "https://"). */
+const contactoEditable = (c) => ({
+  telefono: c?.telefono || "",
+  web: c?.web ? c.web.replace(/^https?:\/\//i, "") : "",
+  instagram: c?.instagram ? `@${c.instagram}` : "",
+});
 
 // ------------------------------------------------------------ las secciones
 function Seccion({ cual, clave, d, set, setTema, setCartilla, plantilla, esCupon, slug }) {
@@ -262,9 +284,16 @@ function Seccion({ cual, clave, d, set, setTema, setCartilla, plantilla, esCupon
     const variantes = modosDeFamilia(familia);
     return (
       <>
+        {d.cartillas && (
+          <>
+            <label style={{ ...etiqueta, marginTop: 4 }}>Cómo se cuentan las dos</label>
+            <Opciones opciones={MODOS_DOBLES} valor={t.doble || "filas"} rotulos={ROTULO_DOBLE}
+              vista={(m) => vistaDoble(t, m, d.cartillas)} onChange={(m) => setTema("doble", m)} ancho={150} />
+          </>
+        )}
         {d.cartillas ? d.cartillas.map((c, i) => (
           <fieldset key={i} style={grupo}>
-            <legend style={leyenda}>{i === 0 ? "Fila de arriba" : "Fila de abajo"}</legend>
+            <legend style={leyenda}>{t.doble === "llenar" ? (i === 0 ? "La de la izquierda" : "La de la derecha") : (i === 0 ? "Fila de arriba" : "Fila de abajo")}</legend>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 120px", minWidth: 0 }}>
                 <label style={{ ...etiqueta, marginTop: 0 }}>Nombre</label>
@@ -295,7 +324,7 @@ function Seccion({ cual, clave, d, set, setTema, setCartilla, plantilla, esCupon
             )}
           </>
         )}
-        {(t.modo === "casillas" || d.cartillas) && (
+        {(d.cartillas ? t.doble !== "llenar" : t.modo === "casillas") && (
           <>
             <label style={etiqueta}>Casilla del sello</label>
             <Opciones opciones={FORMAS} valor={t.forma} rotulos={ROTULO} vista={(f) => vistaForma(t, f)} onChange={(f) => setTema("forma", f)} ancho={100} />
@@ -341,6 +370,24 @@ function Seccion({ cual, clave, d, set, setTema, setCartilla, plantilla, esCupon
         <textarea value={t.atras || ""} maxLength={200} rows={4} onChange={(e) => setTema("atras", e.target.value)}
           style={{ ...campo, resize: "vertical", fontFamily: "inherit" }} />
         <p style={{ ...ayuda, textAlign: "right" }}>{(t.atras || "").length}/200</p>
+      </>
+    );
+  }
+
+  if (cual === "contacto") {
+    const { error } = normalizarContacto(d.contacto);
+    const poner = (k, v) => set("contacto", { ...d.contacto, [k]: v });
+    return (
+      <>
+        <p style={ayuda}>Sale detrás de la tarjeta. En el iPhone se toca para llamar o abrir; en Android son botones.</p>
+        <label style={etiqueta}>Teléfono</label>
+        <input value={d.contacto.telefono} onChange={(e) => poner("telefono", e.target.value)} inputMode="tel" placeholder="+34 960 00 00 00" maxLength={20} style={campo} />
+        <label style={etiqueta}>Web</label>
+        <input value={d.contacto.web} onChange={(e) => poner("web", e.target.value)} inputMode="url" placeholder="latienda.es" maxLength={120} style={campo} />
+        <label style={etiqueta}>Instagram</label>
+        <input value={d.contacto.instagram} onChange={(e) => poner("instagram", e.target.value)} placeholder="@latienda" maxLength={60} style={campo} />
+        {error && <p style={{ ...ayuda, color: C.mal }}>{error}</p>}
+        <p style={ayuda}>Lo que se deje vacío no sale.</p>
       </>
     );
   }

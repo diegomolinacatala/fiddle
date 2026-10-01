@@ -33,7 +33,8 @@
 
 import { svgTextoCuadrado, anchoDeTexto, ALTO as ALTO_GLIFO, GROSOR } from "./glifos";
 import { cartillasDe } from "../cartillas";
-import { svgTexto } from "./texto";
+import { svgTexto, anchoTexto } from "./texto";
+import { EM, ALTO_MAYUSCULA } from "./letras";
 
 export const TAM = {
   icon: 29, // + @2x 58, @3x 87 (obligatorio)
@@ -178,6 +179,11 @@ export const MARCAS = Object.keys(DIBUJOS);
 export const FORMAS = ["circulo", "redondeado", "cuadrado", "rombo", "hexagono"];
 /** Fondos de la banda. */
 export const BANDAS = ["clara", "oscura", "blanca", "degradado", "rayas"];
+/**
+ * Cómo se cuentan DOS cartillas en la misma banda: una fila de casillas por
+ * cartilla, o dos dibujos que se llenan, uno a cada lado (la galleta y la taza).
+ */
+export const MODOS_DOBLES = ["filas", "llenar"];
 /** Cómo se cuentan los sellos en la banda. */
 export const MODOS = [
   "casillas", "relleno", "porciones", "pizza", "barra", "pesas", "anillos",
@@ -238,6 +244,7 @@ export function piezasDeTema(tema = {}) {
     forma: FORMAS.includes(tema.forma) ? tema.forma : (tema.estilo === "barber" ? "redondeado" : "circulo"),
     banda: BANDAS.includes(tema.banda) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara"),
     modo: MODOS.includes(tema.modo) ? tema.modo : "casillas",
+    doble: MODOS_DOBLES.includes(tema.doble) ? tema.doble : "filas",
   };
 }
 
@@ -444,31 +451,40 @@ function bandaCasillas(tema, meta, sellos, w, h) {
  */
 function bandaRelleno(tema, meta, sellos, w, h) {
   const parte = meta > 0 ? Math.min(1, Math.max(0, sellos / meta)) : 0;
+  const color = tema.accent;
+  const cx = w * 0.32, cy = h / 2;
+  // Un id por dibujo: en un <img> cada SVG es un documento aparte, pero la
+  // vista previa los mete en la misma página y se pisarían entre ellos.
+  const dibujo = queSeLlena(tema, cx, cy, h * 0.84, parte, idDe(tema, meta, sellos));
+
+  // Cuánto llevas, en cifras: el nivel solo se ve "a ojo".
+  const cuenta = svgTextoCuadrado(`${sellos}/${meta}`, { cx: w * 0.72, cy, alto: h * 0.34, color, max: 6 });
+  return dibujo + cuenta;
+}
+
+/**
+ * La marca del tema en grande, llenándose de abajo arriba hasta `parte` (0-1).
+ * Se pinta dos veces: en fantasma y, encima, recortada por abajo.
+ *
+ * Se escala por la TINTA, no por el lienzo: así todas las marcas ocupan lo
+ * mismo de alto (`altoTinta`), tengan más o menos aire alrededor. Y el corte va
+ * también sobre la tinta: media taza es media taza.
+ */
+function queSeLlena(tema, cx, cy, altoTinta, parte, id) {
   const oscura = esOscura(tema);
   const color = tema.accent;
   const { nombre } = marcaDe(tema);
-  const cx = w * 0.32, cy = h / 2;
-
-  // Se escala por la TINTA, no por el lienzo: así todas las marcas ocupan lo
-  // mismo de alto en la banda, tengan más o menos aire alrededor. Y el corte
-  // va también sobre la tinta: media taza es media taza.
   const [y0, y1] = CAJA[nombre] || CAJA_POR_DEFECTO;
-  const lado = (h * 0.84 * 512) / (y1 - y0);
+  const lado = (altoTinta * 512) / (y1 - y0);
   const escala = lado / 512;
   const techo = cy - lado / 2 + y0 * escala;
   const suelo = cy - lado / 2 + y1 * escala;
   const alto = (suelo - techo) * parte;
 
-  // Un id por dibujo: en un <img> cada SVG es un documento aparte, pero la
-  // vista previa los mete en la misma página y se pisarían entre ellos.
-  const id = idDe(tema, meta, sellos);
   const recorte = `<clipPath id="${id}"><rect x="${cx - lado / 2}" y="${suelo - alto}" width="${lado}" height="${alto}"/></clipPath>`;
   const fantasma = `<g opacity="${oscura ? 0.22 : 0.16}">${colocar(tema, color, cx, cy, lado)}</g>`;
   const lleno = alto > 0 ? `<g clip-path="url(#${id})">${colocar(tema, color, cx, cy, lado)}</g>` : "";
-
-  // Cuánto llevas, en cifras: el nivel solo se ve "a ojo".
-  const cuenta = svgTextoCuadrado(`${sellos}/${meta}`, { cx: w * 0.72, cy, alto: h * 0.34, color, max: 6 });
-  return recorte + fantasma + lleno + cuenta;
+  return recorte + fantasma + lleno;
 }
 
 // --------------------------- geometría circular ---------------------------
@@ -1179,6 +1195,62 @@ export function svgStripCartillas(tema, filas, estado = null) {
   return svg(w, alto, lineaDeEstado(tema, estado, w) + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + cuerpo}</g>`);
 }
 
+/**
+ * Dos cartillas que se LLENAN, una a cada lado: la galleta a la izquierda y la
+ * taza a la derecha, en el mismo orden que sus campos bajo la banda (COOKIES |
+ * CAFÉS). La cuenta de cada una va hacia el centro, pegada a SU dibujo, y una
+ * raya fina las separa: "5/8 | 3/8" se lee como dos marcadores, no como una
+ * fracción rara.
+ *
+ * Los dibujos no van al borde: Wallet recorta los lados de la banda en el iPhone.
+ *
+ * @param {object} tema
+ * @param {{marca:string, meta:number, sellos:number}[]} filas  (dos)
+ */
+export function svgStripLlenar(tema, filas, estado = null) {
+  const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
+  const arriba = estado ? ALTO_ESTADO * 3 : 0;
+  const h = alto - arriba;
+  const color = tema.accent;
+  const hex = String(color || "").replace(/[^0-9a-z]/gi, "");
+  const id = `llenar-${banda(tema)}-${hex}-${filas.map((f) => `${f.marca}${f.meta}-${f.sellos}`).join("-")}`;
+  const cy = h / 2;
+  const centro = w / 2;
+
+  // Con la línea de estado arriba hay menos alto: los dibujos encogen con él.
+  // Y no más grandes: una taza con asa es más ancha que alta y se comería la cifra.
+  const altoTinta = h * 0.6;
+  const lados = [w * 0.2, w * 0.8];
+  const dibujos = filas.map((f, i) => {
+    const parte = f.meta > 0 ? Math.min(1, Math.max(0, f.sellos / f.meta)) : 0;
+    return queSeLlena({ ...tema, marca: f.marca }, lados[i], cy, altoTinta, parte, `${id}-${i}`);
+  }).join("");
+
+  const raya = `<rect x="${n2(centro - 3)}" y="${n2(h * 0.26)}" width="6" height="${n2(h * 0.48)}" rx="3"`
+    + ` fill="${tenue(tema)}" fill-opacity="0.22"/>`;
+
+  // La cifra grande y "/8" pequeño, apoyados en la misma línea base. Entre el
+  // dibujo y la raya caben "5/8" a tamaño entero; "12/20" no: las dos cuentas
+  // encogen lo mismo (si una fuera más grande, parecería que importa más).
+  const hueco = w * 0.04;
+  const sitio = w * 0.5 - hueco - w * 0.315;
+  const textos = filas.map((f) => [String(Math.min(Math.max(0, f.sellos), f.meta)), `/${f.meta}`]);
+  const anchoA = (tam, [hechos, total]) => anchoTexto(hechos, tam * 0.36) + tam * 0.36 * 0.04 + anchoTexto(total, tam * 0.2);
+  const escala = Math.min(1, ...textos.map((t) => sitio / anchoA(h, t)));
+  const grande = h * 0.36 * escala, pequeno = h * 0.2 * escala;
+  const base = cy + (grande * ALTO_MAYUSCULA) / EM / 2;
+  const cuentas = textos.map(([hechos, total], i) => {
+    const anchoG = anchoTexto(hechos, grande);
+    const ancho = anchoG + grande * 0.04 + anchoTexto(total, pequeno);
+    const x = i === 0 ? centro - hueco - ancho : centro + hueco;
+    return svgTexto(hechos, { x, y: base, tam: grande, color })
+      + svgTexto(total, { x: x + anchoG + grande * 0.04, y: base, tam: pequeno, color, opacidad: 0.6 });
+  }).join("");
+
+  return svg(w, alto, lineaDeEstado(tema, estado, w)
+    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + dibujos + raya + cuentas}</g>`);
+}
+
 // ------------------------------------------------------ abierto / cerrado
 // Un pase no tiene sitio para una línea bajo el nombre de la tienda: la cabecera
 // es logo + nombre + campos a la derecha. Así que se DIBUJA en lo alto de la
@@ -1224,7 +1296,12 @@ export function stripDelPase(negocio, cliente, { estado = null } = {}) {
   const [ancho, alto] = esCupon ? TAM.strip.coupon : TAM.strip.storeCard;
   let dibujo;
   if (esCupon) dibujo = svgStripCupon(negocio.tema, (cliente.premios || 0) > 0);
-  else if (negocio.cartillas) dibujo = svgStripCartillas(negocio.tema, cartillasDe(cliente, negocio), estado);
+  else if (negocio.cartillas) {
+    const filas = cartillasDe(cliente, negocio);
+    dibujo = piezasDeTema(negocio.tema).doble === "llenar"
+      ? svgStripLlenar(negocio.tema, filas, estado)
+      : svgStripCartillas(negocio.tema, filas, estado);
+  }
   else dibujo = svgStripSellos(negocio.tema, negocio.meta, Math.min(cliente.sellos ?? 0, negocio.meta), estado);
   return { svg: dibujo, ancho, alto };
 }

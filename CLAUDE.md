@@ -117,6 +117,9 @@ Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WAL
 - **Qué suena en Android lo decide `avisoDeCambio(antes, después)`** en `lib/avisos.js`.
   Por eso `notificarCliente` recibe `{ antes }`: sin él no se sabe si fue un sello o
   una corrección, y no suena.
+- **El reverso es de las dos**: `negocio.contacto` (teléfono, web, Instagram; `lib/contacto.js`)
+  sale en los `backFields` de Apple y en `linksModuleData` de la clase de Google. La vista
+  previa enseña delante y detrás de las dos, y todo se edita desde ahí.
 - **Ningún canal tumba la acción.** Apple, web push y Google se llaman después de
   guardar y nunca lanzan hacia fuera.
 - **Endpoints de push**: solo servicios reales (`push/suscripcion.js`). Aflojar esa
@@ -133,6 +136,9 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 - **Añadir una marca** = una entrada en `DIBUJOS` (SVG de un color en un lienzo
   512x512). Sale sola en el logo, el icono, los sellos, el modo relleno y el
   selector del admin. Si se usa en modo relleno, añadirla también a `CAJA`.
+- **Dos cartillas**: `tema.doble` = `filas` (una fila de casillas por cartilla, la de
+  siempre) o `llenar` (`svgStripLlenar`: dos dibujos que se llenan, uno a cada lado, y las
+  cuentas hacia el centro). Izquierda/derecha = el orden de sus campos bajo la banda.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
 

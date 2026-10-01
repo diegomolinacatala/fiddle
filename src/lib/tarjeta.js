@@ -38,4 +38,6 @@ export const negocioDeTarjeta = (n) =>
     promo: n.promo ?? null,
     tema: n.tema,
     horario: n.horario ?? null,
+    // Público a propósito: es lo que la tienda pone en el reverso para que la llamen.
+    contacto: n.contacto ?? null,
   };

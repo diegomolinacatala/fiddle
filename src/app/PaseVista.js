@@ -5,6 +5,7 @@ import QrImagen from "@/app/QrImagen";
 import { camposDelPase } from "@/lib/apple/pase";
 import { svgLogo, svgLogoGoogle, svgBandaOpaca, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { construirClase, construirObjeto } from "@/lib/google/pase";
+import { enlacesDeContacto } from "@/lib/contacto";
 import { C } from "@/app/ui";
 
 // ============================================================================
@@ -33,9 +34,15 @@ import { C } from "@/app/ui";
 // `estado`: la línea "● Abierto hasta las 14:00" en lo alto de la banda, cuando el
 // pase de verdad la lleva (estadoParaPase, solo con el reloj en marcha). Lo
 // decide quien la usa.
-export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null }) {
+// `cara`/`onCara`: si quien la usa quiere mandar en qué lado se ve; si no, lo
+// lleva ella sola.
+export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara }) {
   const [cual, setCual] = useState("apple");
+  const [caraDentro, setCaraDentro] = useState("delante");
+  const cara = caraFuera || caraDentro;
+  const setCara = onCara || setCaraDentro;
   const anota = { notas, onCampo, campoActivo };
+  const detras = cara === "detras";
 
   return (
     <div>
@@ -56,9 +63,19 @@ export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas
         ))}
       </div>
 
+      {/* Delante y detrás: en Apple se le da la vuelta con (i); en Google, los
+          detalles salen al tocar la tarjeta. Los dos se pueden ver y editar. */}
+      <div style={{ ...conmutador, maxWidth: 220, padding: 3, margin: "-6px auto 14px" }}>
+        {[["delante", "Delante"], ["detras", cual === "apple" ? "Detrás" : "Detalles"]].map(([id, texto]) => (
+          <button key={id} type="button" onClick={() => setCara(id)} aria-pressed={cara === id} style={{ ...opcion(cara === id), fontSize: 12, padding: "0.3rem 0.5rem" }}>
+            {texto}
+          </button>
+        ))}
+      </div>
+
       {cual === "apple"
-        ? <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} estado={estado} />
-        : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />}
+        ? (detras ? <ReversoApple negocio={negocio} cliente={cliente} anota={anota} /> : <TarjetaApple negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} estado={estado} />)
+        : (detras ? <DetallesGoogle negocio={negocio} cliente={cliente} anota={anota} /> : <TarjetaGoogle negocio={negocio} cliente={cliente} qrTexto={qrTexto} anota={anota} />)}
 
       {pie && <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0", textAlign: "center" }}>{pie}</p>}
     </div>
@@ -122,8 +139,7 @@ const puntoNota = {
 // izquierda); en las cartillas no hay primarios y la banda se ve entera.
 function TarjetaApple({ negocio, cliente, qrTexto, anota, estado }) {
   const t = negocio.tema;
-  const { headerFields, primaryFields, secondaryFields, auxiliaryFields, backFields } =
-    camposDelPase(cliente, negocio);
+  const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = camposDelPase(cliente, negocio);
   const strip = stripDelPase(negocio, cliente, { estado });
 
   return (
@@ -183,15 +199,47 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado }) {
         </Anotable>
       </div>
 
-      <div style={{ margin: "0 12px 12px", paddingTop: 10, borderTop: `1px solid ${t.accent}33`, opacity: 0.75 }}>
-        <div style={{ ...etiquetaPase(t.accent), marginBottom: 4 }}>Reverso</div>
+    </div>
+  );
+}
+
+// El reverso de Apple: la hoja que sale con (i). Fondo del sistema, no el de la
+// tarjeta, y cada campo como una fila de Ajustes: etiqueta pequeña y valor.
+function ReversoApple({ negocio, cliente, anota }) {
+  const t = negocio.tema;
+  const { backFields } = camposDelPase(cliente, negocio);
+  const contactos = new Set(enlacesDeContacto(negocio.contacto).map((e) => e.id));
+  return (
+    <div style={{ ...marco, background: "#f2f2f7", color: "#1c1c1e", overflow: "hidden", fontFamily: "-apple-system, system-ui, sans-serif", ...tocable(anota) }} onClick={fondo(anota, "apple.fondo")}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 14px 10px" }}>
+        <img src={comoDataUri(svgLogo(t))} alt="" width={30} height={30} style={{ display: "block", borderRadius: 7, background: t.cardBg }} />
+        <strong style={{ fontSize: 15 }}>{negocio.nombre}</strong>
+      </div>
+      <div style={hojaApple}>
+        {["Actualizaciones automáticas", "Sugerir en la pantalla bloqueada"].map((x) => (
+          <div key={x} style={{ ...filaApple, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 14 }}>{x}</span><span style={interruptor} aria-hidden />
+          </div>
+        ))}
+      </div>
+      <div style={{ ...hojaApple, marginBottom: 14 }}>
         {backFields.map((f) => (
-          <Anotable key={f.key} clave={`apple.reverso.${f.key}`} etiqueta={`Reverso · ${f.label}`} anota={anota} estilo={{ marginTop: 2 }}>
-            <div style={{ fontSize: 11 }}>
-              <span style={{ opacity: 0.7 }}>{f.label}: </span>{f.value}
+          <Anotable key={f.key} clave={`apple.reverso.${f.key}`} etiqueta={f.label} anota={anota} estilo={{ margin: 0 }}>
+            <div style={filaApple}>
+              <div style={{ fontSize: 12, color: "#8e8e93" }}>{f.label}</div>
+              <div style={{ fontSize: 14, whiteSpace: "pre-line", color: contactos.has(f.key) ? "#007aff" : "inherit" }}>{f.value}</div>
             </div>
           </Anotable>
         ))}
+        {anota?.onCampo && !contactos.size && (
+          <Anotable clave="apple.reverso.contacto" etiqueta="Teléfono, web e Instagram" anota={anota} estilo={{ margin: 0 }}>
+            <div style={{ ...filaApple, color: "#007aff", fontSize: 14 }}>+ Añadir teléfono, web o Instagram</div>
+          </Anotable>
+        )}
+        <div style={filaApple}>
+          <div style={{ fontSize: 12, color: "#8e8e93" }}>Privacidad</div>
+          <div style={{ fontSize: 14, color: "#007aff" }}>Qué guardamos y para qué</div>
+        </div>
       </div>
     </div>
   );
@@ -222,13 +270,12 @@ function TarjetaGoogle({ negocio, cliente, qrTexto, anota }) {
   const clase = construirClase(negocio, OPCIONES_VISTA);
   const objeto = construirObjeto(cliente, negocio, OPCIONES_VISTA);
   const banda = stripDelPase(negocio, cliente);
-  const mensajes = [...(clase.messages || []), ...(objeto.messages || [])];
-  const fondo = clase.hexBackgroundColor;
-  const tinta = textoSobre(fondo);
+  const fondoClase = clase.hexBackgroundColor;
+  const tinta = textoSobre(fondoClase);
 
   return (
     <div style={{ ...marco, overflow: "hidden", fontFamily: "Roboto, system-ui, sans-serif", ...tocable(anota) }} onClick={fondo(anota, "google.fondo")}>
-      <div style={{ background: fondo, color: tinta, opacity: objeto.state === "INACTIVE" ? 0.55 : 1 }}>
+      <div style={{ background: fondoClase, color: tinta, opacity: objeto.state === "INACTIVE" ? 0.55 : 1 }}>
         <Anotable clave="google.cabecera" etiqueta="Logo y nombre" anota={anota} estilo={{ padding: "14px 16px 6px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img src={comoDataUri(svgLogoGoogle(negocio.tema, 96))} alt="" width={32} height={32} style={{ borderRadius: "50%", display: "block" }} />
@@ -276,7 +323,24 @@ function TarjetaGoogle({ negocio, cliente, qrTexto, anota }) {
         </Anotable>
       </div>
 
-      <div style={{ background: "#fff", color: "#202124", padding: "12px 16px 14px", display: "grid", gap: 10 }}>
+    </div>
+  );
+}
+
+// Lo que Google enseña al tocar la tarjeta: los mensajes, los textos (premio,
+// cómo funciona) y los enlaces. Todo sale de construirClase/construirObjeto.
+function DetallesGoogle({ negocio, cliente, anota }) {
+  const clase = construirClase(negocio, OPCIONES_VISTA);
+  const objeto = construirObjeto(cliente, negocio, OPCIONES_VISTA);
+  const mensajes = [...(clase.messages || []), ...(objeto.messages || [])];
+  const enlaces = [...(clase.linksModuleData?.uris || []), ...(objeto.linksModuleData?.uris || [])];
+  return (
+    <div style={{ ...marco, background: "#fff", color: "#202124", fontFamily: "Roboto, system-ui, sans-serif", overflow: "hidden", ...tocable(anota) }} onClick={fondo(anota, "google.fondo")}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: clase.hexBackgroundColor, color: textoSobre(clase.hexBackgroundColor) }}>
+        <img src={comoDataUri(svgLogoGoogle(negocio.tema, 96))} alt="" width={28} height={28} style={{ borderRadius: "50%", display: "block" }} />
+        <strong style={{ fontSize: 15, fontWeight: 500 }}>{clase.programName}</strong>
+      </div>
+      <div style={{ padding: "12px 16px 16px", display: "grid", gap: 12 }}>
         {mensajes.map((m) => (
           <Anotable key={m.id} clave={`google.mensaje.${m.id}`} etiqueta={m.header} anota={anota}>
             <div style={{ padding: "8px 10px", background: "#f1f3f4", borderRadius: 8 }}>
@@ -288,9 +352,24 @@ function TarjetaGoogle({ negocio, cliente, qrTexto, anota }) {
         {[...objeto.textModulesData, ...clase.textModulesData].map((t) => (
           <Anotable key={t.id} clave={`google.${t.id}`} etiqueta={t.header} anota={anota}>
             <div style={etiquetaGoogle("#5f6368")}>{t.header}</div>
-            <div style={{ fontSize: 14 }}>{t.body}</div>
+            <div style={{ fontSize: 14, whiteSpace: "pre-line" }}>{t.body}</div>
           </Anotable>
         ))}
+        <div style={{ borderTop: "1px solid #e8eaed", paddingTop: 4 }}>
+          {enlaces.map((u) => (
+            <Anotable key={u.id} clave={`google.enlace.${u.id}`} etiqueta={u.description} anota={anota}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 14, color: "#1a73e8" }}>
+                <span aria-hidden style={{ width: 20, height: 20, borderRadius: "50%", background: "#e8f0fe", flexShrink: 0 }} />
+                {u.description}
+              </div>
+            </Anotable>
+          ))}
+          {anota?.onCampo && !clase.linksModuleData && (
+            <Anotable clave="google.enlace.contacto" etiqueta="Teléfono, web e Instagram" anota={anota}>
+              <div style={{ padding: "8px 0", fontSize: 14, color: "#1a73e8" }}>+ Añadir teléfono, web o Instagram</div>
+            </Anotable>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -329,6 +408,10 @@ const etiquetaPase = (accent) => ({
   textTransform: "uppercase",
   color: accent,
 });
+
+const hojaApple = { background: "#fff", borderRadius: 10, margin: "0 12px 12px", overflow: "hidden" };
+const filaApple = { padding: "9px 12px", borderBottom: "1px solid #e5e5ea" };
+const interruptor = { width: 34, height: 20, borderRadius: 10, background: "#34c759", flexShrink: 0 };
 
 const etiquetaGoogle = (color) => ({ fontSize: 11, letterSpacing: 0.4, color, opacity: 0.85 });
 

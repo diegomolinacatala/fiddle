@@ -172,6 +172,8 @@ function fusionarConfig(actual, patch) {
     pausaAvisos: patch.pausaAvisos ?? actual.pausaAvisos,
     avisosActivos: patch.avisosActivos ?? actual.avisosActivos,
     pedirNombre: patch.pedirNombre ?? actual.pedirNombre,
+    // Teléfono, web e Instagram del reverso (lib/contacto.js). null lo quita.
+    contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
     estadoPase: patch.estadoPase !== undefined ? patch.estadoPase : actual.estadoPase,
   };

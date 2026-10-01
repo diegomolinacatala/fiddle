@@ -17,9 +17,10 @@
 // marca, con qué forma de casilla y sobre qué banda. Un ESTILO no es más que
 // una combinación de partida con nombre; a partir de ahí cada tienda cambia lo
 // que quiera sin tocar código.
-export { MARCAS, FORMAS, BANDAS, MODOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
+export { MARCAS, FORMAS, BANDAS, MODOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
 import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
 import { normalizarCartillas } from "./validacion";
+import { normalizarContacto } from "./contacto";
 import { normalizarHorario } from "./horario";
 import { normalizarReglas, normalizarPausa, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
 
@@ -505,6 +506,8 @@ export function componerNegocio(slug, guardado) {
     // con un despliegue; y pedir el nombre es un paso más antes de la Wallet.
     avisosActivos: c.avisosActivos === true,
     pedirNombre: c.pedirNombre === true,
+    // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
+    contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,
   };
 }

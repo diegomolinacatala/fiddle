@@ -1,6 +1,6 @@
 "use client";
 
-import { svgLogo, svgStripSellos, svgCasilla, comoDataUri, modosDeFamilia } from "@/lib/apple/dibujo";
+import { svgLogo, svgStripSellos, svgCasilla, comoDataUri, modosDeFamilia, stripDelPase } from "@/lib/apple/dibujo";
 import { temaPorDefecto } from "@/lib/negocios";
 
 // ============================================================================
@@ -43,6 +43,15 @@ export const vistaModo = (tema, modo, meta = 6) =>
  */
 export const vistaFamilia = (tema, familia, meta = 6) => vistaModo(tema, modosDeFamilia(familia)[0], meta);
 
+/**
+ * Dos cartillas en la banda de verdad (stripDelPase): la primera más avanzada
+ * que la segunda, para que se vea que cada una lleva su cuenta.
+ */
+export const vistaDoble = (tema, doble, cartillas) => stripDelPase(
+  { tipo: "sellos", tema: { ...tema, doble }, meta: cartillas[0].meta, cartillas },
+  { sellos: Math.round(cartillas[0].meta * 0.6), sellos2: Math.round(cartillas[1].meta * 0.3) },
+).svg;
+
 /** La plantilla entera: sus colores, su marca y sus casillas de una tacada. */
 export const vistaPlantilla = (estilo) => {
   const tema = temaPorDefecto({ estilo, texto: "AB" });
@@ -81,6 +90,11 @@ export const ROTULO_FAMILIA = {
   ruta: "Un camino",
   crecer: "Crece",
   marcador: "Marcador",
+};
+
+export const ROTULO_DOBLE = {
+  filas: "Una fila de casillas para cada una",
+  llenar: "Se llenan, una a cada lado",
 };
 
 export const ROTULO_MODO = {

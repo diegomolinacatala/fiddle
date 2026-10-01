@@ -6,10 +6,10 @@ import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
 import Accesos from "@/app/admin/Accesos";
-import { MARCAS, FORMAS, BANDAS, ESTILOS, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
+import { MARCAS, FORMAS, BANDAS, ESTILOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
 import Cartillas from "@/app/admin/Cartillas";
-import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA } from "@/app/admin/vistas";
+import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, vistaDoble, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA, ROTULO_DOBLE } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, subtitulo, botonPrimario, botonSecundario, aviso } from "@/app/ui";
 
 // ============================================================================
@@ -77,7 +77,7 @@ export default function AdminNegocio() {
           estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
           cardBg: n.tema.cardBg, ink: n.tema.ink, pageInk: n.tema.pageInk,
           marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma,
-          banda: n.tema.banda, modo: n.tema.modo,
+          banda: n.tema.banda, modo: n.tema.modo, doble: n.tema.doble,
         },
       }),
     });
@@ -209,7 +209,16 @@ export default function AdminNegocio() {
 
             {n.tipo !== "descuento" && (
               <>
-                {/* Con dos cartillas siempre son casillas: una fila por cartilla. */}
+                {/* Con dos cartillas: una fila de casillas por cartilla, o dos dibujos que se llenan. */}
+                {n.cartillas && <Selector
+                  titulo="Cómo se cuentan las dos"
+                  valor={n.tema.doble || "filas"}
+                  opciones={MODOS_DOBLES}
+                  rotulos={ROTULO_DOBLE}
+                  vista={(m) => vistaDoble(n.tema, m, n.cartillas)}
+                  onChange={(m) => setTema("doble", m)}
+                  ancho={170}
+                />}
                 {!n.cartillas && <Selector
                   titulo="Cómo se cuentan los sellos"
                   valor={familiaDeModo(n.tema.modo)}
@@ -231,7 +240,7 @@ export default function AdminNegocio() {
                   />
                 )}
                 <div style={{ display: "flex", gap: 12 }}>
-                  {(n.tema.modo === "casillas" || n.cartillas) && (
+                  {(n.cartillas ? n.tema.doble !== "llenar" : n.tema.modo === "casillas") && (
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Selector
                         titulo="Casilla del sello"

@@ -1,9 +1,10 @@
 // Validación de entradas del manager (funciones puras, testeadas).
 
 import { normalizarTextoMarca } from "./apple/glifos";
-import { FORMAS, BANDAS, MODOS, resolverMarca } from "./apple/dibujo";
+import { FORMAS, BANDAS, MODOS, MODOS_DOBLES, resolverMarca } from "./apple/dibujo";
 import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
+import { normalizarContacto } from "./contacto";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 const MAX_NOMBRE = 48;
@@ -79,6 +80,11 @@ export function patchNegocio(body, accionesValidas, { cartillasActuales = null, 
     patch.horario = horario;
   }
   if (typeof b.pedirNombre === "boolean") patch.pedirNombre = b.pedirNombre;
+  if (b.contacto !== undefined) {
+    const c = normalizarContacto(b.contacto);
+    if (c.error) return { error: c.error };
+    patch.contacto = c.contacto;
+  }
   if (Array.isArray(b.cartillas) && cartillasActuales) {
     const cartillas = normalizarCartillas(cartillasActuales.map((c, i) => ({
       ...c,
@@ -135,6 +141,7 @@ export function piezasDeDibujo(origen) {
   if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
   if (BANDAS.includes(o.banda)) piezas.banda = o.banda;
   if (MODOS.includes(o.modo)) piezas.modo = o.modo;
+  if (MODOS_DOBLES.includes(o.doble)) piezas.doble = o.doble;
   if (typeof o.texto === "string") piezas.texto = normalizarTextoMarca(o.texto);
   return piezas;
 }

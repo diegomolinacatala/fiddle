@@ -2,6 +2,7 @@ import { camposDelPase } from "../apple/pase";
 import { puntosDe, estadoDe } from "../resumen";
 import { describirBanda, totalGuardados } from "../cartillas";
 import { rutaLogo, rutaBanda } from "../rutasImagen";
+import { enlacesDeContacto } from "../contacto";
 
 // ============================================================================
 // GOOGLE WALLET — contenido del pase (LoyaltyClass + LoyaltyObject)
@@ -61,6 +62,11 @@ export function construirClase(negocio, { issuerId, appUrl }, { conMensajes = tr
       .slice(0, 10)
       .map((u) => ({ latitude: u.lat, longitude: u.lng })),
   };
+  // Teléfono, web e Instagram: en Google son botones bajo la tarjeta.
+  const enlaces = enlacesDeContacto(negocio.contacto);
+  if (enlaces.length) {
+    clase.linksModuleData = { uris: enlaces.map((e) => ({ id: e.id, uri: e.uri, description: `${e.etiqueta}: ${e.texto}` })) };
+  }
   if (conMensajes && negocio.promo) {
     clase.messages = [{ id: "promo", header: "Promo", body: negocio.promo, messageType: "TEXT" }];
   }

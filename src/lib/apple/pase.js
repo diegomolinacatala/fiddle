@@ -13,6 +13,7 @@
 // ============================================================================
 
 import { cartillasDe, totalGuardados } from "../cartillas";
+import { enlacesDeContacto } from "../contacto";
 
 const MAX_UBICACIONES = 10; // límite de Apple
 
@@ -161,6 +162,10 @@ export function camposDelPase(cliente, negocio) {
       : []),
     { key: "como", label: "Cómo funciona", value: negocio.tema.atras },
     ...premios,
+    // El contacto de la tienda, tocable: iOS abre el enlace del attributedValue.
+    ...enlacesDeContacto(negocio.contacto).map((e) => ({
+      key: e.id, label: e.etiqueta, value: e.texto, attributedValue: `<a href="${e.uri}">${e.texto}</a>`,
+    })),
     { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
   ];
 

@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Lo de la config que sale en el pase (y por eso obliga a ponerlo al día).
-const PASE = ["nombre", "tema", "meta", "premio", "cartillas", "ubicaciones"];
+const PASE = ["nombre", "tema", "meta", "premio", "cartillas", "ubicaciones", "contacto"];
 
 // GET /api/negocio?b=<slug>  -> config actual (con tema). Caja o manager.
 export async function GET(request) {
