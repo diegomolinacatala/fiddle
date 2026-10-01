@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/login -> ¿hay accesos de prueba? Los pinta el login para no tener que
-// mirar las variables de entorno. Vacío si no está activo el modo pruebas.
+// mirar las variables de entorno. Solo en local: en producción, siempre vacío.
 export async function GET() {
   if (!usuariosDemo()) return NextResponse.json({ demo: false, accesos: [] });
   const negocios = await listNegocios().catch(() => []);

@@ -10,7 +10,7 @@ import { generarClave, hashClave, comprobarClave } from "./claves";
 //      cambiarla deja sin efecto la anterior, también la de Vercel.
 //   2. Si no, la variable de entorno de siempre (CLAVE_NUBE_CAJA): las tiendas
 //      que ya funcionaban siguen igual hasta que se les genere una.
-//   3. En modo pruebas (USUARIOS_DEMO), además, contraseña = usuario.
+//   3. En local (modo pruebas), además, contraseña = usuario. Nunca en producción.
 // Los admins de la plataforma (victor, diego) siguen solo con variables.
 //
 // Si la base no responde, se cae a la variable: quedarse sin caja por un fallo

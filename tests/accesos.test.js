@@ -59,6 +59,14 @@ describe("login con contraseñas en la base", () => {
     expect(await comprobarAcceso("nube", segunda.clave)).toBeNull();
   });
 
+  it("en producción, con USUARIOS_DEMO=1, contraseña = usuario sigue sin valer", async () => {
+    vi.stubEnv("USUARIOS_DEMO", "1");
+    await nuevaClave("nube", "manager");
+    expect(await comprobarAcceso("nube", "nube")).toBeNull();
+    expect(await comprobarAcceso("nube-caja", "nube-caja")).toBeNull();
+    expect(await comprobarAcceso("victor", "victor")).toBeNull();
+  });
+
   it("el estado dice cómo entra cada usuario, sin enseñar hashes", async () => {
     await nuevaClave("nube", "manager");
     const estado = await estadoAccesos("nube");

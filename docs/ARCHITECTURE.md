@@ -106,7 +106,7 @@ Cada dependencia se detecta por separado:
   `/api` nueva exige sesión.
 - **Fallo cerrado en producción.** Sin `AUTH_SECRET` no se firman ni aceptan sesiones;
   sin contraseña configurada, ese usuario no entra. Los accesos de prueba (contraseña =
-  usuario, visibles en el login) solo existen fuera de producción o con `USUARIOS_DEMO=1`.
+  usuario, visibles en el login) solo existen fuera de producción; no hay variable que los encienda.
 - **Límites de uso** (persistidos en `intentos`): login 10 fallos por IP+negocio y 100
   por negocio en 15 min; `/api/tap` 30 pases por IP en 10 min (firmar cuesta CPU);
   log de Apple 60 por IP en 10 min.

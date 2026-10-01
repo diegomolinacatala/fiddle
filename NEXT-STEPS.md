@@ -223,8 +223,10 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
       [la sección de abajo](#un-pass-type-id-por-tienda). Hacerlo **antes** de que una
       tienda nueva reparta tarjetas: las que ya estén en un iPhone se quedan con el ID
       con el que se emitieron.
-- [ ] Quitar `USUARIOS_DEMO` de Vercel: se desactivan los accesos de prueba y dejan de
-      mostrarse en el login. Quedan solo las contraseñas de `certs/secretos.env`.
+- [x] Accesos de prueba fuera de producción (01-10-2026): `USUARIOS_DEMO` ya no se lee.
+      **Antes de desplegarlo**, `CLAVE_ADMIN_VICTOR` y `CLAVE_ADMIN_DIEGO` en Vercel y
+      contraseña de verdad para `delicanteria` y `delicanteria-caja` (invitación o
+      *Generar* en `/admin/delicanteria`). Después, borrar la variable de Vercel.
 - [ ] Badge oficial "Add to Apple Wallet" en `/p/<serial>` (ahora hay un botón provisional).
 - [ ] Plan **Pro** en Vercel: el gratuito es solo para uso no comercial.
 

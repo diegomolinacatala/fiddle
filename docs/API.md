@@ -27,7 +27,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
 
 ### `GET /api/login` · `POST /api/login`
-El GET dice si hay accesos de prueba (`USUARIOS_DEMO=1`) y cuáles, para pintarlos en el login.
+El GET dice si hay accesos de prueba y cuáles, para pintarlos en el login. Solo en local: en producción siempre `{ demo: false, accesos: [] }`.
 ```json
 // POST request                              // response ok (+ cookie httpOnly "sesion")
 { "usuario": "delicanteria", "clave": "..." }        { "ok": true, "negocio": "delicanteria", "rol": "manager" }
