@@ -58,7 +58,7 @@ tres avisos (la tarjeta se actualiza igual las cuatro).
    | `GOOGLE_WALLET_SA_JSON` | el contenido entero del `.json` del paso 2 (tal cual, o en base64) |
 
    También vale la forma antigua: `GOOGLE_WALLET_SA_EMAIL` + `GOOGLE_WALLET_SA_KEY`.
-5. Redesplegar. En cualquier manager, *Estado de la integración* → **Android ·
+5. Redesplegar. En `/admin`, *Estado de la integración* → **Android ·
    Google Wallet** tiene que salir en verde: eso significa que Google ha aceptado
    la cuenta de servicio de verdad (se pide un token).
 

@@ -41,3 +41,14 @@ export const negocioDeTarjeta = (n) =>
     // Público a propósito: es lo que la tienda pone en el reverso para que la llamen.
     contacto: n.contacto ?? null,
   };
+
+/**
+ * El negocio para el PERSONAL (caja y manager): todo menos lo que es del admin,
+ * el brief para Claude y sus comentarios sobre el pase. La caja vive en un móvil
+ * de la tienda; lo que se escribe pensando en Claude no tiene por qué ir ahí.
+ */
+export const negocioDelPersonal = (n) => {
+  if (!n) return n;
+  const { brief: _brief, notas: _notas, ...resto } = n;
+  return resto;
+};

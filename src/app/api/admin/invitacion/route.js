@@ -3,7 +3,7 @@ import { getNegocio } from "@/lib/store";
 import { nuevaInvitacion, DIAS_VALIDA } from "@/lib/invitaciones";
 import { usuarioDe } from "@/lib/auth";
 import { esSlug } from "@/lib/negocios";
-import { jsonError, errorInterno } from "@/lib/http";
+import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 // POST { slug } -> enlace de invitación nuevo para el dueño de la tienda (el
 // middleware ya exige admin). Los anteriores sin usar dejan de valer.
 export async function POST(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const { slug } = await request.json().catch(() => ({}));
     if (!esSlug(slug)) return jsonError("Falta slug", 400);

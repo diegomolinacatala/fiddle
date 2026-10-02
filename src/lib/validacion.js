@@ -7,6 +7,7 @@ import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
 import { validarLogoImagen } from "./logo";
 import { normalizarCaja } from "./caja";
+import { slugDeTiendaLibre } from "./auth";
 
 const MAX_UBICACIONES = 10; // límite de Apple Wallet
 const MAX_NOMBRE = 48;
@@ -182,6 +183,9 @@ export function datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto }) {
   const slug = texto(b.slug, 32)?.toLowerCase();
   const nombre = texto(b.nombre, 60);
   if (!slug || !esSlug(slug)) return { error: "Identificador no válido (minúsculas, números y guiones; mín. 2)" };
+  if (!slugDeTiendaLibre(slug)) {
+    return { error: "Ese identificador se confunde con un usuario de acceso: no puede acabar en -caja ni en -manager, ni ser victor o diego" };
+  }
   if (!nombre) return { error: "Ponle un nombre al negocio" };
 
   const tipo = b.tipo === "descuento" ? "descuento" : "sellos";

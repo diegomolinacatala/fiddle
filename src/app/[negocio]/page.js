@@ -115,6 +115,12 @@ function TuTarjeta({ n, cliente, plataforma }) {
         {google && <a href={`/p/${serial}`} className="enlace">Abrir en el navegador</a>}
         {!apple && !google && <a href={`/p/${serial}`} className="boton">Abrir mi tarjeta</a>}
       </div>
+      {/* El teléfono recuerda la tarjeta un año. Si la tienda saca tarjetas desde el
+          suyo, o el móvil es de dos, quien viene detrás no tiene por qué quedarse
+          con la de otro: saca la suya. */}
+      <a href={`/${n.slug}?nuevo=1`} className="enlace otra">
+        {cliente.nombre ? `¿No eres ${cliente.nombre}?` : "¿No es tu tarjeta?"}
+      </a>
     </>
   );
 }
@@ -174,6 +180,7 @@ const css = `
 .wallet{margin-top:30px;display:grid;gap:16px;justify-items:center}
 .wallet .boton{width:100%}
 .enlace{font-size:14px;opacity:.7;text-decoration-thickness:1px;text-underline-offset:3px}
+.otra{display:block;margin-top:26px;color:inherit;opacity:.62;overflow-wrap:anywhere}
 .pie{display:flex;gap:20px;font-size:12px;opacity:.5}
 .pie a{text-decoration:none}
 @media (hover:hover){.pie a:hover{text-decoration:underline}}

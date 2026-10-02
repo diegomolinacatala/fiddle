@@ -3,11 +3,18 @@
 // 1. Hacerla instalable (caja de cada tienda y tarjeta del cliente) con un
 //    respaldo sin conexión. Red primero, para NO servir HTML caducado (el
 //    clásico "no veo mis cambios"). Las /api no se cachean nunca: el estado
-//    real siempre va contra el servidor.
+//    real siempre va contra el servidor. Las pantallas del personal, tampoco.
 // 2. Enseñar los avisos del navegador (Android): sello, canje, promo.
 // 3. Al tocar un aviso, abrir la tarjeta (o traer al frente la que ya estaba
 //    abierta) y decirle que se refresque.
-const CACHE = "sellos-v2";
+// v3: la v2 guardaba también las pantallas del personal; al activarse, se borra.
+const CACHE = "sellos-v3";
+
+// Las pantallas del personal no se guardan: llevan nombres y notas de clientes en
+// el HTML y el móvil de la tienda lo usa cualquiera. Sin conexión no salen, que es
+// mejor que salgan con lo de antes de cerrar sesión. La caja (/<slug>/caja) sí:
+// pide sus datos a /api, que nunca se guarda.
+const DEL_PERSONAL = /^\/(?:admin|w)(?:\/|$)|^\/[^/]+\/(?:manager|crm|avisos|ajustes)(?:\/|$)/;
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>
@@ -26,6 +33,7 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (EN_LOCAL || request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api")) return;
+  if (DEL_PERSONAL.test(url.pathname)) return;
 
   event.respondWith(
     fetch(request)

@@ -26,7 +26,13 @@ export default function Caja() {
 
   useEffect(() => {
     if (!negocio) return;
-    fetch(`/api/negocio?b=${negocio}`).then((r) => r.json()).then(setN).catch(() => {});
+    fetch(`/api/negocio?b=${negocio}`)
+      .then((r) => {
+        // La sesión ya no vale (cambiaron la contraseña de la caja): a entrar otra vez.
+        if (r.status === 401) return router.replace(`/login?b=${negocio}&next=/${negocio}/caja`);
+        return r.json().then(setN);
+      })
+      .catch(() => {});
     fetch(`/api/clientes?b=${negocio}`).then((r) => r.json())
       .then((d) => setClientes(Array.isArray(d) ? d : [])).catch(() => {});
   }, [negocio]);

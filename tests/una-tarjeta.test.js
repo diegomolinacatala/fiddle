@@ -78,6 +78,7 @@ describe("unificarTarjeta con el store", () => {
     getNegocio: store.getNegocio,
     tarjetaDeDispositivo: store.tarjetaDeDispositivo,
     apuntarTarjetaDeDispositivo: store.apuntarTarjetaDeDispositivo,
+    dispositivosDeTarjeta: store.dispositivosDeTarjeta,
     fusionarClientes: store.fusionarClientes,
     addEvento: store.addEvento,
     notificarCliente: async (cliente) => { avisos.push(cliente.serial); },
@@ -136,6 +137,40 @@ describe("unificarTarjeta con el store", () => {
     await store.saveCliente({ ...vieja, sellos: 1 }); // la caja, entre medias
     expect(await store.fusionarClientes(leida, await store.getCliente("nueva"), fusionar(leida, await store.getCliente("nueva"), nube))).toBe(false);
     expect(await store.getCliente("vieja")).toMatchObject({ sellos: 1, fusionado_en: null });
+  });
+
+  // Registrar de verdad (tabla `registros`), como hace el web service al añadirla.
+  const enWallet = (dispositivo, serial) =>
+    store.registrarPase({ dispositivo, pushToken: "ab".repeat(16), passType: "pass.x", serial, negocio: "nube" });
+
+  it("la vieja sigue en el Wallet de ESTE iPhone (perdió la cookie): se fusiona", async () => {
+    const vieja = await alta("vieja");
+    await store.saveCliente({ ...vieja, sellos: 4 });
+    await enWallet("iphone-ana", "vieja");
+    await unificarTarjeta(deps(), { dispositivo: "iphone-ana", negocio: "nube", serial: "vieja" });
+
+    await alta("nueva");
+    await enWallet("iphone-ana", "nueva");
+    expect((await unificarTarjeta(deps(), { dispositivo: "iphone-ana", negocio: "nube", serial: "nueva" })).fusionada).toBe("vieja");
+    expect(await store.getCliente("nueva")).toMatchObject({ sellos: 4 });
+  });
+
+  it("un iPhone inventado con el serial de otro no se lleva sus sellos: la tarjeta sigue viva en su teléfono", async () => {
+    const ajena = await alta("ajena");
+    await store.saveCliente({ ...ajena, sellos: 7, guardados: 2 });
+    await enWallet("iphone-ana", "ajena");
+    await unificarTarjeta(deps(), { dispositivo: "iphone-ana", negocio: "nube", serial: "ajena" });
+
+    // Quien vio el QR de Ana registra la de Ana y luego la suya en un "iPhone" que no existe.
+    await enWallet("iphone-falso", "ajena");
+    await unificarTarjeta(deps(), { dispositivo: "iphone-falso", negocio: "nube", serial: "ajena" });
+    await alta("suya");
+    await enWallet("iphone-falso", "suya");
+    const r = await unificarTarjeta(deps(), { dispositivo: "iphone-falso", negocio: "nube", serial: "suya" });
+
+    expect(r.fusionada).toBeNull();
+    expect(await store.getCliente("ajena")).toMatchObject({ sellos: 7, guardados: 2, fusionado_en: null });
+    expect(await store.getCliente("suya")).toMatchObject({ sellos: 0, guardados: 0 });
   });
 
   it("nunca lanza: el registro en el Wallet no puede fallar por esto", async () => {

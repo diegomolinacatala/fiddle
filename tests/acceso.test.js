@@ -64,9 +64,13 @@ describe("reglaDeRuta", () => {
   });
 
   it("el resto exige sesión (falla cerrado)", () => {
-    for (const r of ["/w/abc", "/api/accion", "/api/cliente/abc", "/api/promo", "/api/estado", "/api/loquesea", "/p/a/b"]) {
+    for (const r of ["/w/abc", "/api/accion", "/api/cliente/abc", "/api/promo", "/api/loquesea", "/p/a/b"]) {
       expect(regla(r), r).toEqual({ tipo: "sesion" });
     }
+  });
+
+  it("el estado de las integraciones es del admin: es de toda la plataforma", () => {
+    expect(regla("/api/estado")).toEqual({ tipo: "admin" });
   });
 
   it("no confunde rutas reservadas con negocios", () => {
@@ -82,6 +86,14 @@ describe("destinoSeguro", () => {
     expect(destinoSeguro("/\\evil.com")).toBeNull();
     expect(destinoSeguro("https://evil.com")).toBeNull();
     expect(destinoSeguro(null)).toBeNull();
+  });
+
+  it("no cuela otro dominio con un tabulador o una barra invertida en medio", () => {
+    // El navegador se salta el tabulador: "/\t/evil.com" llega como "//evil.com".
+    expect(destinoSeguro("/\t/evil.com")).toBeNull();
+    expect(destinoSeguro("/\n/evil.com")).toBeNull();
+    expect(destinoSeguro("/a\\b")).toBeNull();
+    expect(destinoSeguro("/w/abc?x=1#y")).toBe("/w/abc?x=1#y");
   });
 });
 

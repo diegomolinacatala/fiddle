@@ -18,11 +18,11 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>` | público (la tarjeta de Android: el serial es la llave) |
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
 | `/<negocio>/caja`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `GET /api/clientes`, `GET /api/negocio` | **caja** o manager de ese negocio |
-| `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `GET /api/estado` | **manager** de ese negocio |
+| `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear` | **manager** de ese negocio |
 | `/<negocio>/crm`, `GET /api/crm`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>` | **manager** de ese negocio |
 | `/<negocio>/avisos`, `/api/automatizaciones` | **manager** de ese negocio |
 | `/api/cron/avisos` | sin sesión: lo protege `CRON_SECRET` (cabecera `Authorization: Bearer …`) |
-| `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*` | **admin de la plataforma** (`victor`, `diego`) |
+| `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*`, `GET /api/estado` | **admin de la plataforma** (`victor`, `diego`) |
 
 Sin sesión: página → `307` a `/login?b=<negocio>&next=…` · API → `401`.
 
@@ -147,7 +147,7 @@ Guarda la promo (vacío la quita) y avisa a todos los pases del negocio.
 ```
 
 ### `GET /api/estado`
-Qué integraciones están activas (sin secretos): `proveedor`, `apple.{ok, problemas, avisos, passTypeId, caduca, webServiceURL}` (el Pass Type ID general), `appleTiendas` (solo admin: `[{slug, ok, problemas, avisos, propio, passTypeId, caduca}]`, una por tienda con Pass Type ID propio), `google`, `supabase`, `authSecret`, `appUrl`, `httpsPublico`.
+Qué integraciones están activas (sin secretos): `proveedor`, `apple.{ok, problemas, avisos, passTypeId, caduca, webServiceURL}` (el Pass Type ID general), `appleTiendas` (`[{slug, ok, problemas, avisos, propio, passTypeId, caduca}]`, una por tienda con Pass Type ID propio), `google`, `supabase`, `authSecret`, `appUrl`, `httpsPublico`.
 
 ## Admin de la plataforma
 

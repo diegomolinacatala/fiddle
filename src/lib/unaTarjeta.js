@@ -15,7 +15,9 @@
 //
 //   - la nueva se queda con los sellos, premios, nombre, código e historial;
 //   - la vieja queda anulada (`fusionado_en`) y, si sigue en el Wallet, iOS la
-//     aparta a "pases caducados": no hay dos tarjetas vivas de la misma tienda.
+//     aparta a "pases caducados": no hay dos tarjetas vivas de la misma tienda;
+//   - salvo que la vieja siga registrada en OTRO teléfono: entonces es de alguien
+//     que la usa y no se toca (el identificador del iPhone no se puede comprobar).
 //
 // Sobrevive la NUEVA porque es la que el cliente acaba de añadir: a la vieja
 // quizá ya no hay forma de llegar (la borró). Que el serial cambie da igual:
@@ -71,7 +73,8 @@ export function fusionar(viejo, nuevo, negocio) {
  * registro en el Wallet ya está hecho y no puede fallar por esto.
  *
  * @param {object} deps getCliente, getNegocio, tarjetaDeDispositivo,
- *   apuntarTarjetaDeDispositivo, fusionarClientes, addEvento, notificarCliente
+ *   apuntarTarjetaDeDispositivo, dispositivosDeTarjeta, fusionarClientes,
+ *   addEvento, notificarCliente
  * @returns {Promise<{fusionada:string|null}>} el serial viejo, si hubo fusión
  */
 export async function unificarTarjeta(deps, { dispositivo, negocio, serial }) {
@@ -90,6 +93,20 @@ export async function unificarTarjeta(deps, { dispositivo, negocio, serial }) {
     // cambia nada: la buena sigue siendo la apuntada.
     if (!nuevo || nuevo.fusionado_en || !n) return { fusionada: null };
     if (!viejo || viejo.fusionado_en || viejo.negocio !== negocio) {
+      await apuntar();
+      return { fusionada: null };
+    }
+    // El identificador del iPhone lo pone quien llama, no se puede comprobar: quien
+    // sepa el serial de otro (va en su QR) podría inventarse uno, registrar con él
+    // la tarjeta ajena y luego la suya, y llevarse sus sellos. Si la vieja sigue
+    // en OTRO teléfono (cualquier canal), alguien la usa: no es "la que este iPhone
+    // perdió". Lo que NO cubre: una tarjeta que no está registrada en ningún sitio
+    // (web sin avisos, nunca instalada). Con su serial ya se podía usar en el
+    // mostrador enseñando una captura del QR; el serial es la llave de la tarjeta.
+    // Al revés falla seguro: un registro viejo de otro aparato deja dos tarjetas
+    // vivas en vez de una, pero no se pierde nada.
+    const otros = (await deps.dispositivosDeTarjeta(anterior)).filter((d) => d !== dispositivo);
+    if (otros.length) {
       await apuntar();
       return { fusionada: null };
     }

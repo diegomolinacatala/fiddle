@@ -19,6 +19,13 @@ import { generarClave, hashClave, comprobarClave } from "./claves";
 
 export const ROLES_TIENDA = ["manager", "caja"];
 
+/**
+ * La fila de `accesos` si es de verdad de ese negocio y rol; si no, null. Una
+ * tienda `pan-caja` de antes de `slugDeTiendaLibre` pudo pisar la caja de `pan`:
+ * esa fila no abre la puerta de `pan` ni le cierra la sesión a su caja.
+ */
+export const filaDe = (fila, { negocio, rol }) => (fila?.negocio === negocio && fila?.rol === rol ? fila : null);
+
 /** @returns {Promise<{negocio:string, rol:string, usuario:string}|null>} */
 export async function comprobarAcceso(usuario, clave) {
   const quien = resolverUsuario(usuario);
@@ -31,6 +38,8 @@ export async function comprobarAcceso(usuario, clave) {
   } catch (e) {
     console.error("[accesos] no se pudo leer la contraseña de la base; se usa la de respaldo:", e);
   }
+  // La de otra tienda u otro rol cuenta como sin fila: vale la variable, como antes.
+  guardado = filaDe(guardado, quien);
   if (!guardado?.hash) return verificarAcceso(usuario, clave);
 
   const ok = (await comprobarClave(clave, guardado.hash))

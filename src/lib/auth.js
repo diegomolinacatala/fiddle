@@ -15,8 +15,8 @@
 // La contraseña sale de env: CLAVE_<SLUG>_<ROL> (o PIN_<SLUG>_<ROL>, el mismo
 // valor con el nombre antiguo).
 //
-// MODO PRUEBAS: SOLO fuera de producción (en local), la contraseña puede ser
-// igual que el usuario (nube/nube) y el login los muestra en pantalla.
+// MODO PRUEBAS: SOLO fuera de producción (en local) y sin AUTH_SECRET propio, la
+// contraseña puede ser igual que el usuario (nube/nube) y el login los muestra.
 // EN PRODUCCIÓN no hay valores por defecto ni interruptor que los encienda: sin
 // AUTH_SECRET o sin contraseña configurada, no se puede entrar (falla cerrado).
 // ============================================================================
@@ -26,6 +26,9 @@ const enc = new TextEncoder();
 export const COOKIE = "sesion";
 export const ROLES = ["caja", "manager", "admin"];
 // La caja vive en un móvil de la tienda: sesión larga. El manager y el admin, cortas.
+// OJO: el token solo guarda la caducidad, y lib/sesionVigente.js saca de aquí cuándo
+// se firmó. Alargar uno hace que las sesiones vivas parezcan más viejas (y una
+// contraseña cambiada hace poco las echaría); acortarlo, más nuevas.
 export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 12, admin: 60 * 60 * 12 };
 
 // ADMIN DE LA PLATAFORMA: no es de ningún negocio, es de todos. Entra en /admin,
@@ -43,8 +46,12 @@ const esProduccion = () => process.env.NODE_ENV === "production";
  * Solo en local. Antes los encendía USUARIOS_DEMO=1 también en producción; con
  * clientes de verdad eso dejaba entrar como admin con victor/victor, así que la
  * variable ya no se lee: si se queda olvidada en Vercel, no abre nada.
+ *
+ * Y solo con el secreto de demo: si en local hay un AUTH_SECRET de verdad (el de
+ * Vercel pegado en .env.local), victor/victor firmaría sesiones que valen en
+ * producción, porque el token no dice dónde se firmó.
  */
-export const usuariosDemo = () => !esProduccion();
+export const usuariosDemo = () => !esProduccion() && !process.env.AUTH_SECRET?.trim();
 
 /** Secreto HMAC, o null si falta en producción (=> nadie puede entrar). */
 export function secretoSesion() {
@@ -83,6 +90,17 @@ export function resolverUsuario(usuario) {
   const m = /^([a-z0-9-]+?)(?:-(caja|manager))?$/.exec(limpio);
   if (!m) return null;
   return { negocio: m[1], rol: m[2] === "caja" ? "caja" : "manager", usuario: limpio };
+}
+
+/**
+ * ¿Puede llamarse así una tienda NUEVA? Sus dos usuarios tienen que llevar de
+ * vuelta a ella al entrar. `pan-caja` no: su manager sería la caja de `pan`, y
+ * su contraseña pisaría la de esa caja. Tampoco `pan-manager`, `victor` o `diego`.
+ */
+export function slugDeTiendaLibre(slug) {
+  const manager = resolverUsuario(usuarioDe(slug, "manager"));
+  const caja = resolverUsuario(usuarioDe(slug, "caja"));
+  return manager?.negocio === slug && manager.rol === "manager" && caja?.negocio === slug && caja.rol === "caja";
 }
 
 /**

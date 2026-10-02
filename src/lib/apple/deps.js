@@ -1,6 +1,7 @@
 import {
   getCliente, getNegocio, registrarPase, borrarRegistro, pasesDeDispositivo,
   marcarInstalacion, addEvento, tarjetaDeDispositivo, apuntarTarjetaDeDispositivo, fusionarClientes,
+  dispositivosDeTarjeta,
 } from "../store";
 import { notificarCliente } from "../wallet";
 import { unificarTarjeta } from "../unaTarjeta";
@@ -26,7 +27,7 @@ export function depsServicio() {
     addEvento,
     unificarTarjeta: (datos) => unificarTarjeta({
       getCliente, getNegocio, tarjetaDeDispositivo, apuntarTarjetaDeDispositivo,
-      fusionarClientes, addEvento, notificarCliente,
+      dispositivosDeTarjeta, fusionarClientes, addEvento, notificarCliente,
     }, datos),
     generarPkpass,
     log: (mensaje) => console.warn(mensaje),

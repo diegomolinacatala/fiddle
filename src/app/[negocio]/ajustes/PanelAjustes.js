@@ -28,7 +28,7 @@ export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = fal
   async function cambiarClaveCaja() {
     if (!window.confirm(`¿Cambiar la contraseña de la caja?
 
-La actual dejará de valer para entrar. Tendrás que escribir la nueva en el móvil de la caja.`)) return;
+La actual dejará de valer y los móviles que tengan la caja abierta se quedarán fuera. Tendrás que escribir la nueva en el móvil de la caja.`)) return;
     try {
       const res = await fetch(`/api/accesos/caja?b=${slug}`, { method: "POST" });
       const data = await res.json();
@@ -52,7 +52,7 @@ La actual dejará de valer para entrar. Tendrás que escribir la nueva en el mó
         <section style={{ ...panel, maxWidth: 640, marginTop: 20, paddingTop: 6, paddingBottom: 6 }}>
           <Bloque
             primero accent={accent} icono="candado" titulo="Contraseña de la caja"
-            resumen={<>Usuario <strong style={{ color: C.texto }}>{usuarios.caja}</strong>. Si se va alguien o se pierde el móvil, cámbiala: la vieja deja de valer.</>}
+            resumen={<>Usuario <strong style={{ color: C.texto }}>{usuarios.caja}</strong>. Si se va alguien o se pierde el móvil, cámbiala: la vieja deja de valer y ese móvil se queda fuera.</>}
             accion={{ texto: "Cambiar contraseña", icono: "editar", onClick: cambiarClaveCaja }}
             abierto={Boolean(claveCaja)}
           >

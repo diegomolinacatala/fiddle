@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { C } from "@/app/ui";
 
-// Panel "¿está todo conectado?" del manager. Lee /api/estado, que comprueba de
+// Panel "¿está todo conectado?" del admin. Lee /api/estado, que comprueba de
 // verdad certificado de Apple, base de datos, avisos de Android, Google Wallet y
 // el cifrado de los datos de clientes, y dice qué tocar si algo falla. Se abre
 // solo cuando hay algo mal.
@@ -69,7 +69,7 @@ export default function EstadoIntegracion({ accent }) {
       ok: Boolean(estado.cifrado?.ok),
       titulo: "Datos de clientes cifrados",
       detalle: errorCifrar ? `${estado.cifrado?.detalle} · ${errorCifrar}` : estado.cifrado?.detalle || "Sin datos",
-      accion: estado.esAdmin && estado.cifrado?.pendientes > 0
+      accion: estado.cifrado?.pendientes > 0
         && <button type="button" onClick={cifrarPendientes} disabled={cifrando} style={botonCifrar(accent)}>{cifrando ? "Cifrando…" : "Cifrar ahora"}</button>,
     },
     { ok: estado.authSecret, titulo: "Login seguro", detalle: estado.authSecret ? "AUTH_SECRET configurado" : "Secreto de demo: configura AUTH_SECRET" },

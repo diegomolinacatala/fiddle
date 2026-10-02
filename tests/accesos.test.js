@@ -77,6 +77,14 @@ describe("login con contraseñas en la base", () => {
     expect(JSON.stringify(estado)).not.toContain("scrypt");
   });
 
+  it("una fila de otra tienda no abre esta (una tienda «nube-caja» pudo pisar la caja de «nube»)", async () => {
+    const intruso = { usuario: "nube-caja", negocio: "nube-caja", rol: "manager", hash: await hashClave("la-del-intruso"), actualizado: new Date().toISOString() };
+    writeFileSync(path.join(dir, "accesos.json"), JSON.stringify({ "nube-caja": intruso }));
+    expect(await comprobarAcceso("nube-caja", "la-del-intruso")).toBeNull();
+    // Cuenta como si no hubiera fila: vale la de Vercel, como antes.
+    expect(await comprobarAcceso("nube-caja", "de-vercel")).toMatchObject({ negocio: "nube", rol: "caja" });
+  });
+
   it("si la base falla, cae a la de Vercel en vez de dejar a la caja fuera", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     writeFileSync(path.join(dir, "accesos.json"), "{ esto no es json"); // la "base" no se puede leer

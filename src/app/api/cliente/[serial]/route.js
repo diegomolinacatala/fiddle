@@ -4,6 +4,7 @@ import { accionesDe } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 import { nombreDeCliente } from "@/lib/validacion";
+import { negocioDelPersonal } from "@/lib/tarjeta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export async function GET(request, { params }) {
     const negocio = await getNegocio(cliente.negocio);
     const eventos = await listEventos(serial);
     const acciones = accionesDe(negocio);
-    return NextResponse.json({ cliente: clientePublico(cliente), negocio, eventos, acciones });
+    return NextResponse.json({ cliente: clientePublico(cliente), negocio: negocioDelPersonal(negocio), eventos, acciones });
   } catch (e) {
     return errorInterno("cliente GET", e);
   }

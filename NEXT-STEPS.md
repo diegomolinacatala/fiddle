@@ -41,7 +41,7 @@ de caja con `delicanteria-caja` abierto en `/delicanteria/caja`.
 8. Si hay tiempo: en el manager desde el Android, *Grabar un tag con este móvil*
    escribe un tag NFC nuevo sin ninguna app.
 
-Si algo no va: *Estado de la integración* en el manager dice qué falla y qué tocar.
+Si algo no va: *Estado de la integración* en `/admin` dice qué falla y qué tocar.
 
 ---
 
