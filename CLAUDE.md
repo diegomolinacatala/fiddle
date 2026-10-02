@@ -321,6 +321,13 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   solo para los tests (`tests/tiendasDePrueba.js`, cargado por `setupFiles` de
   vitest; un test con `vi.resetModules()` lo vuelve a importar). No devolverlas a
   `negocios.js`.
+- **En producción solo trabajamos con La Delicantería** (desde el 02-10-2026). Las de
+  antes (`fade`, `forno`, `nube`, `project-68`) están **archivadas, no borradas**: no
+  salen en ningún sitio ni dejan entrar, pero sus datos siguen por si hacen falta. No
+  desarchivarlas ni borrarlas para siempre sin hablarlo entre los dos. Ni el
+  directorio (`/api/negocios`) ni el reloj de avisos las ven: `listNegocios()` y
+  `getNegocio()` esconden lo archivado salvo que se pida (`incluirArchivados`, solo
+  en `/admin`). Se ven en `/admin` → Archivadas.
 - Tres roles: `caja`, `manager`, `admin`. El admin (victor/diego) entra en todo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.
