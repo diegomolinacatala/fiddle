@@ -38,12 +38,14 @@ en JS después de leer. Todo pasa por el store (`normalizarCliente`).
 2. Vercel → Settings → Environment Variables: `CIFRADO_CLAVE` con ese valor,
    en Production, marcada *Sensitive*.
 3. Redesplegar.
-4. Panel del manager, *Estado de la integración* → **Datos de clientes cifrados**.
+4. Panel del admin, *Estado de la integración* → **Datos de clientes cifrados**.
    Si quedan datos de antes en claro, el admin ve **Cifrar ahora**. Una vez basta.
 5. **Guardar una copia de la clave fuera del ordenador** (gestor de contraseñas
    compartido). Perderla es perder los nombres y notas cifrados.
 
-Sin clave, todo funciona igual pero en claro (en local y en demo no hace falta).
+Sin clave, en local y en demo todo funciona igual pero en claro (ahí no hace falta).
+En producción, sin clave **no se guarda** ningún nombre ni nota: `cifrar` lanza y
+el alta con nombre falla. Mejor eso que guardarlos en claro sin que nadie se entere.
 
 ## Lo que no es código
 

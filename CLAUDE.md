@@ -97,6 +97,12 @@ Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
   en la nueva (sellos, premios, código, nombre, historial) y queda anulada con
   `fusionado_en`. `tarjetas_de_dispositivo` NO se borra al quitar el pase: es lo
   que permite devolverle los sellos.
+- **Nunca se fusiona una tarjeta que sigue registrada en OTRO teléfono**
+  (`dispositivosDeTarjeta`). El `deviceLibraryIdentifier` lo pone quien llama y el
+  serial va en el QR: sin esto, quien viera el QR de otro se llevaba sus sellos. Una
+  tarjeta sin registro en ningún sitio sigue pudiendo fusionarse: el serial es su llave.
+- **La página de la tienda recuerda la tarjeta un año** y saluda por el nombre; debajo,
+  «¿No eres Ana?» saca otra (`?nuevo=1`) para quien usa un teléfono que no es el suyo.
 - Una tarjeta con `fusionado_en` **no es un cliente**: `listClientes` la esconde,
   `/api/accion` la rechaza y `/w`, `/p`, `/api/pase` y el tap saltan a la vigente
   (`clienteVigente`). Lo que lea `clientes` a mano tiene que filtrarla igual.
@@ -279,9 +285,18 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
   también se cae a la variable: una caja sin poder entrar es peor.
 - Los admins (victor, diego) siguen solo con variables.
-- Cambiar una contraseña **no cierra las sesiones ya abiertas** (la caja dura 30 días):
-  el token de sesión no sabe de contraseñas. Si hiciera falta, bastaría con cambiar
-  `AUTH_SECRET` (echa a todos).
+- **Cambiar una contraseña saca a quien ya estaba dentro** (la caja perdida, el empleado
+  que se va): `lib/sesionVigente.js` rechaza la sesión firmada antes de
+  `accesos.actualizado`, y también la de una tienda archivada o borrada. Lo miran
+  `exigirNegocio` y las páginas del personal (`sesionDeCookie`), no el middleware (Edge,
+  solo la firma). Página o API nueva del personal = por ahí, nunca `verificarSesion` a pelo.
+- **Lo de `/api/admin/*` comprueba el admin también dentro** (`exigirAdmin`), aunque el
+  middleware ya lo haga: si una ruta se le escapa, no queda abierta.
+- **Una tienda no puede llamarse como un usuario** (`slugDeTiendaLibre`): `pan-caja` haría
+  de su manager la caja de `pan`. Por lo mismo, `comprobarAcceso` ignora una fila de
+  `accesos` que diga ser de otra tienda u otro rol.
+- **Accesos de prueba (usuario = contraseña) solo en local y sin `AUTH_SECRET`**: con el
+  de Vercel pegado en `.env.local`, una sesión firmada aquí valdría en producción.
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
@@ -313,7 +328,14 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md)). Se cifran al guardar y se descifran
   en `normalizarCliente`: leer y escribir `clientes` siempre por esas funciones
   del store. Un dato personal nuevo se añade a `PERSONALES`. No se puede buscar
-  por ellos en SQL: se filtra en JS.
+  por ellos en SQL: se filtra en JS. **En producción, sin `CIFRADO_CLAVE` no se
+  guardan**: `cifrar` lanza en vez de escribir en claro.
+- **Al personal, `negocioDelPersonal()`** (`lib/tarjeta.js`): la tienda sin el brief ni
+  los comentarios del admin. Al cliente, `negocioDeTarjeta()`. El negocio entero, solo
+  en `/api/admin/*`.
+- **El service worker no guarda las pantallas del personal** (`DEL_PERSONAL` en
+  `public/sw.js`): llevan nombres y notas en el HTML. Si cambia lo que guarda, subir
+  `CACHE` para que se borre lo de antes.
 - **`supabase/schema.sql` primero, código después.** Si una columna nueva se
   despliega antes de existir en la base, producción devuelve 500.
 

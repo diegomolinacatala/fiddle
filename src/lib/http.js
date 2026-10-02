@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sesionDeRequest, puedeAcceder } from "./auth";
+import { sesionVigente } from "./sesionVigente";
 
 // Utilidades comunes de los route handlers.
 
@@ -11,14 +12,28 @@ export function errorInterno(contexto, e) {
   return jsonError("Error interno. Revisa los logs del servidor.", 500);
 }
 
+/** La sesión de una Request si la firma vale Y sigue vigente (lib/sesionVigente.js). */
+export const sesionVigenteDe = async (request) => sesionVigente(await sesionDeRequest(request));
+
 /**
  * Exige una sesión con permiso `rol` sobre el negocio `slug`.
  * Devuelve { sesion } o { respuesta } (401/403) para devolver tal cual.
  */
 export async function exigirNegocio(request, slug, rol) {
-  const sesion = await sesionDeRequest(request);
+  const sesion = await sesionVigenteDe(request);
   if (!sesion) return { respuesta: jsonError("No autorizado", 401) };
   if (!puedeAcceder(sesion, slug, rol)) return { respuesta: jsonError("Sin permiso para este negocio", 403) };
+  return { sesion };
+}
+
+/**
+ * Exige el admin de la plataforma. El middleware ya lo mira por la ruta
+ * (/api/admin/...); esto es la segunda puerta, por si una ruta se le escapa.
+ */
+export async function exigirAdmin(request) {
+  const sesion = await sesionDeRequest(request);
+  if (!sesion) return { respuesta: jsonError("No autorizado", 401) };
+  if (sesion.rol !== "admin") return { respuesta: jsonError("Solo el admin", 403) };
   return { sesion };
 }
 

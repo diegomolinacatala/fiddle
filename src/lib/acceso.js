@@ -66,7 +66,8 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   if (PUBLICAS.some((re) => re.test(pathname))) return { tipo: "publica" };
 
   // El admin de la plataforma: su página y su API.
-  if (pathname === "/admin" || pathname.startsWith("/admin/") || pathname.startsWith("/api/admin/")) {
+  // /api/estado es el panel de integraciones de /admin: de toda la plataforma.
+  if (pathname === "/admin" || pathname.startsWith("/admin/") || pathname.startsWith("/api/admin/") || pathname === "/api/estado") {
     return { tipo: "admin" };
   }
 
@@ -98,15 +99,18 @@ export function reglaDeRuta(pathname, params, method = "GET") {
     return { tipo: "negocio", slug: b, rol: "manager" };
   }
 
-  // /w/<serial>, /api/accion, /api/cliente/<serial>, /api/promo, /api/estado y
-  // cualquier otra: sesión válida; el handler valida el negocio concreto.
+  // /w/<serial>, /api/accion, /api/cliente/<serial>, /api/promo y cualquier
+  // otra: sesión válida; el handler valida el negocio concreto.
   return { tipo: "sesion" };
 }
 
 /** `next` seguro para redirigir tras el login (evita open redirects). */
 export function destinoSeguro(next) {
   if (typeof next !== "string" || !next.startsWith("/")) return null;
-  if (next.startsWith("//") || next.startsWith("/\\")) return null;
+  // El navegador se salta tabuladores y saltos de línea, y lee "\" como "/":
+  // "/\t/evil.com" acaba siendo "//evil.com", que es otro dominio.
+  if (/[\u0000-\u001f\u007f\\]/.test(next)) return null;
+  if (next.startsWith("//")) return null;
   return next;
 }
 

@@ -56,6 +56,13 @@ describe("validación del admin", () => {
     expect(datosNegocioNuevo({ slug: "panaderia", nombre: "  " }, deps).error).toMatch(/nombre/);
   });
 
+  it("ni un identificador que se confunda con un usuario de acceso", () => {
+    // "delicanteria-caja" es el usuario de la caja de La Delicantería.
+    for (const slug of ["delicanteria-caja", "pan-manager", "diego"]) {
+      expect(datosNegocioNuevo({ slug, nombre: "X" }, deps).error, slug).toMatch(/usuario de acceso/);
+    }
+  });
+
   it("rellena lo que no se le da", () => {
     const { datos } = datosNegocioNuevo({ slug: "panaderia", nombre: "Panadería Rosa" }, deps);
     expect(datos).toMatchObject({ tipo: "sellos", meta: 8, acciones: ["sellar", "canjear"] });

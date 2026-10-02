@@ -16,9 +16,9 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 // separa lo cifrado de lo de antes, que se sigue leyendo tal cual hasta que se
 // cifra (store.cifrarPendientes), y deja sitio para una v2 si se cambia la clave.
 //
-// SIN CLAVE se guarda en claro: en local y en demo no hace falta. En producción
-// lo dice el panel de estado. PERDER LA CLAVE ES PERDER LOS DATOS: guardarla
-// también fuera de Vercel.
+// SIN CLAVE se guarda en claro en local y en demo, donde no hace falta. En
+// producción, sin clave no se guarda: `cifrar` lanza. PERDER LA CLAVE ES PERDER
+// LOS DATOS: guardarla también fuera de Vercel.
 // ============================================================================
 
 const PREFIJO = "v1:";
@@ -54,7 +54,12 @@ export const estaCifrado = (valor) => typeof valor === "string" && FORMA.test(va
 export function cifrar(texto, contexto) {
   if (texto == null || texto === "") return null;
   const k = clave();
-  if (!k) return texto;
+  if (!k) {
+    // En producción, guardar en claro sin decirlo sería peor que fallar: el panel
+    // de estado lo avisa, pero nadie lo mira a diario. En local y en demo, en claro.
+    if (process.env.NODE_ENV === "production") throw new Error("Falta CIFRADO_CLAVE: no se guardan datos personales en claro");
+    return texto;
+  }
   const nonce = randomBytes(NONCE);
   const cifrador = createCipheriv("aes-256-gcm", k, nonce);
   cifrador.setAAD(aad(contexto));

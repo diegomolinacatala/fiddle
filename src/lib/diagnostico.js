@@ -7,7 +7,7 @@ import { configGoogle, faltanVariablesGoogle } from "./google/config";
 import { tokenDeAcceso } from "./google/api";
 
 // ============================================================================
-// DIAGNÓSTICO (panel "Estado de la integración" del manager)
+// DIAGNÓSTICO (panel "Estado de la integración" de /admin)
 // ----------------------------------------------------------------------------
 // No basta con que las variables existan: aquí se comprueba que FUNCIONAN
 // (certificado válido y de esta clave, Supabase responde y tiene las tablas) y

@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   firmarSesion, verificarSesion, puedeAcceder, claveDe, varClave, varPin, usuarioDe, usuariosDemo,
-  resolverUsuario, verificarAcceso, secretoSesion, igualSeguro, TTL_SEGUNDOS,
+  resolverUsuario, verificarAcceso, secretoSesion, igualSeguro, TTL_SEGUNDOS, slugDeTiendaLibre,
 } from "@/lib/auth";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -19,6 +19,16 @@ describe("usuarios", () => {
     expect(resolverUsuario("")).toBeNull();
     expect(usuarioDe("nube", "caja")).toBe("nube-caja");
     expect(usuarioDe("nube", "manager")).toBe("nube");
+  });
+
+  it("una tienda no puede llamarse como un usuario de otra", () => {
+    expect(slugDeTiendaLibre("pan")).toBe(true);
+    expect(slugDeTiendaLibre("caja-pan")).toBe(true);
+    // Su manager sería la caja de "pan", y su contraseña pisaría la de esa caja.
+    expect(slugDeTiendaLibre("pan-caja")).toBe(false);
+    expect(slugDeTiendaLibre("pan-manager")).toBe(false);
+    expect(slugDeTiendaLibre("victor")).toBe(false);
+    expect(slugDeTiendaLibre("diego")).toBe(false);
   });
 });
 
@@ -53,6 +63,13 @@ describe("contraseñas", () => {
     expect(usuariosDemo()).toBe(false);
     expect(verificarAcceso("nube", "nube")).toBeNull();
     expect(verificarAcceso("victor", "victor")).toBeNull();
+  });
+
+  it("en local con un AUTH_SECRET de verdad, tampoco: firmaría sesiones que valen en producción", () => {
+    vi.stubEnv("AUTH_SECRET", "el-de-vercel");
+    expect(usuariosDemo()).toBe(false);
+    expect(verificarAcceso("victor", "victor")).toBeNull();
+    expect(verificarAcceso("nube", "nube")).toBeNull();
   });
 
   it("la contraseña de un rol no sirve para el otro", () => {

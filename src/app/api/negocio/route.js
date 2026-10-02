@@ -4,6 +4,7 @@ import { ACCIONES } from "@/lib/acciones";
 import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { notificarNegocio } from "@/lib/wallet";
 import { patchNegocio } from "@/lib/validacion";
+import { negocioDelPersonal } from "@/lib/tarjeta";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -21,7 +22,7 @@ export async function GET(request) {
   try {
     const negocio = await getNegocio(slug);
     if (!negocio) return jsonError("negocio desconocido", 404);
-    return NextResponse.json(negocio);
+    return NextResponse.json(negocioDelPersonal(negocio));
   } catch (e) {
     return errorInterno("negocio GET", e);
   }
@@ -48,7 +49,7 @@ export async function PUT(request) {
     // (El "Abierto hasta…" de la tarjeta web lo recoge ella sola al preguntar.)
     const tocaPase = PASE.some((k) => k in r.patch);
     const aviso = tocaPase ? await notificarNegocio(nuevo, { cartilla: true }) : null;
-    return NextResponse.json({ ...nuevo, aviso });
+    return NextResponse.json({ ...negocioDelPersonal(nuevo), aviso });
   } catch (e) {
     return errorInterno("negocio PUT", e);
   }

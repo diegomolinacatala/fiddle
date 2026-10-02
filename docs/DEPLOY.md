@@ -16,7 +16,7 @@ Plantilla completa: [`.env.example`](../.env.example).
 | `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_SA_JSON` (o `_SA_EMAIL` + `_SA_KEY`) | Google Wallet: guardar, actualizar y avisar ([guía](GOOGLE-WALLET.md)) | opcional |
 
 Cada integración se detecta por separado; lo que falte cae a modo demo. El manager
-de cada negocio muestra **Estado de la integración** con lo que está activo.
+de `/admin` muestra **Estado de la integración** con lo que está activo.
 
 Fuera de producción (`next dev`) hay PINs y secreto de demo. **En producción no**:
 es a propósito, para que un deploy mal configurado no quede abierto.
@@ -27,7 +27,7 @@ es a propósito, para que un deploy mal configurado no quede abierto.
 2. **Settings → Environment Variables**: las de arriba.
 3. `APP_URL` = dominio definitivo. Si vas a usar dominio propio, configúralo **antes**
    de emitir pases reales: los pases guardan la URL con la que se emitieron.
-4. Deploy. Comprueba `/<negocio>/manager` → Estado de la integración.
+4. Deploy. Comprueba `/admin` → Estado de la integración.
 
 `sharp` (imágenes del pase) y `passkit-generator` (firma) corren en las funciones
 Node de Vercel sin configuración extra (`next.config.mjs` los marca como externos).

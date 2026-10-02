@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getNegocio } from "@/lib/store";
 import { nuevaClave, estadoAccesos, ROLES_TIENDA } from "@/lib/accesos";
 import { esSlug } from "@/lib/negocios";
-import { jsonError, errorInterno } from "@/lib/http";
+import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 //   GET  ?slug=               cómo entra cada usuario (sin contraseñas)
 //   POST { slug, rol }        genera una nueva y la devuelve UNA vez
 export async function GET(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   const slug = new URL(request.url).searchParams.get("slug");
   if (!esSlug(slug)) return jsonError("Falta ?slug=", 400);
   try {
@@ -21,6 +23,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const { slug, rol } = await request.json().catch(() => ({}));
     if (!esSlug(slug) || !ROLES_TIENDA.includes(rol)) return jsonError("Falta slug o rol (manager | caja)", 400);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listNegocios, listClientes, listEventosDeNegocio, serialesRegistrados } from "@/lib/store";
 import { perfilDe, metricas } from "@/lib/crm";
-import { errorInterno } from "@/lib/http";
+import { errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 // el pase. El middleware ya deja esta ruta solo para el admin.
 //
 // GET /api/admin/crm
-export async function GET() {
+export async function GET(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const negocios = await listNegocios();
 

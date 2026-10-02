@@ -956,6 +956,24 @@ export async function tiposDePaseInstalados(serial) {
 }
 
 /**
+ * En qué dispositivos está registrada esta tarjeta ahora mismo, de cualquier
+ * canal (iPhone, navegador de Android, Google). Lo pregunta la fusión de
+ * lib/unaTarjeta.js: una tarjeta viva en otro teléfono no se fusiona.
+ * @returns {Promise<string[]>}
+ */
+export async function dispositivosDeTarjeta(serial) {
+  if (hasSupabase()) {
+    const data = sinError(
+      await supa().from("registros").select("dispositivo").eq("serial", serial),
+      "leer dispositivos de la tarjeta",
+    );
+    return [...new Set((data || []).map((r) => r.dispositivo))];
+  }
+  const registros = await enFila(() => leer("registros", []));
+  return [...new Set(registros.filter((r) => r.serial === serial).map((r) => r.dispositivo))];
+}
+
+/**
  * Pases registrados en un dispositivo, con su fecha de actualización.
  * @returns {Promise<{serial:string, actualizado:string}[]>}
  */

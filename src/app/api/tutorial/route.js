@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { tutorialesVistos, marcarTutorial } from "@/lib/store";
-import { sesionDeRequest, usuarioDe } from "@/lib/auth";
-import { jsonError, errorInterno } from "@/lib/http";
+import { usuarioDe } from "@/lib/auth";
+import { jsonError, errorInterno, sesionVigenteDe } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ const quien = (sesion) => ({
 });
 
 export async function GET(request) {
-  const sesion = await sesionDeRequest(request);
+  const sesion = await sesionVigenteDe(request);
   if (!sesion) return jsonError("No autorizado", 401);
   const recorrido = new URL(request.url).searchParams.get("recorrido");
   if (!RECORRIDOS.includes(recorrido)) return jsonError("Recorrido desconocido", 400);
@@ -33,7 +33,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const sesion = await sesionDeRequest(request);
+  const sesion = await sesionVigenteDe(request);
   if (!sesion) return jsonError("No autorizado", 401);
   try {
     const { recorrido } = await request.json().catch(() => ({}));

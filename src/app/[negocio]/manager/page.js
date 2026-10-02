@@ -2,9 +2,11 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getNegocio } from "@/lib/store";
 import { relojVivo } from "@/lib/relojAvisos";
-import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
+import { puedeAcceder, COOKIE } from "@/lib/auth";
+import { sesionDeCookie } from "@/lib/sesionVigente";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
+import { negocioDelPersonal } from "@/lib/tarjeta";
 import PanelManager from "./PanelManager";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function Page({ params }) {
   const { negocio: slug } = await params;
   // El middleware ya lo exige; esto es la segunda puerta, como en /w/<serial>.
-  const sesion = await verificarSesion((await cookies()).get(COOKIE)?.value);
+  const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/manager`);
 
   let n;
@@ -28,5 +30,5 @@ export default async function Page({ params }) {
   }
   if (!n) notFound();
   // `reloj`: si anda, el pase lleva "ABIERTO / CERRADO" y la vista previa también.
-  return <PanelManager negocio={slug} inicial={n} reloj={reloj} />;
+  return <PanelManager negocio={slug} inicial={negocioDelPersonal(n)} reloj={reloj} />;
 }

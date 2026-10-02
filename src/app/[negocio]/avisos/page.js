@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { datosAvisos } from "@/lib/motorAvisos";
-import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
+import { puedeAcceder, COOKIE } from "@/lib/auth";
+import { sesionDeCookie } from "@/lib/sesionVigente";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
 import PanelAvisos from "./PanelAvisos";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 // AQUÍ y la página llega pintada; mientras, Next enseña loading.js.
 export default async function Page({ params }) {
   const { negocio: slug } = await params;
-  const sesion = await verificarSesion((await cookies()).get(COOKIE)?.value);
+  const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/avisos`);
 
   let datos;

@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCliente, getNegocio, listEventos, clientePublico } from "@/lib/store";
 import { clienteVigente } from "@/lib/unaTarjeta";
-import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
+import { puedeAcceder, COOKIE } from "@/lib/auth";
+import { sesionDeCookie } from "@/lib/sesionVigente";
 import { estadoDe } from "@/lib/resumen";
 import TarjetaCaja from "./TarjetaCaja";
 import { negocioDeTarjeta } from "@/lib/tarjeta";
@@ -34,7 +35,10 @@ export default async function Page({ params }) {
     );
   }
 
-  const sesion = await verificarSesion((await cookies()).get(COOKIE)?.value);
+  const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
+  // Sin sesión vigente (le cambiaron la contraseña, la tienda se archivó): a entrar,
+  // no a "es de otra tienda", que no es verdad.
+  if (!sesion) redirect(`/login?b=${cliente.negocio}&next=/w/${serial}`);
   if (!puedeAcceder(sesion, cliente.negocio, "caja")) {
     return (
       <main style={pagina}>

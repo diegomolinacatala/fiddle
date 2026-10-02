@@ -7,7 +7,7 @@ import { ACCIONES } from "@/lib/acciones";
 import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validacion";
 import { notificarNegocio } from "@/lib/wallet";
 import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
-import { jsonError, errorInterno } from "@/lib/http";
+import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +16,9 @@ export const dynamic = "force-dynamic";
 // API DEL ADMIN DE LA PLATAFORMA
 // ----------------------------------------------------------------------------
 // Crear, editar, archivar y borrar negocios. El middleware ya ha comprobado que
-// la sesión es de admin (acceso.js -> tipo "admin"), así que aquí no se vuelve
-// a mirar el permiso: se mira que los datos tengan sentido.
+// la sesión es de admin (acceso.js -> tipo "admin"); cada handler lo vuelve a
+// mirar (exigirAdmin) por si una ruta se le escapa, y luego mira que los datos
+// tengan sentido.
 //
 //   GET    ?archivados=1        lista (activos, o los archivados)
 //   POST                        crea un negocio
@@ -33,6 +34,8 @@ async function conClientes(negocios) {
 }
 
 export async function GET(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const archivados = new URL(request.url).searchParams.get("archivados") === "1";
     const todos = await listNegocios({ incluirArchivados: true });
@@ -43,6 +46,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const body = await request.json().catch(() => ({}));
     const r = datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto });
@@ -66,6 +71,8 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const body = await request.json().catch(() => ({}));
     const slug = body?.slug;
@@ -98,6 +105,8 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
+  const { respuesta } = await exigirAdmin(request);
+  if (respuesta) return respuesta;
   try {
     const { searchParams } = new URL(request.url);
     const slug = searchParams.get("slug");

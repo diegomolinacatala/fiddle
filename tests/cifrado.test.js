@@ -72,6 +72,13 @@ describe("cifrado de campos", () => {
     error.mockRestore();
   });
 
+  it("en producción sin clave no se guarda nada en claro: lanza", () => {
+    vi.stubEnv("CIFRADO_CLAVE", "");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(() => cifrar("Ana", ANA)).toThrow(/CIFRADO_CLAVE/);
+    expect(cifrar(null, ANA)).toBeNull(); // nada que guardar
+  });
+
   it("estadoClaveCifrado: falta, mal formada o lista", () => {
     vi.stubEnv("CIFRADO_CLAVE", "");
     expect(estadoClaveCifrado()).toEqual({ ok: false, problema: "falta" });
