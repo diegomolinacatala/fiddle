@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ACCIONES, premiosDe } from "@/lib/acciones";
 import { filasDeCaja, normalizarCaja } from "@/lib/caja";
-import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { stripDelPase, comoDataUri, svgBandaOpaca } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { cartillasDe, describirBanda } from "@/lib/cartillas";
 import WorkerActions from "./WorkerActions";
@@ -139,7 +139,7 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       )}
       <div style={{ ...panel, padding: 0, overflow: "hidden", borderColor: `${accent}66` }}>
         <img
-          src={comoDataUri(banda.svg)}
+          src={comoDataUri(svgBandaOpaca(banda.svg, negocio.tema.cardBg))}
           alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio)}
           style={{ display: "block", width: "100%", height: "auto", aspectRatio: `${banda.ancho} / ${banda.alto}` }}
         />

@@ -10,7 +10,9 @@
 //             dentro. Una vez en la base, mandan los datos, no esto.
 //   ESTILOS   las plantillas de partida que puede elegir un negocio nuevo. No
 //             son moldes cerrados: cada una es una combinación de las piezas de
-//             lib/apple/dibujo.js, y desde /admin se cambian una a una.
+//             lib/apple/dibujo.js, y desde /admin se cambian una a una. Los
+//             diseños de los kits de marca (lib/kits.js) se guardan igual, pero
+//             solo se le ofrecen a su tienda.
 // ============================================================================
 
 // El dibujo del pase se arma con piezas sueltas (ver lib/apple/dibujo.js): qué
@@ -19,6 +21,7 @@
 // que quiera sin tocar código.
 export { MARCAS, FORMAS, BANDAS, MODOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
 import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
+import { ESTILOS_DE_KITS, kitDe } from "./kits";
 import { normalizarCartillas } from "./validacion";
 import { normalizarContacto } from "./contacto";
 import { normalizarCaja } from "./caja";
@@ -27,7 +30,7 @@ import { normalizarReglas, normalizarPausa, normalizarLimiteDia, PLANTILLAS, PAU
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
 // de uno de estos y se le cambia el emoji y el color de acento.
-const TEMA_DE_ESTILO = {
+const PLANTILLAS_DE_ESTILO = {
   coffee: {
     estilo: "coffee",
     emoji: "☕",
@@ -327,8 +330,18 @@ const TEMA_DE_ESTILO = {
   },
 };
 
-/** Combinaciones de partida al crear una tienda (el orden es el del selector). */
+// Los diseños de los kits de marca (lib/kits.js) son estilos más, pero de UNA
+// tienda: se validan y se siembran igual, y solo salen en el selector de la suya.
+const TEMA_DE_ESTILO = { ...PLANTILLAS_DE_ESTILO, ...ESTILOS_DE_KITS };
+
+/** Todos los estilos que se pueden guardar: las plantillas y los de los kits. */
 export const ESTILOS = Object.keys(TEMA_DE_ESTILO);
+
+/** Las plantillas para cualquiera, en el orden del selector (sin los de los kits). */
+export const ESTILOS_GENERALES = Object.keys(PLANTILLAS_DE_ESTILO);
+
+/** Los diseños del kit de marca de una tienda (vacío si no tiene kit). */
+export const estilosDelKit = (slug) => Object.keys(kitDe(slug)?.estilos || {});
 
 /**
  * Rellena las piezas de dibujo que falten. Los temas viejos solo tenían

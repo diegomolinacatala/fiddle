@@ -14,6 +14,7 @@
 
 import { cartillasDe, totalGuardados } from "../cartillas";
 import { enlacesDeContacto } from "../contacto";
+import { colorDelPase } from "./dibujo";
 
 const MAX_UBICACIONES = 10; // límite de Apple
 
@@ -199,7 +200,7 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
     logoText: negocio.nombre,
     backgroundColor: hexARgb(t.cardBg),
     foregroundColor: hexARgb(t.ink),
-    labelColor: hexARgb(t.accent),
+    labelColor: hexARgb(colorDelPase(t)),
     // Actualizaciones: el iPhone se registra aquí y pide el pase nuevo tras cada aviso.
     webServiceURL: `${appUrl}/api/wallet`,
     authenticationToken: cliente.auth_token,

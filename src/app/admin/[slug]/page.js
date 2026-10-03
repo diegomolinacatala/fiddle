@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
 import Accesos from "@/app/admin/Accesos";
-import { MARCAS, FORMAS, BANDAS, ESTILOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
+import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, estilosDelKit, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
+import { kitDe } from "@/lib/kits";
 import Selector from "@/app/admin/Selector";
 import Cartillas from "@/app/admin/Cartillas";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, vistaDoble, ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA, ROTULO_DOBLE } from "@/app/admin/vistas";
@@ -35,6 +36,9 @@ export default function AdminNegocio() {
   const [comentando, setComentando] = useState(false);
   const [campoActivo, setCampoActivo] = useState(null); // { clave, etiqueta }
   const [borrador, setBorrador] = useState("");
+  // Con kit de marca (lib/kits.js), sus diseños y sus dibujos van primero.
+  const estilos = [...estilosDelKit(slug), ...ESTILOS_GENERALES];
+  const marcas = [...Object.keys(kitDe(slug)?.marcas || {}), ...MARCAS];
 
   useEffect(() => { setOrigin(window.location.origin); if (slug) cargar(); }, [slug]);
 
@@ -75,9 +79,9 @@ export default function AdminNegocio() {
           // Todos los colores: el servidor re-siembra la plantilla y lo que no venga
           // pisaría el fondo y el texto que el manager eligió en su editor.
           estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
-          cardBg: n.tema.cardBg, ink: n.tema.ink, pageInk: n.tema.pageInk,
+          cardBg: n.tema.cardBg, ink: n.tema.ink, pageInk: n.tema.pageInk, detalle: n.tema.detalle || null,
           marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma,
-          banda: n.tema.banda, modo: n.tema.modo, doble: n.tema.doble,
+          banda: n.tema.banda, modo: n.tema.modo, doble: n.tema.doble, google: n.tema.google,
         },
       }),
     });
@@ -172,8 +176,8 @@ export default function AdminNegocio() {
 
             <Selector
               titulo="Plantilla"
-              valor={ESTILOS.includes(n.tema.estilo) ? n.tema.estilo : ESTILOS[0]}
-              opciones={ESTILOS}
+              valor={estilos.includes(n.tema.estilo) ? n.tema.estilo : estilos[0]}
+              opciones={estilos}
               rotulos={ROTULO_PLANTILLA}
               vista={vistaPlantilla}
               onChange={cambiarPlantilla}
@@ -188,7 +192,7 @@ export default function AdminNegocio() {
                 <Selector
                   titulo="Marca"
                   valor={n.tema.marca}
-                  opciones={MARCAS}
+                  opciones={marcas}
                   rotulos={ROTULO}
                   vista={(m) => vistaMarca(n.tema, m)}
                   onChange={(m) => setTema("marca", m)}

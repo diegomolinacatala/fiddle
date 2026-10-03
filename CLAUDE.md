@@ -186,6 +186,18 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 - **Google tiene UN color** (el fondo, `fondoGoogle`: el de la tienda, el de la tarjeta u
   otro, `tema.google`); el texto lo elige Google. «Abierto hasta…» en Google es un módulo
   de la CLASE (`estadoPase`), que el reloj reescribe con una llamada por tienda.
+- **`accent` nunca es claro**: además del pase, pinta los botones de la caja y de las
+  pantallas, con texto blanco. Para la tarjeta verde con todo en blanco está
+  `tema.detalle`, el color del logo, los sellos y las etiquetas DEL PASE. Lo que dibuje
+  el pase pasa por `temaDelPase` / `colorDelPase` (las bandas ya lo hacen solas), y
+  también lo que destaca sobre `pageBg` en las pantallas del cliente (el botón del alta,
+  el aviso de la tarjeta web): en un diseño de kit ese fondo ES el color de la tienda.
+  La interfaz del personal (`MarcaTienda`, botones sobre blanco) sigue con `accent`. Una
+  banda translúcida fuera del pase va con `svgBandaOpaca(…, cardBg)` (la caja).
+- **Kit de marca** (`lib/kits.js`): lo de UNA tienda, sacado de su manual. Sus diseños
+  son estilos que solo salen en su editor (`estilosDelKit`; a los demás, `ESTILOS_GENERALES`),
+  y su logo en vector va en `lib/apple/marcasPropias.js` (fuera de `MARCAS`). La Delicantería
+  tiene el suyo: el grano y la D de `docs/marca`, nunca redibujados a ojo.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
 
