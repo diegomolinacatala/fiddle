@@ -12,6 +12,7 @@ import { clienteDeTarjeta, negocioDeTarjeta } from "@/lib/tarjeta";
 import ErrorDatos from "@/app/ErrorDatos";
 import MarcaTienda from "@/app/MarcaTienda";
 import CaraDelPase from "@/app/CaraDelPase";
+import { colorDelPase } from "@/lib/apple/dibujo";
 import { BotonAppleWallet, BotonGoogleWallet } from "@/app/BotonesWallet";
 import PedirNombre from "./PedirNombre";
 
@@ -58,11 +59,14 @@ export default async function Page({ params, searchParams }) {
   const vigente = recordado ? await clienteVigente(getCliente, recordado).catch(() => null) : null;
   const suya = vigente?.negocio === slug ? vigente : null;
   const t = n.tema;
+  // El botón va en el color del pase: con un diseño de kit el fondo de la página
+  // ES el color de la tienda, y un botón verde sobre verde no se ve.
+  const acento = colorDelPase(t);
   const colores = {
     background: t.pageBg,
     color: t.pageInk,
-    "--acento": t.accent,
-    "--sobre-acento": tintaClara(t.accent) ? "rgba(0,0,0,.84)" : "#fff",
+    "--acento": acento,
+    "--sobre-acento": tintaClara(acento) ? "rgba(0,0,0,.84)" : "#fff",
   };
 
   return (

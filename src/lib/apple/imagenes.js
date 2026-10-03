@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { TAM, svgIcono, svgLogo, stripDelPase } from "./dibujo";
+import { TAM, svgIcono, svgLogo, stripDelPase, temaDelPase } from "./dibujo";
 import { versionDe } from "../rutasImagen";
 import { bufferDeLogo, componerLogo } from "../logoImagen";
 import { logoImagenDe } from "../logo";
@@ -57,7 +57,7 @@ function fijas(negocio) {
     if (!buffer) {
       const partes = await Promise.all([
         escalas("icon", svgIcono(t), TAM.icon, TAM.icon),
-        escalas("logo", svgLogo(t), TAM.logo, TAM.logo),
+        escalas("logo", svgLogo(temaDelPase(t)), TAM.logo, TAM.logo),
       ]);
       return Object.assign({}, ...partes);
     }

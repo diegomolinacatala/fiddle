@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import QrImagen from "@/app/QrImagen";
 import { camposDelPase } from "@/lib/apple/pase";
-import { svgBandaOpaca, stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { svgBandaOpaca, stripDelPase, comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
 import { construirClase, construirObjeto } from "@/lib/google/pase";
 import { enlacesDeContacto } from "@/lib/contacto";
@@ -212,7 +212,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
         </Anotable>
         {headerFields.map((f) => (
           <Anotable key={f.key} clave={`apple.${f.key}`} etiqueta={f.label} anota={anota} estilo={{ width: "auto", textAlign: "right", flexShrink: 0, maxWidth: "40%" }}>
-            <div style={etiquetaApple(t.accent)}>{f.label}</div>
+            <div style={etiquetaApple(colorDelPase(t))}>{f.label}</div>
             <div style={{ fontSize: A.cabecera, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.value}</div>
           </Anotable>
         ))}
@@ -234,7 +234,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
         )}
       </div>
 
-      <FilaApple campos={fila} accent={t.accent} anota={anota} medir={medir} />
+      <FilaApple campos={fila} accent={colorDelPase(t)} anota={anota} medir={medir} />
 
       <div style={{ marginTop: "auto", display: "grid", placeItems: "center", padding: "8px 0 14px" }}>
         <Anotable clave="apple.codigo" etiqueta="QR y código corto" anota={anota} estilo={{ width: "auto" }}>

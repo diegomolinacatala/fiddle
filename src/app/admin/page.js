@@ -4,7 +4,7 @@ import Icono from "@/app/Icono";
 import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
-import { ESTILOS, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
+import { ESTILOS_GENERALES, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
 import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
 import ClaveNueva from "@/app/ClaveNueva";
@@ -291,7 +291,7 @@ function NuevaTienda({ onCreada }) {
       <Selector
         titulo="Plantilla"
         valor={f.tema.estilo}
-        opciones={ESTILOS}
+        opciones={ESTILOS_GENERALES}
         rotulos={ROTULO_PLANTILLA}
         vista={vistaPlantilla}
         onChange={cambiarPlantilla}

@@ -1,4 +1,4 @@
-import { svgLogo, svgLogoGoogle, comoDataUri } from "@/lib/apple/dibujo";
+import { svgLogo, svgLogoGoogle, comoDataUri, temaDelPase } from "@/lib/apple/dibujo";
 import { logoImagenDe, rutaLogoImagen } from "@/lib/logo";
 
 // ============================================================================
@@ -13,7 +13,7 @@ import { logoImagenDe, rutaLogoImagen } from "@/lib/logo";
 /** El de arriba a la izquierda del pase de Apple (y de la tarjeta web). */
 export function LogoApple({ tema, tam = 32, style }) {
   const logo = logoImagenDe(tema);
-  if (!logo) return <img src={comoDataUri(svgLogo(tema))} alt="" width={tam} height={tam} style={{ display: "block", ...style }} />;
+  if (!logo) return <img src={comoDataUri(svgLogo(temaDelPase(tema)))} alt="" width={tam} height={tam} style={{ display: "block", ...style }} />;
   return (
     <img
       src={rutaLogoImagen(tema, tam * 3)}

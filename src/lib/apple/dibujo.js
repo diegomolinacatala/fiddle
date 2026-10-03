@@ -25,7 +25,13 @@
 //
 // AÑADIR UNA MARCA son tres líneas: una entrada en DIBUJOS con su SVG y su
 // nombre en la lista. Sale sola en el logo, en el icono, dentro de los sellos,
-// en el modo relleno y en el selector del admin.
+// en el modo relleno y en el selector del admin. El logo de verdad de UNA tienda
+// (sacado de su manual) va aparte, en marcasPropias.js, y solo lo ve ella.
+//
+// EL COLOR DEL PASE. Lo que se dibuja (logo, sellos, etiquetas) va en el color
+// de la tienda (`accent`), salvo que el tema traiga `detalle`: la tarjeta verde
+// con todo en blanco. `accent` no puede ser blanco porque también pinta los
+// botones de la caja y de las pantallas, con su texto blanco encima.
 //
 // Sin <text> en los SVG: en serverless no hay fuentes fiables, las letras se
 // dibujan (glifos.js).
@@ -35,6 +41,7 @@ import { svgTextoCuadrado, anchoDeTexto, ALTO as ALTO_GLIFO, GROSOR } from "./gl
 import { cartillasDe } from "../cartillas";
 import { svgTexto, anchoTexto } from "./texto";
 import { EM, ALTO_MAYUSCULA } from "./letras";
+import { DIBUJOS_PROPIOS, CAJA_PROPIA } from "./marcasPropias";
 
 export const TAM = {
   icon: 29, // + @2x 58, @3x 87 (obligatorio)
@@ -175,6 +182,9 @@ const CAJA_POR_DEFECTO = [40, 472];
 
 /** Marcas que se saben dibujar, en el orden en que salen en el selector. */
 export const MARCAS = Object.keys(DIBUJOS);
+/** Las de una tienda concreta (su logo de verdad): solo salen en su editor (lib/kits.js). */
+export const MARCAS_PROPIAS = Object.keys(DIBUJOS_PROPIOS);
+const TODAS = { ...DIBUJOS, ...DIBUJOS_PROPIOS };
 /** Formas de la casilla de un sello. */
 export const FORMAS = ["circulo", "redondeado", "cuadrado", "rombo", "hexagono"];
 /** Fondos de la banda. */
@@ -230,7 +240,7 @@ const ALIAS = { coffee: "taza", barber: "tijeras" };
  */
 export const resolverMarca = (valor) => {
   const v = ALIAS[valor] || valor;
-  return MARCAS.includes(v) ? v : null;
+  return typeof v === "string" && Object.hasOwn(TODAS, v) ? v : null;
 };
 
 /**
@@ -265,6 +275,44 @@ function marcaDe(tema = {}) {
   return { nombre: marca, texto };
 }
 
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * El tema tal como se DIBUJA en el pase: con `detalle`, ese es el color del
+ * logo, los sellos y las etiquetas (va en `accent` para que el dibujo no tenga
+ * que saber nada). Sin él, el de la tienda. Aplicarlo dos veces no cambia nada.
+ */
+export function temaDelPase(tema = {}) {
+  return HEX.test(String(tema.detalle || "")) ? { ...tema, accent: tema.detalle } : tema;
+}
+
+/** El color de las etiquetas del pase (Apple, la vista previa y la tarjeta web). */
+export const colorDelPase = (tema) => temaDelPase(tema).accent;
+
+/** Luminancia relativa (WCAG) de un #rrggbb; 0 si no se entiende. */
+function luz(hex) {
+  if (!HEX.test(String(hex || ""))) return 0;
+  const [r, g, b] = hex.slice(1).match(/../g).map((x) => {
+    const c = parseInt(x, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+const esClaro = (hex) => luz(hex) > 0.6;
+
+/** ¿Pide texto oscuro encima? (blanco, crema…). */
+export const esColorClaro = esClaro;
+
+/**
+ * La tinta de lo que va ENCIMA del color del pase (la marca dentro de un sello
+ * lleno): blanca, salvo que ese color sea claro. Entonces la del fondo de la
+ * tarjeta: sello blanco con la galleta verde, sobre la tarjeta verde.
+ */
+function tintaSobre(tema) {
+  if (!esClaro(tema.accent)) return "#ffffff";
+  return !tema.cardBg || esClaro(tema.cardBg) ? "#1b1e23" : tema.cardBg;
+}
+
 const forma = (tema) => piezasDeTema(tema).forma;
 const modo = (tema) => piezasDeTema(tema).modo;
 const banda = (tema) => piezasDeTema(tema).banda;
@@ -276,7 +324,7 @@ const esOscura = (tema) => banda(tema) === "oscura";
  */
 function colocar(tema, color, cx, cy, lado) {
   const { nombre, texto } = marcaDe(tema);
-  const cuerpo = DIBUJOS[nombre](color, texto);
+  const cuerpo = TODAS[nombre](color, texto);
   if (!cuerpo) return "";
   return `<g transform="translate(${cx - lado / 2} ${cy - lado / 2}) scale(${lado / 512})">${cuerpo}</g>`;
 }
@@ -324,7 +372,7 @@ export function svgMarca(tema, lado, { fondo, color, escala = 0.9, radio = 0 } =
  * acento: con fondo de acento (como el icono) el círculo desaparecería.
  */
 export const svgLogoGoogle = (tema, lado = 660) =>
-  svgMarca(tema, lado, { fondo: tema.cardBg || "#ffffff", color: tema.accent, escala: 0.6 });
+  svgMarca(tema, lado, { fondo: tema.cardBg || "#ffffff", color: colorDelPase(tema), escala: 0.6 });
 
 /**
  * La misma banda pero opaca, sobre el fondo de la tarjeta. En Apple la banda se
@@ -449,7 +497,7 @@ function bandaCasillas(tema, meta, sellos, w, h) {
     }
     return lleno
       ? svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}"`)
-        + (conMarca ? colocar(tema, "#ffffff", cx, cy, d * 0.78) : "")
+        + (conMarca ? colocar(tema, tintaSobre(tema), cx, cy, d * 0.78) : "")
       : svgCasilla(casilla, cx, cy, d - 6, `fill="none" stroke="${tema.accent}" stroke-opacity="0.45" stroke-width="5" stroke-dasharray="14 10"`);
   }).join("");
 }
@@ -485,7 +533,7 @@ function queSeLlena(tema, cx, cy, altoTinta, parte, id) {
   const oscura = esOscura(tema);
   const color = tema.accent;
   const { nombre } = marcaDe(tema);
-  const [y0, y1] = CAJA[nombre] || CAJA_POR_DEFECTO;
+  const [y0, y1] = CAJA[nombre] || CAJA_PROPIA[nombre] || CAJA_POR_DEFECTO;
   const lado = (altoTinta * 512) / (y1 - y0);
   const escala = lado / 512;
   const techo = cy - lado / 2 + y0 * escala;
@@ -1132,7 +1180,8 @@ const PINTAR_BANDA = {
   cifra: bandaCifra,
 };
 
-export function svgStripSellos(tema, meta, sellos, estado = null) {
+export function svgStripSellos(temaGuardado, meta, sellos, estado = null) {
+  const tema = temaDelPase(temaGuardado);
   const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
   const arriba = estado ? ALTO_ESTADO * 3 : 0;
   const h = alto - arriba;
@@ -1143,7 +1192,8 @@ export function svgStripSellos(tema, meta, sellos, estado = null) {
     + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + pintar(tema, meta, llenos, w, h)}</g>`);
 }
 
-export function svgStripCupon(tema, usado) {
+export function svgStripCupon(temaGuardado, usado) {
+  const tema = temaDelPase(temaGuardado);
   const [w, h] = TAM.strip.coupon.map((v) => v * 3);
   // Marcas solo a la derecha: a la izquierda Apple pinta el texto del descuento.
   const adornos = [0, 1, 2]
@@ -1173,7 +1223,8 @@ export function svgStripCupon(tema, usado) {
  * @param {object} tema
  * @param {{marca:string, meta:number, sellos:number}[]} filas
  */
-export function svgStripCartillas(tema, filas, estado = null) {
+export function svgStripCartillas(temaGuardado, filas, estado = null) {
+  const tema = temaDelPase(temaGuardado);
   const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
   const arriba = estado ? ALTO_ESTADO * 3 : 0;
   const h = alto - arriba;
@@ -1206,7 +1257,7 @@ function filaCasillas(tema, f, x, y, ancho, alto) {
       return oscura
         ? svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}" fill-opacity="0.18" stroke="${tema.accent}" stroke-width="4"`)
           + colocar(conMarca, tema.accent, cx, cy, d * 0.8)
-        : svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}"`) + colocar(conMarca, "#ffffff", cx, cy, d * 0.78);
+        : svgCasilla(casilla, cx, cy, d, `fill="${tema.accent}"`) + colocar(conMarca, tintaSobre(tema), cx, cy, d * 0.78);
     }
     const trazo = oscura ? "#ffffff" : tema.accent;
     return svgCasilla(casilla, cx, cy, d - 6, `fill="none" stroke="${trazo}" stroke-opacity="${oscura ? 0.2 : 0.45}" stroke-width="4" stroke-dasharray="12 9"`)
@@ -1258,7 +1309,8 @@ function trozoDeBanda(tema, modo, f, x0, y0, anchoCaja, altoCaja, sufijo) {
  *
  * Margen lateral ancho: Wallet recorta los lados de la banda en el iPhone.
  */
-export function svgStripDoble(tema, filas, estado = null) {
+export function svgStripDoble(temaGuardado, filas, estado = null) {
+  const tema = temaDelPase(temaGuardado);
   const { doble } = piezasDeTema(tema);
   const modos = filas.map((f) => modoDeCartilla(tema, f));
   if (doble === "filas" && modos.every((m) => m === "casillas")) return svgStripCartillas(tema, filas, estado);
@@ -1300,7 +1352,8 @@ export function svgStripDoble(tema, filas, estado = null) {
  * @param {object} tema
  * @param {{marca:string, meta:number, sellos:number}[]} filas  (dos)
  */
-export function svgStripLlenar(tema, filas, estado = null) {
+export function svgStripLlenar(temaGuardado, filas, estado = null) {
+  const tema = temaDelPase(temaGuardado);
   const [w, alto] = TAM.strip.storeCard.map((v) => v * 3);
   const arriba = estado ? ALTO_ESTADO * 3 : 0;
   const h = alto - arriba;

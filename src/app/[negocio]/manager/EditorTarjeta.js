@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import PaseVista from "@/app/PaseVista";
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
-import { comoDataUri } from "@/lib/apple/dibujo";
-import { MARCAS, FORMAS, BANDAS, ESTILOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
+import DisenosDeMarca from "./DisenosDeMarca";
+import { comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
+import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
+import { kitDe } from "@/lib/kits";
 import { normalizarContacto } from "@/lib/contacto";
 import { fondoGoogle } from "@/lib/google/pase";
 import { logoImagenDe, LOGO_MIN } from "@/lib/logo";
@@ -33,7 +35,16 @@ import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
 // aparca con su nombre y su premio, y los sellos de cada cliente se quedan
 // donde estaban (ver patchNegocio). Lo que NO se cambia aquí es cupón ↔
 // cartilla: el pase de Apple no puede cambiar de tipo una vez instalado.
+//
+// Una tienda con KIT DE MARCA (lib/kits.js) ve lo suyo primero: sus diseños en
+// «Colores», sus dibujos en el logo y los sellos, y su paleta junto a cada color.
 // ============================================================================
+
+// La paleta del kit de la tienda, para cada selector de color sin pasarla a mano.
+const Paleta = createContext([]);
+
+/** Los dibujos que se ofrecen: los de su marca primero y luego los de siempre. */
+const marcasDe = (kit) => [...Object.keys(kit?.marcas || {}), ...MARCAS];
 
 /** Qué panel abre cada trozo de la tarjeta. */
 export function seccionDe(clave) {
@@ -60,7 +71,16 @@ const TITULO = {
 // La que se añade al pasar a dos, si no había ninguna aparcada.
 const SEGUNDA_NUEVA = { nombre: "Cafés", marca: "taza", meta: 8, premio: "café gratis", modo: "casillas" };
 
-export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
+/** La paleta del kit de la tienda, a mano de cada selector de color del editor. */
+export default function EditorTarjeta(props) {
+  return (
+    <Paleta.Provider value={kitDe(props.slug)?.colores || []}>
+      <Editor {...props} />
+    </Paleta.Provider>
+  );
+}
+
+function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
   // El contacto se edita como TEXTO (lo que va escribiendo) y se limpia al pintar y al guardar.
   const deInicio = useMemo(() => ({ ...inicial, contacto: contactoEditable(inicial.contacto) }), [inicial]);
   const [d, setD] = useState(deInicio);
@@ -111,11 +131,12 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
     return { ...p, cartillas, meta: cartillas[0].meta, premio: cartillas[0].premio };
   });
   // Otra plantilla: sus colores y su dibujo. El nombre, los sellos, el premio y
-  // el logo propio se quedan.
-  const plantilla = (estilo) => setD((p) => ({
-    ...p,
-    tema: { ...temaPorDefecto({ estilo, texto: p.tema.texto }), logoImagen: p.tema.logoImagen ?? null, abierto: p.tema.abierto, google: p.tema.google },
-  }));
+  // el logo propio se quedan. El fondo de Google, también, salvo que el diseño
+  // traiga el suyo (los de un kit de marca).
+  const plantilla = (estilo) => setD((p) => {
+    const base = temaPorDefecto({ estilo, texto: p.tema.texto });
+    return { ...p, tema: { ...base, logoImagen: p.tema.logoImagen ?? null, abierto: p.tema.abierto, google: base.google ?? p.tema.google } };
+  });
 
   // ---- una o dos cartillas
   function aDos() {
@@ -186,7 +207,7 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
           // lo que no vaya aquí volvería a ser el de la plantilla.
           tema: {
             estilo: t.estilo, emoji: t.emoji, atras: t.atras,
-            accent: t.accent, cardBg: t.cardBg, ink: t.ink, pageInk: t.pageInk,
+            accent: t.accent, cardBg: t.cardBg, ink: t.ink, pageInk: t.pageInk, detalle: t.detalle || null,
             marca: t.marca, texto: t.texto || "", forma: t.forma, banda: t.banda, modo: t.modo, doble: t.doble,
             abierto: t.abierto !== false, google: t.google || "acento", logoImagen: logoImagenDe(t),
           },
@@ -209,7 +230,8 @@ export default function EditorTarjeta({ inicial, slug, origin, estado, onCerrar,
   }
 
   const seccion = activo && seccionDe(activo.clave);
-  const ctx = { d, set, setTema, setCartilla, plantilla, esCupon, slug, elegida: cual, setElegida: setCual, aDos, aUna, inicial, estado };
+  const kit = kitDe(slug);
+  const ctx = { d, set, setTema, setCartilla, plantilla, esCupon, slug, elegida: cual, setElegida: setCual, aDos, aUna, inicial, estado, kit, cliente };
   const panelAbierto = seccion && (
     <aside className={`ed-panel ed-panel-${activo.lado}`} aria-label={TITULO[seccion]}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -337,7 +359,7 @@ function Seccion(props) {
   const { cual: seccion, clave, d, set, setTema, plantilla, esCupon, slug, estado } = props;
   const t = d.tema;
 
-  if (seccion === "colores") return <PanelColores d={d} setTema={setTema} plantilla={plantilla} />;
+  if (seccion === "colores") return <PanelColores {...props} />;
   if (seccion === "logo") return <PanelLogo {...props} />;
   if (seccion === "sellos") return <PanelSellos {...props} />;
   if (seccion === "estado") return <PanelEstado d={d} setTema={setTema} estado={estado} slug={slug} />;
@@ -421,8 +443,8 @@ function Seccion(props) {
   if (seccion === "contador") {
     return (
       <>
-        <p style={ayuda}>Cuenta los premios de cada cliente: lo pone la tarjeta sola. La etiqueta va en el color de la tienda.</p>
-        <Color titulo="Color de las etiquetas" valor={t.accent} onChange={(v) => setTema("accent", v)} />
+        <p style={ayuda}>Cuenta los premios de cada cliente: lo pone la tarjeta sola. La etiqueta va en el color de los detalles.</p>
+        <Color titulo="Color de las etiquetas" valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
       </>
     );
   }
@@ -437,26 +459,53 @@ function Seccion(props) {
 }
 
 // ------------------------------------------------------------- colores
-function PanelColores({ d, setTema, plantilla }) {
+/**
+ * Cambiar "el color del logo, los sellos y las etiquetas": el de detalles si la
+ * tarjeta lo tiene aparte; si no, el de la tienda, como siempre.
+ */
+const colorDelPaseA = (t, setTema) => (v) => setTema(t.detalle ? "detalle" : "accent", v);
+
+function PanelColores({ d, setTema, plantilla, kit, slug, cliente }) {
   const t = d.tema;
   const google = t.google || "acento";
   const fondoG = fondoGoogle(t);
+  const aparte = Boolean(t.detalle);
   return (
     <>
-      <p style={ayuda}>
+      {kit && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Diseños con tu manual de marca</div>
+          <p style={ayuda}>Tus colores y tu logo, como los pide el manual. Luego puedes retocar lo que quieras aquí debajo.</p>
+          <DisenosDeMarca d={d} slug={slug} cliente={cliente} plantilla={plantilla} />
+        </>
+      )}
+      <p style={{ ...ayuda, marginTop: kit ? 14 : 6 }}>
         Apple deja elegir tres colores. Google, <strong>solo el fondo</strong>: el texto lo pone él, en blanco o negro.
         Por eso las dos tarjetas pueden no verse del mismo color; aquí decides cómo.
       </p>
 
       <Bloque titulo="Las dos">
-        <Color titulo="Color de la tienda" ayuda="Logo, sellos y etiquetas (en las dos). Y el fondo de Google, si no eliges otro."
+        <Color titulo="Color de la tienda"
+          ayuda={aparte
+            ? "Los botones de la caja y de tus pantallas. Y el fondo de Google, si no eliges otro."
+            : "Logo, sellos y etiquetas (en las dos), y los botones de la caja. Y el fondo de Google, si no eliges otro."}
           valor={t.accent} onChange={(v) => setTema("accent", v)} />
+        <label style={etiqueta}>Logo, sellos y etiquetas</label>
+        <Segmentos
+          valor={aparte ? "otro" : "tienda"}
+          opciones={[["tienda", "El de la tienda"], ["otro", "Otro"]]}
+          onChange={(v) => setTema("detalle", v === "otro" ? t.detalle || t.accent : null)}
+        />
+        {aparte && (
+          <Color titulo="Color del logo, los sellos y las etiquetas" valor={t.detalle} onChange={(v) => setTema("detalle", v)}
+            ayuda="Para cuando el fondo de la tarjeta es el color de la tienda: el logo y los sellos, en blanco." />
+        )}
       </Bloque>
 
       <Bloque titulo="Apple Wallet">
         <Color titulo="Fondo de la tarjeta" valor={t.cardBg} onChange={(v) => setTema("cardBg", v)} />
         <Color titulo="Texto" valor={t.ink} onChange={(v) => setTema("ink", v)} />
-        <Legible fondo={t.cardBg} texto={t.ink} accent={t.accent} onArreglar={(v) => setTema("ink", v)} />
+        <Legible fondo={t.cardBg} texto={t.ink} accent={colorDelPase(t)} onArreglar={(v) => setTema("ink", v)} />
       </Bloque>
 
       <Bloque titulo="Google Wallet">
@@ -474,16 +523,16 @@ function PanelColores({ d, setTema, plantilla }) {
       </Bloque>
 
       <details style={{ marginTop: 16 }}>
-        <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>Empezar de otra plantilla</summary>
+        <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>{kit ? "Plantillas de otros negocios" : "Empezar de otra plantilla"}</summary>
         <p style={ayuda}>Cambia los colores y el dibujo. El nombre, los sellos, el premio y tu logo propio se quedan.</p>
-        <Opciones opciones={ESTILOS} valor={t.estilo} rotulos={ROTULO_PLANTILLA} vista={vistaPlantilla} onChange={plantilla} ancho={120} />
+        <Opciones opciones={ESTILOS_GENERALES} valor={t.estilo} rotulos={ROTULO_PLANTILLA} vista={vistaPlantilla} onChange={plantilla} ancho={120} />
       </details>
     </>
   );
 }
 
 // ---------------------------------------------------------------- logo
-function PanelLogo({ clave, d, set, setTema, slug }) {
+function PanelLogo({ clave, d, set, setTema, slug, kit }) {
   const t = d.tema;
   const imagen = logoImagenDe(t);
   const [subiendo, setSubiendo] = useState(false);
@@ -520,7 +569,7 @@ function PanelLogo({ clave, d, set, setTema, slug }) {
             : <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>+</span>}
           <span style={{ fontSize: 11, lineHeight: 1.2, color: imagen ? C.texto : C.suave }}>{subiendo ? "Subiendo…" : "Tu imagen"}</span>
         </button>
-        {MARCAS.map((m) => {
+        {marcasDe(kit).map((m) => {
           const elegido = !imagen && t.marca === m;
           return (
             <button key={m} type="button" onClick={() => { setTema("marca", m); if (imagen) setTema("logoImagen", null); }} aria-pressed={elegido} title={ROTULO[m] || m} style={opcion(elegido)}>
@@ -572,7 +621,7 @@ function PanelLogo({ clave, d, set, setTema, slug }) {
           <p style={ayuda}>Hasta cuatro. Sin tildes: se dibujan letra a letra.</p>
         </>
       )}
-      {!imagen && <Color titulo="Color del logo" ayuda="Es el color de la tienda: cambia también etiquetas y sellos." valor={t.accent} onChange={(v) => setTema("accent", v)} />}
+      {!imagen && <Color titulo="Color del logo" ayuda="Cambia también las etiquetas y los sellos." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />}
     </>
   );
 }
@@ -604,15 +653,15 @@ async function prepararImagen(fichero) {
 
 // -------------------------------------------------------------- sellos
 function PanelSellos(props) {
-  const { d, set, setTema, setCartilla, esCupon, elegida, setElegida, aDos, aUna, inicial, slug } = props;
+  const { d, set, setTema, setCartilla, esCupon, elegida, setElegida, aDos, aUna, inicial, slug, kit } = props;
   const t = d.tema;
 
   if (esCupon) {
     return (
       <>
         <label style={{ ...etiqueta, marginTop: 4 }}>Dibujo de la banda</label>
-        <Opciones opciones={MARCAS} valor={t.marca} rotulos={ROTULO} vista={(m) => vistaMarca(t, m)} onChange={(m) => setTema("marca", m)} ancho={78} />
-        <Color titulo="Color" valor={t.accent} onChange={(v) => setTema("accent", v)} />
+        <Opciones opciones={marcasDe(kit)} valor={t.marca} rotulos={ROTULO} vista={(m) => vistaMarca(t, m)} onChange={(m) => setTema("marca", m)} ancho={78} />
+        <Color titulo="Color" valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
       </>
     );
   }
@@ -658,7 +707,7 @@ function PanelSellos(props) {
           <label style={etiqueta}>Premio</label>
           <input value={c.premio} maxLength={64} onChange={(e) => setCartilla(i, "premio", e.target.value)} style={campo} />
           <label style={etiqueta}>Dibujo de sus sellos</label>
-          <Opciones opciones={MARCAS.filter((m) => m !== "texto")} valor={c.marca} rotulos={ROTULO}
+          <Opciones opciones={marcasDe(kit).filter((m) => m !== "texto")} valor={c.marca} rotulos={ROTULO}
             vista={(m) => vistaMarca(t, m)} onChange={(m) => setCartilla(i, "marca", m)} ancho={64} />
         </>
       )}
@@ -690,7 +739,7 @@ function PanelSellos(props) {
       <div style={{ marginTop: 16, paddingTop: 4, borderTop: `1px solid ${C.borde}` }}>
         <label style={etiqueta}>Fondo de la banda</label>
         <Opciones opciones={BANDAS} valor={t.banda} rotulos={ROTULO} vista={(b) => vistaBanda(t, b)} onChange={(b) => setTema("banda", b)} ancho={132} />
-        <Color titulo="Color de los sellos" ayuda="Es el color de la tienda: cambia también etiquetas y logo." valor={t.accent} onChange={(v) => setTema("accent", v)} />
+        <Color titulo="Color de los sellos" ayuda="Cambia también las etiquetas y el logo." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
         <InterruptorAbierto d={d} setTema={setTema} estado={props.estado} slug={slug} />
       </div>
     </>
@@ -828,16 +877,26 @@ function Opciones({ opciones, valor, vista, rotulos, onChange, ancho = 92 }) {
 }
 
 function Color({ titulo, valor, onChange, ayuda: texto }) {
+  const paleta = useContext(Paleta);
   return (
     <div>
       <label style={etiqueta}>{titulo}</label>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input type="color" value={valor || "#000000"} onChange={(e) => onChange(e.target.value)}
           style={{ width: 52, height: 40, padding: 2, border: `1px solid ${C.borde}`, borderRadius: 8, background: "#fff", cursor: "pointer" }} />
         {/* Se escribe libre y solo cuenta al quedar un color entero ("#a1b2c3"). */}
         <input defaultValue={valor || ""} key={valor} onChange={(e) => { const v = e.target.value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) onChange(v.toLowerCase()); }}
           maxLength={7} aria-label={`${titulo} en hexadecimal`}
           style={{ ...campo, fontFamily: "ui-monospace, Menlo, monospace", width: 110 }} />
+        {/* Los de su manual de marca, a un toque. */}
+        {paleta.map((m) => {
+          const puesto = String(valor || "").toLowerCase() === m.hex;
+          return (
+            <button key={m.hex} type="button" onClick={() => onChange(m.hex)} title={m.nombre} aria-label={`${titulo}: ${m.nombre}`} aria-pressed={puesto}
+              style={{ width: 30, height: 30, borderRadius: "50%", background: m.hex, cursor: "pointer", padding: 0, flexShrink: 0,
+                border: `1px solid ${C.bordeFuerte}`, boxShadow: puesto ? "0 0 0 2px #fff, 0 0 0 4px #2563eb" : "none" }} />
+          );
+        })}
       </div>
       {texto && <p style={ayuda}>{texto}</p>}
     </div>

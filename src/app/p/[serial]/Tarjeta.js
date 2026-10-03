@@ -3,6 +3,7 @@
 import QrImagen from "@/app/QrImagen";
 import Icono from "@/app/Icono";
 import CaraDelPase from "@/app/CaraDelPase";
+import { colorDelPase, esColorClaro } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { useTarjetaEnVivo } from "./telefono";
 import Acciones from "./Acciones";
@@ -26,13 +27,16 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
   const { cliente, negocio } = datos;
   const t = negocio.tema;
   const e = estadoDe(cliente, negocio);
+  // Sobre la página (pageBg) destaca el color del pase, no el de la tienda: en
+  // los diseños de kit el fondo ya es el de la tienda.
+  const aviso = colorDelPase(t);
 
   return (
     <main style={{ ...pagina, background: t.pageBg, color: t.pageInk }}>
       <style>{css}</style>
 
       {novedad && (
-        <div role="status" className="novedad" key={novedad.id} style={{ background: t.accent }}>
+        <div role="status" className="novedad" key={novedad.id} style={{ background: aviso, color: esColorClaro(aviso) ? "#1b1e23" : "#fff" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <strong style={{ display: "block", fontSize: 15 }}>
               {e.esCupon && novedad.tipo === "canje" ? "Cupón usado" : TITULOS[novedad.tipo] || negocio.nombre}

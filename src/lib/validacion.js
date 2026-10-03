@@ -239,7 +239,9 @@ export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPor
 function temaDePatch(t, { ESTILOS, temaPorDefecto }) {
   const cambiaPlantilla = temaPorDefecto && ESTILOS.includes(t.estilo);
   const tema = {
-    ...(cambiaPlantilla ? temaPorDefecto({ estilo: t.estilo }) : {}),
+    // Una plantilla nueva viene sin color de detalles salvo que traiga el suyo: si
+    // no, el blanco de la tarjeta verde se quedaría en la cafetería de siempre.
+    ...(cambiaPlantilla ? { detalle: null, ...temaPorDefecto({ estilo: t.estilo }) } : {}),
     ...piezasDeDibujo(t),
   };
   for (const clave of ["emoji", "atras"]) {
@@ -249,6 +251,10 @@ function temaDePatch(t, { ESTILOS, temaPorDefecto }) {
   for (const clave of ["accent", "cardBg", "ink", "pageInk"]) {
     if (HEX.test(String(t[clave] || ""))) tema[clave] = t[clave];
   }
+  // El color del logo, los sellos y las etiquetas del pase, si no es el de la
+  // tienda (lib/kits.js). null lo quita: vuelve a ser el de la tienda.
+  if (t.detalle === null) tema.detalle = null;
+  else if (HEX.test(String(t.detalle || ""))) tema.detalle = t.detalle;
   // La imagen propia del logo (lib/logo.js): null la quita y vuelve el dibujo.
   const logo = validarLogoImagen(t.logoImagen);
   if (logo !== undefined) tema.logoImagen = logo;

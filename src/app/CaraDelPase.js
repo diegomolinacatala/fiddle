@@ -1,5 +1,5 @@
 import { camposDelPase } from "@/lib/apple/pase";
-import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { stripDelPase, comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
 import { LogoApple } from "@/app/LogoTienda";
 import { estadoDe } from "@/lib/resumen";
 import { describirBanda } from "@/lib/cartillas";
@@ -38,7 +38,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
         </div>
         {headerFields.map((f) => (
           <div key={f.key} style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={etiqueta(t.accent)}>{f.label}</div>
+            <div style={etiqueta(colorDelPase(t))}>{f.label}</div>
             <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.15 }}>{f.value}</div>
           </div>
         ))}
@@ -65,7 +65,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
         <div style={{ display: "flex", gap: 16, padding: children ? "14px 18px 0" : "14px 18px 18px" }}>
           {campos.map((f) => (
             <div key={f.key} style={{ flex: 1, minWidth: 0 }}>
-              <div style={etiqueta(t.accent)}>{f.label}</div>
+              <div style={etiqueta(colorDelPase(t))}>{f.label}</div>
               <div style={{ fontSize: 16, fontWeight: 500, marginTop: 2, overflowWrap: "anywhere" }}>{f.value}</div>
             </div>
           ))}
