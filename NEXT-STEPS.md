@@ -242,6 +242,9 @@ tarjeta web y el reverso del pase. Solo cookies técnicas → **no hace falta ba
 cookies** (mientras no se añada analítica). Si cambia qué se guarda, cambiar la página
 y su fecha (`ACTUALIZADO` en `src/app/privacidad/page.js`).
 
+Lo que falta en el código, punto por punto y cómo hacerlo (borrar un cliente, promos solo
+a quien no dice que no, plazos, auditoría…): [docs/RGPD.md](docs/RGPD.md).
+
 **Con la primera tienda de verdad (poco trabajo):**
 - [ ] Poner `CONTACTO_PRIVACIDAD` (un email) en Vercel: la página lo enseña para ejercer
       derechos. Sin él dice "pídelo en la tienda".
@@ -251,7 +254,8 @@ y su fecha (`ACTUALIZADO` en `src/app/privacidad/page.js`).
       gratis), que es un piloto sin garantía de disponibilidad, y qué pasa con los datos si
       lo dejan (se borran).
 - [ ] Aceptar los **DPA** de Supabase y Vercel desde sus paneles (y 2FA en todas las cuentas).
-- [ ] **Borrar un cliente** cuando lo pida: hoy es a mano (SQL). Botón en la ficha del CRM, ~1 h.
+- [ ] **Borrar un cliente** cuando lo pida: hoy es a mano (SQL). Botón en la ficha del CRM, ~4 h
+      ([cómo](docs/RGPD.md#3-derechos-del-cliente): son cinco tablas y dos Wallets).
 
 **Cuando se cobre:**
 - [ ] Forma legal (autónomo o SL) y **aviso legal** en la web con titular, NIF y contacto (LSSI).
