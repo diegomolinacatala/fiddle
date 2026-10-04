@@ -151,24 +151,35 @@ export function camposDelPase(cliente, negocio) {
   // El nombre del cliente NO va en el pase: él ya se lo sabe y la tienda lo ve
   // en la caja. Ocupaba una columna de las dos que hay.
   //
-  // El MENSAJE del cliente gana a la promo de la tienda: una campaña va dirigida
-  // a un grupo ("hace tiempo que no te vemos") y no tendría sentido que la tapara
-  // el 2x1 de todos. Es la misma columna del pase, así que solo cabe uno.
+  // PARA TI (el mensaje de una campaña o un aviso, `cliente.mensaje`) ocupa el
+  // sitio de los "Faltan 3" mientras está: lo que falta ya lo dicen los círculos
+  // de la banda, y así no le quita el sitio a la promo, que va SIEMPRE a la
+  // derecha. El mensaje se borra en la siguiente visita (registrarVisita) y
+  // vuelven los "Faltan".
   //
-  // Quien dijo que no a las promos (`promos_no`) no ve ninguna de las dos: lo que
-  // escribe la tienda es promo; lo que hace la caja (sellos, premios), servicio.
+  // Va en la MISMA clave que el primer "Faltan" ("premio"): iOS avisa cuando
+  // cambia el valor de un campo, así que poner el mensaje suena con su texto, y
+  // al volver el sello suena "Cookies: Faltan 2". Una clave nueva no sonaría.
+  // Con dos cartillas, el aviso de vuelta dice la primera aunque el sello fuera
+  // de la segunda: el cliente está en la caja, da igual.
+  //
+  // Los cupones no tienen "Faltan": ahí el mensaje sigue tapando la promo (una
+  // sola columna). Quien dijo que no a las promos (`promos_no`) no ve ninguna de
+  // las dos: lo que escribe la tienda es promo; lo que hace la caja, servicio.
   // Su teléfono recibe el refresco, ningún campo visible cambia y no suena.
   const quierePromos = !cliente.promos_no;
   const avisoPersonal = quierePromos ? cliente.mensaje || null : null;
   const promo = quierePromos ? negocio.promo || null : null;
-  const auxiliaryFields = avisoPersonal || promo
-    ? [{
-        key: "promo",
-        label: avisoPersonal ? "PARA TI" : "PROMO",
-        value: avisoPersonal || promo,
-        changeMessage: "%@",
-      }]
-    : [];
+  let { secondaryFields } = campos;
+  let auxiliaryFields;
+  if (esCupon) {
+    auxiliaryFields = avisoPersonal || promo
+      ? [{ key: "promo", label: avisoPersonal ? "PARA TI" : "PROMO", value: avisoPersonal || promo, changeMessage: "%@" }]
+      : [];
+  } else {
+    if (avisoPersonal) secondaryFields = [{ key: "premio", label: "PARA TI", value: avisoPersonal, changeMessage: "%@" }];
+    auxiliaryFields = promo ? [{ key: "promo", label: "PROMO", value: promo, changeMessage: "%@" }] : [];
+  }
 
   // Con dos cartillas la cara solo dice cuánto falta: qué se gana, aquí.
   const premios = negocio.cartillas && !esCupon
@@ -176,6 +187,8 @@ export function camposDelPase(cliente, negocio) {
     : [];
   const guardados = esCupon ? [] : cartillasDe(cliente, negocio).filter((c) => c.guardados > 0);
   const backFields = [
+    // Con la promo al lado, un mensaje largo se corta en la cara ("…"): entero, aquí.
+    ...(avisoPersonal && !esCupon ? [{ key: "parati", label: "Para ti", value: avisoPersonal }] : []),
     ...(guardados.length
       ? [{
           key: "guardados",
@@ -194,7 +207,7 @@ export function camposDelPase(cliente, negocio) {
   // "Tu tarjeta y tus datos" (dejar las promos, descargar, borrar) se añade en
   // construirPassJson: necesita la URL y la llave, que la vista previa no tiene.
 
-  return { ...campos, auxiliaryFields, backFields };
+  return { ...campos, secondaryFields, auxiliaryFields, backFields };
 }
 
 /** Clave corta del cliente ("K7M"). Los pases antiguos caen a los 3 primeros del serial. */

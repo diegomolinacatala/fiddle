@@ -84,6 +84,9 @@ describe("clase y objeto (puros)", () => {
   it("con campaña, mensaje 'Para ti'", () => {
     const o = construirObjeto({ ...cliente, mensaje: "Vuelve pronto" }, nube, { issuerId: ISSUER, appUrl: APP });
     expect(o.messages).toEqual([{ id: "para-ti", header: "Para ti", body: "Vuelve pronto", messageType: "TEXT" }]);
+    // En Google el mensaje va aparte: los textos siguen diciendo lo que falta (en Apple, PARA TI los tapa).
+    expect(o.textModulesData[0]).toEqual({ id: "premio", header: "Premio", body: "Faltan 5 · café gratis" });
+    expect(o.textModulesData.some((t) => t.id === "parati")).toBe(false);
   });
 
   it("un cupón usado pasa a caducados, como el pase anulado de Apple", () => {

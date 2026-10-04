@@ -268,8 +268,11 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   persona, y las dos cosas merecen un aviso.
 - **Apple no tiene mensajes propios.** El aviso lo dispara un CAMPO del pase que
   cambia, así que una campaña escribe `clientes.mensaje` a cada uno y ese texto
-  ocupa el sitio de la promo. Consecuencia: **solo se puede avisar a quien
-  instaló el pase**; la pantalla lo dice antes de enviar.
+  sale como PARA TI **en el sitio de los "Faltan"** (misma clave, `premio`, para que
+  suene al ponerlo y al volver el sello), con la promo siempre a la derecha. En la
+  siguiente visita se borra y vuelven los "Faltan". En Google el mensaje va en
+  `messages` y los textos siguen siendo los de la cuenta. Consecuencia: **solo se
+  puede avisar a quien instaló el pase**; la pantalla lo dice antes de enviar.
 - Una campaña **recalcula el grupo en el servidor**. Del navegador llega su
   clave, nunca la lista de a quién.
 - El reloj: lo que dependa de la hora local (a qué hora viene la gente) se

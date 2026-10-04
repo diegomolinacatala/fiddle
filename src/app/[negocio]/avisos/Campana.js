@@ -17,7 +17,7 @@ import { C, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, R
 //   TODOS    la PROMO de la tienda: sale en todas las tarjetas, también en las
 //            que se emitan mañana, hasta que se quite.
 //   MOMENTO  un MENSAJE a todos que se quita solo al cerrar ese día.
-//   GRUPO    un MENSAJE en el pase de cada uno de ese grupo: tapa la promo y se
+//   GRUPO    un MENSAJE (PARA TI) en el pase de cada uno de ese grupo: va donde los «Faltan» y se
 //            va solo cuando el cliente vuelve.
 // Por eso están en la misma pantalla con una frase que dice cuál es cuál.
 //
@@ -243,8 +243,8 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
           cliente={clienteVista}
           qrTexto={`/w/${clienteVista.serial}`}
           pie={esTodos
-            ? "Si a alguien le llega un mensaje de un grupo, ese le tapa la promo."
-            : "El mensaje ocupa el sitio de la promo: mientras esté puesto, tapa la de la tienda."}
+            ? "La promo va siempre a la derecha. Si alguien tiene un PARA TI, ese va a la izquierda, en lugar de lo que le falta."
+            : "PARA TI va donde pone lo que le falta (los círculos lo siguen contando); la promo sigue a la derecha. Vuelve a salir lo que falta en su siguiente visita."}
         />
       </div>
     </div>

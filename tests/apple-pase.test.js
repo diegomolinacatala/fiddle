@@ -87,6 +87,27 @@ describe("construirPassJson", () => {
     expect(p.locations).toEqual([{ latitude: 40.4, longitude: -3.7, relevantText: expect.stringContaining("Nube Café") }]);
   });
 
+  it("PARA TI ocupa el sitio de los «Faltan» y la promo se queda a la derecha", () => {
+    const deli = negocio("delicanteria", { promo: "2x1 hoy" });
+    const sin = construirPassJson(cliente(), deli, opciones).storeCard;
+    expect(sin.secondaryFields.map((f) => f.label)).toEqual(["COOKIES", "CAFÉS"]);
+    expect(sin.auxiliaryFields).toEqual([{ key: "promo", label: "PROMO", value: "2x1 hoy", changeMessage: "%@" }]);
+
+    const con = construirPassJson(cliente({ mensaje: "Te echamos de menos" }), deli, opciones).storeCard;
+    // La MISMA clave que el primer "Faltan": iOS suena al ponerlo y al volver el sello.
+    expect(con.secondaryFields).toEqual([{ key: "premio", label: "PARA TI", value: "Te echamos de menos", changeMessage: "%@" }]);
+    expect(con.auxiliaryFields).toEqual(sin.auxiliaryFields);
+    // Entero en el reverso, por si en la cara se corta.
+    expect(con.backFields[0]).toEqual({ key: "parati", label: "Para ti", value: "Te echamos de menos" });
+
+    // Con una cartilla, igual; y quien no quiere promos no ve ninguno de los dos.
+    const una = construirPassJson(cliente({ mensaje: "Hola" }), negocio("nube"), opciones).storeCard;
+    expect(una.secondaryFields.map((f) => f.label)).toEqual(["PARA TI"]);
+    const no = construirPassJson(cliente({ mensaje: "Hola", promos_no: "2026-10-01T00:00:00Z" }), deli, opciones).storeCard;
+    expect(no.secondaryFields.map((f) => f.label)).toEqual(["COOKIES", "CAFÉS"]);
+    expect(no.auxiliaryFields).toEqual([]);
+  });
+
   it("claves de campo únicas en todo el pase", () => {
     const p = construirPassJson(cliente({ nombre: "M" }), negocio("fade", { promo: "x" }), opciones);
     const s = p.storeCard;

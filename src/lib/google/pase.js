@@ -103,7 +103,9 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDato
   const codigo = cliente.codigo || String(cliente.serial).slice(0, 3).toUpperCase();
   // El texto del premio es el mismo campo que sale bajo la banda en Apple.
   // Con dos cartillas son dos campos ("Cookies", "Cafés") y van los dos.
-  const { primaryFields, secondaryFields, backFields } = camposDelPase(cliente, negocio);
+  // Sin el mensaje: en Apple el PARA TI tapa los "Faltan", pero en Google el
+  // mensaje va en su sitio (messages) y los textos son siempre los de la cuenta.
+  const { primaryFields, secondaryFields, backFields } = camposDelPase({ ...cliente, mensaje: null }, negocio);
   const principales = [
     // El cupón: QUÉ descuento es (en Apple, el campo grande de la cara).
     ...primaryFields,
