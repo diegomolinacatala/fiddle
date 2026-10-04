@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { haceTexto, cadenciaTexto } from "@/lib/crm";
 import { Chip } from "./piezas";
 import Icono from "@/app/Icono";
+import { FilaInterruptor } from "@/app/Interruptor";
 import { C, campo, etiqueta, botonPequeno, chipCodigo } from "@/app/ui";
 
 // ============================================================================
@@ -28,6 +29,8 @@ const ICONO = {
   usarGuardado: "regalo",
   fusion: "movil",
   confirmar: "check",
+  promos_no: "campanaNo",
+  promos_si: "campana",
 };
 
 const fecha = (iso) =>
@@ -37,6 +40,9 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
   const [datos, setDatos] = useState(null);
   const [nota, setNota] = useState("");
   const [error, setError] = useState(null);
+  const [promos, setPromos] = useState(true);
+  const [borrando, setBorrando] = useState(false);
+  const [codigoBorrar, setCodigoBorrar] = useState("");
 
   useEffect(() => {
     let vigente = true;
@@ -44,7 +50,7 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
     setError(null);
     fetch(`/api/crm/cliente/${serial}`)
       .then((r) => r.json().then((d) => (r.ok ? d : Promise.reject(new Error(d.error)))))
-      .then((d) => { if (vigente) { setDatos(d); setNota(d.cliente.nota || ""); } })
+      .then((d) => { if (vigente) { setDatos(d); setNota(d.cliente.nota || ""); setPromos(!d.cliente.promos_no); } })
       .catch((e) => { if (vigente) setError(String(e.message || e)); });
     return () => { vigente = false; };
   }, [serial]);
@@ -56,6 +62,35 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
       body: JSON.stringify({ nota }),
     });
     flash(r.ok ? "Nota guardada" : "No se pudo guardar la nota");
+  }
+
+  // Lo que el cliente dice en el mostrador: "no me mandéis promos". Lo mismo
+  // que puede tocar él desde su tarjeta; queda en su historia quién lo cambió.
+  async function cambiarPromos() {
+    const quiere = !promos;
+    setPromos(quiere);
+    const r = await fetch(`/api/crm/cliente/${serial}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ promos: quiere }),
+    }).catch(() => null);
+    if (!r?.ok) {
+      setPromos(!quiere);
+      return flash("No se pudo cambiar");
+    }
+    flash(quiere ? "Vuelve a recibir promos" : "Ya no le llegarán promos");
+  }
+
+  async function borrar() {
+    const r = await fetch(`/api/crm/cliente/${serial}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codigo: codigoBorrar }),
+    }).catch(() => null);
+    const d = await r?.json().catch(() => ({}));
+    if (!r?.ok) return flash(d?.error || "No se pudo borrar");
+    flash("Tarjeta borrada");
+    onCerrar();
   }
 
   return (
@@ -97,14 +132,27 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
               </p>
             )}
 
+            <FilaInterruptor
+              on={promos} onClick={cambiarPromos} accent={accent} icono={promos ? "campana" : "campanaNo"}
+              titulo="Recibe promos"
+              texto={promos
+                ? "La promo, las campañas y los avisos automáticos. Los sellos le llegan siempre."
+                : "Ni la promo, ni campañas, ni avisos automáticos. Los sellos le siguen llegando."}
+              style={{ marginBottom: 14 }}
+            />
+
             <label style={etiqueta}>Nota de la tienda (no sale en el pase)</label>
             <textarea
               value={nota}
               onChange={(e) => setNota(e.target.value.slice(0, 300))}
               rows={2}
-              placeholder="Sin lactosa · el del perro · siempre a primera hora"
+              placeholder="El del perro · siempre a primera hora"
               style={{ ...campo, resize: "vertical", fontFamily: "inherit" }}
             />
+            {/* Una intolerancia es un dato de salud (art. 9): no se apunta aquí. */}
+            <p style={{ fontSize: 12, color: C.tenue, margin: "6px 0 0" }}>
+              Nada de salud ni alergias. El cliente puede pedir leer esto.
+            </p>
             <button onClick={guardarNota} style={{ ...botonPequeno, marginTop: 8 }}>Guardar nota</button>
 
             <label style={etiqueta}>Su historia ({datos.eventos.length})</label>
@@ -123,9 +171,35 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
               {!datos.eventos.length && <li style={{ color: C.suave, fontSize: 14 }}>Todavía no ha pasado nada.</li>}
             </ol>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
               <a href={`/p/${serial}`} style={{ ...botonPequeno, textDecoration: "none" }}>Ver su pase</a>
               <a href={`/w/${serial}`} style={{ ...botonPequeno, textDecoration: "none" }}>Abrir en caja</a>
+              {/* Lo que pide el art. 15: todo lo que guardamos de él, historial incluido. */}
+              <a href={`/api/crm/cliente/${serial}/datos`} download style={{ ...botonPequeno, textDecoration: "none" }}>Descargar sus datos</a>
+            </div>
+
+            {/* Borrar: solo si el cliente lo pide, y confirmando con su código. */}
+            <div style={{ marginTop: 22, paddingTop: 14, borderTop: `1px solid ${C.borde}` }}>
+              {!borrando ? (
+                <button type="button" onClick={() => setBorrando(true)} style={{ ...botonPequeno, color: C.mal }}>Borrar a este cliente</button>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <p style={{ fontSize: 13, margin: 0, lineHeight: 1.4 }}>
+                    Si el cliente lo pide: se borran su tarjeta, su nombre, su nota y su historia. Su tarjeta
+                    deja de valer en el teléfono. <strong>No se puede deshacer.</strong>
+                  </p>
+                  <label style={{ ...etiqueta, margin: 0 }} htmlFor="codigo-borrar">Escribe su código ({datos.cliente.codigo}) para confirmar</label>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <input id="codigo-borrar" value={codigoBorrar} onChange={(e) => setCodigoBorrar(e.target.value.toUpperCase().slice(0, 3))}
+                      autoComplete="off" style={{ ...campo, width: 90, textTransform: "uppercase", letterSpacing: 2 }} />
+                    <button type="button" onClick={borrar} disabled={codigoBorrar !== datos.cliente.codigo}
+                      style={{ ...botonPequeno, background: C.mal, color: "#fff", borderColor: C.mal, opacity: codigoBorrar === datos.cliente.codigo ? 1 : 0.5 }}>
+                      Borrar para siempre
+                    </button>
+                    <button type="button" onClick={() => { setBorrando(false); setCodigoBorrar(""); }} style={botonPequeno}>Cancelar</button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

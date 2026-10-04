@@ -5,6 +5,7 @@ import ClaveNueva from "@/app/ClaveNueva";
 import CabeceraGestion from "../CabeceraGestion";
 import Bloque from "../Bloque";
 import { C, pagina, panel } from "@/app/ui";
+import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 
 // ============================================================================
 // AJUSTES — lo de la cuenta
@@ -62,6 +63,18 @@ La actual dejará de valer y los móviles que tengan la caja abierta se quedará
             accent={accent} icono="movil" titulo="La caja en otro móvil"
             resumen={<>Ábrelo en el móvil del mostrador y entra con el usuario de la caja: <span style={{ wordBreak: "break-all" }}>{urlCaja}</span></>}
             accion={{ texto: "Copiar enlace", icono: "copiar", onClick: copiarCaja }}
+          />
+          {/* Privacidad es de la cuenta, no de la tarjeta: por eso aquí y no en Tienda. */}
+          <Bloque
+            accent={accent} icono="candado" titulo="Privacidad de tus clientes"
+            resumen={<>
+              Guardamos sus sellos, premios e historial de visitas{n.pedirNombre ? ", su nombre" : ""} y las notas que apuntes, con el nombre y las notas cifrados.
+              {" "}Una tarjeta sin uso en {MESES_SIN_USO} meses se borra sola. Cada cliente puede dejar las promos, descargar sus datos o borrar su tarjeta desde ella.
+              {" "}{legalCompleto(n.legal)
+                ? <>Tus datos legales están en el aviso{n.legal.email ? <> (contacto: {n.legal.email})</> : null}.</>
+                : <span style={{ color: C.mal }}>Faltan tus datos legales (razón social, NIF y email) en el aviso: se ponen con el contrato.</span>}
+            </>}
+            accion={{ texto: "Ver el aviso de privacidad", icono: "nota", onClick: () => window.open(`/privacidad?b=${slug}`, "_blank", "noopener") }}
           />
           <Bloque
             accent={accent} icono="puerta" titulo="Tu acceso"

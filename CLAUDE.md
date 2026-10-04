@@ -54,8 +54,9 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 
 - Con imagen de banda (*strip*), **iOS junta `secondaryFields` y
   `auxiliaryFields` en UNA fila**. Por eso el pase lleva pocos campos: no caben.
-- **El nombre del cliente NO va en la cara del pase.** Lo sabe él y lo ve la
-  tienda; el sitio es escaso.
+- **El nombre del cliente NO va en el pase**, ni en Apple ni en Google (nada de
+  `accountName`), ni en lo que llega al navegador por el serial (`clienteDeTarjeta`). Lo
+  sabe él y lo ve la caja; el serial va en el QR.
 - Los avisos en la pantalla de bloqueo los dispara un **campo que cambia**, no
   una imagen. La banda se actualiza en silencio: por eso `changeMessage` vive en
   PREMIO, cuyo valor cambia con cada sello.
@@ -107,6 +108,32 @@ Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
   `/api/accion` la rechaza y `/w`, `/p`, `/api/pase` y el tap saltan a la vigente
   (`clienteVigente`). Lo que lea `clientes` a mano tiene que filtrarla igual.
 - En Android no hay id del teléfono: ahí solo está la cookie.
+
+## RGPD
+
+Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](src/lib/legal.js).
+
+- **Todo lo que escribe la tienda es promo** (`negocio.promo`, campañas, automáticos,
+  programados); lo que hace la caja, servicio. A quien tiene `promos_no` no le llega ninguna
+  promo por ningún canal: `camposDelPase` (Apple y tarjeta web), el objeto de Google, el web
+  push y `perfil.avisable` (campañas, reglas, conteos). Un canal o un tipo de aviso nuevo
+  filtra igual. **En Google, los mensajes van en el OBJETO, nunca en la clase**: uno de la
+  clase llega a todas las tarjetas de la tienda.
+- **Borrar es en dos tiempos** (`lib/derechos.js`, `lib/limpieza.js`): al momento se vacía y
+  se anula (`borrado_en`, el pase baja `voided`) y la fila cae al día siguiente. Nunca borrar
+  la fila al momento: el iPhone se quedaría la tarjeta vieja con pinta de válida. Una tarjeta
+  con `borrado_en` no es un cliente, como una con `fusionado_en`: lo que lea `clientes` a
+  mano filtra las dos.
+- **El serial no basta para tocar una tarjeta sin login** (va en el QR): la llave del pase
+  tras `#` o la cookie del tap (`lib/gestion.js`).
+- **Plazos, subencargados y versión del aviso, en `lib/legal.js`**: los lee `/privacidad` y
+  los cumple la pasada diaria. Cambiar lo que dice `/privacidad` = subir `VERSION_AVISO`.
+  La pasada diaria va en el reloj: sin reloj no se borra nada solo.
+- **Queda apuntado** (`auditar`, tabla `auditoria`): exportar, borrar, contraseñas y config.
+  Pantalla nueva de una tienda = `apuntarEntradaAdmin`. `detalle` y `borrados` nunca llevan
+  datos personales (un código de tarjeta como mucho).
+- **Ruta nueva de `/api` = clasificarla en `tests/aislamiento.test.js`** (del personal, del
+  admin o pública); si es del personal, el test la llama con la sesión de otra tienda.
 
 ## Lo que hace que la web vaya rápida
 

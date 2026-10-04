@@ -48,6 +48,9 @@ export async function registrar(deps, { dispositivo, passType, serial, authoriza
   if (!dispositivoValido(dispositivo)) return dispositivoInvalido();
   const cliente = await clienteAutenticado(deps, passType, serial, authorization);
   if (!cliente) return noAutorizado();
+  // Borrada a petición del cliente: el pase anulado se le sigue sirviendo (para
+  // que su iPhone lo vea así), pero no se apunta ningún teléfono nuevo.
+  if (cliente.borrado_en) return { status: 200, json: {} };
   const pushToken = cuerpo?.pushToken;
   if (typeof pushToken !== "string" || !/^[0-9a-f]{16,200}$/i.test(pushToken)) {
     return { status: 400, json: { error: "pushToken inválido" } };
@@ -118,7 +121,9 @@ export async function pasesActualizados(deps, { dispositivo, passType, desde }) 
 export async function paseActual(deps, { passType, serial, authorization }) {
   const cliente = await clienteAutenticado(deps, passType, serial, authorization);
   if (!cliente) return noAutorizado();
-  const negocio = await deps.getNegocio(cliente.negocio);
+  // Una tarjeta borrada de una tienda que se fue (lib/limpieza.js) tiene que
+  // poder bajarse ANULADA, aunque la tienda ya esté archivada.
+  const negocio = await deps.getNegocio(cliente.negocio, { incluirArchivados: Boolean(cliente.borrado_en) });
   if (!negocio) return { status: 404, json: { error: "Negocio no encontrado" } };
   // Con el Pass Type ID del pase instalado: si la tienda estrenó uno propio
   // después, este sigue siendo del general y Apple rechazaría otro.

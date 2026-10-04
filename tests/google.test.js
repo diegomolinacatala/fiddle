@@ -38,11 +38,22 @@ describe("clase y objeto (puros)", () => {
     expect(c).not.toHaveProperty("messages");
   });
 
-  it("la promo va como mensaje de la clase, salvo en la versión 'sin mensajes'", () => {
+  it("la promo va en cada OBJETO, nunca en la clase: así no le llega a quien dijo que no", () => {
     const conPromo = { ...nube, promo: "2x1 hoy" };
-    expect(construirClase(conPromo, { issuerId: ISSUER, appUrl: APP }).messages)
-      .toEqual([{ id: "promo", header: "Promo", body: "2x1 hoy", messageType: "TEXT" }]);
-    expect(construirClase(conPromo, { issuerId: ISSUER, appUrl: APP }, { conMensajes: false })).not.toHaveProperty("messages");
+    expect(construirClase(conPromo, { issuerId: ISSUER, appUrl: APP })).not.toHaveProperty("messages");
+    const o = construirObjeto({ ...cliente, mensaje: "Te echamos de menos" }, conPromo, { issuerId: ISSUER, appUrl: APP });
+    expect(o.messages.map((m) => m.id)).toEqual(["promo", "para-ti"]);
+    // Sin la promo: lo que se manda justo antes de su addMessage, para no repetirla.
+    expect(construirObjeto(cliente, conPromo, { issuerId: ISSUER, appUrl: APP }, { sin: "promo" })).not.toHaveProperty("messages");
+    // Quien dijo que no a las promos: ni la promo ni el "Para ti".
+    const no = construirObjeto({ ...cliente, mensaje: "Te echamos de menos", promos_no: "2026-10-01T00:00:00Z" }, conPromo, { issuerId: ISSUER, appUrl: APP });
+    expect(no).not.toHaveProperty("messages");
+  });
+
+  it("una tarjeta borrada pasa a caducadas y lleva el enlace a sus datos", () => {
+    const o = construirObjeto({ ...cliente, borrado_en: "2026-10-01T00:00:00Z" }, nube, { issuerId: ISSUER, appUrl: APP, enlaceDatos: `${APP}/p/x/datos#llave` });
+    expect(o.state).toBe("INACTIVE");
+    expect(o.linksModuleData.uris.map((u) => u.uri)).toContain(`${APP}/p/x/datos#llave`);
   });
 
   it("el objeto es la tarjeta: puntos, banda con los sellos, código y el mismo texto del premio que Apple", () => {
@@ -216,15 +227,19 @@ describe("API REST (con Google simulado)", () => {
     expect(add.cuerpo).toEqual({ message: { id: "para-ti", header: "Para ti", body: "Vuelve", messageType: "TEXT_AND_NOTIFY" } });
   });
 
-  it("promo: la clase sin mensajes y addMessage con aviso a todos", async () => {
+  it("promo: el objeto sin ella y addMessage con aviso, tarjeta a tarjeta; a quien no quiere promos, nada", async () => {
     const { f, llamadas } = googleFalso();
-    await api.avisarClase(CONFIG, { ...nube, promo: "2x1" }, "Promo", "2x1", { fetch: f, appUrl: APP });
-    const put = llamadas.find((l) => l.metodo === "PUT");
+    await api.avisarObjeto(CONFIG, cliente, { ...nube, promo: "2x1" }, "Promo", "2x1", { id: "promo", fetch: f, appUrl: APP });
+    const put = llamadas.find((l) => l.metodo === "PUT" && /loyaltyObject/.test(l.url));
     expect(put.cuerpo).not.toHaveProperty("messages");
     expect(llamadas.at(-1)).toMatchObject({
-      url: expect.stringMatching(/\/loyaltyClass\/.+\/addMessage$/),
+      url: expect.stringMatching(/\/loyaltyObject\/.+\/addMessage$/),
       cuerpo: { message: { id: "promo", body: "2x1", messageType: "TEXT_AND_NOTIFY" } },
     });
+
+    llamadas.length = 0;
+    await api.avisarObjeto(CONFIG, { ...cliente, promos_no: "2026-10-01T00:00:00Z" }, { ...nube, promo: "2x1" }, "Promo", "2x1", { id: "promo", fetch: f, appUrl: APP });
+    expect(llamadas.some((l) => /addMessage/.test(l.url))).toBe(false);
   });
 });
 

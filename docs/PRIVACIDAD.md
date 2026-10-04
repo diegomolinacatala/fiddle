@@ -7,8 +7,10 @@ fuera del código para trabajar con una tienda real.
 
 | Dato | Dónde | Cómo se guarda | Por qué así |
 |---|---|---|---|
-| Nombre del cliente (lo escribe él al sacar la tarjeta) | `clientes.nombre` | **Cifrado** | Identifica a una persona |
-| Nota de la tienda ("sin lactosa", "el del perro") | `clientes.nota` | **Cifrado** | Texto libre: puede acabar siendo un dato de salud |
+| Nombre del cliente (lo escribe él al sacar la tarjeta) | `clientes.nombre` | **Cifrado** | Identifica a una persona. No sale en ningún pase (Apple ni Google) ni en la tarjeta web |
+| Nota de la tienda ("el del perro") | `clientes.nota` | **Cifrado** | Texto libre: la pantalla pide no apuntar salud ni alergias (art. 9) |
+| Si quiere promos y qué aviso vio | `clientes.promos_no`, `clientes.aviso_version` | En claro | El registro del soft opt-in (docs/RGPD.md, 2.3) |
+| Constancia de borrados y auditoría | `borrados`, `auditoria` | En claro | Sin datos personales: tienda, quién, cuándo, cuántos |
 | Sellos, visitas, fechas, historial | `clientes`, `eventos` | En claro, ligado al `serial` (un uuid) | El CRM agrupa y ordena por ellos en SQL. Sin nombre no dicen de quién son |
 | Tokens de avisos (Apple, web, Google) | `dispositivos`, `registros` | En claro | Hacen falta tal cual para mandar el aviso y no identifican a nadie |
 | Token del pase de Apple | `clientes.auth_token` | En claro | Apple lo manda en cada consulta y hay que compararlo |
@@ -59,7 +61,7 @@ lo revise alguien que sepa de RGPD):
   completa de lo legal pendiente está en [NEXT-STEPS.md](../NEXT-STEPS.md).
 - **Supabase y Vercel:** aceptar sus DPA y comprobar que el proyecto de Supabase
   está en una región de la UE.
-- **Borrar a un cliente cuando lo pida.** Todavía no hay botón: hoy solo se borra
-  una tienda entera.
+- **Borrar a un cliente cuando lo pida**: HECHO, en su ficha o desde su tarjeta
+  ([RGPD.md](RGPD.md), 3.3). Y los plazos se cumplen solos con el reloj encendido.
 - **Verificación en dos pasos** en Supabase, Vercel, GitHub y Google: son las
   llaves de todo lo anterior.

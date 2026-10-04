@@ -4,6 +4,7 @@ import { construirPassJson } from "./pase";
 import { imagenesDelPase } from "./imagenes";
 import { appUrl } from "../url";
 import { estadoDeTienda } from "../horario";
+import { enlaceGestion } from "../gestion";
 import { relojVivo } from "../relojAvisos";
 
 // ============================================================================
@@ -35,6 +36,7 @@ export async function generarPkpass(cliente, negocio, config = configApple(negoc
     passTypeId: config.passTypeId,
     teamId: config.teamId,
     appUrl: appUrl(),
+    enlaceDatos: enlaceGestion(appUrl(), cliente),
   });
   const imagenes = await imagenesDelPase(negocio, cliente, { estado });
 

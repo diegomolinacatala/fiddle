@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
     if (limiteEnMemoria(`tarjeta:${ipDe(request) || "?"}`, LIMITE)) return jsonError("Demasiadas consultas", 429);
     const { serial } = await params;
     const cliente = await getCliente(serial);
-    if (!cliente) return jsonError("Tarjeta no encontrada", 404);
+    if (!cliente || cliente.borrado_en) return jsonError("Tarjeta no encontrada", 404);
     const negocio = await getNegocio(cliente.negocio);
     if (!negocio) return jsonError("Tienda no encontrada", 404);
     return NextResponse.json(

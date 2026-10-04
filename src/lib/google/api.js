@@ -1,5 +1,6 @@
 import { createSign } from "node:crypto";
 import { construirClase, construirObjeto, idClase, idObjeto, mensajeConAviso } from "./pase";
+import { enlaceGestion } from "../gestion";
 import { appUrl as urlDeLaApp } from "../url";
 
 // ============================================================================
@@ -82,7 +83,10 @@ function exigirOk(r, contexto) {
   throw new ErrorGoogle(`Google Wallet (${contexto}): ${r.json?.error?.message || `HTTP ${r.estado}`}`, r.estado);
 }
 
-const base = (config, opciones) => ({ issuerId: config.issuerId, appUrl: opciones.appUrl || urlDeLaApp() });
+const base = (config, opciones, cliente = null) => {
+  const appUrl = opciones.appUrl || urlDeLaApp();
+  return { issuerId: config.issuerId, appUrl, enlaceDatos: cliente ? enlaceGestion(appUrl, cliente) : null };
+};
 const ruta = (tipo, id) => `${tipo}/${encodeURIComponent(id)}`;
 
 /**
@@ -93,7 +97,7 @@ const ruta = (tipo, id) => `${tipo}/${encodeURIComponent(id)}`;
  * @returns {Promise<string>} id de la clase
  */
 export async function asegurarClase(config, negocio, opciones = {}) {
-  const clase = construirClase(negocio, base(config, opciones), { conMensajes: opciones.conMensajes !== false });
+  const clase = construirClase(negocio, base(config, opciones));
   const huella = JSON.stringify(clase);
   if (!opciones.forzar && clasesAlDia.get(clase.id) === huella) return clase.id;
 
@@ -112,7 +116,7 @@ export async function asegurarClase(config, negocio, opciones = {}) {
  */
 export async function guardarObjeto(config, cliente, negocio, opciones = {}) {
   await asegurarClase(config, negocio, opciones);
-  const objeto = construirObjeto(cliente, negocio, base(config, opciones));
+  const objeto = construirObjeto(cliente, negocio, base(config, opciones, cliente));
   const r = await llamar(config, "PUT", ruta("loyaltyObject", objeto.id), objeto, opciones);
   if (r.estado === 404) exigirOk(await llamar(config, "POST", "loyaltyObject", objeto, opciones), "crear el objeto");
   else exigirOk(r, "actualizar el objeto");
@@ -124,9 +128,9 @@ export async function guardarObjeto(config, cliente, negocio, opciones = {}) {
  * `notificar`: Google avisa en el teléfono si cambian los puntos (los sellos).
  * @returns {Promise<boolean>} false si ese objeto no existe (nunca lo guardó)
  */
-export async function actualizarObjeto(config, cliente, negocio, { notificar = false, conMensajes = true, ...opciones } = {}) {
+export async function actualizarObjeto(config, cliente, negocio, { notificar = false, conMensajes = true, sin = null, ...opciones } = {}) {
   await asegurarClase(config, negocio, opciones);
-  const objeto = construirObjeto(cliente, negocio, base(config, opciones), { conMensajes });
+  const objeto = construirObjeto(cliente, negocio, base(config, opciones, cliente), { conMensajes, sin });
   if (notificar) objeto.notifyPreference = "NOTIFY_ON_UPDATE";
   const r = await llamar(config, "PUT", ruta("loyaltyObject", objeto.id), objeto, opciones);
   if (r.estado === 404) return false;
@@ -134,23 +138,19 @@ export async function actualizarObjeto(config, cliente, negocio, { notificar = f
   return true;
 }
 
-/** Mensaje con aviso a un cliente (una campaña). Google limita a 3 por pase y día. */
-export async function avisarObjeto(config, cliente, negocio, cabecera, cuerpo, opciones = {}) {
-  // Primero el objeto sin mensajes, para que el nuevo no salga repetido.
-  const existe = await actualizarObjeto(config, cliente, negocio, { ...opciones, conMensajes: false });
+/**
+ * Mensaje con aviso a un cliente: una campaña ("para-ti") o la promo de la
+ * tienda ("promo"). Google limita a 3 por pase y día. Quien no quiere promos
+ * no recibe ninguno: se le pone la tarjeta al día y nada más.
+ */
+export async function avisarObjeto(config, cliente, negocio, cabecera, cuerpo, { id: idMensaje = "para-ti", ...opciones } = {}) {
+  if (cliente.promos_no) return actualizarObjeto(config, cliente, negocio, opciones);
+  // Primero el objeto sin ESE mensaje, para que el nuevo no salga repetido.
+  const existe = await actualizarObjeto(config, cliente, negocio, { ...opciones, sin: idMensaje });
   if (!existe) return false;
   const id = idObjeto(config.issuerId, cliente.serial);
-  exigirOk(await llamar(config, "POST", `${ruta("loyaltyObject", id)}/addMessage`, mensajeConAviso("para-ti", cabecera, cuerpo), opciones), "mandar el mensaje");
+  exigirOk(await llamar(config, "POST", `${ruta("loyaltyObject", id)}/addMessage`, mensajeConAviso(idMensaje, cabecera, cuerpo), opciones), "mandar el mensaje");
   return true;
-}
-
-/** Mensaje con aviso a todos los que tienen la tarjeta de la tienda (una promo). */
-export async function avisarClase(config, negocio, cabecera, cuerpo, opciones = {}) {
-  await asegurarClase(config, negocio, { ...opciones, conMensajes: false, forzar: true });
-  const id = idClase(config.issuerId, negocio.slug);
-  exigirOk(await llamar(config, "POST", `${ruta("loyaltyClass", id)}/addMessage`, mensajeConAviso("promo", cabecera, cuerpo), opciones), "mandar la promo");
-  // Lo que queda en Google ya es la clase con su promo: que el próximo sello no la reescriba.
-  clasesAlDia.set(id, JSON.stringify(construirClase(negocio, base(config, opciones))));
 }
 
 /**
@@ -160,7 +160,7 @@ export async function avisarClase(config, negocio, cabecera, cuerpo, opciones = 
  * objeto enteros y Google los crea al guardarlo.
  */
 export function enlaceGuardar(config, cliente, negocio, { completo = false, appUrl, ahora = Date.now() } = {}) {
-  const b = { issuerId: config.issuerId, appUrl: appUrl || urlDeLaApp() };
+  const b = base(config, { appUrl }, cliente);
   const payload = completo
     ? { loyaltyClasses: [construirClase(negocio, b)], loyaltyObjects: [construirObjeto(cliente, negocio, b)] }
     : { loyaltyObjects: [{ id: idObjeto(config.issuerId, cliente.serial), classId: idClase(config.issuerId, negocio.slug) }] };

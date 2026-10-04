@@ -6,6 +6,7 @@ import { notificarNegocio } from "@/lib/wallet";
 import { patchNegocio } from "@/lib/validacion";
 import { negocioDelPersonal } from "@/lib/tarjeta";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
+import { auditar } from "@/lib/auditoria";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function GET(request) {
 export async function PUT(request) {
   const slug = new URL(request.url).searchParams.get("b");
   if (!esSlug(slug)) return jsonError("negocio desconocido", 404);
-  const { respuesta } = await exigirNegocio(request, slug, "manager");
+  const { sesion, respuesta } = await exigirNegocio(request, slug, "manager");
   if (respuesta) return respuesta;
 
   try {
@@ -44,6 +45,7 @@ export async function PUT(request) {
 
     const nuevo = await saveNegocio(slug, r.patch);
     if (!nuevo) return jsonError("negocio desconocido", 404);
+    await auditar(sesion, slug, "config", Object.keys(r.patch).join(", "));
     // Solo lo que se ve en el pase merece mover los teléfonos: el horario o los
     // botones de la caja no salen en él, y guardarlos no debe tocar cientos de tarjetas.
     // (El "Abierto hasta…" de la tarjeta web lo recoge ella sola al preguntar.)

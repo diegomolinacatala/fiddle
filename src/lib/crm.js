@@ -100,7 +100,12 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
     // Sin pase instalado no hay a dónde mandar el aviso: es el límite de todo esto.
     contactable: Boolean(cliente.instalado && !cliente.desinstalado),
     instalado: Boolean(cliente.instalado),
+    // Dijo que no a las promos (docs/RGPD.md, 2.3): sigue con su tarjeta, pero
+    // lo que escribe la tienda (promo, campañas, automáticos) ya no le llega.
+    sinPromos: Boolean(cliente.promos_no),
   };
+  // A quién le llega un aviso de la tienda: lo que cuentan Clientes y Avisos.
+  perfil.avisable = perfil.contactable && !perfil.sinPromos;
   perfil.estado = estadoDe(perfil);
   return perfil;
 }
@@ -227,7 +232,9 @@ export function conteoGrupos(perfiles) {
       key,
       ...LISTA_GRUPOS.find((g) => g.key === key),
       total: dentro.length,
-      contactables: dentro.filter((p) => p.contactable).length,
+      // Los que de verdad recibirían un aviso: con la tarjeta en el teléfono y sin
+      // haber dicho que no a las promos.
+      contactables: dentro.filter((p) => p.avisable).length,
     };
   });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { DIAS_BAJA_TIENDA } from "@/lib/legal";
 import Icono from "@/app/Icono";
 import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
@@ -22,6 +23,9 @@ import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecu
 // que luego rellena lo que falte. La idea es poder montar una tienda a mano sin
 // tener que pedirlo todo por chat.
 // ============================================================================
+
+const fechaBorrado = (archivadoEn) =>
+  new Date(Date.parse(archivadoEn) + DIAS_BAJA_TIENDA * 86400000).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
 const AZUL = "#2563eb";
 
@@ -139,6 +143,13 @@ export default function Admin() {
                   {n.brief ? " · con brief" : " · sin brief"}
                   {Object.keys(n.notas || {}).length ? ` · ${Object.keys(n.notas).length} comentario(s)` : ""}
                 </div>
+                {pestana === "archivadas" && (
+                  <div style={{ fontSize: 12, color: C.mal, marginTop: 2 }}>
+                    {n.archivadoEn
+                      ? `Se borra sola el ${fechaBorrado(n.archivadoEn)}, con sus clientes.`
+                      : `Archivada antes de que contara el plazo: los ${DIAS_BAJA_TIENDA} días empiezan en la próxima limpieza.`}
+                  </div>
+                )}
               </div>
               {pestana === "activas" ? (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -165,8 +176,10 @@ export default function Admin() {
 
         {pestana === "archivadas" && negocios?.length > 0 && (
           <p style={{ fontSize: 13, color: C.suave, marginTop: 14 }}>
-            Una tienda archivada no aparece en ningún sitio y sus páginas dejan de responder, pero no se
-            ha borrado nada. Borrar del todo sí es definitivo.
+            Una tienda archivada no aparece en ningún sitio y sus páginas dejan de responder. A los
+            {" "}{DIAS_BAJA_TIENDA} días se borra sola (lo que promete el aviso de privacidad y el contrato):
+            primero se anulan sus tarjetas en los teléfonos y al día siguiente se borra todo. Recuperarla antes
+            lo para. Borrar del todo es lo mismo, ya.
           </p>
         )}
 

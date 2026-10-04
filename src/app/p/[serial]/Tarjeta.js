@@ -80,7 +80,10 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
             <a href={`/w/${serial}`} style={{ color: "inherit", fontWeight: 600 }}>Abrir la vista de caja (modo demo)</a>
           </p>
         )}
-        <p style={{ textAlign: "center", fontSize: 12, marginTop: 18, opacity: 0.7 }}>
+        <p style={{ textAlign: "center", fontSize: 12, marginTop: 18, opacity: 0.7, display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
+          {/* Dejar las promos, descargar sus datos o borrarla. Pide la cookie del
+              teléfono que la sacó (o la llave del pase): el enlace solo no basta. */}
+          <a href={`/p/${serial}/datos`} style={{ color: "inherit" }}>Tu tarjeta y tus datos</a>
           <a href={`/privacidad?b=${negocio.slug}`} style={{ color: "inherit" }}>Privacidad</a>
         </p>
       </div>

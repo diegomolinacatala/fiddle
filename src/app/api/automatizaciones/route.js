@@ -4,6 +4,7 @@ import { datosAvisos, repasarNegocio } from "@/lib/motorAvisos";
 import { validarReglas, normalizarPausa, normalizarLimiteDia } from "@/lib/automatizaciones";
 import { esSlug } from "@/lib/negocios";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
+import { auditar } from "@/lib/auditoria";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +16,7 @@ export const dynamic = "force-dynamic";
 
 async function tienda(request, slug) {
   if (!esSlug(slug)) return { respuesta: jsonError("Falta o no existe ?b=<negocio>", 400) };
-  const { respuesta } = await exigirNegocio(request, slug, "manager");
-  return { respuesta };
+  return exigirNegocio(request, slug, "manager");
 }
 
 export async function GET(request) {
@@ -33,7 +33,7 @@ export async function GET(request) {
 
 export async function PUT(request) {
   const slug = new URL(request.url).searchParams.get("b");
-  const { respuesta } = await tienda(request, slug);
+  const { sesion, respuesta } = await tienda(request, slug);
   if (respuesta) return respuesta;
   try {
     const body = await request.json().catch(() => ({}));
@@ -50,6 +50,7 @@ export async function PUT(request) {
     if (!Object.keys(patch).length) return jsonError("Nada que guardar", 400);
     // Cambiar una regla no cambia ningún pase: nada de avisar a los teléfonos aquí.
     if (!(await saveNegocio(slug, patch))) return jsonError("Ese negocio no existe", 404);
+    await auditar(sesion, slug, "config", Object.keys(patch).join(", "));
     return NextResponse.json(await datosAvisos(slug));
   } catch (e) {
     return errorInterno("automatizaciones PUT", e);

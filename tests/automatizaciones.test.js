@@ -23,6 +23,7 @@ const hace = (dias) => new Date(AHORA - dias * DIA).toISOString();
 function ctx(datos = {}, negocio = deli, { fechas = new Set(), contactable = true } = {}) {
   const cliente = { serial: datos.serial || "s1", codigo: "K7M", sellos: 0, sellos2: 0, premios: 0, visitas: 0, creado: hace(60), ...datos };
   const perfil = { ...perfilDe({ ...cliente, instalado: cliente.creado }, negocio, AHORA), contactable };
+  perfil.avisable = contactable && !perfil.sinPromos;
   return contextoDe(cliente, perfil, negocio, { fechas, hoy: relojLocal(AHORA, negocio.horario?.zona).fecha });
 }
 

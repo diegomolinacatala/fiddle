@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCliente, getNegocio, listEventos, clientePublico } from "@/lib/store";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { puedeAcceder, COOKIE } from "@/lib/auth";
+import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { sesionDeCookie } from "@/lib/sesionVigente";
 import { estadoDe } from "@/lib/resumen";
 import TarjetaCaja from "./TarjetaCaja";
@@ -34,6 +35,13 @@ export default async function Page({ params }) {
       </main>
     );
   }
+  if (cliente.borrado_en) {
+    return (
+      <main style={pagina}>
+        <Aviso titulo="Esta tarjeta se borró" texto="El cliente pidió borrar sus datos. Si quiere seguir, que saque una tarjeta nueva." />
+      </main>
+    );
+  }
 
   const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
   // Sin sesión vigente (le cambiaron la contraseña, la tienda se archivó): a entrar,
@@ -48,6 +56,7 @@ export default async function Page({ params }) {
       </main>
     );
   }
+  await apuntarEntradaAdmin(sesion, cliente.negocio, `Ficha ${cliente.codigo}`);
 
   const n = await getNegocio(cliente.negocio);
   const eventos = await listEventos(serial);

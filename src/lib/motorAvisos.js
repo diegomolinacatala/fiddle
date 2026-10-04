@@ -57,7 +57,8 @@ async function cargarClientes(negocio, ahora) {
   const contextos = clientes.map((c) => {
     const vivo = registrados.has(c.serial);
     const conRegistro = { ...c, instalado: c.instalado || (vivo ? c.creado : null), desinstalado: vivo ? null : c.desinstalado };
-    const perfil = { ...perfilDe(conRegistro, negocio, ahora), contactable: vivo };
+    const base = perfilDe(conRegistro, negocio, ahora);
+    const perfil = { ...base, contactable: vivo, avisable: vivo && !base.sinPromos };
     return contextoDe(c, perfil, negocio, { fechas: fechas.get(c.serial), hoy });
   });
   return { clientes, contextos, eventos };
@@ -234,7 +235,8 @@ export async function datosAvisos(slug, ahora = Date.now()) {
     grupos: conteoGrupos(contextos.map((x) => x.perfil)),
     catalogoGrupos: LISTA_GRUPOS,
     total: contextos.length,
-    contactables: contextos.filter((x) => x.perfil.contactable).length,
+    // A quién le llegaría algo: con la tarjeta en el teléfono y sin decir que no a las promos.
+    contactables: contextos.filter((x) => x.perfil.avisable).length,
     historial: campanas.slice(0, 40).map((c) => ({
       id: c.id, grupo: c.grupo, etiqueta: etiquetaEnvio(c.grupo, reglas), automatico: c.grupo.startsWith("auto:"),
       texto: c.texto, creado: c.creado, destinatarios: c.destinatarios, avisados: c.avisados,

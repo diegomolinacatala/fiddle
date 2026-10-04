@@ -24,6 +24,7 @@ import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibu
 import { ESTILOS_DE_KITS, kitDe } from "./kits";
 import { normalizarCartillas } from "./validacion";
 import { normalizarContacto } from "./contacto";
+import { normalizarLegal } from "./legal";
 import { normalizarCaja } from "./caja";
 import { normalizarHorario } from "./horario";
 import { normalizarReglas, normalizarPausa, normalizarLimiteDia, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
@@ -529,6 +530,11 @@ export function componerNegocio(slug, guardado) {
     // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
     contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,
+    // Quién es la tienda ante la ley: razón social, NIF, dirección y email
+    // (lib/legal.js). Lo pone el admin con el contrato; lo lee /privacidad.
+    legal: normalizarLegal(c.legal),
+    // Desde cuándo está archivada: la cuenta atrás de su borrado (lib/limpieza.js).
+    archivadoEn: c.archivado === true && typeof c.archivadoEn === "string" ? c.archivadoEn : null,
   };
 }
 
