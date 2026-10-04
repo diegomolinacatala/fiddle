@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { datosAvisos } from "@/lib/motorAvisos";
 import { puedeAcceder, COOKIE } from "@/lib/auth";
 import { sesionDeCookie } from "@/lib/sesionVigente";
+import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
 import PanelAvisos from "./PanelAvisos";
@@ -16,6 +17,8 @@ export default async function Page({ params }) {
   const { negocio: slug } = await params;
   const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/avisos`);
+  // Lo que ve aquí el admin son los clientes de otro: queda apuntado (docs/RGPD.md, 6.9).
+  await apuntarEntradaAdmin(sesion, slug, "Avisos");
 
   let datos;
   try {

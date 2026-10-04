@@ -42,9 +42,12 @@ export async function POST(request) {
 
     // Sin pase en un teléfono no hay a dónde mandar nada. No es un fallo: es el
     // límite de avisar por Wallet, y la pantalla ya lo cuenta antes de enviar.
-    const destino = delGrupo.filter((c) => registrados.has(c.serial)).slice(0, MAX_DESTINO);
+    // Y una campaña es una promo: a quien dijo que no, tampoco. Quitar el mensaje
+    // (sin texto) sí va a todos, por si alguno lo tenía de antes.
+    const avisables = delGrupo.filter((c) => registrados.has(c.serial) && (!mensaje || !c.promos_no));
+    const destino = avisables.slice(0, MAX_DESTINO);
     if (!destino.length) {
-      return jsonError(`Nadie de "${GRUPOS[grupo].label}" tiene la tarjeta en el teléfono: no hay a quién avisar.`, 409);
+      return jsonError(`Nadie de "${GRUPOS[grupo].label}" tiene la tarjeta en el teléfono y acepta promos: no hay a quién avisar.`, 409);
     }
 
     const seriales = destino.map((c) => c.serial);
@@ -66,7 +69,7 @@ export async function POST(request) {
       campana: { id: campana.id, grupo, texto: mensaje, creado: campana.creado },
       enGrupo: delGrupo.length,
       destinatarios: seriales.length,
-      recortado: delGrupo.filter((c) => registrados.has(c.serial)).length > MAX_DESTINO,
+      recortado: avisables.length > MAX_DESTINO,
       ...aviso,
     });
   } catch (e) {

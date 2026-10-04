@@ -153,7 +153,9 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 - [x] Solo La Delicantería: Nube, Fade y Forno ya no son semillas (quedan como tiendas de
       prueba de los tests, en `tests/tiendasDePrueba.js`).
 - [ ] **Encender el reloj**: `CRON_SECRET` en Vercel + el SQL de `pg_cron` en Supabase
-      ([docs/AVISOS.md](docs/AVISOS.md#encender-el-reloj-una-vez-lo-hace-fiddle)).
+      ([docs/AVISOS.md](docs/AVISOS.md#encender-el-reloj-una-vez-lo-hace-fiddle)). Ya no es
+      solo para los avisos: también es el que **borra** lo que promete `/privacidad` (tarjetas
+      pedidas, 24 meses sin uso, tiendas archivadas hace 30 días) y el que manda las alertas.
 - [ ] **Confirmar con La Delicantería** el horario, los festivos y el regalo de la racha
       (hoy promete una cookie). Todo se cambia desde su manager.
 - [ ] En producción siguen en la base (01-10-2026) Nube, Fade, Forno y **Project 68**
@@ -244,22 +246,29 @@ Documentación: [Android](docs/ANDROID.md) · [Google Wallet](docs/GOOGLE-WALLET
 Hecho: aviso de privacidad en `/privacidad?b=<tienda>`, enlazado desde la landing, la
 tarjeta web y el reverso del pase. Solo cookies técnicas → **no hace falta banner de
 cookies** (mientras no se añada analítica). Si cambia qué se guarda, cambiar la página
-y su fecha (`ACTUALIZADO` en `src/app/privacidad/page.js`).
+y su versión (`VERSION_AVISO` en `src/lib/legal.js`, que también guarda cada tarjeta).
 
-Lo que falta en el código, punto por punto y cómo hacerlo (borrar un cliente, promos solo
-a quien no dice que no, plazos, auditoría…): [docs/RGPD.md](docs/RGPD.md).
+El código del RGPD está hecho (04-10): borrar un cliente, promos solo a quien no dice que
+no, la página del cliente, plazos, auditoría y alertas. Qué queda y por qué:
+[docs/RGPD.md](docs/RGPD.md). Qué hacer si hay una brecha: [docs/INCIDENTES.md](docs/INCIDENTES.md).
+
+**Antes de desplegar este cambio:** pasar `supabase/schema.sql` en Supabase (columnas
+`promos_no`, `aviso_version`, `borrado_en` y tablas `borrados` y `auditoria`).
 
 **Con la primera tienda de verdad (poco trabajo):**
 - [ ] Poner `CONTACTO_PRIVACIDAD` (un email) en Vercel: la página lo enseña para ejercer
-      derechos. Sin él dice "pídelo en la tienda".
+      derechos si la tienda no tiene el suyo. Sin ninguno dice "pídelo en la tienda".
+- [ ] **Datos legales de cada tienda** (razón social, NIF, dirección, email) en
+      `/admin/<tienda>` → *Datos legales*, con el contrato delante. Salen en su `/privacidad`.
+- [ ] `ALERTAS_URL` en Vercel: un webhook de ntfy, Slack o Discord para las alertas de
+      contraseñas falladas y base caída ([docs/RGPD.md](docs/RGPD.md#8-brechas)).
 - [ ] **Contrato de encargado del tratamiento** (art. 28 RGPD) con cada tienda. La AEPD tiene
       una plantilla gratuita; basta un anexo firmado. Ellos son responsables, nosotros encargados.
 - [ ] Una hoja de **condiciones del servicio** con la tienda: qué incluye, precio (o piloto
       gratis), que es un piloto sin garantía de disponibilidad, y qué pasa con los datos si
       lo dejan (se borran).
 - [ ] Aceptar los **DPA** de Supabase y Vercel desde sus paneles (y 2FA en todas las cuentas).
-- [ ] **Borrar un cliente** cuando lo pida: hoy es a mano (SQL). Botón en la ficha del CRM, ~4 h
-      ([cómo](docs/RGPD.md#3-derechos-del-cliente): son cinco tablas y dos Wallets).
+- [x] **Borrar un cliente** cuando lo pida: en su ficha (Clientes) o él mismo desde su tarjeta.
 
 **Cuando se cobre:**
 - [ ] Forma legal (autónomo o SL) y **aviso legal** en la web con titular, NIF y contacto (LSSI).
@@ -267,11 +276,11 @@ a quien no dice que no, plazos, auditoría…): [docs/RGPD.md](docs/RGPD.md).
 - [ ] Facturas a las tiendas.
 
 **Más adelante:**
-- [ ] Plazo de conservación (p. ej. borrar tarjetas sin uso en 24 meses) y automatizarlo;
-      entonces decirlo en `/privacidad`, que hoy dice "mientras siga en uso".
+- [x] Plazo de conservación: 24 meses sin uso, automático (con el reloj) y dicho en `/privacidad`.
 - [ ] Registro de actividades de tratamiento (una tabla de una página, art. 30.2).
 - [ ] Revisión por alguien que sepa de RGPD antes de pasar de unas pocas tiendas.
-- [ ] Saber que una fuga de datos se notifica a la AEPD en 72 h.
+- [ ] Saber que una fuga de datos se notifica a la AEPD en 72 h: el procedimiento está en
+      [docs/INCIDENTES.md](docs/INCIDENTES.md); falta decidir quién decide.
 
 ### Un Pass Type ID por tienda
 

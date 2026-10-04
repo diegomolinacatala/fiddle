@@ -1,6 +1,6 @@
 import { X509Certificate, createPrivateKey } from "node:crypto";
 import { configApple, faltanVariablesApple, faltanVariablesTienda, variablesDe } from "./apple/config";
-import { hasSupabase, comprobarTablas, contarSinCifrar } from "./store";
+import { hasSupabase, comprobarTablas, contarSinCifrar, TABLAS } from "./store";
 import { estadoClaveCifrado } from "./cifrado";
 import { clavesPush } from "./push/vapid";
 import { configGoogle, faltanVariablesGoogle } from "./google/config";
@@ -128,7 +128,7 @@ export async function diagnosticoSupabase(comprobar = comprobarTablas) {
   try {
     const r = await conTimeout(comprobar(), TIMEOUT_SUPABASE_MS);
     return r.ok
-      ? { ok: true, detalle: "Supabase conectado · 6 tablas" }
+      ? { ok: true, detalle: `Supabase conectado · ${TABLAS.length} tablas` }
       : { ok: false, detalle: explicarErrorSupabase(r.error, r.tabla) };
   } catch (e) {
     return { ok: false, detalle: explicarErrorSupabase(e?.message || e, "conexión") };

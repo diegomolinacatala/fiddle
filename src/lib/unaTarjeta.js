@@ -91,8 +91,9 @@ export async function unificarTarjeta(deps, { dispositivo, negocio, serial }) {
     ]);
     // Volver a añadir una tarjeta que ya se fusionó (la vieja, anulada) no
     // cambia nada: la buena sigue siendo la apuntada.
-    if (!nuevo || nuevo.fusionado_en || !n) return { fusionada: null };
-    if (!viejo || viejo.fusionado_en || viejo.negocio !== negocio) {
+    if (!nuevo || nuevo.fusionado_en || nuevo.borrado_en || !n) return { fusionada: null };
+    // Una tarjeta borrada no vuelve: lo que tenía ya no existe.
+    if (!viejo || viejo.fusionado_en || viejo.borrado_en || viejo.negocio !== negocio) {
       await apuntar();
       return { fusionada: null };
     }
@@ -134,5 +135,6 @@ export async function unificarTarjeta(deps, { dispositivo, negocio, serial }) {
 export async function clienteVigente(getCliente, serial) {
   let c = await getCliente(serial);
   for (let i = 0; c?.fusionado_en && i < 5; i++) c = await getCliente(c.fusionado_en);
-  return c?.fusionado_en ? null : c;
+  // Una tarjeta que se pidió borrar tampoco es de nadie (docs/RGPD.md, 3.3).
+  return c?.fusionado_en || c?.borrado_en ? null : c;
 }

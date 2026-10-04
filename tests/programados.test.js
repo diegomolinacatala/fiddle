@@ -6,7 +6,7 @@ import {
 
 const HORA = 60 * 60 * 1000;
 const horario = { zona: "Europe/Madrid", semana: Array.from({ length: 7 }, () => ({ abre: "08:00", cierra: "20:00" })), cerrados: [] };
-const ctx = (serial, extra = {}) => ({ serial, perfil: { contactable: true, visitas: 3, diasSinVenir: 2 }, desde: 0, vars: {}, ...extra });
+const ctx = (serial, extra = {}) => ({ serial, perfil: { contactable: true, avisable: true, visitas: 3, diasSinVenir: 2 }, desde: 0, vars: {}, ...extra });
 
 describe("avisos programados", () => {
   it("a todos, cada vez que toca: hoy no se repite, mañana sí", () => {

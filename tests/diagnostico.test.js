@@ -76,7 +76,7 @@ describe("diagnosticoSupabase", () => {
   it("traduce los fallos típicos", async () => {
     vi.stubEnv("SUPABASE_URL", "https://x.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_KEY", "k");
-    expect(await diagnosticoSupabase(async () => ({ ok: true }))).toEqual({ ok: true, detalle: "Supabase conectado · 6 tablas" });
+    expect(await diagnosticoSupabase(async () => ({ ok: true }))).toEqual({ ok: true, detalle: "Supabase conectado · 13 tablas" });
     expect((await diagnosticoSupabase(async () => ({ ok: false, tabla: "registros", error: 'relation "public.registros" does not exist' }))).detalle)
       .toMatch(/Falta la tabla "registros".*schema\.sql/);
     expect((await diagnosticoSupabase(async () => { throw new Error("fetch failed"); })).detalle).toMatch(/SUPABASE_URL/);

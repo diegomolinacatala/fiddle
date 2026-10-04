@@ -20,7 +20,7 @@ Google no sale.
 |---|---|---|
 | Cliente toca "Añadir a Google Wallet" | `/api/google/guardar/<serial>` crea la **clase** de la tienda (si no existe) y el **objeto** del cliente con el estado de ese momento, y le redirige a Google con un enlace corto | [`googlewallet.js`](../src/lib/googlewallet.js) → `prepararGuardado` |
 | La caja sella o canjea | se reescribe el objeto; si subieron o se canjearon sellos, con `notifyPreference` → Google avisa en el teléfono | `actualizarEnGoogle` |
-| El manager lanza una promo | la clase recibe un mensaje con aviso: suena en todos los teléfonos que tienen la tarjeta | `tiendaEnGoogle` |
+| El manager lanza una promo | cada objeto recibe un mensaje con aviso, salvo el de quien no quiere promos (en la clase llegaría a todos) | `tiendaEnGoogle` |
 | El manager cambia la cartilla (sellos, premio) | se reescribe la clase y los objetos (el "5/8" pasa a "5/10") | `tiendaEnGoogle` |
 | Campaña del CRM | mensaje con aviso a cada cliente del grupo que tenga la tarjeta en Google | `mensajeEnGoogle` |
 

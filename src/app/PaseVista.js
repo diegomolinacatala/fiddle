@@ -419,9 +419,8 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
       </div>
 
       <div style={{ background: oscuro, borderRadius: "26px 26px 0 0", padding: "16px 14px 18px", position: "relative", zIndex: 1, display: "grid", gap: 3 }}>
-        <Anotable clave="google.titular" etiqueta="Titular y código" anota={anota} estilo={{ display: "grid", gap: 3 }}>
-          {objeto.accountName && <Modulo caja={caja} titulo={clase.accountNameLabel} cuerpo={objeto.accountName} primero />}
-          <Modulo caja={caja} titulo={clase.accountIdLabel} cuerpo={objeto.accountId} primero={!objeto.accountName} />
+        <Anotable clave="google.titular" etiqueta="Código" anota={anota} estilo={{ display: "grid", gap: 3 }}>
+          <Modulo caja={caja} titulo={clase.accountIdLabel} cuerpo={objeto.accountId} primero />
         </Anotable>
         {mensajes.map((m) => (
           <Anotable key={m.id} clave={`google.mensaje.${m.id}`} etiqueta={m.header} anota={anota}>

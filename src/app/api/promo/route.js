@@ -20,7 +20,7 @@ export async function POST(request) {
     const negocio = await saveNegocio(b, { promo });
     if (!negocio) return jsonError("Ese negocio no existe", 404);
     // Solo una promo NUEVA hace sonar Android; retirarla limpia las tarjetas en silencio.
-    const aviso = await notificarNegocio(negocio, { promoNueva: negocio.promo });
+    const aviso = await notificarNegocio(negocio, { promoNueva: negocio.promo, promo: true });
     return NextResponse.json({ promo: negocio.promo, ...aviso });
   } catch (e) {
     return errorInterno("promo", e);

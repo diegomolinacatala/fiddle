@@ -73,9 +73,9 @@ export default function Campana({ negocio, destino, onEnviada, flash }) {
         <p style={{ fontSize: 13, color: C.suave, margin: "0 0 4px" }}>{destino.descripcion}</p>
         <p style={{ fontSize: 13, margin: "0 0 14px" }}>
           <strong>{destino.total}</strong> cliente{destino.total === 1 ? "" : "s"} ·{" "}
-          <strong style={{ color: destino.contactables ? C.ok : C.mal }}>{destino.contactables}</strong> con la tarjeta en el teléfono
+          <strong style={{ color: destino.contactables ? C.ok : C.mal }}>{destino.contactables}</strong> con la tarjeta en el teléfono y promos
           {destino.total !== destino.contactables && (
-            <span style={{ color: C.tenue }}> · a {destino.total - destino.contactables} no se les puede avisar</span>
+            <span style={{ color: C.tenue }}> · a {destino.total - destino.contactables} no se les puede avisar (sin tarjeta en el teléfono o no quieren promos)</span>
           )}
         </p>
 

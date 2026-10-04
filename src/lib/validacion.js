@@ -1,5 +1,6 @@
 // Validación de entradas del manager (funciones puras, testeadas).
 
+import { normalizarLegal } from "./legal";
 import { normalizarTextoMarca } from "./apple/glifos";
 import { FORMAS, BANDAS, MODOS, MODOS_DOBLES, resolverMarca } from "./apple/dibujo";
 import { CONTADORES } from "./cartillas";
@@ -225,6 +226,9 @@ export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPor
   const patch = r.patch;
 
   if (typeof b.brief === "string") patch.brief = b.brief.trim().slice(0, 4000);
+  // Quién es la tienda ante la ley (razón social, NIF, dirección, email): solo el
+  // admin, con el contrato firmado delante. null lo quita.
+  if ("legal" in b) patch.legal = normalizarLegal(b.legal);
   return { patch };
 }
 

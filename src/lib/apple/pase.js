@@ -110,6 +110,17 @@ export function ubicacionesApple(negocio) {
  * @returns {{headerFields:object[], primaryFields:object[], secondaryFields:object[], auxiliaryFields:object[], backFields:object[]}}
  */
 export function camposDelPase(cliente, negocio) {
+  // El cliente pidió borrarla (docs/RGPD.md, 3.3): sin datos y anulada. Es lo
+  // que su iPhone baja tras el aviso, antes de que la fila desaparezca.
+  if (cliente.borrado_en) {
+    return {
+      headerFields: [],
+      primaryFields: [],
+      secondaryFields: [{ key: "premio", label: "TARJETA BORRADA", value: "Tus datos se han borrado", changeMessage: "%@" }],
+      auxiliaryFields: [],
+      backFields: [{ key: "como", label: "Puedes quitarla", value: `Borramos esta tarjeta de ${negocio.nombre} y sus datos, como pediste. Ya puedes quitarla del Wallet.` }],
+    };
+  }
   // Tarjeta sustituida por otra en el mismo iPhone (lib/unaTarjeta.js): ya no
   // cuenta nada, solo dice dónde están los sellos.
   if (cliente.fusionado_en) {
@@ -138,12 +149,18 @@ export function camposDelPase(cliente, negocio) {
   // El MENSAJE del cliente gana a la promo de la tienda: una campaña va dirigida
   // a un grupo ("hace tiempo que no te vemos") y no tendría sentido que la tapara
   // el 2x1 de todos. Es la misma columna del pase, así que solo cabe uno.
-  const avisoPersonal = cliente.mensaje || null;
-  const auxiliaryFields = avisoPersonal || negocio.promo
+  //
+  // Quien dijo que no a las promos (`promos_no`) no ve ninguna de las dos: lo que
+  // escribe la tienda es promo; lo que hace la caja (sellos, premios), servicio.
+  // Su teléfono recibe el refresco, ningún campo visible cambia y no suena.
+  const quierePromos = !cliente.promos_no;
+  const avisoPersonal = quierePromos ? cliente.mensaje || null : null;
+  const promo = quierePromos ? negocio.promo || null : null;
+  const auxiliaryFields = avisoPersonal || promo
     ? [{
         key: "promo",
         label: avisoPersonal ? "PARA TI" : "PROMO",
-        value: avisoPersonal || negocio.promo,
+        value: avisoPersonal || promo,
         changeMessage: "%@",
       }]
     : [];
@@ -169,6 +186,8 @@ export function camposDelPase(cliente, negocio) {
     })),
     { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
   ];
+  // "Tu tarjeta y tus datos" (dejar las promos, descargar, borrar) se añade en
+  // construirPassJson: necesita la URL y la llave, que la vista previa no tiene.
 
   return { ...campos, auxiliaryFields, backFields };
 }
@@ -179,10 +198,12 @@ const codigoDe = (cliente) => cliente.codigo || String(cliente.serial || "").sli
 /**
  * @param {{serial:string, codigo?:string, sellos:number, premios:number, nombre:string|null, auth_token:string}} cliente
  * @param {{slug:string, nombre:string, tipo:string, tema:object, meta:number, premio:string, promo:string|null, ubicaciones?:object[]}} negocio
- * @param {{passTypeId:string, teamId:string, appUrl:string}} opciones
+ * @param {{passTypeId:string, teamId:string, appUrl:string, enlaceDatos?:string|null}} opciones
+ *   `enlaceDatos`: su página "Tu tarjeta y tus datos" con la llave (lib/gestion.js,
+ *   solo servidor: aquí no se puede, este módulo también corre en el navegador)
  * @returns {object} pass.json
  */
-export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl }) {
+export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl, enlaceDatos = null }) {
   if (!cliente?.auth_token || cliente.auth_token.length < 16) {
     throw new Error("El cliente no tiene authenticationToken válido (mín. 16 caracteres)");
   }
@@ -215,10 +236,21 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
         altText: codigoDe(cliente),
       },
     ],
-    // El aviso de privacidad, al final del reverso: iOS convierte la URL en enlace.
+    // Al final del reverso: su página para dejar las promos, descargar sus datos o
+    // borrar la tarjeta (con su llave tras el #: no viaja al servidor ni a los
+    // logs), y el aviso de privacidad. iOS abre el enlace del attributedValue.
     [esCupon ? "coupon" : "storeCard"]: {
       ...cara,
-      backFields: [...backFields, { key: "privacidad", label: "Privacidad", value: `${appUrl}/privacidad?b=${negocio.slug}` }],
+      backFields: [
+        ...backFields,
+        ...(cliente.borrado_en ? [] : [{
+          key: "datos",
+          label: "Tu tarjeta y tus datos",
+          value: "Promos, descargar o borrar",
+          attributedValue: `<a href="${enlaceDatos || `${appUrl}/p/${cliente.serial}/datos`}">Promos, descargar o borrar</a>`,
+        }]),
+        { key: "privacidad", label: "Privacidad", value: `${appUrl}/privacidad?b=${negocio.slug}` },
+      ],
     },
   };
 
@@ -226,7 +258,8 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
   if (ubicaciones.length) pase.locations = ubicaciones;
   // Anulado: iOS lo aparta a "pases caducados". Una tarjeta fusionada en otra
   // también, para que no queden dos vivas de la misma tienda.
-  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en) pase.voided = true;
+  // Y una que se pidió borrar.
+  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en || cliente.borrado_en) pase.voided = true;
 
   return pase;
 }
