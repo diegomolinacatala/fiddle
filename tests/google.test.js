@@ -52,7 +52,6 @@ describe("clase y objeto (puros)", () => {
       classId: idClase(ISSUER, "nube"),
       state: "ACTIVE",
       accountId: "K7M",
-      accountName: "Ana",
       loyaltyPoints: { label: "Sellos", balance: { string: "3/8" } },
       secondaryLoyaltyPoints: { label: "Premios", balance: { int: 1 } },
       barcode: { type: "QR_CODE", value: `${APP}/w/${cliente.serial}`, alternateText: "K7M" },
@@ -63,9 +62,15 @@ describe("clase y objeto (puros)", () => {
     expect(o).not.toHaveProperty("messages");
   });
 
-  it("sin nombre no hay titular; con campaña, mensaje 'Para ti'", () => {
-    const o = construirObjeto({ ...cliente, nombre: null, mensaje: "Vuelve pronto" }, nube, { issuerId: ISSUER, appUrl: APP });
+  it("el nombre del cliente NO va en Google, como en Apple (ni en ninguna parte del objeto)", () => {
+    const o = construirObjeto(cliente, nube, { issuerId: ISSUER, appUrl: APP });
     expect(o).not.toHaveProperty("accountName");
+    expect(JSON.stringify(o)).not.toContain("Ana");
+    expect(construirClase(nube, { issuerId: ISSUER, appUrl: APP })).not.toHaveProperty("accountNameLabel");
+  });
+
+  it("con campaña, mensaje 'Para ti'", () => {
+    const o = construirObjeto({ ...cliente, mensaje: "Vuelve pronto" }, nube, { issuerId: ISSUER, appUrl: APP });
     expect(o.messages).toEqual([{ id: "para-ti", header: "Para ti", body: "Vuelve pronto", messageType: "TEXT" }]);
   });
 

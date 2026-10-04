@@ -65,7 +65,6 @@ export function construirClase(negocio, { issuerId, appUrl }, { conMensajes = tr
     // Un cliente, todos sus teléfonos. Pasarse la tarjeta a otro no tiene sentido.
     multipleDevicesAndHoldersAllowedStatus: "ONE_USER_ALL_DEVICES",
     accountIdLabel: "Código",
-    accountNameLabel: "Nombre",
     textModulesData: [
       // "Abierto hasta las 18:30": en Apple va dibujado en la banda; Google no deja
       // cambiar su imagen cada hora, así que va el PRIMERO de los detalles. Es de la
@@ -111,7 +110,9 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl }, { conMen
     // Un cupón usado pasa a "caducados", como el pase anulado de Apple.
     state: e.usado ? "INACTIVE" : "ACTIVE",
     accountId: codigo,
-    ...(cliente.nombre ? { accountName: cliente.nombre } : {}),
+    // SIN accountName, como en Apple: el nombre lo sabe él y lo ve la caja. En
+    // Google, además, se quedaría en una copia que guarda Google. Como el objeto
+    // va entero (PUT), el próximo cambio lo borra de las tarjetas que lo llevaban.
     loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },
     // Como la cabecera del pase de Apple: un premio guardado manda sobre el
     // contador de canjeados.
