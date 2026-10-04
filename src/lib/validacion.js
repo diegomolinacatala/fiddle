@@ -1,11 +1,13 @@
 // Validación de entradas del manager (funciones puras, testeadas).
 
+import { normalizarLegal } from "./legal";
 import { normalizarTextoMarca } from "./apple/glifos";
 import { FORMAS, BANDAS, MODOS, MODOS_DOBLES, resolverMarca } from "./apple/dibujo";
 import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
 import { validarLogoImagen } from "./logo";
+import { validarFondoFoto } from "./propios";
 import { normalizarCaja } from "./caja";
 import { slugDeTiendaLibre } from "./auth";
 
@@ -161,7 +163,8 @@ export function piezasDeDibujo(origen) {
   const marca = resolverMarca(o.marca);
   if (marca) piezas.marca = marca;
   if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
-  if (BANDAS.includes(o.banda)) piezas.banda = o.banda;
+  // "foto": la de la tienda (tema.fondoFoto, lib/propios.js); si es suya lo mira el servidor.
+  if (BANDAS.includes(o.banda) || o.banda === "foto") piezas.banda = o.banda;
   if (MODOS.includes(o.modo)) piezas.modo = o.modo;
   if (MODOS_DOBLES.includes(o.doble) || o.doble === "llenar") piezas.doble = o.doble;
   // La línea "● Abierto hasta las 14:00" en la banda: encendida salvo que se apague.
@@ -225,6 +228,9 @@ export function patchNegocioAdmin(body, accionesValidas, { ESTILOS = [], temaPor
   const patch = r.patch;
 
   if (typeof b.brief === "string") patch.brief = b.brief.trim().slice(0, 4000);
+  // Quién es la tienda ante la ley (razón social, NIF, dirección, email): solo el
+  // admin, con el contrato firmado delante. null lo quita.
+  if ("legal" in b) patch.legal = normalizarLegal(b.legal);
   return { patch };
 }
 
@@ -258,6 +264,9 @@ function temaDePatch(t, { ESTILOS, temaPorDefecto }) {
   // La imagen propia del logo (lib/logo.js): null la quita y vuelve el dibujo.
   const logo = validarLogoImagen(t.logoImagen);
   if (logo !== undefined) tema.logoImagen = logo;
+  // La foto del fondo de la banda (lib/propios.js): null la quita.
+  const foto = validarFondoFoto(t.fondoFoto);
+  if (foto !== undefined) tema.fondoFoto = foto;
   return tema;
 }
 

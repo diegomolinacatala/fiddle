@@ -5,11 +5,19 @@ venir, a las 12:00, mándale «…»"*. El manager los ve, enciende, apaga y cam
 **Avisos → Automáticos** sin tocar código: a quién, cuántos días, a qué hora, qué
 días y qué dice.
 
-**Todo empieza apagado.** Salen solos solo si se cumplen las tres: la tienda encendió
-el interruptor de arriba (`avisosActivos`), ese aviso está encendido (`activa`) y la
-tienda tiene horario. Una tienda que nunca entra no manda nada: avisar a sus clientes
-es algo que elige, no algo que le llega con un despliegue. «Enviar ahora» funciona
-siempre, porque lo pide el manager.
+**Desde el 04-10-2026, Automáticos y Programados están apagados por tienda** salvo
+que el admin los encienda (`avisosAvanzados`, en `/admin/<slug>`). Apagados, ni se ven
+sus pestañas ni sale ninguna regla, tampoco a mano; las reglas se guardan tal cual.
+Lo que cubre el día a día es **Avisos → Enviar**: ahora, o «Enviar a las…» hoy (hasta
+el último cierre) o mañana por la mañana (de la apertura al primer cierre). Lo
+programado así lo manda el mismo reloj de abajo ([`src/lib/envios.js`](../src/lib/envios.js),
+[`src/lib/campanas.js`](../src/lib/campanas.js)).
+
+**Todo empieza apagado.** Con el admin dándoles paso, salen solos solo si se cumplen
+las tres: la tienda encendió el interruptor de arriba (`avisosActivos`), ese aviso está
+encendido (`activa`) y la tienda tiene horario. Una tienda que nunca entra no manda
+nada: avisar a sus clientes es algo que elige, no algo que le llega con un despliegue.
+«Enviar ahora» de una regla funciona sin `avisosActivos`, porque lo pide el manager.
 
 Código: [`src/lib/automatizaciones.js`](../src/lib/automatizaciones.js) (las reglas,
 funciones puras), [`src/lib/horario.js`](../src/lib/horario.js) (cuándo abre la

@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import {
-  listNegocios, getNegocio, crearNegocio, saveNegocio, archivarNegocio, borrarNegocio, listClientes,
+  listNegocios, getNegocio, crearNegocio, saveNegocio, archivarNegocio, borrarNegocio, listClientes, registrarBorrado,
 } from "@/lib/store";
 import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { ACCIONES } from "@/lib/acciones";
 import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validacion";
 import { notificarNegocio } from "@/lib/wallet";
 import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
+import { auditar } from "@/lib/auditoria";
+import { normalizarLegal } from "@/lib/legal";
+import { prepararPropios } from "@/lib/propiosServidor";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -71,7 +74,7 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
-  const { respuesta } = await exigirAdmin(request);
+  const { sesion, respuesta } = await exigirAdmin(request);
   if (respuesta) return respuesta;
   try {
     const body = await request.json().catch(() => ({}));
@@ -90,11 +93,32 @@ export async function PUT(request) {
       return NextResponse.json(await saveNegocio(slug, { notas }));
     }
 
+    // Los datos legales (razón social, NIF…) no salen en el pase: se guardan solos,
+    // sin mover ningún teléfono.
+    if ("legal" in body && Object.keys(body).every((k) => k === "slug" || k === "legal")) {
+      const legal = normalizarLegal(body.legal);
+      const guardado = await saveNegocio(slug, { legal });
+      await auditar(sesion, slug, "config", "legal");
+      return NextResponse.json(guardado);
+    }
+
+    // Automáticos y programados encendidos o no (lib/motorAvisos.js): tampoco salen
+    // en el pase. Apagarlos no borra las reglas.
+    if (typeof body.avisosAvanzados === "boolean" && Object.keys(body).every((k) => k === "slug" || k === "avisosAvanzados")) {
+      const guardado = await saveNegocio(slug, { avisosAvanzados: body.avisosAvanzados });
+      await auditar(sesion, slug, "config", `avisosAvanzados=${body.avisosAvanzados}`);
+      return NextResponse.json(guardado);
+    }
+
     const r = patchNegocioAdmin(body, Object.keys(ACCIONES), {
       ESTILOS, temaPorDefecto, cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas,
     });
     if (r.error) return jsonError(r.error, 400);
-    const nuevo = await saveNegocio(slug, r.patch);
+    // Tampoco el admin le pone a una tienda lo de otra (lib/propiosServidor.js).
+    const p = await prepararPropios(slug, r.patch, actual);
+    if (p.error) return jsonError(p.error, 400);
+    const nuevo = await saveNegocio(slug, p.patch);
+    await auditar(sesion, slug, "config", Object.keys(p.patch).join(", "));
 
     // Si cambió algo que se ve en el pase, los teléfonos tienen que enterarse.
     const aviso = nuevo.archivado ? null : await notificarNegocio(nuevo, { cartilla: true });
@@ -105,7 +129,7 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
-  const { respuesta } = await exigirAdmin(request);
+  const { sesion, respuesta } = await exigirAdmin(request);
   if (respuesta) return respuesta;
   try {
     const { searchParams } = new URL(request.url);
@@ -117,6 +141,7 @@ export async function DELETE(request) {
 
     if (modo === "archivar" || modo === "desarchivar") {
       const guardado = await archivarNegocio(slug, modo === "archivar");
+      await auditar(sesion, slug, modo);
       return NextResponse.json({ ok: true, archivado: guardado.archivado });
     }
 
@@ -126,6 +151,9 @@ export async function DELETE(request) {
         return jsonError("Para borrar del todo hay que escribir el identificador exacto", 400);
       }
       const { borrados } = await borrarNegocio(slug);
+      // La constancia del borrado (sin datos personales): es lo que pide el contrato.
+      await registrarBorrado({ negocio: slug, tipo: "tienda", motivo: "admin", rol: "admin", cuantos: borrados });
+      await auditar(sesion, slug, "borrar_tienda", `${borrados} tarjetas`);
       return NextResponse.json({ ok: true, borrado: slug, clientes: borrados });
     }
     return jsonError("Modo no válido", 400);

@@ -10,6 +10,7 @@ import { enviarPush } from "./push/enviar";
 import { TIPO_WEB } from "./push/suscripcion";
 import { avisoDeCambio, avisoDePromo, avisoDeMensaje, avisoPush } from "./avisos";
 import { appUrl } from "./url";
+import { VERSION_AVISO } from "./legal";
 
 // ============================================================================
 // WALLET — fachada única para emitir pases y avisar de cambios
@@ -47,7 +48,8 @@ export async function emitirPase(slug, { origen = null, nombre = null } = {}) {
   const serial = randomUUID();
   const authToken = randomBytes(24).toString("hex"); // autentica al iPhone ante el web service
 
-  const cliente = await crearCliente({ serial, negocio: slug, authToken, origen, nombre });
+  // `avisoVersion`: qué aviso de privacidad había al darse de alta (docs/RGPD.md, 2.6).
+  const cliente = await crearCliente({ serial, negocio: slug, authToken, origen, nombre, avisoVersion: VERSION_AVISO });
   // El alta abre el historial del cliente: sin ella, su ficha empieza en el aire.
   await addEvento(serial, "alta", origen === "manager" ? "Pase emitido en el mostrador" : "Pase emitido", {
     negocio: slug,
@@ -127,7 +129,10 @@ export async function notificarCliente(cliente, negocio, { antes = null } = {}) 
 
   const [web, google] = await Promise.all([
     aviso ? avisarNavegadores({ seriales: [cliente.serial] }, negocio, () => aviso) : 0,
-    actualizarEnGoogle(cliente, negocio, { notificar: Boolean(aviso) }),
+    // En Google, en silencio: los avisos de cambio y los mensajes comparten el
+    // tope de 3 al día por tarjeta, y un sello (el cliente está en la caja) no
+    // puede gastar los avisos de la promo o de una campaña.
+    actualizarEnGoogle(cliente, negocio),
   ]);
 
   try {
@@ -166,13 +171,16 @@ export async function avisarSeriales(seriales, { negocio = null, texto = null } 
   let google = 0;
   if (negocio) {
     const lista = new Set(seriales);
-    // Los clientes enteros solo hacen falta para reescribir sus tarjetas de Google.
-    const clientes = hayGoogle()
+    // Los clientes enteros, para reescribir sus tarjetas de Google y, con texto,
+    // para no mandárselo a quien dijo que no a las promos (quien llama ya los
+    // quitó; esto es la red, como en guardarMensajes).
+    const clientes = hayGoogle() || texto
       ? (await listClientes(negocio.slug).catch(() => [])).filter((c) => lista.has(c.serial))
       : [];
+    const sinPromos = new Set(clientes.filter((c) => c.promos_no).map((c) => c.serial));
     [web, google] = await Promise.all([
-      texto ? avisarNavegadores({ seriales }, negocio, () => avisoDeMensaje(negocio, texto)) : 0,
-      mensajeEnGoogle(clientes, negocio, texto),
+      texto ? avisarNavegadores({ seriales }, negocio, (serial) => (sinPromos.has(serial) ? null : avisoDeMensaje(negocio, texto))) : 0,
+      mensajeEnGoogle(hayGoogle() ? clientes : [], negocio, texto),
     ]);
   }
 
@@ -196,9 +204,10 @@ export async function avisarSeriales(seriales, { negocio = null, texto = null } 
  * Android (en iPhone suena solo, porque cambia un campo del pase). Guardar la
  * cartilla o retirar una promo pone las tarjetas al día sin molestar a nadie.
  * `cartilla`: cambiaron sellos o premio, así que las tarjetas de Google se
- * reescriben una a una (su "5/8" pasa a "5/10").
+ * reescriben una a una (su "5/8" pasa a "5/10"). `promo`: la promo cambió (o se
+ * quitó): en Google vive en cada tarjeta, así que también se reescriben.
  *
- * @param {{promoNueva?:string|null, cartilla?:boolean}} [opciones]
+ * @param {{promoNueva?:string|null, cartilla?:boolean, promo?:boolean}} [opciones]
  * @returns {Promise<{proveedor:string, total:number, enviadas:number, fallidas:object[], web:number, google:number}>}
  */
 /**
@@ -218,14 +227,20 @@ export async function refrescarPasesApple(negocio) {
   }
 }
 
-export async function notificarNegocio(negocio, { promoNueva = null, cartilla = false } = {}) {
+export async function notificarNegocio(negocio, { promoNueva = null, cartilla = false, promo = false } = {}) {
   const proveedor = proveedorWallet();
 
+  // Quien dijo que no a las promos no recibe la de la tienda por ningún canal
+  // (en Apple lo hace camposDelPase: su pase no la lleva).
   const android = async () => {
-    const clientes = cartilla && hayGoogle() ? await listClientes(negocio.slug).catch(() => []) : null;
+    const necesitaClientes = promoNueva || ((cartilla || promo) && hayGoogle());
+    const clientes = necesitaClientes ? await listClientes(negocio.slug).catch(() => []) : null;
+    const sinPromos = new Set((clientes || []).filter((c) => c.promos_no).map((c) => c.serial));
     return Promise.all([
-      promoNueva ? avisarNavegadores({ negocio: negocio.slug }, negocio, () => avisoDePromo(negocio, promoNueva)) : 0,
-      tiendaEnGoogle(negocio, { promoNueva, clientes }),
+      promoNueva
+        ? avisarNavegadores({ negocio: negocio.slug }, negocio, (serial) => (sinPromos.has(serial) ? null : avisoDePromo(negocio, promoNueva)))
+        : 0,
+      tiendaEnGoogle(negocio, { promoNueva, clientes: hayGoogle() ? clientes : null }),
     ]);
   };
 

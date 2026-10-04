@@ -24,7 +24,7 @@ const MAX_NAVEGADORES = 5;
 async function clienteYNegocio(params) {
   const { serial } = await params;
   const cliente = await getCliente(serial);
-  if (!cliente) return { error: jsonError("Tarjeta no encontrada", 404) };
+  if (!cliente || cliente.borrado_en) return { error: jsonError("Tarjeta no encontrada", 404) };
   const negocio = await getNegocio(cliente.negocio);
   if (!negocio) return { error: jsonError("Tienda no encontrada", 404) };
   return { cliente, negocio };

@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
     if (await usoExcedido("google", ipDe(request))) return jsonError("Demasiados intentos. Prueba en unos minutos.", 429);
     const { serial } = await params;
     const cliente = await getCliente(serial);
-    if (!cliente) return jsonError("Tarjeta no encontrada", 404);
+    if (!cliente || cliente.borrado_en) return jsonError("Tarjeta no encontrada", 404);
     const negocio = await getNegocio(cliente.negocio);
     if (!negocio) return jsonError("Tienda no encontrada", 404);
     return NextResponse.redirect(await prepararGuardado(cliente, negocio), 302);

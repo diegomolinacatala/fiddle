@@ -1,5 +1,5 @@
 import { hayGoogle, configGoogle, faltanVariablesGoogle } from "./google/config";
-import { guardarObjeto, actualizarObjeto, avisarObjeto, avisarClase, asegurarClase, enlaceGuardar } from "./google/api";
+import { guardarObjeto, actualizarObjeto, avisarObjeto, asegurarClase, enlaceGuardar } from "./google/api";
 import { TIPO_GOOGLE } from "./google/pase";
 import { registrarPase, marcarInstalacion, addEvento, destinosDeAviso } from "./store";
 
@@ -132,11 +132,13 @@ export async function mensajeEnGoogle(clientes, negocio, texto) {
 
 /**
  * La tienda cambió (promo, premio, sellos de la cartilla, ubicación). La clase
- * se reescribe siempre; con una promo NUEVA, además, suena el teléfono de todos.
- * Si cambió la cartilla, los objetos también (el "5/8" pasa a "5/10").
+ * se reescribe siempre. Si cambió la cartilla o la promo, los objetos también
+ * (el "5/8" pasa a "5/10"; la promo va en cada objeto, no en la clase, para que
+ * no le llegue a quien dijo que no). Con una promo NUEVA, además, suena el
+ * teléfono de quien las acepta.
  * @param {{promoNueva?: string|null, clientes?: object[]}} opciones
  *   `clientes`: los de la tienda, si hay que reescribir sus objetos
- * @returns {Promise<number>} objetos actualizados (o 1 si solo fue la clase)
+ * @returns {Promise<number>} objetos actualizados (o los que la tienen, si solo fue la clase)
  */
 export async function tiendaEnGoogle(negocio, { promoNueva = null, clientes = null } = {}) {
   if (!hayGoogle()) return 0;
@@ -144,10 +146,11 @@ export async function tiendaEnGoogle(negocio, { promoNueva = null, clientes = nu
     const config = configGoogle();
     const conGoogle = await serialesEnGoogle({ negocio: negocio.slug });
     if (!conGoogle.size) return 0;
-    if (promoNueva) await avisarClase(config, negocio, "Promo", promoNueva);
-    else await asegurarClase(config, negocio);
+    await asegurarClase(config, negocio);
     if (!clientes) return conGoogle.size;
-    const r = await enLotes(clientes.filter((c) => conGoogle.has(c.serial)), (c) => actualizarObjeto(config, c, negocio));
+    const r = await enLotes(clientes.filter((c) => conGoogle.has(c.serial)), (c) => (promoNueva
+      ? avisarObjeto(config, c, negocio, "Promo", promoNueva, { id: "promo" })
+      : actualizarObjeto(config, c, negocio)));
     return r.hechos;
   } catch (e) {
     console.error(`[google] no se pudo actualizar la tienda ${negocio.slug}:`, e);

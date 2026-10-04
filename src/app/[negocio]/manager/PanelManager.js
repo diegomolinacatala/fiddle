@@ -175,7 +175,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
             />
             <Bloque
               id="horario" data-recorrido="horario" accent={accent} icono="reloj" titulo="Horario"
-              resumen={n.horario ? resumenHorario(n.horario) : "Sin horario: los avisos automáticos no salen hasta que lo pongas."}
+              resumen={n.horario ? resumenHorario(n.horario) : "Sin horario: no se pueden enviar avisos a una hora ni decir si estás abierto."}
               falta={!n.horario} abierto={abierto === "horario"}
               accion={{
                 texto: abierto === "horario" ? "Cerrar" : n.horario ? "Cambiar horario" : "Poner horario",
@@ -265,7 +265,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
               data-recorrido="pedir-nombre" style={{ marginTop: 14 }}
               on={Boolean(n.pedirNombre)} onClick={() => cambiarPedirNombre(!n.pedirNombre)} accent={accent}
               titulo="Pedir el nombre al escanear"
-              texto="Un paso más antes de la Wallet, pero la caja sabe quién es cada uno."
+              texto="Un paso más antes de la Wallet, pero la caja sabe quién es cada uno. El nombre es para reconocerle en caja: no sale en su tarjeta y se guarda cifrado."
             />
           </section>
         </div>

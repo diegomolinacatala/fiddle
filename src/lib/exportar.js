@@ -51,6 +51,7 @@ function columnas(negocio) {
     ["Frecuencia", (c, p) => (p.cadencia ? cadenciaTexto(p.cadencia) : "")],
     ["Llegó por", (c) => ({ tap: "QR / NFC", manager: "Mostrador" })[c.origen] || ""],
     ["Tarjeta en el móvil", (c, p) => (p.contactable ? "Sí" : "No")],
+    ["Recibe promos", (c) => (c.promos_no ? "No" : "Sí")],
     ["Nota", (c) => c.nota || ""],
   ];
 }

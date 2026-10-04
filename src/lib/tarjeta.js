@@ -8,7 +8,13 @@
 // comentarios del admin.
 // ============================================================================
 
-/** @returns {{serial:string, codigo:string, sellos:number, sellos2:number, premios:number, guardados:number, guardados2:number, nombre:string|null, mensaje:string|null}|null} */
+/**
+ * Sin el NOMBRE: la tarjeta web no lo enseña (como el pase) y esta página y
+ * /api/tarjeta/<serial> se abren con el serial, que va en el QR. Una foto del QR
+ * no puede decir de quién es. `promos_no` va como sí/no: la tarjeta web, como el
+ * pase, no enseña la promo a quien dijo que no.
+ * @returns {{serial:string, codigo:string, sellos:number, sellos2:number, premios:number, guardados:number, guardados2:number, mensaje:string|null, promos_no:true|null}|null}
+ */
 export const clienteDeTarjeta = (c) =>
   c && {
     serial: c.serial,
@@ -18,8 +24,8 @@ export const clienteDeTarjeta = (c) =>
     premios: c.premios ?? 0,
     guardados: c.guardados ?? 0,
     guardados2: c.guardados2 ?? 0,
-    nombre: c.nombre ?? null,
     mensaje: c.mensaje ?? null,
+    promos_no: c.promos_no ? true : null,
   };
 
 /**

@@ -46,7 +46,7 @@ Los **avisos** van por todos los canales a la vez, cada uno a quien lo tenga
 |-------|-------|------|
 | iPhone | añadió el pase a Apple Wallet | APNs vacío → el iPhone baja el pase |
 | Android (web) | activó los avisos en su tarjeta | web push firmado con VAPID → aviso del navegador |
-| Google Wallet | guardó la tarjeta en Google | PUT del objeto (+ `notifyPreference`) o `addMessage` |
+| Google Wallet | guardó la tarjeta en Google | PUT del objeto (en silencio) o `addMessage` (suena) |
 
 Qué texto suena en Android lo decide [`avisos.js`](../src/lib/avisos.js) comparando
 el estado de antes y el de después (un sello sí; una corrección, no).

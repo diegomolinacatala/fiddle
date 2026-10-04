@@ -36,6 +36,8 @@ export async function datosCrm(slug) {
       premio: negocio.premio, cartillas: negocio.cartillas ?? null, tema: negocio.tema,
       // Para las observaciones (qué horas son tranquilas DE LAS QUE ABRE).
       horario: negocio.horario ?? null,
+      // Sin automáticos ni programados, «Programarles un aviso» no sale.
+      avisosAvanzados: negocio.avisosAvanzados === true,
     },
     metricas: metricas(perfiles, eventos, clientes),
     grupos: conteoGrupos(perfiles),

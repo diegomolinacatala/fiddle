@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import QrImagen from "@/app/QrImagen";
+import { useConFotoBanda } from "@/app/fotoBanda";
 import { camposDelPase } from "@/lib/apple/pase";
 import { svgBandaOpaca, stripDelPase, comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
@@ -47,7 +48,9 @@ const FUENTE_GOOGLE = '"Google Sans", Roboto, system-ui, sans-serif';
  */
 // `plataforma`: "apple" o "google" para enseñar solo esa (el editor pone las dos
 // una al lado de otra); sin ella, un conmutador.
-export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara, plataforma = null }) {
+export default function PaseVista({ negocio: negocioGuardado, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara, plataforma = null }) {
+  // La foto de la banda (si la lleva) va DENTRO del SVG: se pide aquí una vez (fotoBanda.js).
+  const negocio = useConFotoBanda(negocioGuardado);
   const [cualDentro, setCual] = useState("apple");
   const cual = plataforma || cualDentro;
   const [caraDentro, setCaraDentro] = useState("delante");
@@ -395,7 +398,7 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
             <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.loyaltyPoints.balance.string}</div>
           </Anotable>
           {objeto.secondaryLoyaltyPoints && (
-            <Anotable clave="google.canjeados" etiqueta={objeto.secondaryLoyaltyPoints.label} anota={anota} estilo={{ width: "auto", textAlign: "center" }}>
+            <Anotable clave="google.guardados" etiqueta={objeto.secondaryLoyaltyPoints.label} anota={anota} estilo={{ width: "auto", textAlign: "center" }}>
               <div style={{ fontSize: 12.5, opacity: 0.9 }}>{objeto.secondaryLoyaltyPoints.label}</div>
               <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.secondaryLoyaltyPoints.balance.int}</div>
             </Anotable>
@@ -419,9 +422,8 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
       </div>
 
       <div style={{ background: oscuro, borderRadius: "26px 26px 0 0", padding: "16px 14px 18px", position: "relative", zIndex: 1, display: "grid", gap: 3 }}>
-        <Anotable clave="google.titular" etiqueta="Titular y código" anota={anota} estilo={{ display: "grid", gap: 3 }}>
-          {objeto.accountName && <Modulo caja={caja} titulo={clase.accountNameLabel} cuerpo={objeto.accountName} primero />}
-          <Modulo caja={caja} titulo={clase.accountIdLabel} cuerpo={objeto.accountId} primero={!objeto.accountName} />
+        <Anotable clave="google.titular" etiqueta="Código" anota={anota} estilo={{ display: "grid", gap: 3 }}>
+          <Modulo caja={caja} titulo={clase.accountIdLabel} cuerpo={objeto.accountId} primero />
         </Anotable>
         {mensajes.map((m) => (
           <Anotable key={m.id} clave={`google.mensaje.${m.id}`} etiqueta={m.header} anota={anota}>
@@ -495,6 +497,8 @@ const ICONOS_GOOGLE = {
   archivar: <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M4 9h16M12 12v5M9.5 14.5L12 17l2.5-2.5" /></>,
   quitar: <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />,
   mas: <path d="M12 5v14M5 12h14" />,
+  datos: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" /></>,
+  privacidad: <><path d="M12 3l7 3v5c0 4.6-3 8.3-7 10-4-1.7-7-5.4-7-10V6z" /></>,
 };
 
 // Google elige solo el color del texto según el fondo; aquí, la misma idea.

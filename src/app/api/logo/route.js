@@ -1,7 +1,8 @@
 import sharp from "sharp";
 import { NextResponse } from "next/server";
 import { esSlug } from "@/lib/negocios";
-import { guardarLogo, leerLogo } from "@/lib/store";
+import { guardarLogo, leerLogo, getNegocio, saveNegocio } from "@/lib/store";
+import { conPropio } from "@/lib/propios";
 import { procesarLogo } from "@/lib/logoImagen";
 import { TAMS_LOGO, tamLogo } from "@/lib/logo";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
@@ -40,6 +41,9 @@ export async function POST(request) {
     const r = await procesarLogo(datos);
     if (r.error) return jsonError(r.error, 400);
     await guardarLogo(slug, r.id, r.png);
+    // Y a su lista de «Tuyos» (lib/propios.js): así puede volver a uno anterior.
+    const negocio = await getNegocio(slug);
+    if (negocio) await saveNegocio(slug, { propios: conPropio(negocio.propios, "logos", { id: r.id, opaco: r.opaco }) });
     return NextResponse.json({ logoImagen: { id: r.id, b: slug, opaco: r.opaco } }, { status: 201 });
   } catch (e) {
     return errorInterno("logo POST", e);

@@ -3,6 +3,7 @@ import { TAM, svgIcono, svgLogo, stripDelPase, temaDelPase } from "./dibujo";
 import { versionDe } from "../rutasImagen";
 import { bufferDeLogo, componerLogo } from "../logoImagen";
 import { logoImagenDe } from "../logo";
+import { conFotoBanda } from "../propiosServidor";
 
 // ============================================================================
 // APPLE WALLET — imágenes del pase (icon, logo, strip)
@@ -89,9 +90,11 @@ function strip(negocio, cliente, estado) {
   if (!cacheStrips.has(clave) && cacheStrips.size >= MAX_STRIPS) {
     cacheStrips.delete(cacheStrips.keys().next().value); // la menos usada recientemente
   }
-  return cachear(cacheStrips, clave, () => {
+  return cachear(cacheStrips, clave, async () => {
     const [w, h] = esCupon ? TAM.strip.coupon : TAM.strip.storeCard;
-    return escalas("strip", stripDelPase(negocio, cliente, { estado }).svg, w, h);
+    // La foto de la banda, si la lleva, leída del almacén (la clave ya lleva su huella).
+    const conFoto = await conFotoBanda(negocio);
+    return escalas("strip", stripDelPase(conFoto, cliente, { estado }).svg, w, h);
   });
 }
 

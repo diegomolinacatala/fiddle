@@ -12,8 +12,9 @@ const { SEMILLAS } = await import("@/lib/negocios");
 // Valencia en septiembre = UTC+2.
 const valencia = (fecha, hora) => new Date(`${fecha}T${hora}:00+02:00`);
 
-/** La tienda los enciende: el interruptor general y cada uno de sus avisos. */
+/** El admin los permite, y la tienda los enciende: el interruptor general y cada uno de sus avisos. */
 const encender = () => store.saveNegocio("delicanteria", {
+  avisosAvanzados: true,
   avisosActivos: true,
   automatizaciones: SEMILLAS.delicanteria.automatizaciones.map((r) => ({ ...r, activa: true })),
 });
@@ -60,6 +61,17 @@ async function pasada(fecha, hora) {
 const envioDe = (r, regla) => r.find((x) => x.negocio === "delicanteria").envios.find((e) => e.regla === regla);
 
 describe("encendidos o no", () => {
+  it("con automáticos y programados apagados por el admin no sale nada, ni a mano", async () => {
+    await store.saveNegocio("delicanteria", { avisosAvanzados: false });
+    await cliente(["2026-08-28", "2026-09-01"]);
+    const r = await pasada("2026-09-24", "12:10");
+    expect(r.find((x) => x.negocio === "delicanteria").envios).toEqual([]);
+    const negocio = await store.getNegocio("delicanteria");
+    expect((await motor.repasarNegocio(negocio, { soloRegla: "te-echamos-de-menos" })).envios).toEqual([]);
+    // Las reglas siguen ahí, encendidas como estaban.
+    expect(negocio.automatizaciones.every((x) => x.activa)).toBe(true);
+  });
+
   it("con el interruptor de la tienda apagado no sale nada solo, aunque las reglas estén encendidas", async () => {
     await store.saveNegocio("delicanteria", { avisosActivos: false });
     await cliente(["2026-08-28", "2026-09-01"]);
@@ -188,6 +200,7 @@ describe("una tienda sin horario", () => {
   it("no manda nada sola, aunque tenga avisos encendidos; a mano, sí", async () => {
     // Nube (tienda de prueba) no tiene horario y lleva los avisos de partida encendidos.
     vi.setSystemTime(valencia("2026-09-18", "09:00"));
+    await store.saveNegocio("nube", { avisosAvanzados: true });
     await store.crearCliente({ serial: "nube-1", negocio: "nube", authToken: "t".repeat(24) });
     await store.registrarPase({ dispositivo: "web-nube", pushToken: "{}", passType: "web", serial: "nube-1", negocio: "nube" });
 

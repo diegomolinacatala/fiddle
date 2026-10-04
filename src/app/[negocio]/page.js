@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getNegocio, getCliente } from "@/lib/store";
+import { conFotoBanda } from "@/lib/propiosServidor";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import { plataformaDe } from "@/lib/plataforma";
 import { cookieDeTarjeta, serialRecordado } from "@/lib/recordar";
@@ -74,7 +75,7 @@ export default async function Page({ params, searchParams }) {
       <style>{css}</style>
       <div className="centro">
         {suya
-          ? <TuTarjeta n={n} cliente={suya} plataforma={plataformaDe((await headers()).get("user-agent"))} />
+          ? <TuTarjeta n={await conFotoBanda(n)} cliente={suya} plataforma={plataformaDe((await headers()).get("user-agent"))} />
           : <Bienvenida n={n} slug={slug} nuevo={nuevo} />}
       </div>
       <footer className="pie">
@@ -96,6 +97,12 @@ function Bienvenida({ n, slug, nuevo }) {
         </p>
       </header>
       <PedirNombre slug={slug} nuevo={nuevo} conNombre={n.pedirNombre} />
+      {/* Lo mínimo del aviso de privacidad donde se recogen los datos (por capas):
+          una línea y el enlace al resto. */}
+      <p className="letra entra" style={{ animationDelay: "200ms" }}>
+        Guardamos tus sellos{n.pedirNombre ? " y tu nombre" : ""} y te avisamos de sus promos.{" "}
+        <a href={`/privacidad?b=${slug}`}>Privacidad</a>
+      </p>
     </>
   );
 }
@@ -119,6 +126,13 @@ function TuTarjeta({ n, cliente, plataforma }) {
         {google && <a href={`/p/${serial}`} className="enlace">Abrir en el navegador</a>}
         {!apple && !google && <a href={`/p/${serial}`} className="boton">Abrir mi tarjeta</a>}
       </div>
+      {/* Las promos vienen de partida (soft opt-in, LSSI 21.2): decir que no, borrar
+          o descargar sus datos está a un toque, en su página. Sin casilla aquí: ni
+          un paso más para todos, ni un "no" escondido. */}
+      <a href={`/p/${serial}/datos`} className="gestionar entra" style={{ animationDelay: "340ms" }}>
+        Gestionar mi tarjeta
+      </a>
+      <p className="letra">Te avisaremos de las promos de {n.nombre}. Puedes dejarlas cuando quieras.</p>
       {/* El teléfono recuerda la tarjeta un año. Si la tienda saca tarjetas desde el
           suyo, o el móvil es de dos, quien viene detrás no tiene por qué quedarse
           con la de otro: saca la suya. */}
@@ -185,6 +199,11 @@ const css = `
 .wallet .boton{width:100%}
 .enlace{font-size:14px;opacity:.7;text-decoration-thickness:1px;text-underline-offset:3px}
 .otra{display:block;margin-top:26px;color:inherit;opacity:.62;overflow-wrap:anywhere}
+.gestionar{display:inline-grid;place-items:center;margin:26px auto 0;min-height:44px;padding:0 18px;border-radius:14px;
+  border:1px solid currentColor;color:inherit;font-size:15px;font-weight:550;text-decoration:none;opacity:.85}
+@media (hover:hover){.gestionar:hover{opacity:1}}
+.letra{margin:12px auto 0;max-width:300px;font-size:12.5px;line-height:1.45;color:color-mix(in srgb,currentColor 62%,transparent);text-wrap:balance}
+.letra a{color:inherit}
 .pie{display:flex;gap:20px;font-size:12px;opacity:.5}
 .pie a{text-decoration:none}
 @media (hover:hover){.pie a:hover{text-decoration:underline}}

@@ -22,6 +22,9 @@ import { RESERVADOS } from "./negocios";
 //                                          autentica con el token del pase)
 //   /api/manifest  /api/negocios           manifest PWA y directorio
 //   /api/tarjeta/<serial>                  la tarjeta web se pone al día sola
+//   /p/<serial>/datos                      "Tu tarjeta y tus datos": promos, descargar
+//   /api/tarjeta/<serial>/datos            y borrar. Sin login, pero con la llave del
+//                                          pase o la cookie del tap (lib/gestion.js)
 //   /api/push/<serial>                     el cliente activa los avisos en Android
 //   /api/google/guardar/<serial>           "Añadir a Google Wallet"
 //   /api/imagen/<tipo>                     iconos y banda: los descargan Google
@@ -41,12 +44,14 @@ const PUBLICAS = [
   /^\/api\/logout$/,
   /^\/api\/tap$/,
   /^\/p\/[^/]+$/,
+  /^\/p\/[^/]+\/datos$/,
   /^\/api\/pase\/[^/]+$/,
   /^\/api\/wallet(\/.*)?$/,
   /^\/api\/manifest$/,
   /^\/api\/negocios$/,
   /^\/api\/salud$/,
   /^\/api\/tarjeta\/[^/]+$/,
+  /^\/api\/tarjeta\/[^/]+\/datos$/,
   /^\/api\/push\/[^/]+$/,
   /^\/api\/google\/guardar\/[^/]+$/,
   /^\/api\/imagen\/[^/]+$/,
@@ -84,6 +89,10 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   // El logo propio de una tienda: verlo es público (la tarjeta web, el icono de
   // la app); subir uno es del manager.
   if (pathname === "/api/logo") return method === "GET" ? { tipo: "publica" } : { tipo: "negocio", slug: b, rol: "manager" };
+  // Igual las fotos de la banda y los iconos que sube la tienda: verlos, cualquiera
+  // (la tarjeta web pinta su banda); su lista, subir y quitar, solo el manager.
+  if (pathname === "/api/fondo") return method === "GET" ? { tipo: "publica" } : { tipo: "negocio", slug: b, rol: "manager" };
+  if (pathname === "/api/propios") return { tipo: "negocio", slug: b, rol: "manager" };
   if (pathname === "/api/negocio") {
     return { tipo: "negocio", slug: b, rol: method === "GET" ? "caja" : "manager" };
   }

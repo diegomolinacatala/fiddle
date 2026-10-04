@@ -24,7 +24,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -181,6 +181,15 @@ function fusionarConfig(actual, patch) {
     contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
     estadoPase: patch.estadoPase !== undefined ? patch.estadoPase : actual.estadoPase,
+    // Quién es la tienda ante la ley (lib/legal.js): lo pone el admin, lo lee /privacidad.
+    legal: patch.legal !== undefined ? patch.legal : actual.legal,
+    // Cuándo se archivó: a los DIAS_BAJA_TIENDA se borra sola (lib/limpieza.js).
+    archivadoEn: patch.archivadoEn !== undefined ? patch.archivadoEn : actual.archivadoEn,
+    // Automáticos y programados encendidos para esta tienda: solo lo cambia el admin.
+    avisosAvanzados: patch.avisosAvanzados ?? actual.avisosAvanzados,
+    // «Enviar a las…» (lib/envios.js) y lo que la tienda ha subido (lib/propios.js).
+    enviosProgramados: patch.enviosProgramados ?? actual.enviosProgramados,
+    propios: patch.propios ?? actual.propios,
   };
   return config;
 }
@@ -210,55 +219,66 @@ export async function saveNegocio(slug, patch) {
   });
 }
 
-// ---------------------------------------------------------- logos propios
-// La imagen que sube una tienda para su logo (lib/logoImagen.js la prepara).
-// En Supabase va a Storage, a un cubo PRIVADO que se crea solo la primera vez:
-// la sirve /api/logo, así que no hace falta que sea público ni tocar la consola.
-// En la demo, un fichero en .data/logos/.
+// ---------------------------------------------------------- imágenes propias
+// Lo que sube una tienda para su tarjeta: el logo (lib/logoImagen.js), sus
+// iconos y las fotos de la banda (lib/propios.js), ya preparados. En Supabase
+// van a Storage, a un cubo PRIVADO que se crea solo la primera vez: los sirven
+// /api/logo y /api/fondo, así que no hace falta que sea público ni tocar la
+// consola. En la demo, un fichero en .data/logos/.
 const CUBO_LOGOS = "logos";
-const rutaLogo = (slug, id) => `${slug}/${id}.png`;
+const EXTENSIONES = { png: "image/png", jpg: "image/jpeg" };
+const rutaImagen = (slug, id, ext) => `${slug}/${id}.${ext}`;
+const imagenValida = (slug, id, ext) => esSlug(slug) && /^[0-9a-f]{16,64}$/.test(id) && Object.hasOwn(EXTENSIONES, ext);
 
-/** Guarda la imagen ya preparada (PNG). Si ya existía la misma, no pasa nada. */
-export async function guardarLogo(slug, id, png) {
-  if (!esSlug(slug) || !/^[0-9a-f]{16,64}$/.test(id)) throw new Error("Logo no válido");
+/** Guarda una imagen ya preparada. Si ya existía la misma, no pasa nada. */
+export async function guardarImagen(slug, id, datos, ext = "png") {
+  if (!imagenValida(slug, id, ext)) throw new Error("Imagen no válida");
   if (hasSupabase()) {
     const almacen = supa().storage;
-    const subir = () => almacen.from(CUBO_LOGOS).upload(rutaLogo(slug, id), png, { contentType: "image/png", upsert: true });
+    const subir = () => almacen.from(CUBO_LOGOS).upload(rutaImagen(slug, id, ext), datos, { contentType: EXTENSIONES[ext], upsert: true });
     let { error } = await subir();
     if (error && /bucket not found|not found/i.test(error.message || "")) {
       const creado = await almacen.createBucket(CUBO_LOGOS, { public: false });
       if (creado.error && !/already exists/i.test(creado.error.message || "")) throw new Error(`Supabase crear cubo de logos: ${creado.error.message}`);
       ({ error } = await subir());
     }
-    if (error) throw new Error(`Supabase subir logo: ${error.message}`);
+    if (error) throw new Error(`Supabase subir imagen: ${error.message}`);
     return;
   }
   const dir = path.join(dataDir(), "logos");
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, `${slug}-${id}.png`), png);
+  await fs.writeFile(path.join(dir, `${slug}-${id}.${ext}`), datos);
 }
 
 /** La imagen guardada, o null si no está. */
-export async function leerLogo(slug, id) {
-  if (!esSlug(slug) || !/^[0-9a-f]{16,64}$/.test(id)) return null;
+export async function leerImagen(slug, id, ext = "png") {
+  if (!imagenValida(slug, id, ext)) return null;
   if (hasSupabase()) {
-    const { data, error } = await supa().storage.from(CUBO_LOGOS).download(rutaLogo(slug, id));
+    const { data, error } = await supa().storage.from(CUBO_LOGOS).download(rutaImagen(slug, id, ext));
     if (error) {
       if (/not found|object not found/i.test(error.message || "") || error.statusCode === "404") return null;
-      throw new Error(`Supabase leer logo: ${error.message}`);
+      throw new Error(`Supabase leer imagen: ${error.message}`);
     }
     return Buffer.from(await data.arrayBuffer());
   }
   try {
-    return await fs.readFile(path.join(dataDir(), "logos", `${slug}-${id}.png`));
+    return await fs.readFile(path.join(dataDir(), "logos", `${slug}-${id}.${ext}`));
   } catch (e) {
     if (e.code === "ENOENT") return null;
     throw e;
   }
 }
 
-/** Archiva (o desarchiva) un negocio: desaparece de todo, pero no se pierde nada. */
-export const archivarNegocio = (slug, archivado = true) => saveNegocio(slug, { archivado });
+/** El logo propio (PNG): como siempre. */
+export const guardarLogo = (slug, id, png) => guardarImagen(slug, id, png, "png");
+export const leerLogo = (slug, id) => leerImagen(slug, id, "png");
+
+/**
+ * Archiva (o desarchiva) un negocio: desaparece de todo, pero no se pierde nada
+ * todavía. La fecha es la cuenta atrás del borrado (lib/limpieza.js).
+ */
+export const archivarNegocio = (slug, archivado = true) =>
+  saveNegocio(slug, { archivado, archivadoEn: archivado ? ahoraISO() : null });
 
 /**
  * Borra un negocio PARA SIEMPRE, con sus clientes y su historial. No se puede
@@ -266,13 +286,20 @@ export const archivarNegocio = (slug, archivado = true) => saveNegocio(slug, { a
  * @returns {Promise<{borrados:number}>} clientes eliminados
  */
 export async function borrarNegocio(slug) {
-  const clientes = await listClientes(slug);
-  const seriales = clientes.map((c) => c.serial);
+  // TODAS sus tarjetas, también las fusionadas y las que esperan a borrarse:
+  // listClientes las esconde, pero sus filas y su historial siguen ahí.
+  const seriales = await serialesDeNegocio(slug);
+
+  // Los teléfonos que tenían tarjetas de esta tienda: los que se queden sin
+  // ningún pase se borran al final, con su push token.
+  const dispositivos = await dispositivosDeNegocio(slug, seriales);
 
   if (hasSupabase()) {
     const db = supa();
     // `registros` cae solo por la FK; los eventos van por serial, sin FK.
-    if (seriales.length) sinError(await db.from("eventos").delete().in("serial", seriales), "borrar eventos");
+    for (const lote of enLotes(seriales)) sinError(await db.from("eventos").delete().in("serial", lote), "borrar eventos");
+    sinError(await db.from("eventos").delete().eq("negocio", slug), "borrar eventos del negocio");
+    sinError(await db.from("registros").delete().eq("negocio", slug), "borrar registros");
     sinError(await db.from("campanas").delete().eq("negocio", slug), "borrar campañas");
     sinError(await db.from("tarjetas_de_dispositivo").delete().eq("negocio", slug), "borrar tarjetas de dispositivo");
     sinError(await db.from("accesos").delete().eq("negocio", slug), "borrar accesos");
@@ -280,6 +307,7 @@ export async function borrarNegocio(slug) {
     sinError(await db.from("tutoriales").delete().eq("negocio", slug), "borrar tutoriales");
     sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
     sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
+    await borrarDispositivosSinRegistros(dispositivos);
     return { borrados: seriales.length };
   }
   return enFila(async () => {
@@ -289,7 +317,7 @@ export async function borrarNegocio(slug) {
 
     const todos = await leer("clientes", {});
     await escribir("clientes", Object.fromEntries(Object.entries(todos).filter(([, c]) => c.negocio !== slug)));
-    await escribir("eventos", (await leer("eventos", [])).filter((e) => !seriales.includes(e.serial)));
+    await escribir("eventos", (await leer("eventos", [])).filter((e) => !seriales.includes(e.serial) && e.negocio !== slug));
 
     const registros = await leer("registros", []);
     await escribir("registros", registros.filter((r) => !seriales.includes(r.serial) && r.negocio !== slug));
@@ -302,14 +330,68 @@ export async function borrarNegocio(slug) {
       const filas = await leer(tabla, {});
       await escribir(tabla, Object.fromEntries(Object.entries(filas).filter(([, f]) => f.negocio !== slug)));
     }
+    await quitarDispositivosSinRegistros(dispositivos);
     return { borrados: seriales.length };
   });
+}
+
+async function serialesDeNegocio(slug) {
+  if (hasSupabase()) {
+    return (sinError(await supa().from("clientes").select("serial").eq("negocio", slug), "leer tarjetas del negocio") || []).map((c) => c.serial);
+  }
+  return Object.values(await enFila(() => leer("clientes", {}))).filter((c) => c.negocio === slug).map((c) => c.serial);
+}
+
+// Dispositivos con algún registro de esta tienda (por negocio o por sus seriales).
+async function dispositivosDeNegocio(slug, seriales) {
+  const mios = new Set(seriales);
+  if (hasSupabase()) {
+    const filas = sinError(await supa().from("registros").select("dispositivo").eq("negocio", slug), "leer dispositivos del negocio") || [];
+    for (const lote of enLotes(seriales)) {
+      filas.push(...(sinError(await supa().from("registros").select("dispositivo").in("serial", lote), "leer dispositivos de las tarjetas") || []));
+    }
+    return [...new Set(filas.map((r) => r.dispositivo))];
+  }
+  const registros = await enFila(() => leer("registros", []));
+  return [...new Set(registros.filter((r) => r.negocio === slug || mios.has(r.serial)).map((r) => r.dispositivo))];
+}
+
+/**
+ * Borra, de estos dispositivos, los que ya no tienen ningún registro. Un iPhone
+ * sin pases no tiene por qué dejar aquí su push token: `registros` cae en
+ * cascada al borrar un cliente, `dispositivos` no.
+ */
+export async function borrarDispositivosSinRegistros(ids) {
+  if (!ids.length) return 0;
+  if (hasSupabase()) {
+    const db = supa();
+    const conRegistro = new Set();
+    for (const lote of enLotes(ids)) {
+      for (const r of sinError(await db.from("registros").select("dispositivo").in("dispositivo", lote), "leer registros vivos") || []) {
+        conRegistro.add(r.dispositivo);
+      }
+    }
+    const fuera = ids.filter((id) => !conRegistro.has(id));
+    for (const lote of enLotes(fuera)) sinError(await db.from("dispositivos").delete().in("id", lote), "borrar dispositivos huérfanos");
+    return fuera.length;
+  }
+  return enFila(() => quitarDispositivosSinRegistros(ids));
+}
+
+// Lo mismo en ficheros, ya dentro de la fila (enFila no se puede anidar).
+async function quitarDispositivosSinRegistros(ids) {
+  const vivos = new Set((await leer("registros", [])).map((r) => r.dispositivo));
+  const dispositivos = await leer("dispositivos", {});
+  const fuera = ids.filter((id) => !vivos.has(id) && dispositivos[id]);
+  if (fuera.length) await escribir("dispositivos", Object.fromEntries(Object.entries(dispositivos).filter(([id]) => !fuera.includes(id))));
+  return fuera.length;
 }
 
 // ============================ CLIENTES ============================
 const CAMPOS_CLIENTE =
   "serial, negocio, codigo, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
-  "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en";
+  "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en, " +
+  "promos_no, aviso_version, borrado_en";
 
 // Datos personales de un cliente: van cifrados en la base (lib/cifrado.js). Se
 // cifran al guardarlos y se descifran aquí, al leer: lo demás del código los ve
@@ -349,6 +431,11 @@ function normalizarCliente(c) {
         origen: c.origen ?? null,
         mensaje: c.mensaje ?? null,
         nota: descifrarCampo(c, "nota"),
+        // RGPD: cuándo dijo que no a las promos (null = las recibe), qué aviso de
+        // privacidad vio al darse de alta y si se pidió borrarla (docs/RGPD.md).
+        promos_no: c.promos_no ?? null,
+        aviso_version: c.aviso_version ?? null,
+        borrado_en: c.borrado_en ?? null,
       }
     : null;
 }
@@ -364,6 +451,7 @@ export const clientePublico = (c) =>
     visitas: c.visitas ?? 0, ultima_visita: c.ultima_visita ?? null,
     instalado: c.instalado ?? null, desinstalado: c.desinstalado ?? null,
     origen: c.origen ?? null, mensaje: c.mensaje ?? null, nota: c.nota ?? null,
+    promos_no: c.promos_no ?? null, borrado_en: c.borrado_en ?? null,
   };
 
 /**
@@ -372,7 +460,7 @@ export const clientePublico = (c) =>
  *   mostrador). Responde a "¿de dónde vienen mis clientes?" sin preguntárselo.
  *   `nombre`: el que escribe el cliente al sacarla. Se guarda cifrado, como siempre.
  */
-export async function crearCliente({ serial, negocio, authToken, origen = null, nombre = null }) {
+export async function crearCliente({ serial, negocio, authToken, origen = null, nombre = null, avisoVersion = null }) {
   const ts = ahoraISO();
   const base = {
     serial, negocio, auth_token: authToken,
@@ -380,6 +468,7 @@ export async function crearCliente({ serial, negocio, authToken, origen = null, 
     nombre: cifrarCampo(serial, "nombre", nombre), actualizado: ts, creado: ts,
     visitas: 0, ultima_visita: null, instalado: null, desinstalado: null,
     origen, mensaje: null, nota: null,
+    promos_no: null, aviso_version: avisoVersion, borrado_en: null,
   };
   // El código corto solo tiene que ser único DENTRO del negocio: se mira qué
   // códigos tiene ya esta tienda, no la plataforma entera.
@@ -502,14 +591,16 @@ export async function listClientes(negocio, { limite } = {}) {
   if (hasSupabase()) {
     // Las tarjetas fusionadas en otra (ver unaTarjeta.js) ya no son clientes:
     // su historial y sus sellos viven en la que las sustituyó.
-    let q = supa().from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).order("creado", { ascending: false });
+    // Tampoco las que se pidió borrar: esperan a la pasada diaria, ya vacías.
+    let q = supa().from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).is("borrado_en", null)
+      .order("creado", { ascending: false });
     if (negocio) q = q.eq("negocio", negocio);
     if (limite) q = q.limit(limite);
     return (sinError(await q, "listar clientes") || []).map(normalizarCliente);
   }
   const all = await enFila(() => leer("clientes", {}));
   const lista = Object.values(all)
-    .filter((c) => (!negocio || c.negocio === negocio) && !c.fusionado_en)
+    .filter((c) => (!negocio || c.negocio === negocio) && !c.fusionado_en && !c.borrado_en)
     .sort((a, b) => (b.creado || "").localeCompare(a.creado || ""))
     .map(normalizarCliente);
   return limite ? lista.slice(0, limite) : lista;
@@ -705,13 +796,14 @@ export async function marcarInstalacion(serial, dentro) {
 export async function guardarMensajes(seriales, texto) {
   if (!seriales.length) return 0;
   const patch = { mensaje: texto || null, actualizado: ahoraISO() };
+  // Un mensaje de la tienda es una promo: a quien dijo que no, nunca. Quien
+  // llama ya los ha quitado (para contar bien a quién llega); esto es la red.
   if (hasSupabase()) {
     let n = 0;
     for (const lote of enLotes(seriales)) {
-      const filas = sinError(
-        await supa().from("clientes").update(patch).in("serial", lote).select("serial"),
-        "guardar mensajes",
-      );
+      let q = supa().from("clientes").update(patch).in("serial", lote);
+      if (texto) q = q.is("promos_no", null).is("borrado_en", null);
+      const filas = sinError(await q.select("serial"), "guardar mensajes");
       n += filas?.length ?? 0;
     }
     return n;
@@ -722,6 +814,7 @@ export async function guardarMensajes(seriales, texto) {
     let n = 0;
     for (const serial of seriales) {
       if (!nuevos[serial]) continue;
+      if (texto && (nuevos[serial].promos_no || nuevos[serial].borrado_en)) continue;
       nuevos[serial] = { ...nuevos[serial], ...patch };
       n += 1;
     }
@@ -746,6 +839,225 @@ export async function guardarNota(serial, nota) {
     await escribir("clientes", { ...all, [serial]: { ...all[serial], ...patch } });
     return true;
   });
+}
+
+/**
+ * ¿Recibe promos? Es la casilla del soft opt-in (LSSI 21.2): de partida sí, y
+ * decir que no lo puede el cliente (su página) o la tienda (la ficha). Dejarlas
+ * quita también el mensaje que tenga puesto: era una promo. Marca `actualizado`
+ * para que el pase se ponga al día (en silencio: un campo que desaparece no suena).
+ * @returns {Promise<boolean>} true si existía
+ */
+export async function guardarPromos(serial, quiere) {
+  const ts = ahoraISO();
+  const patch = quiere ? { promos_no: null, actualizado: ts } : { promos_no: ts, mensaje: null, actualizado: ts };
+  if (hasSupabase()) {
+    const filas = sinError(
+      await supa().from("clientes").update(patch).eq("serial", serial).is("borrado_en", null).select("serial"),
+      "guardar promos",
+    );
+    return (filas?.length ?? 0) > 0;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    if (!all[serial] || all[serial].borrado_en) return false;
+    await escribir("clientes", { ...all, [serial]: { ...all[serial], ...patch } });
+    return true;
+  });
+}
+
+// ------------------------------------------------- borrar a un cliente
+// En DOS tiempos (docs/RGPD.md, 3.3). Apple baja el pase nuevo DESPUÉS del aviso:
+// si la fila ya no estuviera, la tarjeta se quedaría congelada en el teléfono
+// con pinta de válida. Así que primero se vacía y se anula (el pase sale
+// `voided`), y la fila cae al día siguiente, en la pasada diaria.
+
+/**
+ * Primer tiempo: sin nombre, nota ni mensaje, saldo a cero y `borrado_en`. Ya
+ * no es un cliente para nadie (listClientes, la caja, el tap, /p).
+ * @returns {Promise<boolean>} true si se borró ahora (false: no existe o ya lo estaba)
+ */
+export async function marcarBorrado(serial) {
+  const ts = ahoraISO();
+  const patch = { borrado_en: ts, actualizado: ts, nombre: null, nota: null, mensaje: null };
+  for (const k of SALDO) patch[k] = 0;
+  if (hasSupabase()) {
+    const filas = sinError(
+      await supa().from("clientes").update(patch).eq("serial", serial).is("borrado_en", null).select("serial"),
+      "borrar cliente",
+    );
+    return (filas?.length ?? 0) > 0;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    if (!all[serial] || all[serial].borrado_en) return false;
+    await escribir("clientes", { ...all, [serial]: { ...all[serial], ...patch } });
+    return true;
+  });
+}
+
+/** Clientes marcados como borrados antes de `antesDe` (ISO): los que ya pueden caer. */
+export async function borradosPendientes(antesDe) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("clientes").select("serial, negocio").not("borrado_en", "is", null).lt("borrado_en", antesDe),
+      "leer borrados pendientes",
+    ) || [];
+  }
+  const all = await enFila(() => leer("clientes", {}));
+  return Object.values(all).filter((c) => c.borrado_en && c.borrado_en < antesDe).map(({ serial, negocio }) => ({ serial, negocio }));
+}
+
+/**
+ * Segundo tiempo: la fila de verdad. Con ella caen las tarjetas que se fusionaron
+ * en esta (su historial ya vive aquí), sus eventos, sus registros (en cascada),
+ * los teléfonos que se queden sin ningún pase y lo que recordaba qué iPhone
+ * tuvo esta tarjeta. Los seriales que queden en `campanas` ya no apuntan a nadie.
+ * @returns {Promise<number>} tarjetas borradas (la suya y sus fusionadas)
+ */
+export async function purgarCliente(serial) {
+  if (hasSupabase()) {
+    const db = supa();
+    const fusionadas = sinError(await db.from("clientes").select("serial").eq("fusionado_en", serial), "leer fusionadas") || [];
+    const seriales = [serial, ...fusionadas.map((f) => f.serial)];
+    const dispositivos = [...new Set((sinError(await db.from("registros").select("dispositivo").in("serial", seriales), "leer registros del cliente") || []).map((r) => r.dispositivo))];
+    sinError(await db.from("eventos").delete().in("serial", seriales), "borrar eventos del cliente");
+    sinError(await db.from("tarjetas_de_dispositivo").delete().in("serial", seriales), "borrar tarjetas de dispositivo");
+    const filas = sinError(await db.from("clientes").delete().in("serial", seriales).select("serial"), "borrar fila del cliente");
+    await borrarDispositivosSinRegistros(dispositivos);
+    return filas?.length ?? 0;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const seriales = new Set([serial, ...Object.values(all).filter((c) => c.fusionado_en === serial).map((c) => c.serial)]);
+    const quedan = Object.fromEntries(Object.entries(all).filter(([k]) => !seriales.has(k)));
+    await escribir("clientes", quedan);
+    await escribir("eventos", (await leer("eventos", [])).filter((e) => !seriales.has(e.serial)));
+    const registros = await leer("registros", []);
+    const dispositivos = [...new Set(registros.filter((r) => seriales.has(r.serial)).map((r) => r.dispositivo))];
+    await escribir("registros", registros.filter((r) => !seriales.has(r.serial)));
+    const tarjetas = await leer("tarjetas_de_dispositivo", {});
+    await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => !seriales.has(t.serial))));
+    await quitarDispositivosSinRegistros(dispositivos);
+    return Object.keys(all).length - Object.keys(quedan).length;
+  });
+}
+
+/**
+ * Clientes sin ninguna actividad desde `antesDe` (ISO): ni alta, ni visita, ni
+ * instalación. El plazo de conservación (lib/limpieza.js) los borra.
+ */
+export async function clientesSinUso(antesDe) {
+  const viejo = (f) => !f || Date.parse(f) < Date.parse(antesDe);
+  if (hasSupabase()) {
+    // Lo viejo por alta se filtra en SQL; visita e instalación, aquí (dos `or` no se combinan bien).
+    const filas = sinError(
+      await supa().from("clientes").select("serial, negocio, creado, ultima_visita, instalado")
+        .is("borrado_en", null).is("fusionado_en", null).lt("creado", antesDe),
+      "leer clientes sin uso",
+    ) || [];
+    return filas.filter((c) => viejo(c.ultima_visita) && viejo(c.instalado)).map(({ serial, negocio }) => ({ serial, negocio }));
+  }
+  const all = await enFila(() => leer("clientes", {}));
+  return Object.values(all)
+    .filter((c) => !c.borrado_en && !c.fusionado_en && viejo(c.creado) && viejo(c.ultima_visita) && viejo(c.instalado))
+    .map(({ serial, negocio }) => ({ serial, negocio }));
+}
+
+/** Historial más viejo que `antesDe` (ISO): fuera. @returns {Promise<number|null>} */
+export async function recortarEventos(antesDe) {
+  if (hasSupabase()) {
+    sinError(await supa().from("eventos").delete().lt("ts", antesDe), "recortar eventos");
+    return null;
+  }
+  return enFila(async () => {
+    const all = await leer("eventos", []);
+    const quedan = all.filter((e) => !(e.ts < antesDe));
+    await escribir("eventos", quedan);
+    return all.length - quedan.length;
+  });
+}
+
+/**
+ * "Este iPhone tuvo esta tarjeta" sirve para devolverle los sellos si la vuelve
+ * a añadir; no para siempre. Lo que no se ha visto desde `antesDe`, fuera.
+ */
+export async function recortarTarjetasDeDispositivo(antesDe) {
+  if (hasSupabase()) {
+    sinError(await supa().from("tarjetas_de_dispositivo").delete().lt("visto", antesDe), "recortar tarjetas de dispositivo");
+    return;
+  }
+  return enFila(async () => {
+    const all = await leer("tarjetas_de_dispositivo", {});
+    await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(all).filter(([, t]) => !(t.visto < antesDe))));
+  });
+}
+
+/**
+ * Por qué canales tiene la tarjeta (Apple, Google, navegador) y desde cuándo.
+ * Nunca los tokens: es lo que va en "Descargar sus datos".
+ * @returns {Promise<{canal:string, desde:string|null}[]>}
+ */
+export async function canalesDeTarjeta(serial) {
+  const canal = (t) => (t === "web" ? "navegador" : t === "google" ? "Google Wallet" : "Apple Wallet");
+  if (hasSupabase()) {
+    const filas = sinError(await supa().from("registros").select("pass_type, creado").eq("serial", serial), "leer canales") || [];
+    return filas.map((r) => ({ canal: canal(r.pass_type), desde: r.creado ?? null }));
+  }
+  const registros = await enFila(() => leer("registros", []));
+  return registros.filter((r) => r.serial === serial).map((r) => ({ canal: canal(r.pass_type), desde: r.creado ?? null }));
+}
+
+// ------------------------------------------------- constancia y auditoría
+// `borrados`: lo que queda de un borrado, sin nada personal (el certificado que
+// pide el contrato). `auditoria`: quién hizo qué fuera de las tarjetas.
+
+/** @param {{negocio:string, tipo:"cliente"|"tienda", motivo:string, rol?:string|null, cuantos?:number}} b */
+export async function registrarBorrado({ negocio, tipo, motivo, rol = null, cuantos = 1 }) {
+  const fila = { negocio, tipo, motivo, rol, cuantos };
+  if (hasSupabase()) {
+    sinError(await supa().from("borrados").insert(fila), "apuntar borrado");
+    return;
+  }
+  return enFila(async () => {
+    const all = await leer("borrados", []);
+    await escribir("borrados", [...all, { ...fila, id: (all.at(-1)?.id ?? 0) + 1, ts: ahoraISO() }]);
+  });
+}
+
+/** Borrados de una tienda (o de todas), los últimos primero. */
+export async function listBorrados(negocio = null, { limite = 50 } = {}) {
+  if (hasSupabase()) {
+    let q = supa().from("borrados").select("negocio, tipo, motivo, rol, cuantos, ts");
+    if (negocio) q = q.eq("negocio", negocio);
+    return sinError(await q.order("ts", { ascending: false }).limit(limite), "listar borrados") || [];
+  }
+  const all = await enFila(() => leer("borrados", []));
+  return all.filter((b) => !negocio || b.negocio === negocio).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, limite);
+}
+
+/** @param {{negocio?:string|null, usuario?:string|null, rol?:string|null, accion:string, detalle?:string|null}} a */
+export async function addAuditoria({ negocio = null, usuario = null, rol = null, accion, detalle = null }) {
+  const fila = { negocio, usuario, rol, accion, detalle };
+  if (hasSupabase()) {
+    sinError(await supa().from("auditoria").insert(fila), "apuntar auditoría");
+    return;
+  }
+  return enFila(async () => {
+    const all = await leer("auditoria", []);
+    await escribir("auditoria", [...all, { ...fila, id: (all.at(-1)?.id ?? 0) + 1, ts: ahoraISO() }]);
+  });
+}
+
+/** Lo último que pasó en una tienda (o en todas), los más recientes primero. */
+export async function listAuditoria(negocio = null, { limite = 100 } = {}) {
+  if (hasSupabase()) {
+    let q = supa().from("auditoria").select("ts, negocio, usuario, rol, accion, detalle");
+    if (negocio) q = q.eq("negocio", negocio);
+    return sinError(await q.order("ts", { ascending: false }).limit(limite), "listar auditoría") || [];
+  }
+  const all = await enFila(() => leer("auditoria", []));
+  return all.filter((a) => !negocio || a.negocio === negocio).sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, limite);
 }
 
 // ------------------------------------------------- datos de antes del cifrado
@@ -1327,6 +1639,19 @@ export async function ultimoIntento(clave) {
   }
   const all = await enFila(() => leer("intentos", []));
   return all.filter((i) => i.clave === clave).map((i) => i.ts).sort().at(-1) ?? null;
+}
+
+/** Intentos de cualquier clave que empiece por `prefijo` ("login:"): las alertas. */
+export async function contarIntentosPorPrefijo(prefijo, desdeMs) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("intentos").select("clave", { count: "exact", head: true })
+        .like("clave", `${prefijo}%`).gt("ts", new Date(desdeMs).toISOString()),
+      "contar intentos por prefijo",
+    ) || 0;
+  }
+  const all = await enFila(() => leer("intentos", []));
+  return all.filter((i) => i.clave.startsWith(prefijo) && Date.parse(i.ts) > desdeMs).length;
 }
 
 export async function contarIntentos(clave, desdeMs) {

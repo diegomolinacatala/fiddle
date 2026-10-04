@@ -21,8 +21,13 @@ import { enlacesDeContacto } from "../contacto";
 //
 // Los MENSAJES son lo único delicado. Para que el teléfono SUENE hay que
 // añadirlos con addMessage (tipo TEXT_AND_NOTIFY); si además fueran en el PUT
-// saldrían repetidos. Por eso `conMensajes: false` construye la versión sin
-// ellos, que es la que se manda justo antes de un addMessage.
+// saldrían repetidos. Por eso `sin: "<id>"` construye la versión sin ese, que
+// es la que se manda justo antes de su addMessage (y `conMensajes: false`, sin
+// ninguno).
+//
+// Los mensajes van en el OBJETO, nunca en la clase: la promo y el "Para ti" son
+// promos, y quien dijo que no (`promos_no`) no recibe ninguna. Un mensaje de la
+// clase llegaría a todas las tarjetas de la tienda.
 // ============================================================================
 
 export const TIPO_GOOGLE = "google";
@@ -51,9 +56,8 @@ export function fondoGoogle(tema) {
 /**
  * @param {object} negocio  getNegocio()
  * @param {{issuerId:string, appUrl:string}} opciones
- * @param {{conMensajes?: boolean}} [modo]
  */
-export function construirClase(negocio, { issuerId, appUrl }, { conMensajes = true } = {}) {
+export function construirClase(negocio, { issuerId, appUrl }) {
   const clase = {
     id: idClase(issuerId, negocio.slug),
     issuerName: negocio.nombre,
@@ -65,7 +69,6 @@ export function construirClase(negocio, { issuerId, appUrl }, { conMensajes = tr
     // Un cliente, todos sus teléfonos. Pasarse la tarjeta a otro no tiene sentido.
     multipleDevicesAndHoldersAllowedStatus: "ONE_USER_ALL_DEVICES",
     accountIdLabel: "Código",
-    accountNameLabel: "Nombre",
     textModulesData: [
       // "Abierto hasta las 18:30": en Apple va dibujado en la banda; Google no deja
       // cambiar su imagen cada hora, así que va el PRIMERO de los detalles. Es de la
@@ -84,58 +87,79 @@ export function construirClase(negocio, { issuerId, appUrl }, { conMensajes = tr
   if (enlaces.length) {
     clase.linksModuleData = { uris: enlaces.map((e) => ({ id: e.id, uri: e.uri, description: `${e.etiqueta}: ${e.texto}` })) };
   }
-  if (conMensajes && negocio.promo) {
-    clase.messages = [{ id: "promo", header: "Promo", body: negocio.promo, messageType: "TEXT" }];
-  }
   return clase;
 }
 
 /**
  * @param {object} cliente  getCliente()
  * @param {object} negocio  getNegocio()
- * @param {{issuerId:string, appUrl:string}} opciones
- * @param {{conMensajes?: boolean}} [modo]
+ * @param {{issuerId:string, appUrl:string, enlaceDatos?:string|null}} opciones
+ *   `enlaceDatos`: "Tu tarjeta y tus datos" con su llave (lib/gestion.js, servidor)
+ * @param {{conMensajes?: boolean, sin?: string|null}} [modo]
  */
-export function construirObjeto(cliente, negocio, { issuerId, appUrl }, { conMensajes = true } = {}) {
+export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDatos = null }, { conMensajes = true, sin = null } = {}) {
   const e = estadoDe(cliente, negocio);
   const puntos = puntosDe(cliente, negocio);
   const codigo = cliente.codigo || String(cliente.serial).slice(0, 3).toUpperCase();
   // El texto del premio es el mismo campo que sale bajo la banda en Apple.
   // Con dos cartillas son dos campos ("Cookies", "Cafés") y van los dos.
-  const { secondaryFields } = camposDelPase(cliente, negocio);
-  const principales = negocio.cartillas ? secondaryFields : secondaryFields.slice(0, 1);
+  // Sin el mensaje: en Apple el PARA TI tapa los "Faltan", pero en Google el
+  // mensaje va en su sitio (messages) y los textos son siempre los de la cuenta.
+  const { primaryFields, secondaryFields, backFields } = camposDelPase({ ...cliente, mensaje: null }, negocio);
+  const principales = [
+    // El cupón: QUÉ descuento es (en Apple, el campo grande de la cara).
+    ...primaryFields,
+    ...(negocio.cartillas ? secondaryFields : secondaryFields.slice(0, 1)),
+  ];
+  // Del reverso de Apple, lo que es de ESTE cliente o de esta tarjeta y en
+  // Google no estaba: sus premios guardados (cuáles, no solo cuántos) y qué se
+  // gana con cada cartilla. "Cómo funciona" y el contacto van en la clase; el
+  // código, en accountId.
+  const delReverso = backFields.filter((f) => f.key === "guardados" || f.key === "premios" || (f.key === "como" && (cliente.borrado_en || cliente.fusionado_en)));
 
   const objeto = {
     id: idObjeto(issuerId, cliente.serial),
     classId: idClase(issuerId, negocio.slug),
     // Un cupón usado pasa a "caducados", como el pase anulado de Apple.
-    state: e.usado ? "INACTIVE" : "ACTIVE",
+    // Y una tarjeta borrada (o pasada a otra): Google la aparta igual.
+    state: e.usado || cliente.borrado_en || cliente.fusionado_en ? "INACTIVE" : "ACTIVE",
     accountId: codigo,
-    ...(cliente.nombre ? { accountName: cliente.nombre } : {}),
+    // SIN accountName, como en Apple: el nombre lo sabe él y lo ve la caja. En
+    // Google, además, se quedaría en una copia que guarda Google. Como el objeto
+    // va entero (PUT), el próximo cambio lo borra de las tarjetas que lo llevaban.
     loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },
-    // Como la cabecera del pase de Apple: un premio guardado manda sobre el
-    // contador de canjeados.
-    ...(!e.esCupon && totalGuardados(cliente) > 0
+    // Como la cabecera del pase de Apple: los premios guardados, aunque sean 0.
+    // Los canjeados de toda la vida no salen en la tarjeta.
+    ...(!e.esCupon && !cliente.borrado_en && !cliente.fusionado_en
       ? { secondaryLoyaltyPoints: { label: "Premios guardados", balance: { int: totalGuardados(cliente) } } }
-      : !e.esCupon && (cliente.premios || 0) > 0
-        ? { secondaryLoyaltyPoints: { label: "Premios", balance: { int: cliente.premios } } }
-        : {}),
+      : {}),
     barcode: { type: "QR_CODE", value: `${appUrl}/w/${cliente.serial}`, alternateText: codigo },
     heroImage: imagen(
       `${appUrl}${rutaBanda(negocio, cliente)}`,
       e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio),
     ),
-    textModulesData: principales.map((f) => ({ id: f.key, header: capitalizar(f.label), body: String(f.value) })),
+    textModulesData: [...principales, ...delReverso].map((f) => ({ id: f.key, header: capitalizar(f.label), body: String(f.value) })),
     linksModuleData: {
-      uris: [{ id: "tarjeta", uri: `${appUrl}/p/${cliente.serial}`, description: "Ver la tarjeta en el navegador" }],
+      uris: [
+        { id: "tarjeta", uri: `${appUrl}/p/${cliente.serial}`, description: "Ver la tarjeta en el navegador" },
+        // Dejar las promos, descargar sus datos o borrar la tarjeta (docs/RGPD.md, 3.5).
+        { id: "datos", uri: enlaceDatos || `${appUrl}/p/${cliente.serial}/datos`, description: "Tu tarjeta y tus datos" },
+        // El aviso de privacidad, como al final del reverso de Apple.
+        { id: "privacidad", uri: `${appUrl}/privacidad?b=${negocio.slug}`, description: "Privacidad" },
+      ],
     },
   };
 
-  // El mensaje de una campaña vive en la tarjeta hasta que el cliente vuelve (la
-  // visita lo borra, ver registrarVisita): igual que la línea "PARA TI" de Apple.
-  if (conMensajes && cliente.mensaje) {
-    objeto.messages = [{ id: "para-ti", header: "Para ti", body: cliente.mensaje, messageType: "TEXT" }];
-  }
+  // La promo de la tienda y el mensaje de una campaña (que vive en la tarjeta
+  // hasta que el cliente vuelve, ver registrarVisita): como "PROMO" y "PARA TI"
+  // en Apple. Solo a quien no dijo que no a las promos.
+  const mensajes = conMensajes && !cliente.promos_no && !cliente.borrado_en
+    ? [
+        ...(negocio.promo ? [{ id: "promo", header: "Promo", body: negocio.promo, messageType: "TEXT" }] : []),
+        ...(cliente.mensaje ? [{ id: "para-ti", header: "Para ti", body: cliente.mensaje, messageType: "TEXT" }] : []),
+      ].filter((m) => m.id !== sin)
+    : [];
+  if (mensajes.length) objeto.messages = mensajes;
   return objeto;
 }
 

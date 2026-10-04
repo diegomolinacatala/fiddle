@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
   try {
     const { serial } = await params;
     const cliente = await getCliente(serial);
-    if (!cliente) return jsonError("Cliente no encontrado", 404);
+    if (!cliente || cliente.borrado_en) return jsonError("Cliente no encontrado", 404);
     const { respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
     if (respuesta) return respuesta;
 
@@ -34,7 +34,7 @@ export async function PUT(request, { params }) {
     const body = await request.json().catch(() => ({}));
 
     const cliente = await getCliente(serial);
-    if (!cliente) return jsonError("Cliente no encontrado", 404);
+    if (!cliente || cliente.borrado_en) return jsonError("Cliente no encontrado", 404);
     const { respuesta } = await exigirNegocio(request, cliente.negocio, "caja");
     if (respuesta) return respuesta;
 

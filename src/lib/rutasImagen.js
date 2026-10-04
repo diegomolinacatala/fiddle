@@ -17,7 +17,11 @@ export const TIPOS_IMAGEN = ["icono", "insignia", "logo", "banda"];
 
 /** Huella corta del aspecto de la tienda (FNV-1a en base 36). */
 export function versionDe(negocio) {
-  const s = JSON.stringify([negocio?.nombre, negocio?.tipo, negocio?.meta, negocio?.tema, negocio?.cartillas]);
+  // `fotoBanda` es la foto ya leída (data URI), puesta al dibujar: la huella de la
+  // foto ya va en `tema.fondoFoto`, y unos cientos de KB no pintan nada aquí.
+  const { fotoBanda, ...tema } = negocio?.tema || {};
+  void fotoBanda;
+  const s = JSON.stringify([negocio?.nombre, negocio?.tipo, negocio?.meta, negocio?.tema ? tema : undefined, negocio?.cartillas]);
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);

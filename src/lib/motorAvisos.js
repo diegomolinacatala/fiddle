@@ -5,6 +5,8 @@ import {
 import { avisarSeriales, refrescarPasesApple } from "./wallet";
 import { tiendaEnGoogle } from "./googlewallet";
 import { CLAVE_RELOJ } from "./relojAvisos";
+import { enviarPendientes } from "./campanas";
+import { enviosVisibles } from "./envios";
 import { perfilDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
 import { relojLocal, estadoDeTienda, inicioDelDia } from "./horario";
 import {
@@ -57,7 +59,8 @@ async function cargarClientes(negocio, ahora) {
   const contextos = clientes.map((c) => {
     const vivo = registrados.has(c.serial);
     const conRegistro = { ...c, instalado: c.instalado || (vivo ? c.creado : null), desinstalado: vivo ? null : c.desinstalado };
-    const perfil = { ...perfilDe(conRegistro, negocio, ahora), contactable: vivo };
+    const base = perfilDe(conRegistro, negocio, ahora);
+    const perfil = { ...base, contactable: vivo, avisable: vivo && !base.sinPromos };
     return contextoDe(c, perfil, negocio, { fechas: fechas.get(c.serial), hoy });
   });
   return { clientes, contextos, eventos };
@@ -123,9 +126,13 @@ export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = 
   // horario: una tienda que nadie ha configurado (o una de prueba) no puede
   // empezar a avisar a sus clientes por un despliegue, ni a cualquier hora. A
   // mano ("Enviar ahora") sí, porque lo pide el manager.
-  const solos = negocio.avisosActivos && negocio.horario;
-  const tocan = soloRegla
-    ? reglas.filter((r) => r.id === soloRegla)
+  //
+  // Y por encima de todo, `avisosAvanzados` (lo enciende el admin): apagado, ni
+  // automáticos ni programados salen, tampoco a mano. No basta con esconder las
+  // pestañas: una regla encendida antes de apagarlos seguiría sonando.
+  const solos = negocio.avisosAvanzados && negocio.avisosActivos && negocio.horario;
+  const tocan = !negocio.avisosAvanzados ? []
+    : soloRegla ? reglas.filter((r) => r.id === soloRegla)
     : solos ? reglas.filter((r) => r.activa && tocaAhora(r, negocio.horario, reloj)) : [];
   const resultado = { negocio: negocio.slug, retirados: 0, envios: [] };
 
@@ -185,6 +192,12 @@ export async function repasarTodas({ ahora = Date.now() } = {}) {
   for (const negocio of await listNegocios()) {
     try {
       const r = await repasarNegocio(negocio, { ahora });
+      // Lo que «Enviar a las…» dejó para ahora (lib/campanas.js). No depende de
+      // `avisosAvanzados`: es un envío a mano, solo que con hora.
+      r.programados = await enviarPendientes(negocio, ahora).catch((e) => {
+        console.error(`[avisos] ${negocio.slug}: no se pudieron mandar los envíos a una hora:`, e);
+        return [{ error: String(e?.message || e) }];
+      });
       r.estadoPase = await refrescarEstadoDelPase(negocio, ahora).catch((e) => {
         console.error(`[avisos] ${negocio.slug}: no se pudo poner al día el estado del pase:`, e);
         return null;
@@ -223,7 +236,10 @@ export async function datosAvisos(slug, ahora = Date.now()) {
       cartillas: negocio.cartillas ?? null, tema: negocio.tema, promo: negocio.promo,
       horario: negocio.horario, automatizaciones: reglas, pausaAvisos: negocio.pausaAvisos,
       avisosActivos: negocio.avisosActivos, limiteAvisosDia: negocio.limiteAvisosDia,
+      avisosAvanzados: negocio.avisosAvanzados,
     },
+    // Lo que espera a su hora (Enviar → «Enviar a las…»).
+    pendientes: enviosVisibles(negocio.enviosProgramados),
     contextos,
     envios: { porRegla: [...envios.porRegla], ultimo: [...envios.ultimo], veces: [...envios.veces] },
     inicioHoy: topesDe(negocio, ahora).inicioHoy,
@@ -234,7 +250,8 @@ export async function datosAvisos(slug, ahora = Date.now()) {
     grupos: conteoGrupos(contextos.map((x) => x.perfil)),
     catalogoGrupos: LISTA_GRUPOS,
     total: contextos.length,
-    contactables: contextos.filter((x) => x.perfil.contactable).length,
+    // A quién le llegaría algo: con la tarjeta en el teléfono y sin decir que no a las promos.
+    contactables: contextos.filter((x) => x.perfil.avisable).length,
     historial: campanas.slice(0, 40).map((c) => ({
       id: c.id, grupo: c.grupo, etiqueta: etiquetaEnvio(c.grupo, reglas), automatico: c.grupo.startsWith("auto:"),
       texto: c.texto, creado: c.creado, destinatarios: c.destinatarios, avisados: c.avisados,

@@ -30,10 +30,11 @@ export default function Exportar({ cuantos, queContiene, accent, onDescargar }) 
             Se abre con <strong>Excel</strong>, Numbers o Google Sheets.
           </p>
           <p style={parrafo}>
-            También puedes subirla a una IA (ChatGPT, Claude…) y preguntarle, por ejemplo,
-            «¿qué clientes han dejado de venir?».
+            Para preguntarle a una IA (ChatGPT, Claude…) «¿qué clientes han dejado de venir?»,
+            <strong> borra antes las columnas de nombre y nota</strong>: con ellas, subirla es
+            pasarle a otra empresa datos de tus clientes.
           </p>
-          <p style={{ ...parrafo, color: C.tenue }}>Lleva nombres y notas de clientes: no la compartas.</p>
+          <p style={{ ...parrafo, color: C.tenue }}>Lleva nombres y notas de clientes: no la compartas. Queda apuntado que la descargaste.</p>
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button type="button" onClick={() => { onDescargar(); setAbierto(false); }} style={{ ...botonPrimario(accent), padding: "0.5rem 0.95rem" }}>
               Descargar

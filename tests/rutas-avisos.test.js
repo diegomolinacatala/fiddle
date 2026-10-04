@@ -24,6 +24,8 @@ beforeEach(() => {
   vi.stubEnv("APPLE_PASS_TYPE_ID", "");
   vi.mocked(notificarNegocio).mockClear();
 });
+// Los automáticos y programados solo se tocan si el admin los ha encendido.
+const permitir = () => store.saveNegocio("delicanteria", { avisosAvanzados: true });
 afterEach(() => {
   vi.unstubAllEnvs();
   rmSync(dir, { recursive: true, force: true });
@@ -65,6 +67,7 @@ describe("/api/automatizaciones", () => {
   });
 
   it("guardar valida, guarda y no toca los pases", async () => {
+    await permitir();
     const { automatizaciones } = await store.getNegocio("delicanteria");
     const mal = await autos.PUT(await pedir("/api/automatizaciones?b=delicanteria", {
       metodo: "PUT", cuerpo: { automatizaciones: [{ ...automatizaciones[0], texto: "Hola {premo}" }] },
@@ -84,6 +87,7 @@ describe("/api/automatizaciones", () => {
   });
 
   it("enviar ahora: solo reglas guardadas", async () => {
+    await permitir();
     const no = await autos.POST(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "POST", cuerpo: { regla: "inventada" } }));
     expect(no.status).toBe(404);
     const si = await autos.POST(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "POST", cuerpo: { regla: "racha" } }));
@@ -92,8 +96,21 @@ describe("/api/automatizaciones", () => {
   });
 });
 
+describe("el interruptor del admin (automáticos y programados)", () => {
+  it("apagados de partida: ni guardar reglas ni mandarlas a mano; enviar sigue", async () => {
+    const put = await autos.PUT(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "PUT", cuerpo: { avisosActivos: true } }));
+    expect(put.status).toBe(403);
+    const post = await autos.POST(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "POST", cuerpo: { regla: "racha" } }));
+    expect(post.status).toBe(403);
+    expect((await store.getNegocio("delicanteria")).avisosActivos).toBe(false);
+    const datos = await (await autos.GET(await pedir("/api/automatizaciones?b=delicanteria"))).json();
+    expect(datos.negocio.avisosAvanzados).toBe(false);
+  });
+});
+
 describe("el interruptor de los avisos automáticos", () => {
   it("empieza apagado; el manager lo enciende y lo apaga sin tocar las reglas", async () => {
+    await permitir();
     const antes = await (await autos.GET(await pedir("/api/automatizaciones?b=delicanteria"))).json();
     expect(antes.negocio.avisosActivos).toBe(false);
 
@@ -108,6 +125,7 @@ describe("el interruptor de los avisos automáticos", () => {
   });
 
   it("un PUT vacío no guarda nada", async () => {
+    await permitir();
     const r = await autos.PUT(await pedir("/api/automatizaciones?b=delicanteria", { metodo: "PUT", cuerpo: {} }));
     expect(r.status).toBe(400);
   });

@@ -4,6 +4,7 @@ import { getNegocio } from "@/lib/store";
 import { relojVivo } from "@/lib/relojAvisos";
 import { puedeAcceder, COOKIE } from "@/lib/auth";
 import { sesionDeCookie } from "@/lib/sesionVigente";
+import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
 import { negocioDelPersonal } from "@/lib/tarjeta";
@@ -19,6 +20,8 @@ export default async function Page({ params }) {
   // El middleware ya lo exige; esto es la segunda puerta, como en /w/<serial>.
   const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/manager`);
+  // Lo que ve aquí el admin son los clientes de otro: queda apuntado (docs/RGPD.md, 6.9).
+  await apuntarEntradaAdmin(sesion, slug, "Tienda");
 
   let n;
   let reloj;

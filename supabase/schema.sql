@@ -47,6 +47,12 @@ alter table clientes add column if not exists guardados     int not null default
 alter table clientes add column if not exists guardados2    int not null default 0;
 -- Tarjeta sustituida por otra del mismo iPhone (ver lib/unaTarjeta.js): serial de la nueva.
 alter table clientes add column if not exists fusionado_en  text;
+-- RGPD (docs/RGPD.md). Promos: null = las recibe; la fecha, cuándo dijo que no
+-- (soft opt-in, LSSI 21.2). `aviso_version`: el aviso de privacidad que vio al
+-- darse de alta. `borrado_en`: se pidió borrarla; la fila cae en la pasada diaria.
+alter table clientes add column if not exists promos_no     timestamptz;
+alter table clientes add column if not exists aviso_version text;
+alter table clientes add column if not exists borrado_en    timestamptz;
 -- Clientes antiguos sin token: se les genera uno (32 hex) para poder actualizar su pase.
 update clientes set auth_token = replace(gen_random_uuid()::text, '-', '') where auth_token is null;
 create index if not exists clientes_negocio on clientes (negocio);
@@ -184,6 +190,34 @@ create table if not exists tutoriales (
 );
 create index if not exists tutoriales_negocio on tutoriales (negocio);
 
+-- ===================== RGPD: CONSTANCIA Y AUDITORÍA =====================
+-- Lo que queda de un borrado (un cliente o una tienda entera): SIN datos
+-- personales. Es el certificado de borrado que pide el contrato con la tienda.
+create table if not exists borrados (
+  id       bigint generated always as identity primary key,
+  negocio  text not null,
+  tipo     text not null,               -- "cliente" | "tienda"
+  motivo   text not null,               -- "manager" | "cliente" | "plazo" | "admin" | "baja"
+  rol      text,                        -- quién lo pidió: manager, admin, cliente, reloj
+  cuantos  int  not null default 1,     -- tarjetas borradas (las fusionadas cuentan)
+  ts       timestamptz not null default now()
+);
+create index if not exists borrados_negocio_ts on borrados (negocio, ts desc);
+
+-- Quién hizo qué fuera de las tarjetas: exportar, cambiar contraseñas o la
+-- config, archivar o borrar, y las entradas del admin en una tienda. `detalle`
+-- nunca lleva datos personales (un código de tarjeta como mucho).
+create table if not exists auditoria (
+  id       bigint generated always as identity primary key,
+  ts       timestamptz not null default now(),
+  negocio  text,
+  usuario  text,
+  rol      text,
+  accion   text not null,
+  detalle  text
+);
+create index if not exists auditoria_negocio_ts on auditoria (negocio, ts desc);
+
 -- ===================== LÍMITES DE USO =====================
 -- PINs fallidos ("login:nube:ip"), emisiones de pases ("tap:ip"), logs ("log:ip").
 create table if not exists intentos (
@@ -208,3 +242,5 @@ alter table tarjetas_de_dispositivo enable row level security;
 alter table accesos        enable row level security;
 alter table invitaciones   enable row level security;
 alter table tutoriales     enable row level security;
+alter table borrados       enable row level security;
+alter table auditoria      enable row level security;

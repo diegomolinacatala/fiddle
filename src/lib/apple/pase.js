@@ -38,14 +38,19 @@ function camposSellos(cliente, negocio) {
   const faltan = Math.max(0, negocio.meta - cliente.sellos);
   const completa = faltan === 0;
 
-  // Un premio guardado es lo más valioso que tiene el cliente en la tarjeta:
-  // mientras lo tenga, ocupa la cabecera en vez del contador de canjeados.
+  // Arriba a la derecha, lo que el cliente TIENE: los premios guardados (casi
+  // siempre 0). Los canjeados de toda la vida se siguen contando (CRM, ficha),
+  // pero no van en la tarjeta: un "PREMIOS 7" que a veces era lo guardado y a
+  // veces lo gastado no se entendía.
+  //
+  // Sin changeMessage: al guardar un premio la cartilla vuelve a empezar y ya
+  // avisa PREMIO; y al canjearlo, un "Premios guardados: 0" en la pantalla de
+  // bloqueo sobra.
   const guardados = totalGuardados(cliente);
-  const header = guardados > 0
-    ? [{ key: "guardados", label: guardados === 1 ? "PREMIO GUARDADO" : "PREMIOS GUARDADOS", value: guardados, changeMessage: "Premios guardados en tu tarjeta: %@" }]
-    : negocio.tema.estilo === "barber"
-      ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
-      : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@" }];
+  const header = negocio.tema.estilo === "barber" && guardados === 0
+    ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
+    // "GUARDADOS" a secas: "PREMIOS GUARDADOS" no cabe en la cabecera del iPhone.
+    : [{ key: "guardados", label: "GUARDADOS", value: guardados }];
 
   // NO hay campo "SELLOS 5 de 8": eso ya lo dicen los círculos de la banda, y
   // gastaba una columna de las pocas que hay (ver camposDelPase).
@@ -110,6 +115,17 @@ export function ubicacionesApple(negocio) {
  * @returns {{headerFields:object[], primaryFields:object[], secondaryFields:object[], auxiliaryFields:object[], backFields:object[]}}
  */
 export function camposDelPase(cliente, negocio) {
+  // El cliente pidió borrarla (docs/RGPD.md, 3.3): sin datos y anulada. Es lo
+  // que su iPhone baja tras el aviso, antes de que la fila desaparezca.
+  if (cliente.borrado_en) {
+    return {
+      headerFields: [],
+      primaryFields: [],
+      secondaryFields: [{ key: "premio", label: "TARJETA BORRADA", value: "Tus datos se han borrado", changeMessage: "%@" }],
+      auxiliaryFields: [],
+      backFields: [{ key: "como", label: "Puedes quitarla", value: `Borramos esta tarjeta de ${negocio.nombre} y sus datos, como pediste. Ya puedes quitarla del Wallet.` }],
+    };
+  }
   // Tarjeta sustituida por otra en el mismo iPhone (lib/unaTarjeta.js): ya no
   // cuenta nada, solo dice dónde están los sellos.
   if (cliente.fusionado_en) {
@@ -135,18 +151,35 @@ export function camposDelPase(cliente, negocio) {
   // El nombre del cliente NO va en el pase: él ya se lo sabe y la tienda lo ve
   // en la caja. Ocupaba una columna de las dos que hay.
   //
-  // El MENSAJE del cliente gana a la promo de la tienda: una campaña va dirigida
-  // a un grupo ("hace tiempo que no te vemos") y no tendría sentido que la tapara
-  // el 2x1 de todos. Es la misma columna del pase, así que solo cabe uno.
-  const avisoPersonal = cliente.mensaje || null;
-  const auxiliaryFields = avisoPersonal || negocio.promo
-    ? [{
-        key: "promo",
-        label: avisoPersonal ? "PARA TI" : "PROMO",
-        value: avisoPersonal || negocio.promo,
-        changeMessage: "%@",
-      }]
-    : [];
+  // PARA TI (el mensaje de una campaña o un aviso, `cliente.mensaje`) ocupa el
+  // sitio de los "Faltan 3" mientras está: lo que falta ya lo dicen los círculos
+  // de la banda, y así no le quita el sitio a la promo, que va SIEMPRE a la
+  // derecha. El mensaje se borra en la siguiente visita (registrarVisita) y
+  // vuelven los "Faltan".
+  //
+  // Va en la MISMA clave que el primer "Faltan" ("premio"): iOS avisa cuando
+  // cambia el valor de un campo, así que poner el mensaje suena con su texto, y
+  // al volver el sello suena "Cookies: Faltan 2". Una clave nueva no sonaría.
+  // Con dos cartillas, el aviso de vuelta dice la primera aunque el sello fuera
+  // de la segunda: el cliente está en la caja, da igual.
+  //
+  // Los cupones no tienen "Faltan": ahí el mensaje sigue tapando la promo (una
+  // sola columna). Quien dijo que no a las promos (`promos_no`) no ve ninguna de
+  // las dos: lo que escribe la tienda es promo; lo que hace la caja, servicio.
+  // Su teléfono recibe el refresco, ningún campo visible cambia y no suena.
+  const quierePromos = !cliente.promos_no;
+  const avisoPersonal = quierePromos ? cliente.mensaje || null : null;
+  const promo = quierePromos ? negocio.promo || null : null;
+  let { secondaryFields } = campos;
+  let auxiliaryFields;
+  if (esCupon) {
+    auxiliaryFields = avisoPersonal || promo
+      ? [{ key: "promo", label: avisoPersonal ? "PARA TI" : "PROMO", value: avisoPersonal || promo, changeMessage: "%@" }]
+      : [];
+  } else {
+    if (avisoPersonal) secondaryFields = [{ key: "premio", label: "PARA TI", value: avisoPersonal, changeMessage: "%@" }];
+    auxiliaryFields = promo ? [{ key: "promo", label: "PROMO", value: promo, changeMessage: "%@" }] : [];
+  }
 
   // Con dos cartillas la cara solo dice cuánto falta: qué se gana, aquí.
   const premios = negocio.cartillas && !esCupon
@@ -154,6 +187,8 @@ export function camposDelPase(cliente, negocio) {
     : [];
   const guardados = esCupon ? [] : cartillasDe(cliente, negocio).filter((c) => c.guardados > 0);
   const backFields = [
+    // Con la promo al lado, un mensaje largo se corta en la cara ("…"): entero, aquí.
+    ...(avisoPersonal && !esCupon ? [{ key: "parati", label: "Para ti", value: avisoPersonal }] : []),
     ...(guardados.length
       ? [{
           key: "guardados",
@@ -169,8 +204,10 @@ export function camposDelPase(cliente, negocio) {
     })),
     { key: "codigo", label: "Tu código", value: codigoDe(cliente) },
   ];
+  // "Tu tarjeta y tus datos" (dejar las promos, descargar, borrar) se añade en
+  // construirPassJson: necesita la URL y la llave, que la vista previa no tiene.
 
-  return { ...campos, auxiliaryFields, backFields };
+  return { ...campos, secondaryFields, auxiliaryFields, backFields };
 }
 
 /** Clave corta del cliente ("K7M"). Los pases antiguos caen a los 3 primeros del serial. */
@@ -179,10 +216,12 @@ const codigoDe = (cliente) => cliente.codigo || String(cliente.serial || "").sli
 /**
  * @param {{serial:string, codigo?:string, sellos:number, premios:number, nombre:string|null, auth_token:string}} cliente
  * @param {{slug:string, nombre:string, tipo:string, tema:object, meta:number, premio:string, promo:string|null, ubicaciones?:object[]}} negocio
- * @param {{passTypeId:string, teamId:string, appUrl:string}} opciones
+ * @param {{passTypeId:string, teamId:string, appUrl:string, enlaceDatos?:string|null}} opciones
+ *   `enlaceDatos`: su página "Tu tarjeta y tus datos" con la llave (lib/gestion.js,
+ *   solo servidor: aquí no se puede, este módulo también corre en el navegador)
  * @returns {object} pass.json
  */
-export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl }) {
+export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl, enlaceDatos = null }) {
   if (!cliente?.auth_token || cliente.auth_token.length < 16) {
     throw new Error("El cliente no tiene authenticationToken válido (mín. 16 caracteres)");
   }
@@ -215,10 +254,21 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
         altText: codigoDe(cliente),
       },
     ],
-    // El aviso de privacidad, al final del reverso: iOS convierte la URL en enlace.
+    // Al final del reverso: su página para dejar las promos, descargar sus datos o
+    // borrar la tarjeta (con su llave tras el #: no viaja al servidor ni a los
+    // logs), y el aviso de privacidad. iOS abre el enlace del attributedValue.
     [esCupon ? "coupon" : "storeCard"]: {
       ...cara,
-      backFields: [...backFields, { key: "privacidad", label: "Privacidad", value: `${appUrl}/privacidad?b=${negocio.slug}` }],
+      backFields: [
+        ...backFields,
+        ...(cliente.borrado_en ? [] : [{
+          key: "datos",
+          label: "Tu tarjeta y tus datos",
+          value: "Promos, descargar o borrar",
+          attributedValue: `<a href="${enlaceDatos || `${appUrl}/p/${cliente.serial}/datos`}">Promos, descargar o borrar</a>`,
+        }]),
+        { key: "privacidad", label: "Privacidad", value: `${appUrl}/privacidad?b=${negocio.slug}` },
+      ],
     },
   };
 
@@ -226,7 +276,8 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
   if (ubicaciones.length) pase.locations = ubicaciones;
   // Anulado: iOS lo aparta a "pases caducados". Una tarjeta fusionada en otra
   // también, para que no queden dos vivas de la misma tienda.
-  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en) pase.voided = true;
+  // Y una que se pidió borrar.
+  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en || cliente.borrado_en) pase.voided = true;
 
   return pase;
 }

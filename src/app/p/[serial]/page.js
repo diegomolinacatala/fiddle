@@ -62,12 +62,16 @@ export default async function Page({ params }) {
     const vigente = await clienteVigente(getCliente, serial);
     if (vigente) redirect(`/p/${vigente.serial}`);
   }
-  if (!cliente || !negocio) {
+  if (!cliente || !negocio || cliente.borrado_en) {
     return (
       <main style={paginaCentrada}>
         <div style={{ textAlign: "center", maxWidth: 320 }}>
-          <h1 style={{ fontSize: 20, margin: "0 0 6px" }}>Esta tarjeta no existe</h1>
-          <p style={{ color: C.suave, margin: 0 }}>Puede que el enlace esté incompleto. Pide en la tienda que te la vuelvan a dar.</p>
+          <h1 style={{ fontSize: 20, margin: "0 0 6px" }}>{cliente?.borrado_en ? "Esta tarjeta se ha borrado" : "Esta tarjeta no existe"}</h1>
+          <p style={{ color: C.suave, margin: 0 }}>
+            {cliente?.borrado_en
+              ? "Sus datos se han borrado, como se pidió. Ya puedes quitarla del teléfono."
+              : "Puede que el enlace esté incompleto. Pide en la tienda que te la vuelvan a dar."}
+          </p>
         </div>
       </main>
     );

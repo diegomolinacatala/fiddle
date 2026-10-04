@@ -177,7 +177,9 @@ export const VARIABLES = [
   { clave: "nombre", nombre: "Su nombre", ejemplo: "Marta", ayuda: "si la caja lo apuntó; si no, se quita solo" },
   { clave: "premio", nombre: "Su premio", ejemplo: "cookie gratis", ayuda: "el que tiene más cerca" },
   { clave: "faltan", nombre: "Lo que le falta", ejemplo: "1 cookie", ayuda: "para ese premio" },
-  { clave: "dias", nombre: "Días sin venir", ejemplo: "21", ayuda: "desde su última visita" },
+  // No va en ninguna sugerencia a propósito (docs/RGPD.md, 1.6): «Marta, 21 días
+  // sin venir» en la pantalla de bloqueo le dice a quien vea el teléfono más que el nombre.
+  { clave: "dias", nombre: "Días sin venir", ejemplo: "21", ayuda: "desde su última visita. Sale en la pantalla de bloqueo: úsalo con cuidado" },
   { clave: "racha", nombre: "Días seguidos", ejemplo: "4", ayuda: "que lleva viniendo sin saltarse ninguno" },
   { clave: "visitas", nombre: "Sus visitas", ejemplo: "12", ayuda: "las veces que ha venido" },
   { clave: "tienda", nombre: "La tienda", ejemplo: "La Delicantería", ayuda: "su nombre" },
@@ -384,7 +386,8 @@ export function elegibles(regla, contextos, envios = SIN_ENVIOS, { ahora = Date.
   // "Hoy" empieza a medianoche en la tienda; sin ese dato, las últimas 20 horas.
   const hoy = inicioHoy ?? ahora - 20 * 60 * 60 * 1000;
   return candidatos(regla, contextos).filter((x) => {
-    if (!x.perfil.contactable) return false;
+    // Tarjeta en el teléfono y sin haber dicho que no a las promos.
+    if (!x.perfil.avisable) return false;
     const ya = envios.porRegla.get(`${regla.id}|${x.serial}`);
     // Un programado sale cada vez que le toca: lo que cuenta es si ya salió HOY.
     if (ya && ya >= (esProgramado(regla) ? hoy : d.desde ? d.desde(x) : x.desde)) return false;
@@ -671,6 +674,7 @@ export const PLANTILLAS = [
 export function etiquetaEnvio(grupo, reglas) {
   const id = reglaDeGrupo(grupo);
   if (id) return reglas.find((r) => r.id === id)?.nombre || "Aviso automático";
-  if (grupo === "todos") return "Todos";
+  if (grupo === "todos") return "Promo para todos";
+  if (grupo === "momento") return "Aviso de un día, para todos";
   return LISTA_GRUPOS.find((g) => g.key === grupo)?.label || grupo;
 }

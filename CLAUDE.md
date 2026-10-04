@@ -12,6 +12,10 @@ Google Wallet cuando haya credenciales), multi-tienda, en
 Next.js 15 + Supabase, desplegado en Vercel desde `main`
 (<https://fiddle-zeta.vercel.app>). Los dueños son Victor y Diego.
 
+**Desde el 30-09-2026 hay un cliente de pago: La Delicantería.** Producción ya no es
+un sitio de pruebas: hay clientes de verdad con sus sellos. Nada de accesos de
+prueba, y nada se borra en la base sin preguntar.
+
 ## Reglas de la casa
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
@@ -30,7 +34,7 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 - **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
   pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
-  a la lista y baja lo que se ve) y **Avisos** (promo, grupos y automáticos). Y aparte,
+  a la lista y baja lo que se ve) y **Avisos** (enviar a todos o a un grupo, ahora o a una hora). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -54,8 +58,9 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 
 - Con imagen de banda (*strip*), **iOS junta `secondaryFields` y
   `auxiliaryFields` en UNA fila**. Por eso el pase lleva pocos campos: no caben.
-- **El nombre del cliente NO va en la cara del pase.** Lo sabe él y lo ve la
-  tienda; el sitio es escaso.
+- **El nombre del cliente NO va en el pase**, ni en Apple ni en Google (nada de
+  `accountName`), ni en lo que llega al navegador por el serial (`clienteDeTarjeta`). Lo
+  sabe él y lo ve la caja; el serial va en el QR.
 - Los avisos en la pantalla de bloqueo los dispara un **campo que cambia**, no
   una imagen. La banda se actualiza en silencio: por eso `changeMessage` vive en
   PREMIO, cuyo valor cambia con cada sello.
@@ -107,6 +112,32 @@ Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
   `/api/accion` la rechaza y `/w`, `/p`, `/api/pase` y el tap saltan a la vigente
   (`clienteVigente`). Lo que lea `clientes` a mano tiene que filtrarla igual.
 - En Android no hay id del teléfono: ahí solo está la cookie.
+
+## RGPD
+
+Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](src/lib/legal.js).
+
+- **Todo lo que escribe la tienda es promo** (`negocio.promo`, campañas, automáticos,
+  programados); lo que hace la caja, servicio. A quien tiene `promos_no` no le llega ninguna
+  promo por ningún canal: `camposDelPase` (Apple y tarjeta web), el objeto de Google, el web
+  push y `perfil.avisable` (campañas, reglas, conteos). Un canal o un tipo de aviso nuevo
+  filtra igual. **En Google, los mensajes van en el OBJETO, nunca en la clase**: uno de la
+  clase llega a todas las tarjetas de la tienda.
+- **Borrar es en dos tiempos** (`lib/derechos.js`, `lib/limpieza.js`): al momento se vacía y
+  se anula (`borrado_en`, el pase baja `voided`) y la fila cae al día siguiente. Nunca borrar
+  la fila al momento: el iPhone se quedaría la tarjeta vieja con pinta de válida. Una tarjeta
+  con `borrado_en` no es un cliente, como una con `fusionado_en`: lo que lea `clientes` a
+  mano filtra las dos.
+- **El serial no basta para tocar una tarjeta sin login** (va en el QR): la llave del pase
+  tras `#` o la cookie del tap (`lib/gestion.js`).
+- **Plazos, subencargados y versión del aviso, en `lib/legal.js`**: los lee `/privacidad` y
+  los cumple la pasada diaria. Cambiar lo que dice `/privacidad` = subir `VERSION_AVISO`.
+  La pasada diaria va en el reloj: sin reloj no se borra nada solo.
+- **Queda apuntado** (`auditar`, tabla `auditoria`): exportar, borrar, contraseñas y config.
+  Pantalla nueva de una tienda = `apuntarEntradaAdmin`. `detalle` y `borrados` nunca llevan
+  datos personales (un código de tarjeta como mucho).
+- **Ruta nueva de `/api` = clasificarla en `tests/aislamiento.test.js`** (del personal, del
+  admin o pública); si es del personal, el test la llama con la sesión de otra tienda.
 
 ## Lo que hace que la web vaya rápida
 
@@ -198,6 +229,22 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
   son estilos que solo salen en su editor (`estilosDelKit`; a los demás, `ESTILOS_GENERALES`),
   y su logo en vector va en `lib/apple/marcasPropias.js` (fuera de `MARCAS`). La Delicantería
   tiene el suyo: el grano y la D de `docs/marca`, nunca redibujados a ojo.
+- **Predeterminados y Tuyos** (editor de la tarjeta, `lib/propios.js`): en cada sitio
+  donde se elige algo, dos cajones. «Predeterminados» es lo de todos (`MARCAS`,
+  `ESTILOS_GENERALES`, `BANDAS`) y NUNCA lleva nada de un kit. «Tuyos» es su kit y lo
+  que ha subido la tienda (`config.propios`): imágenes de logo, **iconos propios**
+  (`tema.marca = "propia:<id>"`, valen de logo y dentro de los sellos) y **fotos de
+  banda** (`tema.banda = "foto"` + `tema.fondoFoto`). Que sea solo suyo lo decide el
+  SERVIDOR al guardar (`prepararPropios`, en `/api/negocio` y en el admin): kit ajeno,
+  id que no está en su lista o `b` de otra tienda = 400.
+- **Un icono propio es una silueta de UN color**, como los de `DIBUJOS`: blanca sobre
+  transparente (`procesarIcono`) y hace de máscara del color que toque. Los que usa la
+  tarjeta van DENTRO del tema (`tema.iconos[id]`, data URI de pocos KB, lo rellena el
+  servidor): así lo dibujan igual el .pkpass y la vista previa sin pedir nada.
+- **La foto de la banda NO va en el tema** (pesa): se guarda en el almacén y se mete
+  como `tema.fotoBanda` justo al dibujar (`conFotoBanda` en el servidor, `useConFotoBanda`
+  en el navegador: un SVG dentro de un `<img>` no carga nada de fuera). `versionDe` la
+  ignora; un dibujo nuevo que pinte la banda tiene que pasar por uno de los dos.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
 
@@ -221,17 +268,39 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   persona, y las dos cosas merecen un aviso.
 - **Apple no tiene mensajes propios.** El aviso lo dispara un CAMPO del pase que
   cambia, así que una campaña escribe `clientes.mensaje` a cada uno y ese texto
-  ocupa el sitio de la promo. Consecuencia: **solo se puede avisar a quien
-  instaló el pase**; la pantalla lo dice antes de enviar.
+  sale como PARA TI **en el sitio de los "Faltan"** (misma clave, `premio`, para que
+  suene al ponerlo y al volver el sello), con la promo siempre a la derecha. En la
+  siguiente visita se borra y vuelven los "Faltan". En Google el mensaje va en
+  `messages` y los textos siguen siendo los de la cuenta. Consecuencia: **solo se
+  puede avisar a quien instaló el pase**; la pantalla lo dice antes de enviar.
 - Una campaña **recalcula el grupo en el servidor**. Del navegador llega su
   clave, nunca la lista de a quién.
 - El reloj: lo que dependa de la hora local (a qué hora viene la gente) se
   calcula **en el navegador**. El servidor vive en UTC y sacaría el café de las 9
   a las 7.
 
-## Avisos automáticos
+## Avisos
 
-Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js).
+Ver [docs/AVISOS.md](docs/AVISOS.md), [`src/lib/envios.js`](src/lib/envios.js) y [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js).
+
+- **Automáticos y Programados, apagados por tienda salvo que el admin los encienda**
+  (`avisosAvanzados`, interruptor en `/admin/<slug>`). Apagados NO es solo esconder
+  las pestañas: el motor no manda ninguna regla (tampoco «Enviar ahora» de una regla)
+  y `/api/automatizaciones` no deja guardarlas. Las reglas se quedan como estaban.
+- **Enviar** (lo que siempre está): a todos (la promo), a «Todos, solo ese día»
+  (`momento`: mensaje que se quita al último cierre) o a un grupo del CRM. Ahora, o
+  «Enviar a las…» **solo hoy hasta el último cierre (descanso incluido) o mañana de la
+  primera apertura al primer cierre** (`horasParaEnviar`; el servidor lo vuelve a
+  comprobar con `horaValida`). Queda en `config.enviosProgramados` y lo manda el reloj
+  (`enviarPendientes`): se saca de la lista ANTES de mandarlo (mejor uno perdido que
+  uno doble) y el grupo se calcula al mandarlo. Sin horario o sin reloj, no se ofrece.
+  Mandar a mano y lo programado van por `lib/campanas.js`: un solo camino.
+- **Un destino que no es grupo** (un hueco de «lo que dicen los números», "las tardes
+  de martes"): va a `momento`, con el día y la hora propuestos (`horaSugerida`); si no
+  es hoy ni mañana, la pantalla dice cuándo tocaría. Un destino nuevo = una entrada en
+  `DESTINOS_ESPECIALES` con su `incluyeDestino`.
+
+### Automáticos (si el admin los enciende)
 
 - **Todo apagado de partida.** Nada sale solo sin el interruptor de la tienda
   (`avisosActivos`) Y la regla encendida (`activa`) Y horario. Plantillas y semillas
@@ -275,8 +344,9 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
   con nombre (`VARIABLES[].nombre`), el texto ya relleno debajo y las `FRASES`, que
   solo ven los que encajan (`{si_cerca}`…). Una variable nueva lleva su `nombre`.
 - **Lo que dicen los números** (Clientes → Resumen, `lib/observaciones.js`): reglas fijas,
-  sin IA, sobre la rejilla horaria y el horario. Su botón abre Avisos ya relleno
-  (`?programar=<base64>` o `?grupo=<clave>`): aquí se ve a quién, allí se dice qué.
+  sin IA, sobre la rejilla horaria y el horario. Su botón abre SIEMPRE Avisos → Enviar
+  ya relleno (`?grupo=&texto=&dia=&hora=&por=`): aquí se ve a quién, allí se dice qué.
+  Un grupo que hoy está vacío sale igual, apagado y explicado; nunca se cambia por otro.
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la
   tarjeta en el teléfono, y la caja lo ve arriba de la ficha ("En su tarjeta pone…").
 
@@ -296,7 +366,10 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - Si un usuario tiene contraseña en la base, **solo vale esa**. Sin fila, vale la
   variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
   también se cae a la variable: una caja sin poder entrar es peor.
-- Los admins (victor, diego) siguen solo con variables.
+- Los admins (victor, diego) siguen solo con variables: `CLAVE_ADMIN_VICTOR` y
+  `CLAVE_ADMIN_DIEGO` en Vercel. Las eligen ellos y es decisión suya: no se cambian
+  ni se "arreglan" desde el código. Una variable cambiada en Vercel **no vale hasta
+  el siguiente despliegue** (Deployments → Redeploy).
 - **Cambiar una contraseña saca a quien ya estaba dentro** (la caja perdida, el empleado
   que se va): `lib/sesionVigente.js` rechaza la sesión firmada antes de
   `accesos.actualizado`, y también la de una tienda archivada o borrada. Lo miran
@@ -309,9 +382,41 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   `accesos` que diga ser de otra tienda u otro rol.
 - **Accesos de prueba (usuario = contraseña) solo en local y sin `AUTH_SECRET`**: con el
   de Vercel pegado en `.env.local`, una sesión firmada aquí valdría en producción.
+  `USUARIOS_DEMO` ya no se lee: hasta el 01-10-2026 estaba a `1` en Vercel y
+  `/api/login` publicaba todos los usuarios con su contraseña, también los de La
+  Delicantería. No volver a meter un interruptor que los encienda en producción.
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
+
+## Cuentas: lo decidido (01-10-2026, sin empezar)
+
+Hoy una cuenta es una tienda con un rol (`delicanteria`, `delicanteria-caja`) y la
+caja es una contraseña compartida. Vamos a lo más profesional a largo plazo, lo
+cueste lo que cueste (es lo que hacen Square, Loopy o Boomerangme):
+
+- **Cuentas de persona**: cada uno su email y su contraseña. Una tabla
+  `miembros (persona, tienda, rol)` con los roles dueño, encargado y empleado. Un
+  dueño con dos tiendas entra con una sola cuenta; quitar a alguien no toca a nadie más.
+- **Quién entra lo decide Supabase Auth** (verificar el email, recuperar la contraseña,
+  enlace mágico, Google/Apple, doble factor). **Qué puede hacer** lo deciden nuestras
+  tablas, como ahora. Ni login hecho a mano ni Clerk (datos en EE. UU. y un encargado
+  del tratamiento más).
+- **La caja es un dispositivo vinculado**: el dueño pulsa "Añadir caja" en el manager y
+  el móvil del mostrador escanea un código que dura unos minutos. Sin contraseña
+  compartida; el manager ve sus cajas y desconecta la que quiera.
+- **PIN personal por empleado** (4-6 cifras) en la caja. Cada tienda elige cuándo se
+  pide: siempre, solo para dar premios o nunca.
+- **Sesiones guardadas en el servidor**: cambiar la contraseña o quitar a alguien cierra
+  sus sesiones (hoy no pasa).
+- **Registro de actividad**: quién dio cada sello y cada premio, desde qué caja, y quién
+  cambió qué.
+- Invitaciones por email para todos los roles (`lib/invitaciones.js`, ampliado).
+  Victor y Diego pasarán a ser cuentas de persona con rol de plataforma.
+
+Falta decidir: **dominio propio** (sin él los correos de recuperación no llegan bien),
+el **PIN por defecto** (la propuesta es "solo para premios") y si se entra con
+**Google/Apple**.
 
 ## Pantallas en el móvil
 
@@ -329,10 +434,18 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 
 - Las tiendas **viven en la base**, se crean y se borran desde `/admin`.
   `negocios.js` solo aporta semillas y plantillas.
-- **La tienda es La Delicantería**: es la única semilla. Nube, Fade y Forno existen
-  solo para los tests (`tests/tiendasDePrueba.js`, cargado por `setupFiles` de
+- **La tienda es La Delicantería**: es la única semilla. En producción aún quedan
+  Nube, Fade, Forno y "Project 68" en la base (pendiente de borrar desde `/admin`).
+  Nube, Fade y Forno existen solo para los tests (`tests/tiendasDePrueba.js`, cargado por `setupFiles` de
   vitest; un test con `vi.resetModules()` lo vuelve a importar). No devolverlas a
   `negocios.js`.
+- **En producción solo trabajamos con La Delicantería** (desde el 02-10-2026). Las de
+  antes (`fade`, `forno`, `nube`, `project-68`) están **archivadas, no borradas**: no
+  salen en ningún sitio ni dejan entrar, pero sus datos siguen por si hacen falta. No
+  desarchivarlas ni borrarlas para siempre sin hablarlo entre los dos. Ni el
+  directorio (`/api/negocios`) ni el reloj de avisos las ven: `listNegocios()` y
+  `getNegocio()` esconden lo archivado salvo que se pida (`incluirArchivados`, solo
+  en `/admin`). Se ven en `/admin` → Archivadas.
 - Tres roles: `caja`, `manager`, `admin`. El admin (victor/diego) entra en todo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.

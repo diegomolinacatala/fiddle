@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConFotoBanda } from "@/app/fotoBanda";
 import { ACCIONES, premiosDe } from "@/lib/acciones";
 import { filasDeCaja, normalizarCaja } from "@/lib/caja";
 import { stripDelPase, comoDataUri, svgBandaOpaca } from "@/lib/apple/dibujo";
@@ -121,7 +122,8 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
 
   const accent = negocio.tema.accent;
   const e = estadoDe(cliente, negocio);
-  const banda = stripDelPase(negocio, cliente);
+  const conFoto = useConFotoBanda(negocio);
+  const banda = stripDelPase(conFoto, cliente);
 
   return (
     <>

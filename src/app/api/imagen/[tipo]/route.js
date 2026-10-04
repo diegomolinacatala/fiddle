@@ -7,6 +7,7 @@ import { jsonError, errorInterno } from "@/lib/http";
 import { bufferDeLogo, componerLogo } from "@/lib/logoImagen";
 import { logoImagenDe } from "@/lib/logo";
 import { fondoGoogle } from "@/lib/google/pase";
+import { conFotoBanda } from "@/lib/propiosServidor";
 
 export const runtime = "nodejs";
 
@@ -128,7 +129,8 @@ export async function GET(request, { params }) {
     const png = await rasterizar(ruta, async () => {
       const propio = await deLogoPropio(tipo, negocio, q);
       if (propio) return propio;
-      const { svg, ancho, alto } = dibujo(tipo, negocio, q);
+      // La banda de Google lleva la misma foto que la de Apple (lib/propios.js).
+      const { svg, ancho, alto } = dibujo(tipo, tipo === "banda" ? await conFotoBanda(negocio) : negocio, q);
       return sharp(Buffer.from(svg)).resize(ancho, alto, { fit: "fill" }).png().toBuffer();
     });
     // La huella del diseño va en la URL: esta imagen no cambia nunca. Un año, en

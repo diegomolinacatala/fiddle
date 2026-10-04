@@ -93,6 +93,12 @@ export default function PanelCrm({ slug, inicial }) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // Queda apuntado quién bajó cuántos clientes (el registro de auditoría).
+    fetch("/api/crm/exportar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ b: slug, cuantos: lista.length, que: grupo || "todos" }),
+    }).catch(() => {});
   }
   const queContiene = [
     grupoActivo ? `Los de «${grupoActivo.label}»` : "Todos tus clientes",
@@ -163,7 +169,7 @@ export default function PanelCrm({ slug, inicial }) {
                         {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>{o.detalle}</div>}
                       </div>
                       {o.accion && (
-                        <a href={enlaceDeAccion(slug, o.accion)} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap", alignSelf: "center" }}>
+                        <a href={enlaceDeAccion(slug, o.accion, o.texto)} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap", alignSelf: "center" }}>
                           {o.accion.label}
                         </a>
                       )}
@@ -274,7 +280,7 @@ export default function PanelCrm({ slug, inicial }) {
                         {c.nombre || <span style={{ color: C.tenue }}>sin nombre</span>}
                         {c.nota && <span title={c.nota} style={marcaFila}><Icono nombre="nota" tam={14} titulo={`Nota: ${c.nota}`} /></span>}
                         {c.mensaje && <span title={`Mensaje en su pase: ${c.mensaje}`} style={marcaFila}><Icono nombre="megafono" tam={14} titulo="Tiene un mensaje en su tarjeta" /></span>}
-                        {!c.perfil.contactable && <span title="No tiene la tarjeta en el teléfono" style={marcaFila}><Icono nombre="campanaNo" tam={14} titulo="No le llegan avisos" /></span>}
+                        {!c.perfil.avisable && <span title={c.perfil.contactable ? "No quiere promos" : "No tiene la tarjeta en el teléfono"} style={marcaFila}><Icono nombre="campanaNo" tam={14} titulo={c.perfil.contactable ? "No quiere promos" : "No le llegan avisos"} /></span>}
                       </td>
                       <td style={td}><Chip estado={c.perfil.estado} estados={estados} /></td>
                       <td style={td}>{c.perfil.visitas}</td>
@@ -331,11 +337,12 @@ function DetalleGrupo({ g, d, n, slug, accent, onVerFicha, onVerLista }) {
         <a href={`/${slug}/avisos?grupo=${g.key}`} style={botonPrimarioEnlace(accent)}>
           <Icono nombre="megafono" tam={16} /> Escribirles
         </a>
-        <a href={programar} style={{ ...botonPequeno, textDecoration: "none" }}>Programarles un aviso</a>
+        {/* Los programados solo existen si el admin los encendió; si no, la hora se elige en Enviar. */}
+        {n.avisosAvanzados && <a href={programar} style={{ ...botonPequeno, textDecoration: "none" }}>Programarles un aviso</a>}
         <button type="button" onClick={() => onVerLista(g.key)} style={botonPequeno}>Ver en la lista</button>
       </div>
       <p style={{ fontSize: 13, color: C.suave, margin: "8px 0 12px" }}>
-        {g.descripcion} Les llega a {g.contactables} de {g.total}: al resto no, porque no tienen la tarjeta en el teléfono.
+        {g.descripcion} Les llega a {g.contactables} de {g.total}: al resto no, porque no tienen la tarjeta en el teléfono o no quieren promos.
       </p>
       <div style={{ display: "grid", gap: 6 }}>
         {dentro.slice(0, 8).map((c) => (

@@ -42,6 +42,7 @@ import { cartillasDe } from "../cartillas";
 import { svgTexto, anchoTexto } from "./texto";
 import { EM, ALTO_MAYUSCULA } from "./letras";
 import { DIBUJOS_PROPIOS, CAJA_PROPIA } from "./marcasPropias";
+import { esMarcaPropia, idDeMarca, fotoDe } from "../propios";
 
 export const TAM = {
   icon: 29, // + @2x 58, @3x 87 (obligatorio)
@@ -239,9 +240,39 @@ const ALIAS = { coffee: "taza", barber: "tijeras" };
  * que siguen guardados en los temas de las tiendas de siempre.
  */
 export const resolverMarca = (valor) => {
+  // Un icono subido por la tienda ("propia:<id>", lib/propios.js): si es suyo lo
+  // decide el servidor al guardar; aquí basta con que tenga buena forma.
+  if (esMarcaPropia(valor)) return valor;
   const v = ALIAS[valor] || valor;
   return typeof v === "string" && Object.hasOwn(TODAS, v) ? v : null;
 };
+
+/** El data URI de un icono propio que el tema lleva dentro (`tema.iconos`), o null. */
+const iconoDe = (tema, marca) => {
+  const uri = tema?.iconos?.[idDeMarca(marca)];
+  return typeof uri === "string" && uri.startsWith("data:image/png;base64,") ? uri : null;
+};
+
+/** La marca si se puede dibujar CON ESTE TEMA: un icono propio sin su imagen dentro, no. */
+const marcaDibujable = (tema, valor) => {
+  const m = resolverMarca(valor);
+  return m && esMarcaPropia(m) && !iconoDe(tema, m) ? null : m;
+};
+
+/**
+ * Un icono propio, de un color como los de DIBUJOS: la imagen guardada es la
+ * silueta en blanco sobre transparente y hace de MÁSCARA de un cuadrado del
+ * color que toque. Así vale en el logo, dentro de un sello lleno o llenándose.
+ * El id de la máscara es el del icono: repetido en varios sellos es el mismo.
+ */
+function dibujoPropio(tema, marca, color) {
+  const uri = iconoDe(tema, marca);
+  if (!uri) return "";
+  const id = `pm-${idDeMarca(marca)}`;
+  return `<defs><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">`
+    + `<image href="${uri}" x="0" y="0" width="512" height="512"/></mask></defs>`
+    + `<rect width="512" height="512" fill="${color}" mask="url(#${id})"/>`;
+}
 
 /**
  * Las piezas con las que se va a dibujar este tema, con sus valores por defecto
@@ -251,10 +282,10 @@ export const resolverMarca = (valor) => {
  */
 export function piezasDeTema(tema = {}) {
   return {
-    marca: resolverMarca(tema.marca) || resolverMarca(tema.estilo) || "taza",
+    marca: marcaDibujable(tema, tema.marca) || resolverMarca(tema.estilo) || "taza",
     texto: typeof tema.texto === "string" ? tema.texto : "",
     forma: FORMAS.includes(tema.forma) ? tema.forma : (tema.estilo === "barber" ? "redondeado" : "circulo"),
-    banda: BANDAS.includes(tema.banda) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara"),
+    banda: BANDAS.includes(tema.banda) || (tema.banda === "foto" && fotoDe(tema)) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara"),
     modo: MODOS.includes(tema.modo) ? tema.modo : "casillas",
     doble: tema.doble === "llenar" ? "lados" : MODOS_DOBLES.includes(tema.doble) ? tema.doble : "filas",
   };
@@ -324,7 +355,7 @@ const esOscura = (tema) => banda(tema) === "oscura";
  */
 function colocar(tema, color, cx, cy, lado) {
   const { nombre, texto } = marcaDe(tema);
-  const cuerpo = TODAS[nombre](color, texto);
+  const cuerpo = esMarcaPropia(nombre) ? dibujoPropio(tema, nombre, color) : TODAS[nombre](color, texto);
   if (!cuerpo) return "";
   return `<g transform="translate(${cx - lado / 2} ${cy - lado / 2}) scale(${lado / 512})">${cuerpo}</g>`;
 }
@@ -470,6 +501,16 @@ function fondoDeBanda(tema, w, h, id) {
       return `<defs><linearGradient id="${id}-fondo" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="${a}" stop-opacity="0.28"/><stop offset="1" stop-color="${a}" stop-opacity="0.06"/>
         </linearGradient></defs><rect width="${w}" height="${h}" fill="url(#${id}-fondo)"/>`;
+    case "foto": {
+      // Una foto de la tienda (lib/propios.js), a sangre, con un velo del color de
+      // la tarjeta para que los sellos se lean encima. `fotoBanda` (el data URI) no
+      // se guarda: lo pone quien dibuja (el servidor la lee del almacén, el
+      // navegador la pide). Mientras no está, la banda clara de siempre.
+      const velo = `<rect width="${w}" height="${h}" fill="${tema.cardBg || "#ffffff"}" opacity="0.45"/>`;
+      return typeof tema.fotoBanda === "string" && tema.fotoBanda.startsWith("data:image/")
+        ? `<image href="${tema.fotoBanda}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>${velo}`
+        : `<rect width="${w}" height="${h}" fill="${a}" opacity="0.10"/>`;
+    }
     case "rayas":
       return `<defs><pattern id="${id}-rayas" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <rect width="44" height="44" fill="${a}" fill-opacity="0.07"/><rect width="22" height="44" fill="${a}" fill-opacity="0.16"/>
@@ -1425,8 +1466,13 @@ function lineaDeEstado(tema, estado, w) {
   const r = 3.4 * 3;
   const x = X_ESTADO * 3;
   const tinta = tema.ink || "#111111";
+  const cx = x - r - 5 * 3;
+  const cy = n2(base - tam * 0.36);
+  // Con un aro blanco: el verde y el rojo chocan con fondos de su mismo tono
+  // (la tarjeta verde, la caramelo, una foto) y el aro los separa de cualquiera.
   return `<rect width="${w}" height="${alto}" fill="${tema.cardBg || "#ffffff"}"/>`
-    + `<circle cx="${x - r - 5 * 3}" cy="${n2(base - tam * 0.36)}" r="${r}" fill="${estado.abierta ? PUNTO_ESTADO.abierta : PUNTO_ESTADO.cerrada}"/>`
+    + `<circle cx="${cx}" cy="${cy}" r="${n2(r + 1.5 * 3)}" fill="#ffffff"/>`
+    + `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${estado.abierta ? PUNTO_ESTADO.abierta : PUNTO_ESTADO.cerrada}"/>`
     + svgTexto(estado.texto, { x, y: base, tam, color: tinta, opacidad: 0.72 });
 }
 

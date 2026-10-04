@@ -82,9 +82,30 @@ describe("construirPassJson", () => {
     // El nombre no aparece en la cara del pase, en ningún sitio.
     const cara = [...p.storeCard.headerFields, ...p.storeCard.primaryFields, ...p.storeCard.secondaryFields, ...p.storeCard.auxiliaryFields];
     expect(cara.some((f) => String(f.value).includes("Marta"))).toBe(false);
-    expect(p.storeCard.backFields.map((f) => f.key)).toEqual(["como", "codigo", "privacidad"]);
+    expect(p.storeCard.backFields.map((f) => f.key)).toEqual(["como", "codigo", "datos", "privacidad"]);
     expect(p.storeCard.backFields.at(-1).value).toMatch(/\/privacidad\?b=nube$/);
     expect(p.locations).toEqual([{ latitude: 40.4, longitude: -3.7, relevantText: expect.stringContaining("Nube Café") }]);
+  });
+
+  it("PARA TI ocupa el sitio de los «Faltan» y la promo se queda a la derecha", () => {
+    const deli = negocio("delicanteria", { promo: "2x1 hoy" });
+    const sin = construirPassJson(cliente(), deli, opciones).storeCard;
+    expect(sin.secondaryFields.map((f) => f.label)).toEqual(["COOKIES", "CAFÉS"]);
+    expect(sin.auxiliaryFields).toEqual([{ key: "promo", label: "PROMO", value: "2x1 hoy", changeMessage: "%@" }]);
+
+    const con = construirPassJson(cliente({ mensaje: "Te echamos de menos" }), deli, opciones).storeCard;
+    // La MISMA clave que el primer "Faltan": iOS suena al ponerlo y al volver el sello.
+    expect(con.secondaryFields).toEqual([{ key: "premio", label: "PARA TI", value: "Te echamos de menos", changeMessage: "%@" }]);
+    expect(con.auxiliaryFields).toEqual(sin.auxiliaryFields);
+    // Entero en el reverso, por si en la cara se corta.
+    expect(con.backFields[0]).toEqual({ key: "parati", label: "Para ti", value: "Te echamos de menos" });
+
+    // Con una cartilla, igual; y quien no quiere promos no ve ninguno de los dos.
+    const una = construirPassJson(cliente({ mensaje: "Hola" }), negocio("nube"), opciones).storeCard;
+    expect(una.secondaryFields.map((f) => f.label)).toEqual(["PARA TI"]);
+    const no = construirPassJson(cliente({ mensaje: "Hola", promos_no: "2026-10-01T00:00:00Z" }), deli, opciones).storeCard;
+    expect(no.secondaryFields.map((f) => f.label)).toEqual(["COOKIES", "CAFÉS"]);
+    expect(no.auxiliaryFields).toEqual([]);
   });
 
   it("claves de campo únicas en todo el pase", () => {
@@ -122,7 +143,15 @@ describe("utilidades", () => {
 describe("abierto / cerrado va en la banda, no en los campos", () => {
   it("la cabecera del pase sigue siendo solo el contador", async () => {
     const p = construirPassJson(cliente(), negocio("nube"), opciones);
-    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["canjeados"]);
+    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["guardados"]);
+  });
+
+  it("el punto de abierto/cerrado lleva un aro blanco debajo", async () => {
+    const { stripDelPase } = await import("@/lib/apple/dibujo");
+    const svg = stripDelPase(negocio("nube"), cliente(), { estado: { abierta: true, texto: "Abierto hasta las 14:00" } }).svg;
+    const aro = svg.indexOf('fill="#ffffff"/><circle');
+    expect(aro).toBeGreaterThan(-1);
+    expect(svg.indexOf("#34c759")).toBeGreaterThan(aro);
   });
 
   it("con estado, la banda lleva arriba el color de la tarjeta, el punto y la frase dibujada (sin <text>)", async () => {

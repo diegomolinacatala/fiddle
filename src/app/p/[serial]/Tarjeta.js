@@ -3,6 +3,7 @@
 import QrImagen from "@/app/QrImagen";
 import Icono from "@/app/Icono";
 import CaraDelPase from "@/app/CaraDelPase";
+import { useConFotoBanda } from "@/app/fotoBanda";
 import { colorDelPase, esColorClaro } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { useTarjetaEnVivo } from "./telefono";
@@ -30,6 +31,8 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
   // Sobre la página (pageBg) destaca el color del pase, no el de la tienda: en
   // los diseños de kit el fondo ya es el de la tienda.
   const aviso = colorDelPase(t);
+  // La foto de la banda, si la lleva, dentro del dibujo (fotoBanda.js).
+  const conFoto = useConFotoBanda(negocio);
 
   return (
     <main style={{ ...pagina, background: t.pageBg, color: t.pageInk }}>
@@ -51,7 +54,7 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
 
       <div style={{ width: "100%", maxWidth: 400 }}>
         {/* «Abierto hasta…» como en Wallet: si la tienda lo apaga (Tienda → Horario), tampoco aquí. */}
-        <CaraDelPase cliente={cliente} negocio={negocio} horario={negocio.tema?.abierto === false ? null : negocio.horario} claseBanda={novedad ? "banda nueva" : "banda"}>
+        <CaraDelPase cliente={cliente} negocio={conFoto} horario={negocio.tema?.abierto === false ? null : negocio.horario} claseBanda={novedad ? "banda nueva" : "banda"}>
           <div style={{ display: "grid", placeItems: "center", padding: "20px 18px 22px" }}>
             <div style={cajaQr}>
               <QrImagen texto={qrTexto} lado={196} />
@@ -80,7 +83,10 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
             <a href={`/w/${serial}`} style={{ color: "inherit", fontWeight: 600 }}>Abrir la vista de caja (modo demo)</a>
           </p>
         )}
-        <p style={{ textAlign: "center", fontSize: 12, marginTop: 18, opacity: 0.7 }}>
+        <p style={{ textAlign: "center", fontSize: 12, marginTop: 18, opacity: 0.7, display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
+          {/* Dejar las promos, descargar sus datos o borrarla. Pide la cookie del
+              teléfono que la sacó (o la llave del pase): el enlace solo no basta. */}
+          <a href={`/p/${serial}/datos`} style={{ color: "inherit" }}>Tu tarjeta y tus datos</a>
           <a href={`/privacidad?b=${negocio.slug}`} style={{ color: "inherit" }}>Privacidad</a>
         </p>
       </div>
