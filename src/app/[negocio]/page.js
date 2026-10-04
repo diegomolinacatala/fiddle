@@ -1,7 +1,7 @@
-import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getNegocio, getCliente } from "@/lib/store";
+import { getCliente } from "@/lib/store";
+import { negocioDePeticion } from "./negocioDePeticion";
 import { conFotoBanda } from "@/lib/propiosServidor";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import { plataformaDe } from "@/lib/plataforma";
@@ -35,7 +35,7 @@ export const dynamic = "force-dynamic";
 // pocas palabras: el nombre de la tienda, lo que se gana y un botón.
 // ============================================================================
 
-const cargar = cache((slug) => getNegocio(slug));
+const cargar = negocioDePeticion;
 
 export async function generateMetadata({ params }) {
   const { negocio } = await params;

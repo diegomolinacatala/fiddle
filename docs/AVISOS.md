@@ -27,6 +27,9 @@ tienda) y [`src/lib/motorAvisos.js`](../src/lib/motorAvisos.js) (el motor que ma
 
 ## Encender el reloj (una vez, lo hace fiddle)
 
+**Ya está encendido en producción** (Supabase, `pg_cron`). Esto queda por si hay que
+volver a montarlo (otra base, otro proyecto).
+
 Los avisos los manda `/api/cron/avisos`, y alguien tiene que llamarlo cada 15
 minutos. Hasta que no esté, la pantalla de Avisos lo dice en rojo y no sale nada
 automático (el botón **Enviar ahora** de cada aviso sí funciona).

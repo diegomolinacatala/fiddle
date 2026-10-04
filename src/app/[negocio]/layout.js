@@ -1,9 +1,7 @@
 import PwaRegister from "@/app/pwa-register";
-import { cache } from "react";
-import { getNegocio } from "@/lib/store";
+import { negocioDePeticion } from "./negocioDePeticion";
 
-// Metadatos y viewport piden el mismo negocio: una sola lectura por petición.
-const leerNegocio = cache((slug) => getNegocio(slug).catch(() => null));
+const leerNegocio = (slug) => negocioDePeticion(slug).catch(() => null);
 import { rutaIcono } from "@/lib/rutasImagen";
 import { CAPTURAR_INSTALAR } from "@/app/temprano";
 

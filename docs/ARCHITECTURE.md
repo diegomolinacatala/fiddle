@@ -22,9 +22,11 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 | **Tarjeta web** | El pase en Android: misma cara que el de Apple, instalable, en vivo y con avisos | [`p/[serial]`](../src/app/p/[serial]), [`lib/push`](../src/lib/push), [ANDROID.md](ANDROID.md) |
 | **Google Wallet** | Clase por tienda + objeto por cliente, reescritos con cada cambio | [`lib/google`](../src/lib/google), [GOOGLE-WALLET.md](GOOGLE-WALLET.md) |
 | **Caja** | Escanea → perfil → acción. PWA por negocio | [`[negocio]/caja`](../src/app/[negocio]/caja), [`w/[serial]`](../src/app/w/[serial]) |
-| **Manager** | Configura, lanza promos, emite, ve el estado de integración y cómo queda el pase (Apple/Google) | [`[negocio]/manager`](../src/app/[negocio]/manager) |
-| **CRM** | Quién viene, quién dejó de venir, grupos de clientes y avisos a un grupo | [`[negocio]/crm`](../src/app/[negocio]/crm), [`lib/crm.js`](../src/lib/crm.js) |
-| **Admin** | Crea, edita, archiva y borra tiendas; comenta campos del pase para Claude | [`admin/`](../src/app/admin) |
+| **Manager** (pestaña Tienda) | La tarjeta (se edita tocándola en la vista previa Apple/Google), la caja, horario, ubicación y QR | [`[negocio]/manager`](../src/app/[negocio]/manager) |
+| **Clientes** | Quién viene, quién dejó de venir, grupos, "lo que dicen los números" y exportar | [`[negocio]/crm`](../src/app/[negocio]/crm), [`lib/crm.js`](../src/lib/crm.js) |
+| **Avisos** | Enviar a todos o a un grupo, ahora o a una hora; automáticos y programados si el admin los enciende | [`[negocio]/avisos`](../src/app/[negocio]/avisos), [AVISOS.md](AVISOS.md) |
+| **Ajustes** | La contraseña de la caja | [`[negocio]/ajustes`](../src/app/[negocio]/ajustes) |
+| **Admin** | Crea, edita, archiva y borra tiendas; contraseñas, invitaciones, datos legales, estado de la integración; comenta campos del pase para Claude | [`admin/`](../src/app/admin) |
 | **Backend** | Guarda estado, aplica acciones, avisa al Wallet | [`src/lib`](../src/lib), `/api/*` |
 
 ## Proveedores de Wallet
@@ -55,7 +57,9 @@ el estado de antes y el de después (un sello sí; una corrección, no).
 
 ### 1. Emitir (tap NFC)
 ```
-tag NFC / QR → GET /api/tap?b=delicanteria → 302 /delicanteria (pide el nombre)
+tag NFC / QR → GET /api/tap?b=delicanteria
+   pedirNombre apagado (de partida): emitirPase() ahí mismo, sin nombre → directo a su Wallet
+   pedirNombre encendido: 302 /delicanteria (pide SOLO el nombre)
         → POST /api/tap { nombre } → emitirPase(): cliente {serial uuid, auth_token aleatorio, nombre cifrado}
         → /delicanteria enseña la tarjeta y el botón de su Wallet:
             iPhone: /api/pase/<serial> → generarPkpass() → .pkpass → "Añadir a Wallet"
@@ -99,7 +103,9 @@ Cada dependencia se detecta por separado:
 
 ## <a name="seguridad"></a>Seguridad
 
-- **Login por negocio.** Usuario (`delicanteria` manager · `delicanteria-caja`) y contraseña (`CLAVE_<SLUG>_<ROL>`).
+- **Login por negocio.** Usuario (`delicanteria` manager · `delicanteria-caja`) y contraseña
+  (hash scrypt en la tabla `accesos`; sin fila, la variable `CLAVE_<SLUG>_<ROL>`). Cambiar
+  una contraseña o archivar la tienda saca a quien ya estaba dentro (`sesionVigente.js`).
   Sesión HMAC `negocio.rol.exp.firma`: la sesión de una tienda no vale en otra. El
   middleware aplica las reglas de [`acceso.js`](../src/lib/acceso.js); los handlers
   comprueban el negocio del recurso (cliente, `?b=`, body). Por defecto, cualquier
@@ -121,6 +127,8 @@ Cada dependencia se detecta por separado:
 - **Privacidad.** El QR se genera en el navegador (antes se enviaba el serial a un
   servicio externo de QR). La página pública de la tarjeta solo recibe los campos que
   pinta (`lib/tarjeta.js`): ni la nota interna de la tienda, ni el token, ni el brief.
+  Nombre y nota van cifrados en la base ([PRIVACIDAD.md](PRIVACIDAD.md)); el resto del
+  RGPD, en [RGPD.md](RGPD.md).
 - **Avisos web.** El servidor solo manda avisos a endpoints de servicios de push reales
   (FCM, Mozilla, Apple, Windows) por https: una suscripción inventada no puede hacerle
   pegar a una URL interna. Máximo 5 navegadores por tarjeta, 20 altas por IP cada 10 min.

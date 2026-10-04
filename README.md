@@ -18,11 +18,12 @@ Stack: **Next.js 15 (App Router) + Supabase + Vercel**.
 
 En producción: **<https://fiddle-zeta.vercel.app>** (se despliega solo al fusionar en `main`).
 
-> [Roadmap hasta el MVP](docs/ROADMAP.md) · [Android](docs/ANDROID.md) ·
+> [Pendiente](NEXT-STEPS.md#pendiente) · [Android](docs/ANDROID.md) ·
 > [Google Wallet](docs/GOOGLE-WALLET.md) ·
 > [Apple Wallet](docs/APPLE-WALLET.md) · [Deploy](docs/DEPLOY.md) ·
 > [Arquitectura](docs/ARCHITECTURE.md) · [Acciones](docs/ACTIONS.md) ·
-> [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md) · [Avisos automáticos](docs/AVISOS.md)
+> [API](docs/API.md) · [Modelo de datos](docs/DATA-MODEL.md) · [Avisos](docs/AVISOS.md) ·
+> [RGPD](docs/RGPD.md) · [Privacidad](docs/PRIVACIDAD.md) · [Incidentes](docs/INCIDENTES.md)
 
 ## Admin de la plataforma
 
@@ -45,14 +46,15 @@ trae la *semilla* de La Delicantería y las plantillas de estilo.
 | **La Delicantería** (`delicanteria`) | dos cartillas: cookies y cafés | `/delicanteria` · `/delicanteria/caja` · `/delicanteria/manager` · `/api/tap?b=delicanteria` |
 
 El dueño tiene tres pestañas, una por pregunta, y cada cosa en **un solo sitio**:
-**Tienda** (tarjeta, caja, horario, QR), **Clientes** (quién viene; la exportación va
-junto a la lista) y **Avisos** (la promo, mensajes a un grupo y los
-[avisos automáticos](docs/AVISOS.md), que trabajan solos).
+**Tienda** (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; la
+exportación va junto a la lista) y **Avisos** (enviar a todos o a un grupo, ahora o a una
+hora; los [automáticos y programados](docs/AVISOS.md), solo si el admin los enciende).
+Aparte, **Ajustes**: la contraseña de la caja.
 
 ## Cómo funciona
 
 ```
-Tag NFC / QR ─▶ /api/tap?b=<negocio> ─▶ /<negocio>: su nombre ─▶ botón de SU Wallet
+Tag NFC / QR ─▶ /api/tap?b=<negocio> ─▶ (si la tienda lo pide: /<negocio>, su nombre) ─▶ SU Wallet
                   iPhone: .pkpass firmado ─▶ "Añadir a Wallet"
                   Android: Google Wallet, o /p/<serial> ─▶ avisos · instalar
            (si ese teléfono ya tenía tarjeta, va directo a la suya)

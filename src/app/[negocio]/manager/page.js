@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { getNegocio } from "@/lib/store";
+import { negocioDePeticion } from "../negocioDePeticion";
 import { relojVivo } from "@/lib/relojAvisos";
 import { puedeAcceder, COOKIE } from "@/lib/auth";
 import { sesionDeCookie } from "@/lib/sesionVigente";
@@ -26,7 +26,7 @@ export default async function Page({ params }) {
   let n;
   let reloj;
   try {
-    [n, reloj] = await Promise.all([getNegocio(slug), relojVivo()]);
+    [n, reloj] = await Promise.all([negocioDePeticion(slug), relojVivo()]);
   } catch (e) {
     console.error(`[manager ${slug}] no se pudo leer la base de datos:`, e);
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;

@@ -34,9 +34,8 @@ Crea en `certs/` (carpeta ignorada por git):
 Un solo Pass Type ID sirve para todos los negocios (cada pase lleva el nombre de su
 negocio). El identificador **no se puede cambiar** una vez emitidos pases.
 
-> **Pendiente (decidido 23-09-2026): un Pass Type ID por tienda.** Con uno solo, el
-> Wallet apila las tarjetas de todas las tiendas como si fueran de la misma. Ver
-> [NEXT-STEPS.md](../NEXT-STEPS.md#un-pass-type-id-por-tienda) para qué cambia.
+> Con uno solo, el Wallet apila las tarjetas de todas las tiendas como si fueran de
+> la misma. Una tienda puede tener **el suyo** dentro de la misma cuenta: sección 4.
 
 ### 1.3 Certificado del Pass Type ID
 

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { getNegocio } from "@/lib/store";
+import { negocioDePeticion } from "../negocioDePeticion";
 import { puedeAcceder, COOKIE, usuarioDe } from "@/lib/auth";
 import { sesionDeCookie } from "@/lib/sesionVigente";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
@@ -22,7 +22,7 @@ export default async function Page({ params }) {
 
   let n;
   try {
-    n = await getNegocio(slug);
+    n = await negocioDePeticion(slug);
   } catch (e) {
     console.error(`[ajustes ${slug}] no se pudo leer la base de datos:`, e);
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;

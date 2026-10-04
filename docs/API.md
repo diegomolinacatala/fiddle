@@ -11,16 +11,18 @@ sesión sea **del negocio del recurso** (`403` si no).
 
 | Ruta | Acceso |
 |------|--------|
-| `/`, `/<negocio>`, `/login`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios` | público |
+| `/`, `/<negocio>`, `/login`, `/privacidad`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios`, `/api/salud` | público |
 | `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación) |
 | `/api/tutorial` | cualquier sesión (cada uno ve y marca lo suyo) |
 | `GET /api/tap`, `/p/<serial>`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
-| `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>` | público (la tarjeta de Android: el serial es la llave) |
+| `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>`, `GET /api/logo`, `GET /api/fondo` | público (la tarjeta de Android: el serial es la llave) |
+| `/p/<serial>/datos`, `POST /api/tarjeta/<serial>/datos` | público, pero con la llave del pase (tras `#`) o la cookie del tap |
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
 | `/<negocio>/caja`, `/w/<serial>`, `/api/accion`, `/api/cliente/<serial>`, `GET /api/clientes`, `GET /api/negocio` | **caja** o manager de ese negocio |
-| `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear` | **manager** de ese negocio |
-| `/<negocio>/crm`, `GET /api/crm`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>` | **manager** de ese negocio |
-| `/<negocio>/avisos`, `/api/automatizaciones` | **manager** de ese negocio |
+| `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `POST /api/logo`, `/api/propios`, `POST\|DELETE /api/fondo` | **manager** de ese negocio |
+| `/<negocio>/crm`, `GET /api/crm`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>`, `POST /api/crm/exportar` | **manager** de ese negocio |
+| `/<negocio>/avisos`, `/api/automatizaciones`, `/api/envios` | **manager** de ese negocio |
+| `/<negocio>/ajustes`, `POST /api/accesos/caja` | **manager** de ese negocio |
 | `/api/cron/avisos` | sin sesión: lo protege `CRON_SECRET` (cabecera `Authorization: Bearer …`) |
 | `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*`, `GET /api/estado` | **admin de la plataforma** (`victor`, `diego`) |
 
@@ -32,7 +34,8 @@ El GET dice si hay accesos de prueba y cuáles, para pintarlos en el login. Solo
 // POST request                              // response ok (+ cookie httpOnly "sesion")
 { "usuario": "delicanteria", "clave": "..." }        { "ok": true, "negocio": "delicanteria", "rol": "manager" }
 ```
-Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. Contraseña en `CLAVE_<SLUG>_<ROL>`.
+Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. La contraseña vive en la tabla
+`accesos` (hash scrypt); sin fila, vale `CLAVE_<SLUG>_<ROL>` de Vercel ([`accesos.js`](../src/lib/accesos.js)).
 `401` usuario o contraseña incorrectos · `429` demasiados intentos (10 por IP y
 negocio en 15 min, 100 por negocio) · `503` falta `AUTH_SECRET` en producción.
 Sesión de caja: 30 días. Sesión de manager: 12 h.
@@ -56,6 +59,10 @@ floja (`campo`: `manager` | `caja`; mínimo 10 caracteres, distinta del usuario 
 ### `GET /api/tutorial?recorrido=manager|caja` · `POST /api/tutorial` — `{ "recorrido": "caja" }`
 Si el usuario de la sesión ya vio el recorrido de bienvenida (`{ "visto": true }`) y
 apuntarlo. Va por usuario (`nube`, `nube-caja`); los admins comparten `admin`.
+
+### `POST /api/accesos/caja?b=<negocio>` · manager
+Contraseña nueva para la caja (Ajustes; un empleado que se va). Se devuelve **una vez**
+y saca a quien estuviera dentro con la vieja.
 
 ## Emitir
 
@@ -146,6 +153,20 @@ Guarda la promo (vacío la quita) y avisa a todos los pases del negocio.
 { "promo": "Hoy 2x1", "proveedor": "apple", "total": 12, "enviadas": 12, "fallidas": [] }
 ```
 
+### `GET /api/logo?b=<negocio>&v=<id>&t=<lado>` · `POST /api/logo?b=<negocio>` (manager)
+El logo propio ([`logo.js`](../src/lib/logo.js)). El POST sube una imagen (el cuerpo, tal
+cual, máx. 4 MB) y devuelve el logo preparado: **no** cambia la tarjeta hasta que el
+editor guarda. El GET es público y se cachea un año (la URL lleva la huella).
+
+### `/api/propios?b=<negocio>` · manager
+Lo de «Tuyos» en el editor de la tarjeta ([`propios.js`](../src/lib/propios.js)).
+`GET` la lista (con los iconos dentro) · `POST &tipo=iconos|fondos[&nombre=]` sube uno ·
+`DELETE &tipo=logos|iconos|fondos&id=` lo quita. Subir no cambia la tarjeta.
+
+### `GET /api/fondo?b=<negocio>&v=<id>[&i=1]`
+Una imagen subida por la tienda: la foto de la banda (JPG) o, con `i=1`, un icono (PNG).
+Pública y cacheada un año, como `/api/logo`.
+
 ### `GET /api/estado`
 Qué integraciones están activas (sin secretos): `proveedor`, `apple.{ok, problemas, avisos, passTypeId, caduca, webServiceURL}` (el Pass Type ID general), `appleTiendas` (`[{slug, ok, problemas, avisos, propio, passTypeId, caduca}]`, una por tienda con Pass Type ID propio), `google`, `supabase`, `authSecret`, `appUrl`, `httpsPublico`.
 
@@ -192,6 +213,14 @@ Con `{ slug, nota: { clave, texto } }` guarda un comentario sobre un campo del p
 `archivar` (por defecto) la esconde de todas partes sin borrar nada · `desarchivar` la
 devuelve · `borrar` la elimina para siempre **con sus clientes y su historial**, y exige
 `&confirmar=<slug>` exacto.
+
+### `GET /api/admin/accesos?slug=` · `POST /api/admin/accesos` — `{ slug, rol }`
+Cómo entra cada usuario de la tienda (sin contraseñas) · genera una nueva para
+`manager` o `caja` y la devuelve **una vez**. Queda en `auditoria`.
+
+### `POST /api/admin/cifrar`
+Cifra los nombres y notas guardados antes de tener `CIFRADO_CLAVE` (`{ cifrados: n }`).
+Repetirlo no hace nada · `409` sin una `CIFRADO_CLAVE` válida.
 
 ### `POST /api/admin/invitacion` — `{ "slug": "nube" }`
 Enlace nuevo para que el dueño elija sus contraseñas. Anula los anteriores sin usar.
@@ -257,11 +286,23 @@ Ficha completa: `{ cliente, perfil, eventos }` (hasta 100 eventos, del más nuev
 
 ### `PUT /api/crm/cliente/<serial>` · manager
 `{ "nota": "sin lactosa" }` → nota interna de la tienda. **No** sale en el pase.
+`{ "promos": false }` → el cliente dijo en el mostrador que no quiere promos (`promos_no`).
+
+### `DELETE /api/crm/cliente/<serial>` · manager — `{ "codigo": "K7M" }`
+Borra a un cliente que lo pide (art. 17), confirmado con su código de 3 caracteres.
+Al momento queda vacío y anulado (`borrado_en`); la fila cae en la pasada diaria
+([RGPD.md](RGPD.md)). `400` el código no coincide.
+
+### `GET /api/crm/cliente/<serial>/datos` · manager
+"Descargar sus datos": un JSON con todo lo que guardamos de ese cliente (arts. 15 y 20).
+Queda en `auditoria`.
 
 `GET /api/negocios` (público) solo dice qué tiendas hay: `[{ slug, nombre }]`.
 
-La exportación a CSV ya no es una ruta: el panel de Clientes arma el fichero en el
-navegador con la lista que se está viendo (`csvClientes()` de `lib/exportar.js`).
+### `POST /api/crm/exportar` · manager — `{ "b": "delicanteria", "cuantos": 40, "que": "todos" }`
+El CSV lo arma el navegador con la lista que se está viendo (`csvClientes()` de
+`lib/exportar.js`); esta ruta solo apunta en `auditoria` quién bajó cuántos y de qué
+grupo (nunca la búsqueda: puede ser un nombre).
 
 ## Avisos automáticos
 
@@ -279,6 +320,12 @@ Los `contextos` van al navegador para contar al momento a cuántos les llegaría
 ### `POST /api/automatizaciones?b=<negocio>` · manager — `{ "regla": "te-echamos-de-menos" }`
 *Enviar ahora*: manda esa regla ya, sin mirar la hora (a quién, no repetir y la pausa se respetan).
 `{ envio: { regla, destinatarios, avisados, web, google }, datos }`. `404` si la regla no está guardada.
+
+### `POST /api/envios` · `DELETE /api/envios` · manager
+Avisos → Enviar → «Enviar a las…». `POST { b, destino, texto, cuando }` lo deja en
+`config.enviosProgramados` y lo manda el reloj; `DELETE { b, id }` lo cancela. Las dos
+devuelven la lista que queda. A quién se calcula **al mandarlo**. `409` sin horario ·
+`400` grupo desconocido, sin texto u hora fuera de plazo (`horaValida`).
 
 ### `GET|POST /api/cron/avisos` · `Authorization: Bearer <CRON_SECRET>`
 Una pasada del reloj por todas las tiendas: `{ ok, resultados: [{ negocio, retirados, envios: [...] }] }`.
@@ -321,6 +368,19 @@ PNG dibujado con la marca de la tienda. `tipo`: `icono` (`t=` lado, `m=1`
 adaptable), `insignia` (barra de avisos), `logo` (Google, 660x660), `banda`
 (`s=` sellos o `u=0|1` en cupones, 1032x336). Con la huella vigente se cachea un año.
 
+### `POST /api/tarjeta/<serial>/datos` — `{ llave?, accion, quiere? }`
+"Tu tarjeta y tus datos" (`/p/<serial>/datos`), lo que el cliente hace solo. `accion`:
+`ver` · `promos` (`quiere: true|false`) · `descargar` (JSON, arts. 15 y 20) · `borrar`
+(art. 17). Entra quien trae la **llave** del reverso del pase o la **cookie** del tap;
+el serial solo no basta ([`gestion.js`](../src/lib/gestion.js)). `403` sin llave ni cookie ·
+`410` ya borrada · `429` más de 30 por minuto y IP.
+
 ### `GET /api/manifest?p=<serial>`
 Manifest de la tarjeta como app instalable (abre en `/p/<serial>`). Con `?b=` sigue
 siendo el de la caja.
+
+## Salud
+
+### `GET /api/salud`
+Público a propósito (si la base falla tampoco se entra al manager): `{ ok, wallet,
+baseDatos: { ok, detalle } }`. `503` si la base no responde. Sin secretos.

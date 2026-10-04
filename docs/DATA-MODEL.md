@@ -11,7 +11,7 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 |-------|------|-------|
 | `slug` | text PK | `delicanteria` (su semilla vive en `negocios.js`) |
 | `nombre`, `tipo` | text | copia informativa del preset |
-| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, cartillas, horario, automatizaciones, pausaAvisos }` |
+| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, archivadoEn, cartillas, cartillasAparcadas, horario, automatizaciones, pausaAvisos, limiteAvisosDia, avisosActivos, avisosAvanzados, enviosProgramados, estadoPase, caja, contacto, legal, propios, pedirNombre }` |
 
 `tema` (colores, emoji y las piezas del dibujo: `marca` · `texto` · `forma` ·
 `banda` · `modo`, ver [`dibujo.js`](../src/lib/apple/dibujo.js)), `brief` (texto libre para Claude), `notas`
@@ -19,7 +19,10 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 `archivado` los edita **/admin**. `horario` (`{ zona, semana[7], cerrados[] }`),
 `automatizaciones` (las reglas de los avisos automáticos) y `pausaAvisos` los edita el
 manager; sin ellos en la fila, valen los de la semilla o los de partida (ver
-[AVISOS.md](AVISOS.md)). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
+[AVISOS.md](AVISOS.md)). `avisosAvanzados` (automáticos y programados) y `legal` (los
+datos de la tienda para su `/privacidad`) solo los cambia el admin; `caja` es cómo se le
+enseña la caja ([`caja.js`](../src/lib/caja.js)) y `propios` lo que la tienda subió para
+su tarjeta ([`propios.js`](../src/lib/propios.js)). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
 solo aporta las *semillas* y las plantillas de estilo. Un tema guardado antes de
 las piezas sueltas sigue valiendo: `piezasDeTema()` las deduce de su `estilo`, y
 hay un test que fija que el SVG que sale es idéntico al de antes.
@@ -31,7 +34,9 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 | `negocio` | text | slug |
 | `codigo` | text | clave corta de 3 caracteres, **única dentro del negocio** (la misma puede repetirse en otra tienda). Se asigna al emitir; los clientes antiguos la deducen de su serial. Ver [`codigo.js`](../src/lib/codigo.js) |
 | `sellos`, `premios` | int | estado |
-| `nombre` | text? | personalización (sale en el pase) |
+| `sellos2` | int | la segunda cartilla (`tema.doble`). Se queda aunque la tienda vuelva a una |
+| `guardados`, `guardados2` | int | premios que se guardó sin gastar, uno por cartilla |
+| `nombre` | text? | **cifrado** ([PRIVACIDAD.md](PRIVACIDAD.md)). Lo ven él y la caja; **no** sale en el pase |
 | `auth_token` | text | `authenticationToken` del pase (secreto, nunca al navegador) |
 | `actualizado` | timestamptz | se marca en cada cambio; Apple pregunta "¿qué cambió desde…?" |
 | `creado` | timestamptz | |
@@ -39,7 +44,11 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 | `instalado`, `desinstalado` | timestamptz? | cuándo entró el pase en un Wallet y cuándo salió del último iPhone. Lo apunta el web service de Apple, que es el único que se entera |
 | `origen` | text? | `tap` (tag NFC) · `manager` (mostrador) |
 | `mensaje` | text? | aviso personal que sale EN el pase (campañas). Gana a `promo` del negocio |
-| `nota` | text? | lo que la tienda apunta a mano. **No** sale en el pase |
+| `nota` | text? | lo que la tienda apunta a mano, **cifrada**. **No** sale en el pase |
+| `fusionado_en` | text? | serial de la tarjeta que la sustituyó en el mismo iPhone ([`unaTarjeta.js`](../src/lib/unaTarjeta.js)). Con él ya no es un cliente |
+| `promos_no` | timestamptz? | cuándo dijo que no quiere promos; null = las recibe ([RGPD.md](RGPD.md)) |
+| `aviso_version` | text? | el aviso de privacidad que vio al darse de alta (`VERSION_AVISO`) |
+| `borrado_en` | timestamptz? | se pidió borrarla: vacía y anulada al momento, la fila cae en la pasada diaria |
 
 ### `eventos` — historial
 `id` · `serial` · `negocio` · `tipo` · `mensaje` · `actor` · `ts`
@@ -79,6 +88,25 @@ pregunta que importa: ¿volvió alguno?
 | `negocio` | text | desnormalizado para avisar a todo un negocio |
 PK (`dispositivo`, `pass_type`, `serial`).
 
+### `tarjetas_de_dispositivo` — la última tarjeta de cada iPhone en cada tienda
+`dispositivo` (`deviceLibraryIdentifier`) · `negocio` · `serial` · `visto`. PK
+(`dispositivo`, `negocio`). **No** se borra al quitar el pase: es lo que permite fusionar
+la vieja en la nueva cuando ese iPhone vuelve a añadir una ([`unaTarjeta.js`](../src/lib/unaTarjeta.js)).
+
+### `accesos` — contraseñas de las tiendas
+`usuario` (PK: `delicanteria`, `delicanteria-caja`) · `negocio` · `rol` (`manager` | `caja`) ·
+`hash` (scrypt, nunca la contraseña) · `actualizado` (las sesiones firmadas antes dejan de
+valer). Ver [`accesos.js`](../src/lib/accesos.js).
+
+### `borrados` — constancia de lo borrado, sin datos personales
+`id` · `negocio` · `tipo` (`cliente` | `tienda`) · `motivo` (`manager` · `cliente` · `plazo` ·
+`admin` · `baja`) · `rol` · `cuantos` · `ts`. Ver [RGPD.md](RGPD.md).
+
+### `auditoria` — quién hizo qué fuera de las tarjetas
+`id` · `ts` · `negocio` · `usuario` · `rol` · `accion` · `detalle`. Exportar, contraseñas,
+config, archivar o borrar y las entradas del admin en una tienda (`auditar`). `detalle`
+nunca lleva datos personales: un código de tarjeta como mucho.
+
 ### `intentos` — límites de uso
 `id` · `clave` · `ts`. Claves: `login:<negocio>:<ip>`, `login:<negocio>:*` (PINs
 fallidos), `tap:<ip>` (emisiones), `log:<ip>` (logs de Apple). Ver
@@ -117,6 +145,11 @@ Apple Wallet: registrarPase({dispositivo, pushToken, passType, serial, negocio})
               pasesDeDispositivo({dispositivo, passType}) -> [{serial, actualizado}]
               pushTokens({seriales?, negocio?}) · borrarDispositivosPorToken(tokens)
 Límites:      registrarIntento(clave) · contarIntentos(clave, desdeMs)
+RGPD:         guardarPromos(serial, quiere) · marcarBorrado · borradosPendientes · purgarCliente
+              clientesSinUso · registrarBorrado · listBorrados · addAuditoria · listAuditoria
+              contarSinCifrar · cifrarPendientes
+Una tarjeta:  tarjetaDeDispositivo · apuntarTarjetaDeDispositivo · dispositivosDeTarjeta
+              fusionarClientes  (ver unaTarjeta.js)
 Accesos:      getAcceso(usuario) · accesosDeNegocio(slug) · guardarAcceso({usuario, negocio, rol, hash})
 Invitaciones: crearInvitacion({huella, negocio, caduca}) · getInvitacion(huella)
               gastarInvitacion(huella) -> bool   (condicional: solo la primera vez)
