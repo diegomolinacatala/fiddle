@@ -34,7 +34,7 @@ prueba, y nada se borra en la base sin preguntar.
 - **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
   pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
-  a la lista y baja lo que se ve) y **Avisos** (promo, grupos y automáticos). Y aparte,
+  a la lista y baja lo que se ve) y **Avisos** (enviar a todos o a un grupo, ahora o a una hora). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -229,6 +229,22 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
   son estilos que solo salen en su editor (`estilosDelKit`; a los demás, `ESTILOS_GENERALES`),
   y su logo en vector va en `lib/apple/marcasPropias.js` (fuera de `MARCAS`). La Delicantería
   tiene el suyo: el grano y la D de `docs/marca`, nunca redibujados a ojo.
+- **Predeterminados y Tuyos** (editor de la tarjeta, `lib/propios.js`): en cada sitio
+  donde se elige algo, dos cajones. «Predeterminados» es lo de todos (`MARCAS`,
+  `ESTILOS_GENERALES`, `BANDAS`) y NUNCA lleva nada de un kit. «Tuyos» es su kit y lo
+  que ha subido la tienda (`config.propios`): imágenes de logo, **iconos propios**
+  (`tema.marca = "propia:<id>"`, valen de logo y dentro de los sellos) y **fotos de
+  banda** (`tema.banda = "foto"` + `tema.fondoFoto`). Que sea solo suyo lo decide el
+  SERVIDOR al guardar (`prepararPropios`, en `/api/negocio` y en el admin): kit ajeno,
+  id que no está en su lista o `b` de otra tienda = 400.
+- **Un icono propio es una silueta de UN color**, como los de `DIBUJOS`: blanca sobre
+  transparente (`procesarIcono`) y hace de máscara del color que toque. Los que usa la
+  tarjeta van DENTRO del tema (`tema.iconos[id]`, data URI de pocos KB, lo rellena el
+  servidor): así lo dibujan igual el .pkpass y la vista previa sin pedir nada.
+- **La foto de la banda NO va en el tema** (pesa): se guarda en el almacén y se mete
+  como `tema.fotoBanda` justo al dibujar (`conFotoBanda` en el servidor, `useConFotoBanda`
+  en el navegador: un SVG dentro de un `<img>` no carga nada de fuera). `versionDe` la
+  ignora; un dibujo nuevo que pinte la banda tiene que pasar por uno de los dos.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
 
@@ -260,9 +276,28 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   calcula **en el navegador**. El servidor vive en UTC y sacaría el café de las 9
   a las 7.
 
-## Avisos automáticos
+## Avisos
 
-Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js).
+Ver [docs/AVISOS.md](docs/AVISOS.md), [`src/lib/envios.js`](src/lib/envios.js) y [`src/lib/automatizaciones.js`](src/lib/automatizaciones.js).
+
+- **Automáticos y Programados, apagados por tienda salvo que el admin los encienda**
+  (`avisosAvanzados`, interruptor en `/admin/<slug>`). Apagados NO es solo esconder
+  las pestañas: el motor no manda ninguna regla (tampoco «Enviar ahora» de una regla)
+  y `/api/automatizaciones` no deja guardarlas. Las reglas se quedan como estaban.
+- **Enviar** (lo que siempre está): a todos (la promo), a «Todos, solo ese día»
+  (`momento`: mensaje que se quita al último cierre) o a un grupo del CRM. Ahora, o
+  «Enviar a las…» **solo hoy hasta el último cierre (descanso incluido) o mañana de la
+  primera apertura al primer cierre** (`horasParaEnviar`; el servidor lo vuelve a
+  comprobar con `horaValida`). Queda en `config.enviosProgramados` y lo manda el reloj
+  (`enviarPendientes`): se saca de la lista ANTES de mandarlo (mejor uno perdido que
+  uno doble) y el grupo se calcula al mandarlo. Sin horario o sin reloj, no se ofrece.
+  Mandar a mano y lo programado van por `lib/campanas.js`: un solo camino.
+- **Un destino que no es grupo** (un hueco de «lo que dicen los números», "las tardes
+  de martes"): va a `momento`, con el día y la hora propuestos (`horaSugerida`); si no
+  es hoy ni mañana, la pantalla dice cuándo tocaría. Un destino nuevo = una entrada en
+  `DESTINOS_ESPECIALES` con su `incluyeDestino`.
+
+### Automáticos (si el admin los enciende)
 
 - **Todo apagado de partida.** Nada sale solo sin el interruptor de la tienda
   (`avisosActivos`) Y la regla encendida (`activa`) Y horario. Plantillas y semillas
@@ -306,8 +341,9 @@ Ver [docs/AVISOS.md](docs/AVISOS.md) y [`src/lib/automatizaciones.js`](src/lib/a
   con nombre (`VARIABLES[].nombre`), el texto ya relleno debajo y las `FRASES`, que
   solo ven los que encajan (`{si_cerca}`…). Una variable nueva lleva su `nombre`.
 - **Lo que dicen los números** (Clientes → Resumen, `lib/observaciones.js`): reglas fijas,
-  sin IA, sobre la rejilla horaria y el horario. Su botón abre Avisos ya relleno
-  (`?programar=<base64>` o `?grupo=<clave>`): aquí se ve a quién, allí se dice qué.
+  sin IA, sobre la rejilla horaria y el horario. Su botón abre SIEMPRE Avisos → Enviar
+  ya relleno (`?grupo=&texto=&dia=&hora=&por=`): aquí se ve a quién, allí se dice qué.
+  Un grupo que hoy está vacío sale igual, apagado y explicado; nunca se cambia por otro.
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la
   tarjeta en el teléfono, y la caja lo ve arriba de la ficha ("En su tarjeta pone…").
 

@@ -67,6 +67,9 @@ const DEL_PERSONAL = [
   ["envios", "POST", () => "/api/envios", () => ({ b: "nube", destino: "fantasmas", texto: "hola", cuando: new Date().toISOString() })],
   ["envios", "DELETE", () => "/api/envios", () => ({ b: "nube", id: "x" })],
   ["logo", "POST", () => "/api/logo?b=nube"],
+  ["propios", "GET", () => "/api/propios?b=nube"],
+  ["propios", "POST", () => "/api/propios?b=nube&tipo=iconos"],
+  ["propios", "DELETE", () => "/api/propios?b=nube&tipo=iconos&id=0123456789abcdef0123"],
   ["negocio", "GET", () => "/api/negocio?b=nube"],
   ["negocio", "PUT", () => "/api/negocio?b=nube", () => ({ premio: "nada" })],
   ["promo", "POST", () => "/api/promo", () => ({ b: "nube", texto: "2x1" })],
@@ -87,7 +90,7 @@ const DEL_ADMIN = [
 
 // Públicas a propósito (lib/acceso.js dice por qué cada una) o con su propia llave.
 const PUBLICAS = [
-  "cron/avisos", "google/guardar/[serial]", "imagen/[tipo]", "invitacion", "login", "logout", "manifest",
+  "cron/avisos", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "invitacion", "login", "logout", "manifest",
   "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
   "tutorial", "wallet/v1/devices/[dispositivo]/registrations/[passType]/[serial]",
   "wallet/v1/devices/[dispositivo]/registrations/[passType]", "wallet/v1/log", "wallet/v1/passes/[passType]/[serial]",

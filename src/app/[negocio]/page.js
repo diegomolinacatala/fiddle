@@ -2,6 +2,7 @@ import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getNegocio, getCliente } from "@/lib/store";
+import { conFotoBanda } from "@/lib/propiosServidor";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import { plataformaDe } from "@/lib/plataforma";
 import { cookieDeTarjeta, serialRecordado } from "@/lib/recordar";
@@ -74,7 +75,7 @@ export default async function Page({ params, searchParams }) {
       <style>{css}</style>
       <div className="centro">
         {suya
-          ? <TuTarjeta n={n} cliente={suya} plataforma={plataformaDe((await headers()).get("user-agent"))} />
+          ? <TuTarjeta n={await conFotoBanda(n)} cliente={suya} plataforma={plataformaDe((await headers()).get("user-agent"))} />
           : <Bienvenida n={n} slug={slug} nuevo={nuevo} />}
       </div>
       <footer className="pie">

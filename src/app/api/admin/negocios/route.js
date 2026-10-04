@@ -9,6 +9,7 @@ import { notificarNegocio } from "@/lib/wallet";
 import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
 import { auditar } from "@/lib/auditoria";
 import { normalizarLegal } from "@/lib/legal";
+import { prepararPropios } from "@/lib/propiosServidor";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -113,8 +114,11 @@ export async function PUT(request) {
       ESTILOS, temaPorDefecto, cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas,
     });
     if (r.error) return jsonError(r.error, 400);
-    const nuevo = await saveNegocio(slug, r.patch);
-    await auditar(sesion, slug, "config", Object.keys(r.patch).join(", "));
+    // Tampoco el admin le pone a una tienda lo de otra (lib/propiosServidor.js).
+    const p = await prepararPropios(slug, r.patch, actual);
+    if (p.error) return jsonError(p.error, 400);
+    const nuevo = await saveNegocio(slug, p.patch);
+    await auditar(sesion, slug, "config", Object.keys(p.patch).join(", "));
 
     // Si cambió algo que se ve en el pase, los teléfonos tienen que enterarse.
     const aviso = nuevo.archivado ? null : await notificarNegocio(nuevo, { cartilla: true });

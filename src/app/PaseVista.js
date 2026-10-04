@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import QrImagen from "@/app/QrImagen";
+import { useConFotoBanda } from "@/app/fotoBanda";
 import { camposDelPase } from "@/lib/apple/pase";
 import { svgBandaOpaca, stripDelPase, comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
@@ -47,7 +48,9 @@ const FUENTE_GOOGLE = '"Google Sans", Roboto, system-ui, sans-serif';
  */
 // `plataforma`: "apple" o "google" para enseñar solo esa (el editor pone las dos
 // una al lado de otra); sin ella, un conmutador.
-export default function PaseVista({ negocio, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara, plataforma = null }) {
+export default function PaseVista({ negocio: negocioGuardado, cliente, qrTexto, pie = null, notas = {}, onCampo = null, campoActivo = null, estado = null, cara: caraFuera, onCara, plataforma = null }) {
+  // La foto de la banda (si la lleva) va DENTRO del SVG: se pide aquí una vez (fotoBanda.js).
+  const negocio = useConFotoBanda(negocioGuardado);
   const [cualDentro, setCual] = useState("apple");
   const cual = plataforma || cualDentro;
   const [caraDentro, setCaraDentro] = useState("delante");

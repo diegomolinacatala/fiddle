@@ -4,6 +4,7 @@ import { ACCIONES } from "@/lib/acciones";
 import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { notificarNegocio } from "@/lib/wallet";
 import { patchNegocio } from "@/lib/validacion";
+import { prepararPropios } from "@/lib/propiosServidor";
 import { negocioDelPersonal } from "@/lib/tarjeta";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 import { auditar } from "@/lib/auditoria";
@@ -42,6 +43,10 @@ export async function PUT(request) {
     if (!actual) return jsonError("negocio desconocido", 404);
     const r = patchNegocio(body, Object.keys(ACCIONES), { cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas, ESTILOS, temaPorDefecto });
     if (r.error) return jsonError(r.error, 400);
+    // Lo de su kit y lo que ha subido ella, sí; lo de otra tienda, no (lib/propiosServidor.js).
+    const p = await prepararPropios(slug, r.patch, actual);
+    if (p.error) return jsonError(p.error, 400);
+    r.patch = p.patch;
 
     const nuevo = await saveNegocio(slug, r.patch);
     if (!nuevo) return jsonError("negocio desconocido", 404);

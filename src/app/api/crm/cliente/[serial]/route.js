@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCliente, getNegocio, listEventos, guardarNota, clientePublico } from "@/lib/store";
+import { getCliente, getNegocio, listEventos, guardarNota, clientePublico, serialesRegistrados } from "@/lib/store";
 import { perfilDe } from "@/lib/crm";
 import { saldoCorto } from "@/lib/cartillas";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
@@ -21,11 +21,17 @@ export async function GET(request, { params }) {
     const { respuesta } = await exigirNegocio(request, cliente.negocio, "manager");
     if (respuesta) return respuesta;
 
-    const negocio = await getNegocio(cliente.negocio);
-    const eventos = await listEventos(serial, HISTORIAL);
+    const [negocio, eventos, registrados] = await Promise.all([
+      getNegocio(cliente.negocio), listEventos(serial, HISTORIAL), serialesRegistrados(cliente.negocio),
+    ]);
+    // Como en la lista (lib/crmDatos.js): quien manda en "¿se le puede avisar
+    // AHORA?" son los registros vivos, no la fecha de alta en el Wallet. Sin esto
+    // la ficha decía "Nunca guardó la tarjeta" de quien sí la tiene.
+    const vivo = registrados.has(serial);
+    const conRegistro = { ...cliente, instalado: cliente.instalado || (vivo ? cliente.creado : null), desinstalado: vivo ? null : cliente.desinstalado };
     return NextResponse.json({
-      cliente: clientePublico(cliente),
-      perfil: perfilDe(cliente, negocio),
+      cliente: clientePublico(conRegistro),
+      perfil: perfilDe(conRegistro, negocio),
       saldo: negocio ? saldoCorto(cliente, negocio) : String(cliente.sellos),
       eventos,
     });

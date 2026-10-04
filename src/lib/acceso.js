@@ -89,6 +89,10 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   // El logo propio de una tienda: verlo es público (la tarjeta web, el icono de
   // la app); subir uno es del manager.
   if (pathname === "/api/logo") return method === "GET" ? { tipo: "publica" } : { tipo: "negocio", slug: b, rol: "manager" };
+  // Igual las fotos de la banda y los iconos que sube la tienda: verlos, cualquiera
+  // (la tarjeta web pinta su banda); su lista, subir y quitar, solo el manager.
+  if (pathname === "/api/fondo") return method === "GET" ? { tipo: "publica" } : { tipo: "negocio", slug: b, rol: "manager" };
+  if (pathname === "/api/propios") return { tipo: "negocio", slug: b, rol: "manager" };
   if (pathname === "/api/negocio") {
     return { tipo: "negocio", slug: b, rol: method === "GET" ? "caja" : "manager" };
   }

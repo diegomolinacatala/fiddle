@@ -7,6 +7,7 @@ import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
 import { validarLogoImagen } from "./logo";
+import { validarFondoFoto } from "./propios";
 import { normalizarCaja } from "./caja";
 import { slugDeTiendaLibre } from "./auth";
 
@@ -162,7 +163,8 @@ export function piezasDeDibujo(origen) {
   const marca = resolverMarca(o.marca);
   if (marca) piezas.marca = marca;
   if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
-  if (BANDAS.includes(o.banda)) piezas.banda = o.banda;
+  // "foto": la de la tienda (tema.fondoFoto, lib/propios.js); si es suya lo mira el servidor.
+  if (BANDAS.includes(o.banda) || o.banda === "foto") piezas.banda = o.banda;
   if (MODOS.includes(o.modo)) piezas.modo = o.modo;
   if (MODOS_DOBLES.includes(o.doble) || o.doble === "llenar") piezas.doble = o.doble;
   // La línea "● Abierto hasta las 14:00" en la banda: encendida salvo que se apague.
@@ -262,6 +264,9 @@ function temaDePatch(t, { ESTILOS, temaPorDefecto }) {
   // La imagen propia del logo (lib/logo.js): null la quita y vuelve el dibujo.
   const logo = validarLogoImagen(t.logoImagen);
   if (logo !== undefined) tema.logoImagen = logo;
+  // La foto del fondo de la banda (lib/propios.js): null la quita.
+  const foto = validarFondoFoto(t.fondoFoto);
+  if (foto !== undefined) tema.fondoFoto = foto;
   return tema;
 }
 

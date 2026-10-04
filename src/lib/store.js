@@ -219,52 +219,59 @@ export async function saveNegocio(slug, patch) {
   });
 }
 
-// ---------------------------------------------------------- logos propios
-// La imagen que sube una tienda para su logo (lib/logoImagen.js la prepara).
-// En Supabase va a Storage, a un cubo PRIVADO que se crea solo la primera vez:
-// la sirve /api/logo, así que no hace falta que sea público ni tocar la consola.
-// En la demo, un fichero en .data/logos/.
+// ---------------------------------------------------------- imágenes propias
+// Lo que sube una tienda para su tarjeta: el logo (lib/logoImagen.js), sus
+// iconos y las fotos de la banda (lib/propios.js), ya preparados. En Supabase
+// van a Storage, a un cubo PRIVADO que se crea solo la primera vez: los sirven
+// /api/logo y /api/fondo, así que no hace falta que sea público ni tocar la
+// consola. En la demo, un fichero en .data/logos/.
 const CUBO_LOGOS = "logos";
-const rutaLogo = (slug, id) => `${slug}/${id}.png`;
+const EXTENSIONES = { png: "image/png", jpg: "image/jpeg" };
+const rutaImagen = (slug, id, ext) => `${slug}/${id}.${ext}`;
+const imagenValida = (slug, id, ext) => esSlug(slug) && /^[0-9a-f]{16,64}$/.test(id) && Object.hasOwn(EXTENSIONES, ext);
 
-/** Guarda la imagen ya preparada (PNG). Si ya existía la misma, no pasa nada. */
-export async function guardarLogo(slug, id, png) {
-  if (!esSlug(slug) || !/^[0-9a-f]{16,64}$/.test(id)) throw new Error("Logo no válido");
+/** Guarda una imagen ya preparada. Si ya existía la misma, no pasa nada. */
+export async function guardarImagen(slug, id, datos, ext = "png") {
+  if (!imagenValida(slug, id, ext)) throw new Error("Imagen no válida");
   if (hasSupabase()) {
     const almacen = supa().storage;
-    const subir = () => almacen.from(CUBO_LOGOS).upload(rutaLogo(slug, id), png, { contentType: "image/png", upsert: true });
+    const subir = () => almacen.from(CUBO_LOGOS).upload(rutaImagen(slug, id, ext), datos, { contentType: EXTENSIONES[ext], upsert: true });
     let { error } = await subir();
     if (error && /bucket not found|not found/i.test(error.message || "")) {
       const creado = await almacen.createBucket(CUBO_LOGOS, { public: false });
       if (creado.error && !/already exists/i.test(creado.error.message || "")) throw new Error(`Supabase crear cubo de logos: ${creado.error.message}`);
       ({ error } = await subir());
     }
-    if (error) throw new Error(`Supabase subir logo: ${error.message}`);
+    if (error) throw new Error(`Supabase subir imagen: ${error.message}`);
     return;
   }
   const dir = path.join(dataDir(), "logos");
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, `${slug}-${id}.png`), png);
+  await fs.writeFile(path.join(dir, `${slug}-${id}.${ext}`), datos);
 }
 
 /** La imagen guardada, o null si no está. */
-export async function leerLogo(slug, id) {
-  if (!esSlug(slug) || !/^[0-9a-f]{16,64}$/.test(id)) return null;
+export async function leerImagen(slug, id, ext = "png") {
+  if (!imagenValida(slug, id, ext)) return null;
   if (hasSupabase()) {
-    const { data, error } = await supa().storage.from(CUBO_LOGOS).download(rutaLogo(slug, id));
+    const { data, error } = await supa().storage.from(CUBO_LOGOS).download(rutaImagen(slug, id, ext));
     if (error) {
       if (/not found|object not found/i.test(error.message || "") || error.statusCode === "404") return null;
-      throw new Error(`Supabase leer logo: ${error.message}`);
+      throw new Error(`Supabase leer imagen: ${error.message}`);
     }
     return Buffer.from(await data.arrayBuffer());
   }
   try {
-    return await fs.readFile(path.join(dataDir(), "logos", `${slug}-${id}.png`));
+    return await fs.readFile(path.join(dataDir(), "logos", `${slug}-${id}.${ext}`));
   } catch (e) {
     if (e.code === "ENOENT") return null;
     throw e;
   }
 }
+
+/** El logo propio (PNG): como siempre. */
+export const guardarLogo = (slug, id, png) => guardarImagen(slug, id, png, "png");
+export const leerLogo = (slug, id) => leerImagen(slug, id, "png");
 
 /**
  * Archiva (o desarchiva) un negocio: desaparece de todo, pero no se pierde nada

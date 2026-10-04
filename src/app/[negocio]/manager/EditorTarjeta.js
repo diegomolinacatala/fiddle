@@ -10,6 +10,7 @@ import { kitDe } from "@/lib/kits";
 import { normalizarContacto } from "@/lib/contacto";
 import { fondoGoogle } from "@/lib/google/pase";
 import { logoImagenDe, LOGO_MIN } from "@/lib/logo";
+import { fotoDe, rutaFoto, marcaDeIcono, esMarcaPropia, idDeMarca, MAX_PROPIOS } from "@/lib/propios";
 import {
   vistaMarca, vistaForma, vistaBanda, vistaModo, vistaFamilia, vistaPlantilla, vistaDoble,
   ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA, ROTULO_DOBLE,
@@ -36,15 +37,28 @@ import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
 // donde estaban (ver patchNegocio). Lo que NO se cambia aquí es cupón ↔
 // cartilla: el pase de Apple no puede cambiar de tipo una vez instalado.
 //
-// Una tienda con KIT DE MARCA (lib/kits.js) ve lo suyo primero: sus diseños en
-// «Colores», sus dibujos en el logo y los sellos, y su paleta junto a cada color.
+// DOS CAJONES en cada sitio donde se elige algo (logo, sellos, fondo de la
+// banda, colores): PREDETERMINADOS, lo de todos, y TUYOS, lo de esta tienda y
+// de nadie más (lib/propios.js): su kit de marca (lib/kits.js) y lo que ha
+// subido ella: imágenes de logo, iconos propios (valen de logo y dentro de los
+// sellos) y fotos para el fondo de la banda. Subir algo lo deja en «Tuyos» y
+// ya elegido; la tarjeta no cambia hasta «Guardar». Que nadie más lo use lo
+// comprueba el servidor al guardar.
 // ============================================================================
 
 // La paleta del kit de la tienda, para cada selector de color sin pasarla a mano.
 const Paleta = createContext([]);
+// Lo que ha subido la tienda (GET /api/propios) y cómo cambiarlo.
+const Propios = createContext({ lista: { logos: [], iconos: [], fondos: [] }, setLista: () => {}, slug: null });
 
-/** Los dibujos que se ofrecen: los de su marca primero y luego los de siempre. */
-const marcasDe = (kit) => [...Object.keys(kit?.marcas || {}), ...MARCAS];
+/** Los dibujos de todos (sin los de ningún kit: esos van en «Tuyos»). */
+const PREDETERMINADAS = MARCAS;
+/** Los de su kit de marca, y luego sus iconos subidos. */
+const marcasTuyas = (kit, lista) => [...Object.keys(kit?.marcas || {}), ...lista.iconos.map((x) => marcaDeIcono(x.id))];
+/** El tema con los iconos subidos dentro (`tema.iconos`): así se dibujan en las miniaturas y en la vista previa. */
+const conIconos = (tema, lista) => (lista.iconos.length
+  ? { ...tema, iconos: { ...(tema.iconos || {}), ...Object.fromEntries(lista.iconos.map((x) => [x.id, x.uri])) } }
+  : tema);
 
 /** Qué panel abre cada trozo de la tarjeta. */
 export function seccionDe(clave) {
@@ -73,14 +87,20 @@ const SEGUNDA_NUEVA = { nombre: "Cafés", marca: "taza", meta: 8, premio: "café
 
 /** La paleta del kit de la tienda, a mano de cada selector de color del editor. */
 export default function EditorTarjeta(props) {
+  const [lista, setLista] = useState({ logos: [], iconos: [], fondos: [] });
+  useEffect(() => {
+    fetch(`/api/propios?b=${props.slug}`).then((r) => (r.ok ? r.json() : null)).then((l) => l && setLista(l)).catch(() => {});
+  }, [props.slug]);
   return (
     <Paleta.Provider value={kitDe(props.slug)?.colores || []}>
-      <Editor {...props} />
+      <Propios.Provider value={{ lista, setLista, slug: props.slug }}>
+        <Editor {...props} lista={lista} />
+      </Propios.Provider>
     </Paleta.Provider>
   );
 }
 
-function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
+function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) {
   // El contacto se edita como TEXTO (lo que va escribiendo) y se limpia al pintar y al guardar.
   const deInicio = useMemo(() => ({ ...inicial, contacto: contactoEditable(inicial.contacto) }), [inicial]);
   const [d, setD] = useState(deInicio);
@@ -100,7 +120,8 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
   if (!contactoLimpio.error) ultimoBueno.current = contactoLimpio.contacto;
   // Con un teléfono a medias no se guarda: el panel ya dice qué le pasa.
   const listo = cambiado && !contactoLimpio.error;
-  const vista = useMemo(() => ({ ...d, contacto: ultimoBueno.current }), [d, contactoLimpio.error]);
+  // Con los iconos subidos dentro del tema: uno recién subido aún no está guardado en él.
+  const vista = useMemo(() => ({ ...d, tema: conIconos(d.tema, lista), contacto: ultimoBueno.current }), [d, lista, contactoLimpio.error]);
   // La línea de abierto/cerrado: la del reloj, salvo que se haya apagado aquí.
   const estadoVista = d.tema.abierto === false ? null : estado;
 
@@ -135,7 +156,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
   // traiga el suyo (los de un kit de marca).
   const plantilla = (estilo) => setD((p) => {
     const base = temaPorDefecto({ estilo, texto: p.tema.texto });
-    return { ...p, tema: { ...base, logoImagen: p.tema.logoImagen ?? null, abierto: p.tema.abierto, google: base.google ?? p.tema.google } };
+    return { ...p, tema: { ...base, logoImagen: p.tema.logoImagen ?? null, fondoFoto: p.tema.fondoFoto ?? null, abierto: p.tema.abierto, google: base.google ?? p.tema.google } };
   });
 
   // ---- una o dos cartillas
@@ -209,7 +230,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado }) {
             estilo: t.estilo, emoji: t.emoji, atras: t.atras,
             accent: t.accent, cardBg: t.cardBg, ink: t.ink, pageInk: t.pageInk, detalle: t.detalle || null,
             marca: t.marca, texto: t.texto || "", forma: t.forma, banda: t.banda, modo: t.modo, doble: t.doble,
-            abierto: t.abierto !== false, google: t.google || "acento", logoImagen: logoImagenDe(t),
+            abierto: t.abierto !== false, google: t.google || "acento", logoImagen: logoImagenDe(t), fondoFoto: fotoDe(t),
           },
           contacto: d.contacto,
           ...(esCupon
@@ -472,14 +493,23 @@ function PanelColores({ d, setTema, plantilla, kit, slug, cliente }) {
   const aparte = Boolean(t.detalle);
   return (
     <>
-      {kit && (
-        <>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Diseños con tu manual de marca</div>
-          <p style={ayuda}>Tus colores y tu logo, como los pide el manual. Luego puedes retocar lo que quieras aquí debajo.</p>
-          <DisenosDeMarca d={d} slug={slug} cliente={cliente} plantilla={plantilla} />
-        </>
-      )}
-      <p style={{ ...ayuda, marginTop: kit ? 14 : 6 }}>
+      <Cajones
+        tuyosPrimero={Boolean(kit) && Object.hasOwn(kit.estilos, t.estilo)}
+        tuyos={kit && (
+          <>
+            <p style={ayuda}>Tus diseños, hechos con tu manual de marca: tus colores y tu logo. Luego puedes retocar lo que quieras aquí debajo.</p>
+            <DisenosDeMarca d={d} slug={slug} cliente={cliente} plantilla={plantilla} />
+          </>
+        )}
+        vacio="Aquí salen los diseños hechos con tu manual de marca, cuando lo tengas. Los colores de abajo los eliges libres."
+        predeterminados={(
+          <>
+            <p style={ayuda}>Plantillas para cualquier negocio. Cambian los colores y el dibujo; el nombre, los sellos, el premio y tu logo propio se quedan.</p>
+            <Opciones opciones={ESTILOS_GENERALES} valor={t.estilo} rotulos={ROTULO_PLANTILLA} vista={vistaPlantilla} onChange={plantilla} ancho={120} />
+          </>
+        )}
+      />
+      <p style={{ ...ayuda, marginTop: 14 }}>
         Apple deja elegir tres colores. Google, <strong>solo el fondo</strong>: el texto lo pone él, en blanco o negro.
         Por eso las dos tarjetas pueden no verse del mismo color; aquí decides cómo.
       </p>
@@ -522,66 +552,103 @@ function PanelColores({ d, setTema, plantilla, kit, slug, cliente }) {
         </div>
       </Bloque>
 
-      <details style={{ marginTop: 16 }}>
-        <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>{kit ? "Plantillas de otros negocios" : "Empezar de otra plantilla"}</summary>
-        <p style={ayuda}>Cambia los colores y el dibujo. El nombre, los sellos, el premio y tu logo propio se quedan.</p>
-        <Opciones opciones={ESTILOS_GENERALES} valor={t.estilo} rotulos={ROTULO_PLANTILLA} vista={vistaPlantilla} onChange={plantilla} ancho={120} />
-      </details>
     </>
   );
 }
 
 // ---------------------------------------------------------------- logo
-function PanelLogo({ clave, d, set, setTema, slug, kit }) {
+function PanelLogo({ clave, d, set, setTema, kit }) {
   const t = d.tema;
+  const { lista, setLista, slug } = useContext(Propios);
   const imagen = logoImagenDe(t);
-  const [subiendo, setSubiendo] = useState(false);
+  const [subiendo, setSubiendo] = useState(null);
   const [error, setError] = useState(null);
-  const entrada = useRef(null);
+  const entradaLogo = useRef(null);
+  const entradaIcono = useRef(null);
+  const tc = conIconos(t, lista);
 
-  async function subir(fichero) {
+  async function subirLogo(fichero) {
     if (!fichero) return;
     setError(null);
-    setSubiendo(true);
+    setSubiendo("logo");
     try {
-      const cuerpo = await prepararImagen(fichero);
+      const cuerpo = await prepararImagen(fichero, { min: LOGO_MIN });
       const r = await fetch(`/api/logo?b=${slug}`, { method: "POST", headers: { "Content-Type": cuerpo.type || "image/png" }, body: cuerpo });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "No se pudo subir");
       setTema("logoImagen", data.logoImagen);
+      setLista((l) => ({ ...l, logos: [{ id: data.logoImagen.id, opaco: data.logoImagen.opaco }, ...l.logos.filter((x) => x.id !== data.logoImagen.id)] }));
     } catch (e) {
       setError(String(e?.message || e));
     } finally {
-      setSubiendo(false);
-      if (entrada.current) entrada.current.value = "";
+      setSubiendo(null);
+      if (entradaLogo.current) entradaLogo.current.value = "";
     }
   }
+
+  async function subirIcono(fichero) {
+    if (!fichero) return;
+    setError(null);
+    setSubiendo("icono");
+    try {
+      const id = await subirPropio(slug, "iconos", fichero, setLista);
+      setTema("marca", marcaDeIcono(id));
+      if (imagen) setTema("logoImagen", null);
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
+      setSubiendo(null);
+      if (entradaIcono.current) entradaIcono.current.value = "";
+    }
+  }
+
+  const elegirMarca = (m) => { setTema("marca", m); if (imagen) setTema("logoImagen", null); };
+  const tuyas = marcasTuyas(kit, lista);
+  const enTuyos = Boolean(imagen) || tuyas.includes(t.marca);
 
   return (
     <>
       {clave === "google.cabecera" && <Nombre d={d} set={set} />}
       <label style={{ ...etiqueta, marginTop: 4 }}>Logo</label>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(78px, 1fr))", gap: 6 }}>
-        {/* La imagen propia, la primera: es lo que más busca quien ya tiene logo. */}
-        <button type="button" onClick={() => (imagen ? null : entrada.current?.click())} aria-pressed={Boolean(imagen)} style={opcion(Boolean(imagen))}>
-          {imagen
-            ? <LogoApple tema={t} tam={38} />
-            : <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>+</span>}
-          <span style={{ fontSize: 11, lineHeight: 1.2, color: imagen ? C.texto : C.suave }}>{subiendo ? "Subiendo…" : "Tu imagen"}</span>
-        </button>
-        {marcasDe(kit).map((m) => {
-          const elegido = !imagen && t.marca === m;
-          return (
-            <button key={m} type="button" onClick={() => { setTema("marca", m); if (imagen) setTema("logoImagen", null); }} aria-pressed={elegido} title={ROTULO[m] || m} style={opcion(elegido)}>
-              <img src={comoDataUri(vistaMarca({ ...t, texto: t.texto || "AB" }, m))} alt="" style={{ height: 38, maxWidth: "100%", objectFit: "contain", display: "block" }} />
-              <span style={{ fontSize: 11, lineHeight: 1.2, color: elegido ? C.texto : C.suave }}>{ROTULO[m] || m}</span>
-            </button>
-          );
-        })}
-      </div>
-      <input ref={entrada} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" hidden onChange={(e) => subir(e.target.files?.[0])} />
+      <Cajones
+        tuyosPrimero={enTuyos}
+        tuyos={(
+          <>
+            <div style={rejilla(78)}>
+              {lista.logos.map((l) => {
+                const elegido = imagen?.id === l.id;
+                const temaLogo = { ...t, logoImagen: { id: l.id, b: slug, opaco: l.opaco } };
+                return (
+                  <Tuyo key={l.id} tipo="logos" id={l.id} elegido={elegido} onElegir={() => setTema("logoImagen", temaLogo.logoImagen)} rotulo="Tu imagen">
+                    <LogoApple tema={temaLogo} tam={38} />
+                  </Tuyo>
+                );
+              })}
+              {tuyas.map((m) => (
+                <Tuyo key={m} tipo={esMarcaPropia(m) ? "iconos" : null} id={idDeMarca(m)} elegido={!imagen && t.marca === m} onElegir={() => elegirMarca(m)}
+                  rotulo={ROTULO[m] || lista.iconos.find((x) => marcaDeIcono(x.id) === m)?.nombre || "Tu icono"}>
+                  <img src={comoDataUri(vistaMarca({ ...tc, texto: t.texto || "AB" }, m))} alt="" style={miniatura} />
+                </Tuyo>
+              ))}
+              <Subir onClick={() => entradaLogo.current?.click()} texto={subiendo === "logo" ? "Subiendo…" : "Imagen de logo"} />
+              <Subir onClick={() => entradaIcono.current?.click()} texto={subiendo === "icono" ? "Subiendo…" : "Icono propio"} />
+            </div>
+            <p style={ayuda}>
+              <strong>Imagen de logo:</strong> tu logo tal cual (cuadrado, de al menos {LOGO_MIN}×{LOGO_MIN}). Los sellos siguen siendo un dibujo.{" "}
+              <strong>Icono propio:</strong> un dibujo de un color (tu galleta, tu taza, tu mascota): vale de logo y dentro de los sellos,
+              y se pinta del color que elijas. Mejor un PNG con el fondo transparente o un dibujo oscuro sobre blanco.
+            </p>
+          </>
+        )}
+        predeterminados={(
+          <Opciones opciones={PREDETERMINADAS} valor={imagen ? null : t.marca} rotulos={ROTULO}
+            vista={(m) => vistaMarca({ ...t, texto: t.texto || "AB" }, m)} onChange={elegirMarca} ancho={78} />
+        )}
+      />
+      <input ref={entradaLogo} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" hidden onChange={(e) => subirLogo(e.target.files?.[0])} />
+      <input ref={entradaIcono} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => subirIcono(e.target.files?.[0])} />
 
-      {imagen ? (
+      {imagen && (
         <div style={{ ...cajaSuave, marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ textAlign: "center" }}>
@@ -592,24 +659,13 @@ function PanelLogo({ clave, d, set, setTema, slug, kit }) {
               <LogoGoogle tema={t} tam={48} />
               <div style={miniRotulo}>Google</div>
             </div>
-            <div style={{ flex: 1, display: "grid", gap: 6 }}>
-              <button type="button" onClick={() => entrada.current?.click()} style={chip} disabled={subiendo}>{subiendo ? "Subiendo…" : "Cambiar imagen"}</button>
-              <button type="button" onClick={() => setTema("logoImagen", null)} style={{ ...chip, color: C.mal }}>Quitar imagen</button>
-            </div>
+            <p style={{ ...ayuda, flex: 1, margin: 0 }}>
+              {imagen.opaco
+                ? "Es cuadrada y sin transparencias: en Google y en el icono va a sangre (Google la recorta en círculo)."
+                : "Tiene transparencias: va centrada sobre el fondo de la tarjeta, con aire alrededor."}
+            </p>
           </div>
-          <p style={ayuda}>
-            {imagen.opaco
-              ? "Es cuadrada y sin transparencias: en Google y en el icono va a sangre (Google la recorta en círculo)."
-              : "Tiene transparencias: va centrada sobre el fondo de la tarjeta, con aire alrededor."}
-            {" "}Los sellos siguen siendo un dibujo: elígelo en «Los sellos».
-          </p>
         </div>
-      ) : (
-        <p style={ayuda}>
-          <strong>Tu imagen:</strong> cuadrada, de al menos {LOGO_MIN}×{LOGO_MIN} píxeles (mejor 1024×1024). Un PNG con el
-          fondo transparente queda mejor; una foto o un JPG también valen. Se le quitan los bordes vacíos y se
-          ajusta sola a cada sitio.
-        </p>
       )}
       {error && <p style={{ ...ayuda, color: C.mal }}>{error}</p>}
 
@@ -627,12 +683,76 @@ function PanelLogo({ clave, d, set, setTema, slug, kit }) {
 }
 
 /**
+ * Sube algo a «Tuyos» (/api/propios) y deja la lista al día.
+ * @returns {Promise<string>} el id de lo subido
+ */
+async function subirPropio(slug, tipo, fichero, setLista) {
+  const cuerpo = tipo === "fondos"
+    ? await prepararImagen(fichero, { min: 600, lado: 2000, formato: "image/jpeg" })
+    : await prepararImagen(fichero, { min: 64 });
+  const nombre = encodeURIComponent(String(fichero.name || "").slice(0, 40));
+  const r = await fetch(`/api/propios?b=${slug}&tipo=${tipo}&nombre=${nombre}`, { method: "POST", headers: { "Content-Type": cuerpo.type || "image/png" }, body: cuerpo });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "No se pudo subir");
+  const { id, ...lista } = data;
+  setLista(lista);
+  return id;
+}
+
+/** Los dos cajones: lo de todos y lo tuyo. Abre en «Tuyos» si lo puesto es tuyo. */
+function Cajones({ tuyos, predeterminados, tuyosPrimero = false, vacio = null }) {
+  const [cual, setCual] = useState(tuyosPrimero ? "tuyos" : "predeterminados");
+  return (
+    <>
+      <Segmentos valor={cual} opciones={[["predeterminados", "Predeterminados"], ["tuyos", "Tuyos"]]} onChange={setCual} />
+      <div style={{ marginTop: 10 }}>
+        {cual === "tuyos" ? (tuyos || <p style={ayuda}>{vacio}</p>) : predeterminados}
+      </div>
+    </>
+  );
+}
+
+/** Una pieza de «Tuyos»: se elige tocándola; lo subido se puede quitar de la lista (si no está puesto). */
+function Tuyo({ tipo, id, elegido, onElegir, rotulo, children }) {
+  const { setLista, slug } = useContext(Propios);
+  const [error, setError] = useState(null);
+  async function quitar(e) {
+    e.stopPropagation();
+    if (!window.confirm("¿Quitarlo de «Tuyos»? Si lo quieres otra vez, tendrás que subirlo.")) return;
+    const r = await fetch(`/api/propios?b=${slug}&tipo=${tipo}&id=${id}`, { method: "DELETE" });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return setError(data.error || "No se pudo quitar");
+    setLista(data);
+  }
+  return (
+    <div style={{ position: "relative", minWidth: 0 }}>
+      <button type="button" onClick={onElegir} aria-pressed={elegido} title={error || rotulo} style={{ ...opcion(elegido), width: "100%" }}>
+        {children}
+        <span style={{ fontSize: 11, lineHeight: 1.2, color: elegido ? C.texto : C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{error || rotulo}</span>
+      </button>
+      {tipo && !elegido && (
+        <button type="button" onClick={quitar} aria-label={`Quitar ${rotulo}`} style={quitarTuyo}>×</button>
+      )}
+    </div>
+  );
+}
+
+function Subir({ onClick, texto }) {
+  return (
+    <button type="button" onClick={onClick} style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: "#fff" }}>
+      <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>+</span>
+      <span style={{ fontSize: 11, lineHeight: 1.2, color: C.suave }}>{texto}</span>
+    </button>
+  );
+}
+
+/**
  * La foto del móvil puede pesar 8 MB y venir tumbada: aquí se gira según su
  * EXIF y se reduce a 1024 px antes de subirla (en PNG, para no perder la
  * transparencia). Si el navegador no sabe abrirla (HEIC en algunos), va tal cual
  * y que decida el servidor.
  */
-async function prepararImagen(fichero) {
+async function prepararImagen(fichero, { min = LOGO_MIN, lado = 1024, formato = "image/png" } = {}) {
   let bmp;
   try {
     bmp = await createImageBitmap(fichero, { imageOrientation: "from-image" });
@@ -640,27 +760,30 @@ async function prepararImagen(fichero) {
     if (fichero.size > 4 * 1024 * 1024) throw new Error("Esa imagen no se puede abrir aquí y pesa más de 4 MB. Prueba con un PNG o un JPG.");
     return fichero;
   }
-  if (Math.max(bmp.width, bmp.height) < LOGO_MIN) {
-    throw new Error(`La imagen es muy pequeña (${bmp.width}×${bmp.height}). Hace falta al menos ${LOGO_MIN}×${LOGO_MIN} píxeles.`);
+  if (Math.max(bmp.width, bmp.height) < min) {
+    throw new Error(`La imagen es muy pequeña (${bmp.width}×${bmp.height}). Hace falta al menos ${min} píxeles de lado.`);
   }
-  const k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+  const k = Math.min(1, lado / Math.max(bmp.width, bmp.height));
   const lienzo = document.createElement("canvas");
   lienzo.width = Math.round(bmp.width * k);
   lienzo.height = Math.round(bmp.height * k);
   lienzo.getContext("2d").drawImage(bmp, 0, 0, lienzo.width, lienzo.height);
-  return new Promise((ok, mal) => lienzo.toBlob((b) => (b ? ok(b) : mal(new Error("No se pudo preparar la imagen"))), "image/png"));
+  // Las fotos en JPG: un PNG de 2000 px pasaría de los 4 MB que admite el servidor.
+  return new Promise((ok, mal) => lienzo.toBlob((b) => (b ? ok(b) : mal(new Error("No se pudo preparar la imagen"))), formato, 0.9));
 }
 
 // -------------------------------------------------------------- sellos
 function PanelSellos(props) {
   const { d, set, setTema, setCartilla, esCupon, elegida, setElegida, aDos, aUna, inicial, slug, kit } = props;
   const t = d.tema;
+  const { lista } = useContext(Propios);
+  const tc = conIconos(t, lista);
 
   if (esCupon) {
     return (
       <>
         <label style={{ ...etiqueta, marginTop: 4 }}>Dibujo de la banda</label>
-        <Opciones opciones={marcasDe(kit)} valor={t.marca} rotulos={ROTULO} vista={(m) => vistaMarca(t, m)} onChange={(m) => setTema("marca", m)} ancho={78} />
+        <ElegirDibujo kit={kit} tema={tc} valor={t.marca} onChange={(m) => setTema("marca", m)} ancho={78} />
         <Color titulo="Color" valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
       </>
     );
@@ -670,7 +793,7 @@ function PanelSellos(props) {
   const c = dos ? d.cartillas[Math.min(elegida, 1)] : null;
   const i = Math.min(elegida, 1);
   // Lo que cada modo necesita, de la cartilla elegida o de la única.
-  const temaDe = dos ? { ...t, marca: c.marca, modo: c.modo || "casillas", forma: c.forma || t.forma } : t;
+  const temaDe = dos ? { ...tc, marca: c.marca, modo: c.modo || "casillas", forma: c.forma || t.forma } : tc;
   const meta = dos ? c.meta : d.meta;
   const modo = dos ? c.modo || (t.doble === "llenar" ? "relleno" : "casillas") : t.modo;
   const ponModo = (m) => (dos ? setCartilla(i, "modo", m) : setTema("modo", m));
@@ -688,7 +811,7 @@ function PanelSellos(props) {
         <>
           <label style={etiqueta}>Cómo se reparten</label>
           <Opciones opciones={MODOS_DOBLES} valor={t.doble === "llenar" ? "lados" : t.doble || "filas"} rotulos={ROTULO_DOBLE}
-            vista={(m) => vistaDoble(t, m, d.cartillas)} onChange={(m) => setTema("doble", m)} ancho={150} />
+            vista={(m) => vistaDoble(tc, m, d.cartillas)} onChange={(m) => setTema("doble", m)} ancho={150} />
 
           {/* Un botón para cada una, no una lista larga con las dos debajo. */}
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.borde}` }}>
@@ -707,8 +830,7 @@ function PanelSellos(props) {
           <label style={etiqueta}>Premio</label>
           <input value={c.premio} maxLength={64} onChange={(e) => setCartilla(i, "premio", e.target.value)} style={campo} />
           <label style={etiqueta}>Dibujo de sus sellos</label>
-          <Opciones opciones={marcasDe(kit).filter((m) => m !== "texto")} valor={c.marca} rotulos={ROTULO}
-            vista={(m) => vistaMarca(t, m)} onChange={(m) => setCartilla(i, "marca", m)} ancho={64} />
+          <ElegirDibujo key={i} kit={kit} tema={tc} valor={c.marca} onChange={(m) => setCartilla(i, "marca", m)} ancho={64} sinTexto />
         </>
       )}
 
@@ -738,10 +860,115 @@ function PanelSellos(props) {
 
       <div style={{ marginTop: 16, paddingTop: 4, borderTop: `1px solid ${C.borde}` }}>
         <label style={etiqueta}>Fondo de la banda</label>
-        <Opciones opciones={BANDAS} valor={t.banda} rotulos={ROTULO} vista={(b) => vistaBanda(t, b)} onChange={(b) => setTema("banda", b)} ancho={132} />
+        <FondoBanda t={tc} setTema={setTema} />
         <Color titulo="Color de los sellos" ayuda="Cambia también las etiquetas y el logo." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
         <InterruptorAbierto d={d} setTema={setTema} estado={props.estado} slug={slug} />
       </div>
+    </>
+  );
+}
+
+/** El dibujo de los sellos (o del cupón): los de todos o los tuyos (kit e iconos subidos). */
+function ElegirDibujo({ kit, tema, valor, onChange, ancho, sinTexto = false }) {
+  const { lista, setLista, slug } = useContext(Propios);
+  const [subiendo, setSubiendo] = useState(false);
+  const [error, setError] = useState(null);
+  const entrada = useRef(null);
+  const tuyas = marcasTuyas(kit, lista);
+
+  async function subir(fichero) {
+    if (!fichero) return;
+    setError(null);
+    setSubiendo(true);
+    try {
+      onChange(marcaDeIcono(await subirPropio(slug, "iconos", fichero, setLista)));
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
+      setSubiendo(false);
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  return (
+    <>
+      <Cajones
+        tuyosPrimero={tuyas.includes(valor)}
+        tuyos={(
+          <div style={rejilla(ancho)}>
+            {tuyas.map((m) => (
+              <Tuyo key={m} tipo={esMarcaPropia(m) ? "iconos" : null} id={idDeMarca(m)} elegido={valor === m} onElegir={() => onChange(m)}
+                rotulo={ROTULO[m] || lista.iconos.find((x) => marcaDeIcono(x.id) === m)?.nombre || "Tu icono"}>
+                <img src={comoDataUri(vistaMarca(tema, m))} alt="" style={miniatura} />
+              </Tuyo>
+            ))}
+            {lista.iconos.length < MAX_PROPIOS.iconos && (
+              <Subir onClick={() => entrada.current?.click()} texto={subiendo ? "Subiendo…" : "Icono propio"} />
+            )}
+          </div>
+        )}
+        predeterminados={(
+          <Opciones opciones={sinTexto ? PREDETERMINADAS.filter((m) => m !== "texto") : PREDETERMINADAS} valor={valor} rotulos={ROTULO}
+            vista={(m) => vistaMarca(tema, m)} onChange={onChange} ancho={ancho} />
+        )}
+      />
+      <input ref={entrada} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => subir(e.target.files?.[0])} />
+      {error && <p style={{ ...ayuda, color: C.mal }}>{error}</p>}
+    </>
+  );
+}
+
+/** El fondo de la banda: los de siempre o una foto tuya, con un velo para que los sellos se lean. */
+function FondoBanda({ t, setTema }) {
+  const { lista, setLista, slug } = useContext(Propios);
+  const [subiendo, setSubiendo] = useState(false);
+  const [error, setError] = useState(null);
+  const entrada = useRef(null);
+  const foto = t.banda === "foto" ? fotoDe(t) : null;
+  const ponerFoto = (id) => { setTema("fondoFoto", { id, b: slug }); setTema("banda", "foto"); };
+
+  async function subir(fichero) {
+    if (!fichero) return;
+    setError(null);
+    setSubiendo(true);
+    try {
+      ponerFoto(await subirPropio(slug, "fondos", fichero, setLista));
+    } catch (e) {
+      setError(String(e?.message || e));
+    } finally {
+      setSubiendo(false);
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  return (
+    <>
+      <Cajones
+        tuyosPrimero={Boolean(foto)}
+        tuyos={(
+          <>
+            <div style={rejilla(132)}>
+              {lista.fondos.map((f) => (
+                <Tuyo key={f.id} tipo="fondos" id={f.id} elegido={foto?.id === f.id} onElegir={() => ponerFoto(f.id)} rotulo={f.nombre}>
+                  <img src={rutaFoto({ id: f.id, b: slug })} alt="" style={{ ...miniatura, width: "100%", objectFit: "cover", borderRadius: 4 }} />
+                </Tuyo>
+              ))}
+              {lista.fondos.length < MAX_PROPIOS.fondos && (
+                <Subir onClick={() => entrada.current?.click()} texto={subiendo ? "Subiendo…" : "Foto para la banda"} />
+              )}
+            </div>
+            <p style={ayuda}>
+              Una foto tuya (tu escaparate, tu producto) detrás de los sellos, con un velo del color de la tarjeta para que se lean.
+              Se recorta sola a lo ancho de la banda. Mejor apaisada y de al menos 1200 píxeles de ancho.
+            </p>
+          </>
+        )}
+        predeterminados={(
+          <Opciones opciones={BANDAS} valor={t.banda} rotulos={ROTULO} vista={(b) => vistaBanda(t, b)} onChange={(b) => setTema("banda", b)} ancho={132} />
+        )}
+      />
+      <input ref={entrada} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" hidden onChange={(e) => subir(e.target.files?.[0])} />
+      {error && <p style={{ ...ayuda, color: C.mal }}>{error}</p>}
     </>
   );
 }
@@ -990,6 +1217,12 @@ const rotuloTel = { fontSize: 12, fontWeight: 650, color: C.suave, textAlign: "c
 const miniRotulo = { fontSize: 10.5, color: C.tenue, marginTop: 4 };
 const cajaSuave = { background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: 10, padding: 10 };
 const cajaAviso = { background: "#fff8e6", border: "1px solid #f3d38a", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, lineHeight: 1.45, color: "#5c4400" };
+const rejilla = (ancho) => ({ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(${ancho}px, 1fr))`, gap: 6 });
+const miniatura = { height: 38, maxWidth: "100%", objectFit: "contain", display: "block" };
+const quitarTuyo = {
+  position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 6, border: `1px solid ${C.borde}`,
+  background: "#fff", color: C.suave, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0,
+};
 const paso = { width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.borde}`, background: "#fff", fontSize: 18, cursor: "pointer", flexShrink: 0 };
 const opcion = (activa) => ({
   display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
