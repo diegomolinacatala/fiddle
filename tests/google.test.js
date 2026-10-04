@@ -64,7 +64,8 @@ describe("clase y objeto (puros)", () => {
       state: "ACTIVE",
       accountId: "K7M",
       loyaltyPoints: { label: "Sellos", balance: { string: "3/8" } },
-      secondaryLoyaltyPoints: { label: "Premios", balance: { int: 1 } },
+      // Lo guardado, no lo canjeado de toda la vida (que es 1).
+      secondaryLoyaltyPoints: { label: "Premios guardados", balance: { int: 0 } },
       barcode: { type: "QR_CODE", value: `${APP}/w/${cliente.serial}`, alternateText: "K7M" },
       textModulesData: [{ id: "premio", header: "Premio", body: "Faltan 5 · café gratis" }],
     });

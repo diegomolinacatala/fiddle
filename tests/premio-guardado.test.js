@@ -102,11 +102,11 @@ describe("las listas cuentan las dos cartillas", () => {
 describe("el cliente lo ve en su tarjeta", () => {
   it("el pase de Apple lo pone en la cabecera y lo explica en el reverso", () => {
     const { headerFields, backFields } = camposDelPase(cliente({ sellos: 2, guardados: 1, premios: 4 }), nube);
-    expect(headerFields).toEqual([{ key: "guardados", label: "PREMIO GUARDADO", value: 1, changeMessage: "Premios guardados en tu tarjeta: %@" }]);
+    expect(headerFields).toEqual([{ key: "guardados", label: "PREMIO GUARDADO", value: 1 }]);
     expect(backFields[0]).toMatchObject({ key: "guardados", label: "Premios guardados" });
     expect(backFields[0].value).toMatch(/1 × café gratis/);
-    // Sin premios guardados, la cabecera de siempre.
-    expect(camposDelPase(cliente({ premios: 4 }), nube).headerFields[0].key).toBe("canjeados");
+    // Sin premios guardados, el mismo campo a 0: los 4 canjeados de toda la vida no salen.
+    expect(camposDelPase(cliente({ premios: 4 }), nube).headerFields).toEqual([{ key: "guardados", label: "PREMIOS GUARDADOS", value: 0 }]);
   });
 
   it("con dos cartillas suma los dos y el reverso dice cuáles", () => {

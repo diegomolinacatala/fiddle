@@ -122,7 +122,15 @@ describe("utilidades", () => {
 describe("abierto / cerrado va en la banda, no en los campos", () => {
   it("la cabecera del pase sigue siendo solo el contador", async () => {
     const p = construirPassJson(cliente(), negocio("nube"), opciones);
-    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["canjeados"]);
+    expect(p.storeCard.headerFields.map((f) => f.key)).toEqual(["guardados"]);
+  });
+
+  it("el punto de abierto/cerrado lleva un aro blanco debajo", async () => {
+    const { stripDelPase } = await import("@/lib/apple/dibujo");
+    const svg = stripDelPase(negocio("nube"), cliente(), { estado: { abierta: true, texto: "Abierto hasta las 14:00" } }).svg;
+    const aro = svg.indexOf('fill="#ffffff"/><circle');
+    expect(aro).toBeGreaterThan(-1);
+    expect(svg.indexOf("#34c759")).toBeGreaterThan(aro);
   });
 
   it("con estado, la banda lleva arriba el color de la tarjeta, el punto y la frase dibujada (sin <text>)", async () => {

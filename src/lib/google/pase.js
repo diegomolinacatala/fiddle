@@ -103,8 +103,17 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDato
   const codigo = cliente.codigo || String(cliente.serial).slice(0, 3).toUpperCase();
   // El texto del premio es el mismo campo que sale bajo la banda en Apple.
   // Con dos cartillas son dos campos ("Cookies", "Cafés") y van los dos.
-  const { secondaryFields } = camposDelPase(cliente, negocio);
-  const principales = negocio.cartillas ? secondaryFields : secondaryFields.slice(0, 1);
+  const { primaryFields, secondaryFields, backFields } = camposDelPase(cliente, negocio);
+  const principales = [
+    // El cupón: QUÉ descuento es (en Apple, el campo grande de la cara).
+    ...primaryFields,
+    ...(negocio.cartillas ? secondaryFields : secondaryFields.slice(0, 1)),
+  ];
+  // Del reverso de Apple, lo que es de ESTE cliente o de esta tarjeta y en
+  // Google no estaba: sus premios guardados (cuáles, no solo cuántos) y qué se
+  // gana con cada cartilla. "Cómo funciona" y el contacto van en la clase; el
+  // código, en accountId.
+  const delReverso = backFields.filter((f) => f.key === "guardados" || f.key === "premios" || (f.key === "como" && (cliente.borrado_en || cliente.fusionado_en)));
 
   const objeto = {
     id: idObjeto(issuerId, cliente.serial),
@@ -117,24 +126,24 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDato
     // Google, además, se quedaría en una copia que guarda Google. Como el objeto
     // va entero (PUT), el próximo cambio lo borra de las tarjetas que lo llevaban.
     loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },
-    // Como la cabecera del pase de Apple: un premio guardado manda sobre el
-    // contador de canjeados.
-    ...(!e.esCupon && totalGuardados(cliente) > 0
+    // Como la cabecera del pase de Apple: los premios guardados, aunque sean 0.
+    // Los canjeados de toda la vida no salen en la tarjeta.
+    ...(!e.esCupon && !cliente.borrado_en && !cliente.fusionado_en
       ? { secondaryLoyaltyPoints: { label: "Premios guardados", balance: { int: totalGuardados(cliente) } } }
-      : !e.esCupon && (cliente.premios || 0) > 0
-        ? { secondaryLoyaltyPoints: { label: "Premios", balance: { int: cliente.premios } } }
-        : {}),
+      : {}),
     barcode: { type: "QR_CODE", value: `${appUrl}/w/${cliente.serial}`, alternateText: codigo },
     heroImage: imagen(
       `${appUrl}${rutaBanda(negocio, cliente)}`,
       e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio),
     ),
-    textModulesData: principales.map((f) => ({ id: f.key, header: capitalizar(f.label), body: String(f.value) })),
+    textModulesData: [...principales, ...delReverso].map((f) => ({ id: f.key, header: capitalizar(f.label), body: String(f.value) })),
     linksModuleData: {
       uris: [
         { id: "tarjeta", uri: `${appUrl}/p/${cliente.serial}`, description: "Ver la tarjeta en el navegador" },
         // Dejar las promos, descargar sus datos o borrar la tarjeta (docs/RGPD.md, 3.5).
         { id: "datos", uri: enlaceDatos || `${appUrl}/p/${cliente.serial}/datos`, description: "Tu tarjeta y tus datos" },
+        // El aviso de privacidad, como al final del reverso de Apple.
+        { id: "privacidad", uri: `${appUrl}/privacidad?b=${negocio.slug}`, description: "Privacidad" },
       ],
     },
   };

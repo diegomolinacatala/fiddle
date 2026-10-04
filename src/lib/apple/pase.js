@@ -38,14 +38,18 @@ function camposSellos(cliente, negocio) {
   const faltan = Math.max(0, negocio.meta - cliente.sellos);
   const completa = faltan === 0;
 
-  // Un premio guardado es lo más valioso que tiene el cliente en la tarjeta:
-  // mientras lo tenga, ocupa la cabecera en vez del contador de canjeados.
+  // Arriba a la derecha, lo que el cliente TIENE: los premios guardados (casi
+  // siempre 0). Los canjeados de toda la vida se siguen contando (CRM, ficha),
+  // pero no van en la tarjeta: un "PREMIOS 7" que a veces era lo guardado y a
+  // veces lo gastado no se entendía.
+  //
+  // Sin changeMessage: al guardar un premio la cartilla vuelve a empezar y ya
+  // avisa PREMIO; y al canjearlo, un "Premios guardados: 0" en la pantalla de
+  // bloqueo sobra.
   const guardados = totalGuardados(cliente);
-  const header = guardados > 0
-    ? [{ key: "guardados", label: guardados === 1 ? "PREMIO GUARDADO" : "PREMIOS GUARDADOS", value: guardados, changeMessage: "Premios guardados en tu tarjeta: %@" }]
-    : negocio.tema.estilo === "barber"
-      ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
-      : [{ key: "canjeados", label: "PREMIOS", value: cliente.premios || 0, changeMessage: "Premios canjeados: %@" }];
+  const header = negocio.tema.estilo === "barber" && guardados === 0
+    ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
+    : [{ key: "guardados", label: guardados === 1 ? "PREMIO GUARDADO" : "PREMIOS GUARDADOS", value: guardados }];
 
   // NO hay campo "SELLOS 5 de 8": eso ya lo dicen los círculos de la banda, y
   // gastaba una columna de las pocas que hay (ver camposDelPase).

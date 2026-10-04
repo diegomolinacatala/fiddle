@@ -1425,8 +1425,13 @@ function lineaDeEstado(tema, estado, w) {
   const r = 3.4 * 3;
   const x = X_ESTADO * 3;
   const tinta = tema.ink || "#111111";
+  const cx = x - r - 5 * 3;
+  const cy = n2(base - tam * 0.36);
+  // Con un aro blanco: el verde y el rojo chocan con fondos de su mismo tono
+  // (la tarjeta verde, la caramelo, una foto) y el aro los separa de cualquiera.
   return `<rect width="${w}" height="${alto}" fill="${tema.cardBg || "#ffffff"}"/>`
-    + `<circle cx="${x - r - 5 * 3}" cy="${n2(base - tam * 0.36)}" r="${r}" fill="${estado.abierta ? PUNTO_ESTADO.abierta : PUNTO_ESTADO.cerrada}"/>`
+    + `<circle cx="${cx}" cy="${cy}" r="${n2(r + 1.5 * 3)}" fill="#ffffff"/>`
+    + `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${estado.abierta ? PUNTO_ESTADO.abierta : PUNTO_ESTADO.cerrada}"/>`
     + svgTexto(estado.texto, { x, y: base, tam, color: tinta, opacidad: 0.72 });
 }
 

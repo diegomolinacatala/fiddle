@@ -68,7 +68,8 @@ export default function AbiertoAhora({ horario }) {
 }
 
 const linea = { display: "flex", alignItems: "center", gap: 6, marginTop: 1, minWidth: 0 };
-const punto = { width: 7, height: 7, borderRadius: "50%", flexShrink: 0 };
+// El aro blanco lo separa de cualquier fondo (como el del pase, en dibujo.js).
+const punto = { width: 7, height: 7, borderRadius: "50%", flexShrink: 0, boxShadow: "0 0 0 1.5px #fff" };
 const texto = {
   display: "flex",
   flexWrap: "wrap",
