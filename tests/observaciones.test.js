@@ -23,8 +23,9 @@ describe("lo que dicen los números", () => {
     const tranquilo = obs.find((o) => o.id.startsWith("tranquilo"));
     expect(tranquilo.texto).toBe("Lo más tranquilo: las tardes de martes y miércoles.");
     // Un día a la semana (el más flojo), no uno por cada tarde tranquila.
-    expect(tranquilo.accion.base).toMatchObject({ disparo: "todos", dias: [1], hora: "16:00", caduca: true });
-    expect(tranquilo.accion.label).toBe("Programar un aviso los martes");
+    // No es un grupo de clientes: es un momento. A todos, "solo ese día", con día y hora propuestos.
+    expect(tranquilo.accion).toMatchObject({ tipo: "enviar", grupo: "momento", dia: 1, hora: "16:00" });
+    expect(tranquilo.accion.label).toBe("Avisar los martes");
   });
 
   it("dice cuándo es lo más fuerte, sin botón", () => {
@@ -52,6 +53,10 @@ describe("lo que dicen los números", () => {
 
   it("el enlace lleva a Avisos con todo preparado", () => {
     expect(enlaceDeAccion("deli", { tipo: "grupo", grupo: "riesgo" })).toBe("/deli/avisos?grupo=riesgo");
+    // Un hueco: a Enviar, con el texto, el día, la hora y de dónde viene.
+    const hueco = new URL(enlaceDeAccion("deli", { tipo: "enviar", grupo: "momento", dia: 1, hora: "16:00", texto: "Tranquilo" }, "Lo más tranquilo: las tardes de martes."), "http://x");
+    expect(hueco.pathname).toBe("/deli/avisos");
+    expect(Object.fromEntries(hueco.searchParams)).toEqual({ grupo: "momento", texto: "Tranquilo", dia: "1", hora: "16:00", por: "Lo más tranquilo: las tardes de martes." });
     const url = enlaceDeAccion("deli", { tipo: "programar", base: { nombre: "Tardes tranquilas", dias: [1, 2] } });
     const crudo = new URL(url, "http://x").searchParams.get("programar");
     expect(JSON.parse(Buffer.from(crudo.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"))).toEqual({ nombre: "Tardes tranquilas", dias: [1, 2] });

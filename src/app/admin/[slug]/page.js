@@ -7,6 +7,7 @@ import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
 import Accesos from "@/app/admin/Accesos";
 import DatosLegales from "@/app/admin/DatosLegales";
+import AvisosAvanzados from "@/app/admin/AvisosAvanzados";
 import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, estilosDelKit, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import { kitDe } from "@/lib/kits";
 import Selector from "@/app/admin/Selector";
@@ -139,8 +140,9 @@ export default function AdminNegocio() {
         </header>
 
         <div style={{ marginTop: 18 }}><Accesos slug={n.slug} /></div>
-        <div style={{ marginTop: 18, maxWidth: 520 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
           <DatosLegales slug={n.slug} legal={n.legal} accent={AZUL} flash={flash} onGuardado={(legal) => set("legal", legal)} />
+          <AvisosAvanzados slug={n.slug} on={n.avisosAvanzados === true} accent={AZUL} flash={flash} onCambio={(v) => set("avisosAvanzados", v)} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>

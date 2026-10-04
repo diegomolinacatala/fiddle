@@ -169,7 +169,7 @@ export default function PanelCrm({ slug, inicial }) {
                         {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>{o.detalle}</div>}
                       </div>
                       {o.accion && (
-                        <a href={enlaceDeAccion(slug, o.accion)} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap", alignSelf: "center" }}>
+                        <a href={enlaceDeAccion(slug, o.accion, o.texto)} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap", alignSelf: "center" }}>
                           {o.accion.label}
                         </a>
                       )}
@@ -337,7 +337,8 @@ function DetalleGrupo({ g, d, n, slug, accent, onVerFicha, onVerLista }) {
         <a href={`/${slug}/avisos?grupo=${g.key}`} style={botonPrimarioEnlace(accent)}>
           <Icono nombre="megafono" tam={16} /> Escribirles
         </a>
-        <a href={programar} style={{ ...botonPequeno, textDecoration: "none" }}>Programarles un aviso</a>
+        {/* Los programados solo existen si el admin los encendió; si no, la hora se elige en Enviar. */}
+        {n.avisosAvanzados && <a href={programar} style={{ ...botonPequeno, textDecoration: "none" }}>Programarles un aviso</a>}
         <button type="button" onClick={() => onVerLista(g.key)} style={botonPequeno}>Ver en la lista</button>
       </div>
       <p style={{ fontSize: 13, color: C.suave, margin: "8px 0 12px" }}>

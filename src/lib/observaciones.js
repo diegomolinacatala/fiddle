@@ -3,8 +3,13 @@
 // ----------------------------------------------------------------------------
 // Frases sacadas de las cuentas, sin IA: reglas fijas sobre la rejilla de a qué
 // hora viene la gente, el horario de la tienda y los grupos del CRM. Cada una
-// puede traer su botón: programar un aviso para ese hueco (Avisos →
-// Programados, ya relleno) o escribir a ese grupo (Avisos → Enviar ahora).
+// puede traer su botón, y todos llevan a Avisos → Enviar, ya relleno:
+//   - un GRUPO del CRM ("los que tienen un premio sin recoger"): ese grupo.
+//   - un HUECO ("las tardes de martes están tranquilas"): no es un grupo de
+//     clientes, es un momento. Va a TODOS, como mensaje de "solo ese día"
+//     (lib/envios.js, `momento`): un aviso para esa tarde, no una promo que se
+//     quede para siempre. Con el día y la hora propuestos: si es hoy o mañana,
+//     sale ya elegida en «Enviar a las…»; si no, la pantalla dice cuándo.
 //
 // A propósito, NO muy precisas: "las tardes de martes y miércoles", no "el
 // martes a las 16:40". Con unas decenas de visitas a la semana, más detalle
@@ -68,7 +73,7 @@ const hhmm = (h) => `${String(h).padStart(2, "0")}:00`;
 /**
  * Las observaciones, de la más útil a la menos.
  * @param {{rejilla:number[][], horario:object|null, metricas:object, grupos:{key:string,total:number}[]}} datos
- * @returns {{id:string, texto:string, detalle?:string, accion?:{tipo:"programar", base:object, label:string}|{tipo:"grupo", grupo:string, label:string}}[]}
+ * @returns {{id:string, texto:string, detalle?:string, accion?:{tipo:"enviar", grupo:"momento", label:string, dia:number, hora:string, texto:string}|{tipo:"grupo", grupo:string, label:string}}[]}
  */
 export function observaciones({ rejilla, horario = null, metricas = {}, grupos = [] }) {
   const out = [];
@@ -107,11 +112,7 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
           id: `tranquilo-${b.id}`,
           texto: `Lo más tranquilo: ${enBloque(b, dias)}.`,
           detalle: "Viene menos de la mitad de gente que en una hora normal de la tienda.",
-          accion: {
-            tipo: "programar",
-            label: `Programar un aviso ${listaDias([dia])}`,
-            base: { nombre: `${b.plural.charAt(0).toUpperCase()}${b.plural.slice(1)} tranquilas`, disparo: "todos", dias: [dia], hora: hhmm(hora), texto: b.texto, caduca: true },
-          },
+          accion: { tipo: "enviar", grupo: "momento", label: `Avisar ${listaDias([dia])}`, dia, hora: hhmm(hora), texto: b.texto },
         });
       }
 
@@ -145,16 +146,12 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
       const orden = [...porDia].sort((a, b) => a.ritmo - b.ritmo);
       const medio = orden[Math.floor(orden.length / 2)].ritmo;
       const flojo = orden[0];
-      if (medio > 0 && flojo.ritmo <= medio * 0.6 && !out.some((o) => o.accion?.base?.dias?.length === 1 && o.accion.base.dias[0] === flojo.d)) {
+      if (medio > 0 && flojo.ritmo <= medio * 0.6 && !out.some((o) => o.accion?.dia === flojo.d)) {
         const hora = abiertas[flojo.d].findIndex((x) => x > 0);
         out.push({
           id: `flojo-${flojo.d}`,
           texto: `Los ${plural(flojo.d)} vienen bastante menos que el resto de la semana.`,
-          accion: {
-            tipo: "programar",
-            label: `Programar un aviso para los ${plural(flojo.d)}`,
-            base: { nombre: `Los ${plural(flojo.d)}`, disparo: "todos", dias: [flojo.d], hora: hhmm(Math.max(0, hora) + 1), texto: "¿Plan para hoy? Pásate: cada visita suma en tu tarjeta.", caduca: true },
-          },
+          accion: { tipo: "enviar", grupo: "momento", label: `Avisar los ${plural(flojo.d)}`, dia: flojo.d, hora: hhmm(Math.max(0, hora) + 1), texto: "¿Plan para hoy? Pásate: cada visita suma en tu tarjeta." },
         });
       }
     }
@@ -187,9 +184,21 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
   return out;
 }
 
-/** La URL de Avisos que abre lo de una observación ya preparado. */
-export function enlaceDeAccion(slug, accion) {
-  if (accion.tipo === "grupo") return `/${slug}/avisos?grupo=${encodeURIComponent(accion.grupo)}`;
+/**
+ * La URL de Avisos que abre lo de una observación ya preparado. `por` es la
+ * frase de la observación: Enviar la enseña arriba, para que se sepa de dónde
+ * viene lo que ya está escrito.
+ */
+export function enlaceDeAccion(slug, accion, por = null) {
+  if (accion.tipo === "grupo" || accion.tipo === "enviar") {
+    const q = new URLSearchParams({ grupo: accion.grupo });
+    if (accion.texto) q.set("texto", accion.texto);
+    if (Number.isInteger(accion.dia)) q.set("dia", String(accion.dia));
+    if (accion.hora) q.set("hora", accion.hora);
+    if (por) q.set("por", por);
+    return `/${slug}/avisos?${q}`;
+  }
+  // Un aviso PROGRAMADO a medias (solo con los programados encendidos para la tienda).
   const json = JSON.stringify(accion.base);
   const b64 = typeof btoa === "function"
     ? btoa(unescape(encodeURIComponent(json)))

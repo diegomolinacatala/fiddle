@@ -13,6 +13,12 @@ export const dynamic = "force-dynamic";
 //   GET  ?b=<slug>                                  -> lo que pinta la pestaña Avisos
 //   PUT  ?b=<slug>  { automatizaciones?, pausaAvisos?, avisosActivos? } -> guarda (no toca los pases)
 //   POST ?b=<slug>  { regla }                        -> "Enviar ahora": esa regla, ya
+//
+// Con los automáticos y programados apagados por el admin (`avisosAvanzados`),
+// PUT y POST se niegan: no hay pestaña desde la que pedirlo, y nada debería
+// poder encender una regla por detrás.
+
+const APAGADOS = "Los avisos automáticos y programados no están activados para esta tienda";
 
 async function tienda(request, slug) {
   if (!esSlug(slug)) return { respuesta: jsonError("Falta o no existe ?b=<negocio>", 400) };
@@ -36,6 +42,9 @@ export async function PUT(request) {
   const { sesion, respuesta } = await tienda(request, slug);
   if (respuesta) return respuesta;
   try {
+    const negocio = await getNegocio(slug);
+    if (!negocio) return jsonError("Ese negocio no existe", 404);
+    if (!negocio.avisosAvanzados) return jsonError(APAGADOS, 403);
     const body = await request.json().catch(() => ({}));
     const patch = {};
     if (body.automatizaciones !== undefined) {
@@ -65,6 +74,7 @@ export async function POST(request) {
     const { regla } = await request.json().catch(() => ({}));
     const negocio = await getNegocio(slug);
     if (!negocio) return jsonError("Ese negocio no existe", 404);
+    if (!negocio.avisosAvanzados) return jsonError(APAGADOS, 403);
     if (!negocio.automatizaciones.some((r) => r.id === regla)) return jsonError("Ese aviso no existe. Guárdalo antes de enviarlo.", 404);
     const resultado = await repasarNegocio(negocio, { soloRegla: regla });
     return NextResponse.json({ envio: resultado.envios[0] ?? null, datos: await datosAvisos(slug) });

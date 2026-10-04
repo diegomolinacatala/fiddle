@@ -101,6 +101,14 @@ export async function PUT(request) {
       return NextResponse.json(guardado);
     }
 
+    // Automáticos y programados encendidos o no (lib/motorAvisos.js): tampoco salen
+    // en el pase. Apagarlos no borra las reglas.
+    if (typeof body.avisosAvanzados === "boolean" && Object.keys(body).every((k) => k === "slug" || k === "avisosAvanzados")) {
+      const guardado = await saveNegocio(slug, { avisosAvanzados: body.avisosAvanzados });
+      await auditar(sesion, slug, "config", `avisosAvanzados=${body.avisosAvanzados}`);
+      return NextResponse.json(guardado);
+    }
+
     const r = patchNegocioAdmin(body, Object.keys(ACCIONES), {
       ESTILOS, temaPorDefecto, cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas,
     });

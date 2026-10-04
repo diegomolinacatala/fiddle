@@ -1,38 +1,64 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PaseVista from "@/app/PaseVista";
-import { C, campo, etiqueta, h2, botonPrimario, botonSecundario } from "@/app/ui";
+import {
+  TODOS, MOMENTO, MAX_TEXTO, esPromo, horasParaEnviar, horaSugerida, cuandoEnvioTexto, infoDestino,
+} from "@/lib/envios";
+import { RELOJ_VIVO_MIN } from "@/lib/automatizaciones";
+import { DIAS, horaCorta } from "@/lib/horario";
+import { C, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, RADIO } from "@/app/ui";
 
 // ============================================================================
-// MANDAR UN MENSAJE AHORA, A TODOS O A UN GRUPO
+// MANDAR UN MENSAJE, AHORA O A UNA HORA
 // ----------------------------------------------------------------------------
-// Dos cosas que para el dueño son lo mismo ("decirles algo") y por dentro no:
-//   TODOS   la PROMO de la tienda (/api/promo): sale en todas las tarjetas,
-//           también en las que se emitan mañana, hasta que se quite.
-//   GRUPO   un MENSAJE en el pase de cada uno de ese grupo (/api/crm/campana):
-//           tapa la promo y se va solo cuando el cliente vuelve.
+// Tres cosas que para el dueño son lo mismo ("decirles algo") y por dentro no:
+//   TODOS    la PROMO de la tienda: sale en todas las tarjetas, también en las
+//            que se emitan mañana, hasta que se quite.
+//   MOMENTO  un MENSAJE a todos que se quita solo al cerrar ese día.
+//   GRUPO    un MENSAJE en el pase de cada uno de ese grupo: tapa la promo y se
+//            va solo cuando el cliente vuelve.
 // Por eso están en la misma pantalla con una frase que dice cuál es cuál.
+//
+// «Enviar a las…» ofrece solo hoy (hasta el último cierre) y mañana por la
+// mañana (lib/envios.js), y lo manda el reloj de los avisos: sin reloj, no se
+// ofrece. A quién se calcula al mandarlo, no al programarlo.
 //
 // La vista previa usa PaseVista, o sea las MISMAS funciones que arman el
 // .pkpass: lo que se ve aquí es lo que va a aparecer en el teléfono.
 // ============================================================================
 
-const MAX = { todos: 200, grupo: 120 };
-export const TODOS = "todos";
-
-export default function Campana({ negocio, destino, onEnviada, flash }) {
-  const esTodos = destino.key === TODOS;
+export default function Campana({ negocio, destino, onEnviada, onDatos, flash, pendientes, reloj, grupos, semilla = null }) {
+  const esTodos = esPromo(destino.key);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const max = esTodos ? MAX.todos : MAX.grupo;
+  const [hora, setHora] = useState("");
+  const max = esTodos ? MAX_TEXTO.todos : MAX_TEXTO.mensaje;
 
   // Al cambiar de destino, su idea de partida: un punto de partida para no mirar
-  // un campo vacío, no una plantilla. Para todos, la promo que ya esté puesta.
+  // un campo vacío, no una plantilla. Para todos, la promo que ya esté puesta. Si
+  // se llegó con un texto (de Clientes), ese.
   useEffect(() => {
-    setTexto(esTodos ? negocio.promo || "" : destino.idea?.replace("{premio}", negocio.premio) || "");
-  }, [destino.key, esTodos, destino.idea, negocio.promo, negocio.premio]);
+    const deSemilla = semilla?.grupo === destino.key && semilla.texto;
+    setTexto(deSemilla || (esTodos ? negocio.promo || "" : destino.idea?.replace("{premio}", negocio.premio) || ""));
+  }, [destino.key, esTodos, destino.idea, negocio.promo, negocio.premio, semilla]);
+
+  // Las horas se piden al montar y cada minuto: la de hace un rato puede haber pasado.
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setAhora(Date.now()), 60_000); return () => clearInterval(t); }, []);
+  const horas = useMemo(() => horasParaEnviar(negocio.horario, ahora), [negocio.horario, ahora]);
+  const sugerida = useMemo(
+    () => (semilla?.grupo === destino.key && (semilla.dia !== null || semilla.hora) ? horaSugerida(negocio.horario, semilla, ahora) : null),
+    [semilla, destino.key, negocio.horario, ahora],
+  );
+  useEffect(() => { if (sugerida?.cuando) setHora(sugerida.cuando); }, [sugerida?.cuando]);
+  // Si la elegida ya pasó, se suelta.
+  const todasLasHoras = [...horas.hoy, ...horas.manana];
+  const horaVale = todasLasHoras.some((h) => h.cuando === hora);
+
+  const relojVivo = Boolean(reloj?.ultimo) && ahora - Date.parse(reloj.ultimo) <= RELOJ_VIVO_MIN * 60_000;
+  const sePuedeProgramar = relojVivo && todasLasHoras.length > 0;
 
   const clienteVista = {
     serial: "ejemplo-0000-0000-0000-000000000000",
@@ -63,6 +89,42 @@ export default function Campana({ negocio, destino, onEnviada, flash }) {
     }
   }
 
+  async function programar() {
+    setEnviando(true);
+    try {
+      const r = await fetch("/api/envios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ b: negocio.slug, destino: destino.key, texto: texto.trim(), cuando: hora }),
+      });
+      const d = await r.json();
+      if (!r.ok) return flash(d.error || "No se pudo programar");
+      onDatos((p) => ({ ...p, pendientes: d.pendientes }));
+      flash(`Programado para ${cuandoEnvioTexto(hora, negocio.horario)}`);
+      setHora("");
+    } catch {
+      flash("Sin conexión: no se ha programado");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function cancelar(id) {
+    try {
+      const r = await fetch("/api/envios", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ b: negocio.slug, id }),
+      });
+      const d = await r.json();
+      if (!r.ok) return flash(d.error || "No se pudo cancelar");
+      onDatos((p) => ({ ...p, pendientes: d.pendientes }));
+      flash("Envío cancelado");
+    } catch {
+      flash("Sin conexión: no se ha cancelado");
+    }
+  }
+
   const sinNadie = destino.contactables === 0;
   const bloqueado = enviando || sinNadie || !texto.trim();
 
@@ -89,9 +151,10 @@ export default function Campana({ negocio, destino, onEnviada, flash }) {
           {texto.length}/{max} · una línea corta se lee de un vistazo en la pantalla de bloqueo
         </div>
 
+        {/* AHORA */}
         <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
           <button onClick={() => enviar(texto.trim())} disabled={bloqueado} style={{ ...botonPrimario(negocio.tema.accent), opacity: bloqueado ? 0.45 : 1, cursor: bloqueado ? "default" : "pointer" }}>
-            {enviando ? "Enviando…" : esTodos ? "Poner en todas las tarjetas" : `Enviar a ${destino.contactables}`}
+            {enviando ? "Enviando…" : esTodos ? "Poner ahora en todas" : `Enviar ahora a ${destino.contactables}`}
           </button>
           {(!esTodos || negocio.promo) && (
             <button onClick={() => enviar("")} disabled={enviando} style={botonSecundario} title="Deja el pase como estaba">
@@ -100,15 +163,76 @@ export default function Campana({ negocio, destino, onEnviada, flash }) {
           )}
         </div>
 
+        {/* A UNA HORA */}
+        <div style={cajaHora}>
+          <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="hora-envio">O a una hora</label>
+          {sePuedeProgramar ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <select id="hora-envio" value={horaVale ? hora : ""} onChange={(e) => setHora(e.target.value)} style={{ ...campo, width: "auto", minWidth: 150, flex: "0 1 auto" }}>
+                <option value="">Elige la hora…</option>
+                {horas.hoy.length > 0 && (
+                  <optgroup label="Hoy">
+                    {horas.hoy.map((h) => <option key={h.cuando} value={h.cuando}>Hoy, {horaCorta(h.hora)}</option>)}
+                  </optgroup>
+                )}
+                {horas.manana.length > 0 && (
+                  <optgroup label="Mañana">
+                    {horas.manana.map((h) => <option key={h.cuando} value={h.cuando}>Mañana, {horaCorta(h.hora)}</option>)}
+                  </optgroup>
+                )}
+              </select>
+              <button onClick={programar} disabled={bloqueado || !horaVale} style={{ ...botonSecundario, opacity: bloqueado || !horaVale ? 0.45 : 1 }}>
+                {horaVale ? `Enviar ${cuandoEnvioTexto(hora, negocio.horario)}` : "Enviar a las…"}
+              </button>
+            </div>
+          ) : (
+            <p style={{ fontSize: 12.5, color: C.tenue, margin: 0 }}>{porQueNoSePuede(negocio, horas, relojVivo)}</p>
+          )}
+          {sugerida && !sugerida.cuando && sugerida.dia !== null && (
+            <p style={{ fontSize: 12.5, color: C.suave, margin: "8px 0 0" }}>
+              Lo suyo es mandarlo un {DIAS[sugerida.dia]}{sugerida.hora ? ` hacia las ${horaCorta(sugerida.hora)}` : ""}. Solo se puede
+              programar para hoy o mañana: vuelve ese día, o mándalo ya.
+            </p>
+          )}
+          {sePuedeProgramar && (
+            <p style={{ fontSize: 12, color: C.tenue, margin: "8px 0 0" }}>
+              Hoy, hasta que cierres; mañana, de la apertura al primer cierre. Sale en el cuarto de hora elegido. A quién se mira al enviarlo.
+            </p>
+          )}
+        </div>
+
         <p style={{ fontSize: 12.5, color: C.tenue, marginTop: 12 }}>
           {esTodos
             ? "Se queda en todas las tarjetas, también en las nuevas, hasta que la quites."
-            : "Se queda en el pase de cada uno hasta que vuelva a la tienda; entonces se quita solo."}
+            : destino.key === MOMENTO
+              ? "Se quita solo cuando cierres ese día."
+              : "Se queda en el pase de cada uno hasta que vuelva a la tienda; entonces se quita solo."}
         </p>
         {sinNadie && (
           <p style={{ fontSize: 13, color: C.mal, marginTop: 8 }}>
-            Nadie {esTodos ? "" : "de este grupo "}tiene la tarjeta en el teléfono (Wallet o avisos de Android), así que no hay a dónde mandarlo.
+            {destino.total === 0
+              ? "Ahora mismo no hay nadie en este grupo."
+              : `Nadie ${esTodos ? "" : "de este grupo "}tiene la tarjeta en el teléfono (Wallet o avisos de Android), así que no hay a dónde mandarlo.`}
           </p>
+        )}
+
+        {pendientes.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <div style={{ ...etiqueta, marginTop: 0 }}>Esperando su hora</div>
+            <div style={{ display: "grid", gap: 6 }}>
+              {pendientes.map((p) => (
+                <div key={p.id} style={filaPendiente}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                      {cuandoEnvioTexto(p.cuando, negocio.horario, ahora)} · {(grupos.find((g) => g.key === p.destino) || infoDestino(p.destino))?.label || p.destino}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>«{p.texto}»</div>
+                  </div>
+                  <button type="button" onClick={() => cancelar(p.id)} style={botonPequeno}>Cancelar</button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -119,12 +243,19 @@ export default function Campana({ negocio, destino, onEnviada, flash }) {
           cliente={clienteVista}
           qrTexto={`/w/${clienteVista.serial}`}
           pie={esTodos
-            ? "Si a alguien le llega un mensaje de un grupo o un aviso automático, ese le tapa la promo."
+            ? "Si a alguien le llega un mensaje de un grupo, ese le tapa la promo."
             : "El mensaje ocupa el sitio de la promo: mientras esté puesto, tapa la de la tienda."}
         />
       </div>
     </div>
   );
+}
+
+function porQueNoSePuede(negocio, horas, relojVivo) {
+  if (!negocio.horario) return "Para enviar a una hora hace falta el horario de la tienda (pestaña Tienda → Horario).";
+  if (!relojVivo) return "El reloj de los avisos no está en marcha, así que lo programado no saldría. De momento, solo «Enviar ahora».";
+  if (horas.motivo === "cerrada") return "Hoy ya has cerrado y mañana no abres: no hay hora a la que programarlo.";
+  return "No hay horas libres para programar.";
 }
 
 /** Cuántos teléfonos sonaron, por canal: iPhone (Wallet) y Android (avisos + Google Wallet). */
@@ -136,3 +267,12 @@ function resumen(d, cuerpo, esTodos) {
   const base = esTodos ? `Promo puesta en ${d.total} tarjetas` : `Enviado a ${d.destinatarios}`;
   return `${base}${sonaron.length ? ` · avisados: ${sonaron.join(", ")}` : ""}`;
 }
+
+const cajaHora = {
+  marginTop: 14, padding: "12px 13px", borderRadius: RADIO.fila, border: `1px solid ${C.borde}`, background: C.panelSuave,
+};
+const filaPendiente = {
+  display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: RADIO.fila, border: `1px solid ${C.borde}`, background: "#fff",
+};
+
+export { TODOS };

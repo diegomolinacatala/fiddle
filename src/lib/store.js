@@ -185,6 +185,11 @@ function fusionarConfig(actual, patch) {
     legal: patch.legal !== undefined ? patch.legal : actual.legal,
     // Cuándo se archivó: a los DIAS_BAJA_TIENDA se borra sola (lib/limpieza.js).
     archivadoEn: patch.archivadoEn !== undefined ? patch.archivadoEn : actual.archivadoEn,
+    // Automáticos y programados encendidos para esta tienda: solo lo cambia el admin.
+    avisosAvanzados: patch.avisosAvanzados ?? actual.avisosAvanzados,
+    // «Enviar a las…» (lib/envios.js) y lo que la tienda ha subido (lib/propios.js).
+    enviosProgramados: patch.enviosProgramados ?? actual.enviosProgramados,
+    propios: patch.propios ?? actual.propios,
   };
   return config;
 }

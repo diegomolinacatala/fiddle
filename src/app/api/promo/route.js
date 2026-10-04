@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { saveNegocio } from "@/lib/store";
 import { esSlug } from "@/lib/negocios";
-import { notificarNegocio } from "@/lib/wallet";
+import { ponerPromo } from "@/lib/campanas";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -16,12 +15,8 @@ export async function POST(request) {
     const { respuesta } = await exigirNegocio(request, b, "manager");
     if (respuesta) return respuesta;
 
-    const promo = typeof texto === "string" && texto.trim() ? texto.trim().slice(0, 200) : null;
-    const negocio = await saveNegocio(b, { promo });
-    if (!negocio) return jsonError("Ese negocio no existe", 404);
-    // Solo una promo NUEVA hace sonar Android; retirarla limpia las tarjetas en silencio.
-    const aviso = await notificarNegocio(negocio, { promoNueva: negocio.promo, promo: true });
-    return NextResponse.json({ promo: negocio.promo, ...aviso });
+    const r = await ponerPromo(b, texto);
+    return r.error ? jsonError(r.error, r.status) : NextResponse.json(r);
   } catch (e) {
     return errorInterno("promo", e);
   }

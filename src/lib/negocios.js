@@ -27,6 +27,8 @@ import { normalizarContacto } from "./contacto";
 import { normalizarLegal } from "./legal";
 import { normalizarCaja } from "./caja";
 import { normalizarHorario } from "./horario";
+import { normalizarPendientes } from "./envios";
+import { normalizarPropios } from "./propios";
 import { normalizarReglas, normalizarPausa, normalizarLimiteDia, PLANTILLAS, PAUSA_POR_DEFECTO } from "./automatizaciones";
 
 // Cada estilo trae un tema completo y coherente. Al crear un negocio se parte
@@ -535,6 +537,15 @@ export function componerNegocio(slug, guardado) {
     legal: normalizarLegal(c.legal),
     // Desde cuándo está archivada: la cuenta atrás de su borrado (lib/limpieza.js).
     archivadoEn: c.archivado === true && typeof c.archivadoEn === "string" ? c.archivadoEn : null,
+    // Los avisos AUTOMÁTICOS y PROGRAMADOS (pestañas de Avisos y el motor): apagados
+    // salvo que el admin los encienda para esta tienda. Apagados no se borran: las
+    // reglas se quedan guardadas y vuelven tal cual al encenderlos.
+    avisosAvanzados: c.avisosAvanzados === true,
+    // Lo que «Enviar a las…» deja esperando a que lo mande el reloj (lib/envios.js).
+    enviosProgramados: normalizarPendientes(c.enviosProgramados),
+    // Lo que la tienda ha subido para su tarjeta: logos, iconos y fotos de banda
+    // (lib/propios.js). Solo lo ve ella, en «Tuyos» del editor.
+    propios: normalizarPropios(c.propios),
   };
 }
 

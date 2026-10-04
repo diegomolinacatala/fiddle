@@ -175,7 +175,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
             />
             <Bloque
               id="horario" data-recorrido="horario" accent={accent} icono="reloj" titulo="Horario"
-              resumen={n.horario ? resumenHorario(n.horario) : "Sin horario: los avisos automáticos no salen hasta que lo pongas."}
+              resumen={n.horario ? resumenHorario(n.horario) : "Sin horario: no se pueden enviar avisos a una hora ni decir si estás abierto."}
               falta={!n.horario} abierto={abierto === "horario"}
               accion={{
                 texto: abierto === "horario" ? "Cerrar" : n.horario ? "Cambiar horario" : "Poner horario",
