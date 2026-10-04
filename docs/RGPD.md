@@ -322,6 +322,9 @@ antes que al código. Cambio en el store: en los dos backends.
 
 - **Google guarda el nombre** (`accountName`): borrar un cliente (3.3) o una tienda (7.2)
   tiene que limpiarlo también allí.
+- **Un aviso con `{nombre}` deja el nombre en claro** en `campanas.texto` y
+  `eventos.mensaje`, no solo en `clientes.mensaje` ([PRIVACIDAD.md](PRIVACIDAD.md)):
+  poner `mensaje` a null (3.3) no basta para borrarlo.
 - **`borrarNegocio` deja push tokens huérfanos** en `dispositivos` (7.2).
 - **`tarjetas_de_dispositivo` no caduca nunca**, a propósito, para devolver sellos. Ata un
   id de teléfono a una tarjeta sin fin: que caiga con el plazo del cliente (5.2).
