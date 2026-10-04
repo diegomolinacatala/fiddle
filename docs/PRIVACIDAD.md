@@ -11,12 +11,21 @@ fuera del código para trabajar con una tienda real.
 | Nota de la tienda ("el del perro") | `clientes.nota` | **Cifrado** | Texto libre: la pantalla pide no apuntar salud ni alergias (art. 9) |
 | Si quiere promos y qué aviso vio | `clientes.promos_no`, `clientes.aviso_version` | En claro | El registro del soft opt-in (docs/RGPD.md, 2.3) |
 | Constancia de borrados y auditoría | `borrados`, `auditoria` | En claro | Sin datos personales: tienda, quién, cuándo, cuántos |
+| Texto de un aviso con `{nombre}` | `clientes.mensaje`, `campanas.texto`, `eventos.mensaje` | **En claro** (pendiente, abajo) | Se guarda ya relleno, con el nombre de pila dentro |
 | Sellos, visitas, fechas, historial | `clientes`, `eventos` | En claro, ligado al `serial` (un uuid) | El CRM agrupa y ordena por ellos en SQL. Sin nombre no dicen de quién son |
 | Tokens de avisos (Apple, web, Google) | `dispositivos`, `registros` | En claro | Hacen falta tal cual para mandar el aviso y no identifican a nadie |
 | Token del pase de Apple | `clientes.auth_token` | En claro | Apple lo manda en cada consulta y hay que compararlo |
 | IP de quien abusa (login, tap...) | `intentos.clave` | **Huella HMAC** con `AUTH_SECRET`, nunca la IP; se borra al día | Para contar "la misma IP" basta con la huella. Sin `AUTH_SECRET` (solo demo) la huella se podría revertir |
 
 No se guarda email, teléfono, dirección ni nada de pagos.
+
+**Pendiente: el nombre en los avisos.** Un aviso automático o programado con `{nombre}`
+se guarda ya relleno, y `PERSONALES` solo cifra `nombre` y `nota`: el nombre de pila
+queda en claro en `clientes.mensaje` (lo que enseña el pase), en `campanas.texto` (el
+motor agrupa por texto: con `{nombre}`, una campaña por nombre) y en `eventos.mensaje`.
+Arreglo posible: guardar en `campanas` y `eventos` el texto sin rellenar y cifrar
+`clientes.mensaje` fila a fila (el cifrado va atado al serial). Hasta entonces, borrar a
+un cliente también tiene que limpiar esas dos tablas.
 
 ## Qué protege cada capa
 

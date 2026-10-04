@@ -14,7 +14,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `/`, `/<negocio>`, `/login`, `/privacidad`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios`, `/api/salud` | público |
 | `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación) |
 | `/api/tutorial` | cualquier sesión (cada uno ve y marca lo suyo) |
-| `GET /api/tap`, `/p/<serial>`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
+| `GET /api/tap`, `/p/<serial>`, `/p/<serial>/listo`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
 | `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>`, `GET /api/logo`, `GET /api/fondo` | público (la tarjeta de Android: el serial es la llave) |
 | `/p/<serial>/datos`, `POST /api/tarjeta/<serial>/datos` | público, pero con la llave del pase (tras `#`) o la cookie del tap |
 | `/api/wallet/v1/*` | Apple Wallet (token del pase en `Authorization`) |
@@ -69,7 +69,8 @@ y saca a quien estuviera dentro con la vieja.
 ### `GET /api/tap?b=<negocio>[&nuevo=1]`
 El "tap NFC" (y el QR del mostrador). Si ese teléfono **ya tiene tarjeta** (cookie
 `tarjeta_<negocio>`, 1 año), se la devuelve:
-- iPhone + Apple configurado → `302` a `/api/pase/<serial>` (el **`.pkpass`**).
+- iPhone + Apple configurado → `302` a `/p/<serial>/listo`, que abre el **`.pkpass`** y,
+  cuando ya ha salido la hoja de la Cartera, dice «Todo listo» ([`todoListo.js`](../src/lib/todoListo.js)).
 - Android + Google Wallet → `302` a guardarla en Google Wallet.
 - Resto → `302` a `/p/<serial>` en el mismo dominio.
 
@@ -98,6 +99,8 @@ normal (sin JavaScript), `303` a `ir`.
 
 ### `GET /api/pase/<serial>`
 Descarga el `.pkpass` actual (botón "Añadir a Apple Wallet"). `404` si Apple no está configurado.
+Con `?listo=1` (lo pide `/p/<serial>/listo`) deja además una cookie de un minuto,
+`pase_abierto`, que solo ve esa página: así sabe que el pase ya ha llegado.
 Se firma con el Pass Type ID con que esa tarjeta **ya está** en algún iPhone (sus
 `registros`); si no está en ninguno, con el de la tienda. Firmarla con otro mete una
 segunda tarjeta al lado en vez de actualizar la que tiene (`configDeDescarga`).

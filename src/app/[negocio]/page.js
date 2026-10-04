@@ -10,6 +10,8 @@ import { clienteVigente } from "@/lib/unaTarjeta";
 import { proveedorWallet } from "@/lib/wallet";
 import { rutaGuardarGoogle } from "@/lib/googlewallet";
 import { clienteDeTarjeta, negocioDeTarjeta } from "@/lib/tarjeta";
+import { rutaListo } from "@/lib/todoListo";
+import { coloresDeTienda, tintaClara } from "@/app/ui";
 import ErrorDatos from "@/app/ErrorDatos";
 import MarcaTienda from "@/app/MarcaTienda";
 import CaraDelPase from "@/app/CaraDelPase";
@@ -60,18 +62,11 @@ export default async function Page({ params, searchParams }) {
   const vigente = recordado ? await clienteVigente(getCliente, recordado).catch(() => null) : null;
   const suya = vigente?.negocio === slug ? vigente : null;
   const t = n.tema;
-  // El botón va en el color del pase: con un diseño de kit el fondo de la página
-  // ES el color de la tienda, y un botón verde sobre verde no se ve.
-  const acento = colorDelPase(t);
-  const colores = {
-    background: t.pageBg,
-    color: t.pageInk,
-    "--acento": acento,
-    "--sobre-acento": tintaClara(acento) ? "rgba(0,0,0,.84)" : "#fff",
-  };
 
+  // Tinta clara = fondo oscuro: el campo del nombre va en blanco translúcido
+  // sobre un fondo claro y apenas insinuado sobre uno oscuro.
   return (
-    <main className={`tienda ${tintaClara(t.pageInk) ? "oscura" : "clara"}`} style={colores}>
+    <main className={`tienda ${tintaClara(t.pageInk) ? "oscura" : "clara"}`} style={coloresDeTienda(t, colorDelPase(t))}>
       <style>{css}</style>
       <div className="centro">
         {suya
@@ -111,7 +106,8 @@ function Bienvenida({ n, slug, nuevo }) {
 // escritorio, un portátil) la tarjeta web, que ofrece las dos.
 function TuTarjeta({ n, cliente, plataforma }) {
   const { serial } = cliente;
-  const apple = plataforma === "ios" && proveedorWallet() === "apple" ? `/api/pase/${serial}` : null;
+  // A la página que abre el pase y, cuando sale la Cartera, dice «Todo listo».
+  const apple = plataforma === "ios" && proveedorWallet() === "apple" ? rutaListo(serial) : null;
   const google = plataforma === "android" ? rutaGuardarGoogle(serial) : null;
 
   return (
@@ -148,17 +144,6 @@ function promesa(n) {
   if (n.tipo === "descuento") return [n.premio];
   if (n.cartillas) return n.cartillas.map((c) => `${c.meta} ${c.nombre.toLowerCase()} · ${c.premio}`);
   return [`${n.meta} sellos · ${n.premio}`];
-}
-
-// ¿Es un color claro? Tinta clara = fondo oscuro: el campo del nombre va en
-// blanco translúcido sobre un fondo claro y apenas insinuado sobre uno oscuro. Y
-// sobre un acento claro (el dorado de una barbería) el texto del botón va oscuro.
-function tintaClara(color) {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(color || "").trim());
-  if (!m) return false;
-  const hex = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
 }
 
 const marca = { margin: "0 auto", borderRadius: 22, boxShadow: "0 18px 36px -16px rgba(0,0,0,.5)" };

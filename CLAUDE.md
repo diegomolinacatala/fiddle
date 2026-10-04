@@ -89,6 +89,10 @@ escanear"; **apagado de partida**):
 - Es lo primero que ve el cliente: pocas palabras, los colores de la tienda y los
   botones oficiales de Wallet (`app/BotonesWallet.js`) sin tocar.
 - La tarjeta de esa página es `app/CaraDelPase.js`, la misma que la tarjeta web.
+- **En iPhone el `.pkpass` se abre desde `/p/<serial>/listo`** (el tap y el botón de
+  Apple de la tienda): al cerrar la Cartera queda esa página y dice «Todo listo». Solo
+  cuando la hoja ya ha salido (`lib/todoListo.js`: la cookie que deja el pase, o la
+  página tapada). Sin señal, el botón oficial: nunca «listo» por tiempo.
 
 ## Una tarjeta por iPhone y tienda
 
@@ -249,6 +253,10 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
   ignora; un dibujo nuevo que pinte la banda tiene que pasar por uno de los dos.
 - **Compatibilidad**: los temas guardados solo tenían `estilo`. `piezasDeTema()`
   deduce las piezas de ahí y hay un test que fija que el SVG no cambia.
+- **Los colores del tema solo se guardan como `#rrggbb`** (`HEX` en `lib/validacion.js`).
+  No aflojarlo: la chincheta del mapa del manager mete `accent` en HTML crudo
+  (`L.divIcon`) y la CSP deja scripts en línea. Un color sin validar sería un script en
+  una pantalla que también abre el admin.
 
 ## El CRM agrupa por RITMO, no por calendario
 
@@ -449,6 +457,11 @@ el **PIN por defecto** (la propuesta es "solo para premios") y si se entra con
   `getNegocio()` esconden lo archivado salvo que se pida (`incluirArchivados`, solo
   en `/admin`). Se ven en `/admin` → Archivadas.
 - Tres roles: `caja`, `manager`, `admin`. El admin (victor/diego) entra en todo.
+- **El serial es la llave de la tarjeta** (va en su QR, no cambia): con él se usa en el
+  mostrador, se baja el `.pkpass` con su `auth_token` y se activan sus avisos. Nunca
+  enseñar a un cliente el serial de otro. Lo aceptado y lo pendiente de seguridad, en
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#seguridad): en una revisión, lo aceptado no
+  es un hallazgo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.
 - **Nombre y nota del cliente van cifrados** (`lib/cifrado.js`, ver
