@@ -205,8 +205,8 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
           {esTodos
             ? "Se queda en todas las tarjetas, también en las nuevas, hasta que la quites."
             : destino.key === MOMENTO
-              ? "Se quita solo cuando cierres ese día."
-              : "Se queda en el pase de cada uno hasta que vuelva a la tienda; entonces se quita solo."}
+              ? "Se borra solo de todas las tarjetas cuando cierres ese día."
+              : "Se queda en la tarjeta de cada uno hasta que vuelva a la tienda; entonces se borra solo."}
         </p>
         {sinNadie && (
           <p style={{ fontSize: 13, color: C.mal, marginTop: 8 }}>

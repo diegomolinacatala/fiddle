@@ -45,15 +45,17 @@ export const MOMENTO = "momento";
 /** Los destinos que no son grupos del CRM. Mismo aspecto que LISTA_GRUPOS. */
 export const DESTINOS_ESPECIALES = {
   [TODOS]: {
-    label: "Todos los clientes",
+    label: "Promo para todos",
     icon: "clientes",
-    descripcion: "La promo de la tienda: la ven todas las tarjetas, también las nuevas, hasta que la quites.",
+    descripcion: "Sale como PROMO en todas las tarjetas, también en las que se saquen después, y se queda hasta que la quites.",
+    dura: "Hasta que la quites",
     promo: true,
   },
   [MOMENTO]: {
-    label: "Todos, solo ese día",
+    label: "Aviso de un día, para todos",
     icon: "reloj",
-    descripcion: "Un mensaje a todos que se quita solo cuando cierra la tienda ese día.",
+    descripcion: "Llega a todos como PARA TI y se borra solo de sus tarjetas cuando cierras ese día. Para cosas de un rato: «esta tarde está tranquilo».",
+    dura: "Se borra al cerrar",
     idea: "Esta tarde está tranquilo: ven con calma, tu tarjeta sigue sumando.",
     caduca: true,
   },
@@ -65,11 +67,14 @@ export const esDestino = (clave) => esGrupo(clave) || (typeof clave === "string"
 /** ¿Va a la promo de la tienda (no al pase de cada uno)? */
 export const esPromo = (clave) => clave === TODOS;
 
+/** Cuánto se queda en la tarjeta: lo que se lee en cada destino de la pantalla. */
+export const DURA_GRUPO = "Hasta que vuelva";
+
 /** El nombre y la descripción de un destino, para la pantalla y el historial. */
 export function infoDestino(clave) {
   if (Object.hasOwn(DESTINOS_ESPECIALES, clave)) return { key: clave, ...DESTINOS_ESPECIALES[clave] };
   const g = LISTA_GRUPOS.find((x) => x.key === clave);
-  return g || null;
+  return g ? { ...g, dura: DURA_GRUPO } : null;
 }
 
 /** ¿Entra este perfil (lib/crm.js perfilDe) en el destino? */

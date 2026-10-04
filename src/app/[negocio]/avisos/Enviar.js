@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import Icono from "@/app/Icono";
 import Campana from "./Campana";
-import { TODOS, MOMENTO, DESTINOS_ESPECIALES, infoDestino } from "@/lib/envios";
+import { TODOS, MOMENTO, DESTINOS_ESPECIALES, DURA_GRUPO, infoDestino } from "@/lib/envios";
 import { C, panel, RADIO } from "@/app/ui";
 
 // ============================================================================
 // ENVIAR: primero a quién, luego qué y cuándo (ahora o a una hora)
 // ----------------------------------------------------------------------------
-// A todos (la promo de la tienda), a todos solo ese día, o a uno de los grupos
+// La promo para todos, un aviso de un día para todos, o a uno de los grupos
 // del CRM. Un cliente puede estar en varios grupos a la vez, y está bien: estar
 // a un sello del premio y llevar semanas sin venir es la misma persona muchas
 // veces.
@@ -32,7 +32,7 @@ export default function Enviar({ datos, flash, onDatos, onEnviado, llegada = {} 
   }));
   // Un grupo vacío no se ofrece (en el móvil empujaría el mensaje hacia abajo)…
   // salvo que sea el que se ha pedido: entonces se ve, vacío, y se dice por qué.
-  const grupos = datos.grupos.filter((g) => g.total > 0 || g.key === llegada.grupo);
+  const grupos = datos.grupos.filter((g) => g.total > 0 || g.key === llegada.grupo).map((g) => ({ ...g, dura: DURA_GRUPO }));
   const destinos = [...especiales, ...grupos];
   const destino = destinos.find((g) => g.key === elegido) || destinos[0];
   const desconocido = llegada.grupo && !infoDestino(llegada.grupo);
@@ -62,7 +62,7 @@ export default function Enviar({ datos, flash, onDatos, onEnviado, llegada = {} 
                 <span style={{ marginLeft: "auto", fontSize: 18, fontWeight: 650 }}>{g.total}</span>
               </span>
               <span style={{ fontSize: 11.5, color: C.tenue, marginTop: 4 }}>
-                {hay ? `${g.contactables} avisable${g.contactables === 1 ? "" : "s"}` : "ahora mismo, nadie"}
+                {hay ? `${g.contactables} avisable${g.contactables === 1 ? "" : "s"}` : "ahora mismo, nadie"} · {g.dura}
               </span>
             </button>
           );

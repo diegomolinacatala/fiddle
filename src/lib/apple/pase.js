@@ -49,7 +49,8 @@ function camposSellos(cliente, negocio) {
   const guardados = totalGuardados(cliente);
   const header = negocio.tema.estilo === "barber" && guardados === 0
     ? [{ key: "nivel", label: "NIVEL", value: nivelDe(cliente.premios || 0), changeMessage: "Subes a nivel %@" }]
-    : [{ key: "guardados", label: guardados === 1 ? "PREMIO GUARDADO" : "PREMIOS GUARDADOS", value: guardados }];
+    // "GUARDADOS" a secas: "PREMIOS GUARDADOS" no cabe en la cabecera del iPhone.
+    : [{ key: "guardados", label: "GUARDADOS", value: guardados }];
 
   // NO hay campo "SELLOS 5 de 8": eso ya lo dicen los círculos de la banda, y
   // gastaba una columna de las pocas que hay (ver camposDelPase).

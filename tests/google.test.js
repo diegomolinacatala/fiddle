@@ -277,7 +277,8 @@ describe("fachada googlewallet (store en ficheros)", () => {
     llamadas.length = 0;
     const r = await wallet.notificarCliente({ ...c, sellos: 1 }, negocio, { antes: c });
     expect(r.google).toBe(1);
-    expect(llamadas.find((l) => l.url.includes("/loyaltyObject/")).cuerpo).toMatchObject({ notifyPreference: "NOTIFY_ON_UPDATE" });
+    // Al día pero sin sonar: un sello no gasta los 3 avisos diarios de Google.
+    expect(llamadas.find((l) => l.url.includes("/loyaltyObject/")).cuerpo).not.toHaveProperty("notifyPreference");
   });
 
   it("si Google falla al crear el objeto, el cliente recibe el enlace completo igualmente", async () => {

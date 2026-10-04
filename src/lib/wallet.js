@@ -129,7 +129,10 @@ export async function notificarCliente(cliente, negocio, { antes = null } = {}) 
 
   const [web, google] = await Promise.all([
     aviso ? avisarNavegadores({ seriales: [cliente.serial] }, negocio, () => aviso) : 0,
-    actualizarEnGoogle(cliente, negocio, { notificar: Boolean(aviso) }),
+    // En Google, en silencio: los avisos de cambio y los mensajes comparten el
+    // tope de 3 al día por tarjeta, y un sello (el cliente está en la caja) no
+    // puede gastar los avisos de la promo o de una campaña.
+    actualizarEnGoogle(cliente, negocio),
   ]);
 
   try {

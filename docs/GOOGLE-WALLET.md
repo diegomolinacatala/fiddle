@@ -19,7 +19,7 @@ Google no sale.
 | Momento | Qué pasa | Código |
 |---|---|---|
 | Cliente toca "Añadir a Google Wallet" | `/api/google/guardar/<serial>` crea la **clase** de la tienda (si no existe) y el **objeto** del cliente con el estado de ese momento, y le redirige a Google con un enlace corto | [`googlewallet.js`](../src/lib/googlewallet.js) → `prepararGuardado` |
-| La caja sella o canjea | se reescribe el objeto; si subieron o se canjearon sellos, con `notifyPreference` → Google avisa en el teléfono | `actualizarEnGoogle` |
+| La caja sella o canjea | se reescribe el objeto EN SILENCIO (sin `notifyPreference`): la tarjeta cambia, el teléfono no suena | `actualizarEnGoogle` |
 | El manager lanza una promo | cada objeto recibe un mensaje con aviso, salvo el de quien no quiere promos (en la clase llegaría a todos) | `tiendaEnGoogle` |
 | El manager cambia la cartilla (sellos, premio) | se reescribe la clase y los objetos (el "5/8" pasa a "5/10") | `tiendaEnGoogle` |
 | Campaña del CRM | mensaje con aviso a cada cliente del grupo que tenga la tarjeta en Google | `mensajeEnGoogle` |
@@ -34,9 +34,10 @@ de Apple, ver [`google/pase.js`](../src/lib/google/pase.js)):
 - "Premio: Faltan 3 · café gratis", "Cómo funciona", la promo y los mensajes.
 - Un cupón usado pasa a "Pases caducados", como el pase anulado de Apple.
 
-Límite de Google: **3 avisos por cambios de puntos y 3 por mensajes, por tarjeta y
-día**. Un café diario no llega; un cliente que pasa cuatro veces en un día recibe
-tres avisos (la tarjeta se actualiza igual las cuatro).
+Límite de Google: **3 avisos por tarjeta y día**. Su documentación no deja claro si
+los avisos de cambio (sellos) y los mensajes (promo, campañas) tienen un tope cada uno
+o lo comparten, así que desde el 04-10-2026 los sellos NO suenan en Google: el cliente
+está en la caja, y los tres avisos quedan para lo que escribe la tienda.
 
 ## Activarlo (una vez)
 

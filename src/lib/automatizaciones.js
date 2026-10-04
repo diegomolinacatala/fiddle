@@ -674,7 +674,7 @@ export const PLANTILLAS = [
 export function etiquetaEnvio(grupo, reglas) {
   const id = reglaDeGrupo(grupo);
   if (id) return reglas.find((r) => r.id === id)?.nombre || "Aviso automático";
-  if (grupo === "todos") return "Todos";
-  if (grupo === "momento") return "Todos, solo ese día";
+  if (grupo === "todos") return "Promo para todos";
+  if (grupo === "momento") return "Aviso de un día, para todos";
   return LISTA_GRUPOS.find((g) => g.key === grupo)?.label || grupo;
 }
