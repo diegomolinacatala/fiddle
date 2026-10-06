@@ -38,6 +38,28 @@ export const pagina = {
 
 export const paginaCentrada = { ...pagina, placeItems: "center", padding: "1.5rem" };
 
+// Lo que ve el cliente (la página de la tienda, «Todo listo») va con los colores
+// de la tienda, no con el gris de la app. `acento`, lo que destaca sobre el fondo,
+// es `colorDelPase(tema)`: con un diseño de kit el fondo ES el color de la tienda
+// y un botón verde sobre verde no se ve. Llega de fuera porque ui.js va en todas
+// las pantallas y dibujo.js pesa. Sobre un acento claro (el dorado de una
+// barbería) lo que va encima, oscuro.
+export const coloresDeTienda = (tema, acento) => ({
+  background: tema.pageBg,
+  color: tema.pageInk,
+  "--acento": acento,
+  "--sobre-acento": tintaClara(acento) ? "rgba(0,0,0,.84)" : "#fff",
+});
+
+// ¿Es un color claro? Tinta clara = fondo oscuro.
+export function tintaClara(color) {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(color || "").trim());
+  if (!m) return false;
+  const hex = m[1].length === 3 ? [...m[1]].map((c) => c + c).join("") : m[1];
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
+}
+
 export const panel = {
   background: C.panel,
   border: `1px solid ${C.borde}`,

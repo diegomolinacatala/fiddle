@@ -6,6 +6,7 @@ import { hayApple } from "@/lib/apple/config";
 import { destinoDelTap } from "@/lib/googlewallet";
 import { esSlug } from "@/lib/negocios";
 import { plataformaDe } from "@/lib/plataforma";
+import { rutaListo } from "@/lib/todoListo";
 import { cookieDeTarjeta, serialRecordado, opcionesCookieTarjeta } from "@/lib/recordar";
 import { nombreDeCliente } from "@/lib/validacion";
 import { jsonError, errorInterno } from "@/lib/http";
@@ -15,11 +16,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // En iPhone, el .pkpass NO va en esta misma respuesta: se redirige a
-// /api/pase/<serial>. Así la cookie que recuerda la tarjeta viaja en una
-// redirección normal, que Safari guarda siempre, y no en la descarga que se
-// queda el Wallet (si esa cookie se pierde, el siguiente escaneo da otra
-// tarjeta). Cuesta un salto de red y nada más.
-const descargaPkpass = (serial, request) => NextResponse.redirect(new URL(`/api/pase/${serial}`, request.url), 302);
+// /p/<serial>/listo, que lo abre y, cuando sale la Cartera, dice «Todo listo»
+// (lib/todoListo.js): a pelo, al cerrarla quedaba una pestaña en blanco. Y así
+// la cookie que recuerda la tarjeta viaja en una redirección normal, que Safari
+// guarda siempre, y no en la descarga que se queda el Wallet (si esa cookie se
+// pierde, el siguiente escaneo da otra tarjeta).
+const descargaPkpass = (serial, request) => NextResponse.redirect(new URL(rutaListo(serial), request.url), 302);
 
 // La tarjeta que este teléfono ya tiene en la tienda, o null. Si la recordada
 // se fusionó en otra (ver lib/unaTarjeta.js), la buena es esa.
@@ -39,8 +41,9 @@ const recordar = (respuesta, slug, serial, url) => {
 // Si este teléfono YA tiene tarjeta de la tienda (cookie), se le devuelve la
 // suya: tocar el tag dos veces no parte los sellos en dos cartillas, y en
 // Android el tag es la forma natural de volver a abrir la tarjeta.
-//   iPhone + pase real -> el .pkpass (iOS lo reconoce por el serial y lo
-//   actualiza en vez de duplicarlo). Android + Google Wallet -> a guardarla ahí.
+//   iPhone + pase real -> el .pkpass, desde /p/<serial>/listo (iOS lo reconoce
+//   por el serial y lo actualiza en vez de duplicarlo). Android + Google Wallet
+//   -> a guardarla ahí.
 //   Resto -> la tarjeta web (/p/<serial>).
 //
 // Si no, depende de la tienda (`pedirNombre`, lo cambia el manager en Tienda):

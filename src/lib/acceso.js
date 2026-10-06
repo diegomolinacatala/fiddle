@@ -18,6 +18,7 @@ import { RESERVADOS } from "./negocios";
 //   /  /login  /api/login  /api/logout     entrada
 //   /api/tap                               el cliente emite su pase (sin login)
 //   /p/<serial>  /api/pase/<serial>        el cliente ve / descarga SU pase
+//   /p/<serial>/listo                      lo abre en iPhone y dice «Todo listo»
 //   /api/wallet/...                        web service de Apple Wallet (se
 //                                          autentica con el token del pase)
 //   /api/manifest  /api/negocios           manifest PWA y directorio
@@ -43,7 +44,7 @@ const PUBLICAS = [
   /^\/api\/login$/,
   /^\/api\/logout$/,
   /^\/api\/tap$/,
-  /^\/p\/[^/]+$/,
+  /^\/p\/[^/]+(\/listo)?$/,
   /^\/p\/[^/]+\/datos$/,
   /^\/api\/pase\/[^/]+$/,
   /^\/api\/wallet(\/.*)?$/,

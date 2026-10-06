@@ -47,6 +47,15 @@ function pedir(ruta, { metodo = "GET", json, form, cookie, ua = IPHONE, cabecera
   return new NextRequest(`https://sellos.app${ruta}`, { method: metodo, headers, body });
 }
 
+function conApple() {
+  const cadena = cadenaDePrueba();
+  vi.stubEnv("APPLE_PASS_TYPE_ID", cadena.passTypeId);
+  vi.stubEnv("APPLE_TEAM_ID", cadena.teamId);
+  vi.stubEnv("APPLE_PASS_CERT", aBase64(cadena.certPem));
+  vi.stubEnv("APPLE_PASS_KEY", aBase64(cadena.keyPem));
+  vi.stubEnv("APPLE_WWDR_CERT", aBase64(cadena.wwdrPem));
+}
+
 const tarjetaDe = (res) => res.cookies.get("tarjeta_nube")?.value;
 const cookieDe = (serial) => `tarjeta_nube=${serial}`;
 const destino = (res) => res.headers.get("location");
@@ -97,16 +106,31 @@ describe("GET /api/tap", () => {
     expect(tarjetaDe(res)).toBe(serial);
   });
 
-  it("con tarjeta y Apple configurado, el iPhone va directo a su .pkpass", async () => {
-    const cadena = cadenaDePrueba();
-    vi.stubEnv("APPLE_PASS_TYPE_ID", cadena.passTypeId);
-    vi.stubEnv("APPLE_TEAM_ID", cadena.teamId);
-    vi.stubEnv("APPLE_PASS_CERT", aBase64(cadena.certPem));
-    vi.stubEnv("APPLE_PASS_KEY", aBase64(cadena.keyPem));
-    vi.stubEnv("APPLE_WWDR_CERT", aBase64(cadena.wwdrPem));
+  it("con tarjeta y Apple configurado, el iPhone va a la página que abre su .pkpass", async () => {
+    conApple();
     const { serial } = await alta();
     const res = await tap.GET(pedir("/api/tap?b=nube", { cookie: cookieDe(serial) }));
-    expect(destino(res)).toBe(`https://sellos.app/api/pase/${serial}`);
+    expect(destino(res)).toBe(`https://sellos.app/p/${serial}/listo`);
+  });
+
+  it("el .pkpass pedido desde esa página le deja la cookie de «ya ha llegado»; a pelo, no", async () => {
+    conApple();
+    const pase = await import("@/app/api/pase/[serial]/route.js");
+    const { serial } = await alta();
+    const params = Promise.resolve({ serial });
+
+    const conAviso = await pase.GET(pedir(`/api/pase/${serial}?listo=1`), { params });
+    expect(conAviso.status).toBe(200);
+    expect(conAviso.headers.get("content-type")).toBe("application/vnd.apple.pkpass");
+    const cookie = conAviso.headers.get("set-cookie");
+    expect(cookie).toContain("pase_abierto=1");
+    // Solo la ve la página que espera: no viaja en ninguna otra petición.
+    expect(cookie).toContain(`Path=/p/${serial}/listo`);
+    expect(cookie).toContain("Secure");
+    expect(cookie).not.toMatch(/HttpOnly/i);
+
+    const aPelo = await pase.GET(pedir(`/api/pase/${serial}`), { params });
+    expect(aPelo.headers.get("set-cookie")).toBeNull();
   });
 
   it("la tarjeta de otra tienda no cuenta", async () => {

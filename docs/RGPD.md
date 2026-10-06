@@ -209,6 +209,9 @@ borra nada solo) y que alguien que sepa de RGPD confirme 2.3 y 4.3.
 - **`clienteDeTarjeta` mandaba el nombre al navegador** en `/p/<serial>` y
   `/api/tarjeta/<serial>`, que se abren con el serial (va en el QR), aunque la tarjeta web
   no lo enseñaba: con una foto del QR se leía. Quitado.
+- **Un aviso con `{nombre}` deja el nombre en claro** en `campanas.texto` y
+  `eventos.mensaje`, no solo en `clientes.mensaje` ([PRIVACIDAD.md](PRIVACIDAD.md)):
+  poner `mensaje` a null (3.3) no basta para borrarlo.
 
 ## Papeles (no es código)
 

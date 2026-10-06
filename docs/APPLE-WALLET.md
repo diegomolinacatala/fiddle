@@ -133,7 +133,8 @@ misma tarjeta.
 ```
 EMITIR   /api/tap?b=delicanteria ──▶ /delicanteria pide el nombre
          POST /api/tap { nombre } ──▶ crea cliente {serial, auth_token, nombre}
-         /api/pase/<serial> ──▶ generarPkpass() ──▶ .pkpass firmado ──▶ "Añadir a Wallet"
+         /p/<serial>/listo ──▶ /api/pase/<serial> ──▶ generarPkpass() ──▶ .pkpass firmado ──▶ "Añadir a Wallet"
+                   └─▶ al salir la hoja de la Cartera, la página dice «Todo listo»
 
 REGISTRO (lo hace el iPhone solo al añadir el pase)
   POST /api/wallet/v1/devices/:id/registrations/:passType/:serial   Authorization: ApplePass <auth_token>
