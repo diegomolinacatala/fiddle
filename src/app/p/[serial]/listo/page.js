@@ -44,9 +44,9 @@ export default async function Page({ params }) {
     if (vigente) redirect(rutaListo(vigente.serial));
   }
   // Sin pase de Apple que abrir (o en Android, donde el .pkpass no sirve), la
-  // tarjeta web, que sabe qué ofrecer y qué decir si la tarjeta no existe.
+  // tarjeta web, que sabe qué ofrecer y qué decir si la tarjeta no existe o se borró.
   const android = plataformaDe((await headers()).get("user-agent")) === "android";
-  if (!cliente || !negocio || android || proveedorWallet() !== "apple") redirect(`/p/${serial}`);
+  if (!cliente || !negocio || cliente.borrado_en || android || proveedorWallet() !== "apple") redirect(`/p/${serial}`);
 
   return (
     <main className="todolisto" style={{ ...coloresDeTienda(negocio.tema, colorDelPase(negocio.tema)), "--anillo": negocio.tema.cardBg || "#fff" }}>
