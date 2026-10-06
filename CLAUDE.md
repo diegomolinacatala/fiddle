@@ -128,6 +128,8 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
   la fila al momento: el iPhone se quedaría la tarjeta vieja con pinta de válida. Una tarjeta
   con `borrado_en` no es un cliente, como una con `fusionado_en`: lo que lea `clientes` a
   mano filtra las dos.
+  Todas las de una tienda a la vez (la tienda sigue): `borrarClientesDeTienda`, que usan la
+  baja de una archivada y «Vaciar tarjetas» del admin.
 - **El serial no basta para tocar una tarjeta sin login** (va en el QR): la llave del pase
   tras `#` o la cookie del tap (`lib/gestion.js`).
 - **Plazos, subencargados y versión del aviso, en `lib/legal.js`**: los lee `/privacidad` y

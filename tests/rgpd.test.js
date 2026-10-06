@@ -254,6 +254,28 @@ describe("plazos", () => {
     expect((await store.listBorrados("nube")).map((b) => b.tipo)).toContain("tienda");
   });
 
+  it("vaciar las tarjetas desde el admin: anuladas ya, la fila cae mañana y la tienda sigue", async () => {
+    const admin = await import("@/app/api/admin/negocios/route.js");
+    await nuevo("s1");
+    await nuevo("s2");
+    await store.registrarPase({ dispositivo: "d1", pushToken: "ab".repeat(16), passType: "pass.x", serial: "s1", negocio: "nube" });
+    const vaciar = (confirmar) => pedir(`/api/admin/negocios?slug=nube&modo=vaciar&confirmar=${confirmar}`, { metodo: "DELETE", como: ["plataforma", "admin"] });
+
+    expect((await admin.DELETE(await vaciar("otra"))).status).toBe(400);
+    expect((await store.getCliente("s1")).borrado_en).toBeNull();
+
+    const r = await admin.DELETE(await vaciar("nube"));
+    expect(await r.json()).toMatchObject({ ok: true, clientes: 2 });
+    expect((await store.getCliente("s1")).borrado_en).toBeTruthy();
+    expect(await store.listClientes("nube")).toEqual([]);
+    expect((await store.listBorrados("nube"))[0]).toMatchObject({ tipo: "cliente", motivo: "admin", cuantos: 2 });
+
+    await limpiezaDiaria({ forzar: true, ahora: Date.now() + 2 * DIA });
+    expect(await store.getCliente("s1")).toBeNull();
+    expect(await store.pushTokens({})).toEqual([]);
+    expect(await store.getNegocio("nube")).not.toBeNull();
+  });
+
   it("borrar una tienda a mano tampoco deja push tokens huérfanos", async () => {
     await nuevo("s1");
     await store.registrarPase({ dispositivo: "d1", pushToken: "ab".repeat(16), passType: "pass.x", serial: "s1", negocio: "nube" });
