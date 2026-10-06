@@ -47,7 +47,8 @@ const dispositivoInvalido = () => ({ status: 400, json: { error: "Dispositivo in
 export async function registrar(deps, { dispositivo, passType, serial, authorization, cuerpo }) {
   if (!dispositivoValido(dispositivo)) return dispositivoInvalido();
   const cliente = await clienteAutenticado(deps, passType, serial, authorization);
-  if (!cliente) return noAutorizado();
+  // Una dada de baja solo se baja (anulada) y se quita: no se vuelve a apuntar.
+  if (!cliente || cliente.anulado_en) return noAutorizado();
   const pushToken = cuerpo?.pushToken;
   if (typeof pushToken !== "string" || !/^[0-9a-f]{16,200}$/i.test(pushToken)) {
     return { status: 400, json: { error: "pushToken inválido" } };
@@ -77,6 +78,12 @@ export async function desregistrar(deps, { dispositivo, passType, serial, author
   const cliente = await clienteAutenticado(deps, passType, serial, authorization);
   if (!cliente) return noAutorizado();
   const { ultimo } = await deps.borrarRegistro({ dispositivo, passType, serial });
+  // Una tarjeta dada de baja no es una renuncia: es lo que se le pedía. Ya no
+  // hace falta guardarla para nadie (ver purgarAnuladas).
+  if (cliente.anulado_en) {
+    await deps.purgarAnuladas({ negocio: cliente.negocio });
+    return { status: 200, json: {} };
+  }
   // Borrar la tarjeta del teléfono es la renuncia más explícita que hay. Solo
   // cuenta cuando sale del ÚLTIMO iPhone: quien la tiene en dos y quita uno no
   // se ha ido a ninguna parte.
@@ -118,7 +125,9 @@ export async function pasesActualizados(deps, { dispositivo, passType, desde }) 
 export async function paseActual(deps, { passType, serial, authorization }) {
   const cliente = await clienteAutenticado(deps, passType, serial, authorization);
   if (!cliente) return noAutorizado();
-  const negocio = await deps.getNegocio(cliente.negocio);
+  const negocio = cliente.anulado_en
+    ? await deps.getNegocioDeAnulada(cliente.negocio)
+    : await deps.getNegocio(cliente.negocio);
   if (!negocio) return { status: 404, json: { error: "Negocio no encontrado" } };
   // Con el Pass Type ID del pase instalado: si la tienda estrenó uno propio
   // después, este sigue siendo del general y Apple rechazaría otro.

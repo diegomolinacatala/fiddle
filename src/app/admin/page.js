@@ -16,7 +16,8 @@ import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecu
 // ADMIN DE LA PLATAFORMA — lista de tiendas
 // ----------------------------------------------------------------------------
 // Aquí no se lleva una tienda: se llevan TODAS. Crear, entrar a editar, archivar
-// y (desde la pestaña de archivadas) borrar del todo.
+// y (desde la pestaña de archivadas) borrar del todo. Y vaciar: dar de baja
+// todas sus tarjetas (las pruebas antes de abrir) sin tocar la tienda.
 //
 // Crear pide cuatro datos y un BRIEF en texto libre: el brief es para Claude,
 // que luego rellena lo que falte. La idea es poder montar una tienda a mano sin
@@ -31,7 +32,7 @@ export default function Admin() {
   const [abriendo, setAbriendo] = useState(false);
   const [msg, setMsg] = useState(null);
   const [error, setError] = useState(null);
-  const [borrando, setBorrando] = useState(null); // slug cuyo borrado se está confirmando
+  const [borrando, setBorrando] = useState(null); // {slug, modo} que se está confirmando
   const [creada, setCreada] = useState(null); // tienda recién creada: sus contraseñas, una vez
 
   useEffect(() => { cargar(pestana); }, [pestana]);
@@ -60,17 +61,22 @@ export default function Admin() {
     cargar();
   }
 
-  async function borrarDelTodo(n, escrito) {
+  async function confirmado(n, modo, escrito) {
     const r = await fetch(
-      `/api/admin/negocios?slug=${n.slug}&modo=borrar&confirmar=${encodeURIComponent(escrito)}`,
+      `/api/admin/negocios?slug=${n.slug}&modo=${modo}&confirmar=${encodeURIComponent(escrito)}`,
       { method: "DELETE" },
     );
     const d = await r.json();
     if (!r.ok) return flash(d.error || "Error");
     setBorrando(null);
-    flash(`"${n.nombre}" borrada · ${d.clientes} cliente(s)`);
+    flash(modo === "borrar"
+      ? `"${n.nombre}" borrada · ${d.clientes} cliente(s)`
+      : `${d.anuladas} tarjeta(s) dadas de baja · ${d.enIphone} se anulan en el iPhone${d.aviso?.google ? ` · ${d.aviso.google} en Google` : ""}`);
     cargar();
   }
+
+  const confirmar = (n, modo) =>
+    setBorrando(borrando?.slug === n.slug && borrando.modo === modo ? null : { slug: n.slug, modo });
 
   return (
     <main style={pagina}>
@@ -146,18 +152,21 @@ export default function Admin() {
                   <a href={`/${n.slug}/manager`} style={{ ...botonSecundario, textDecoration: "none" }}>Manager</a>
                   <a href={`/${n.slug}/caja`} style={{ ...botonSecundario, textDecoration: "none" }}>Caja</a>
                   <button onClick={() => archivar(n.slug, "archivar")} style={botonSecundario}>Archivar</button>
+                  {n.clientes > 0 && <button onClick={() => confirmar(n, "vaciar")} style={{ ...botonSecundario, color: C.mal }}>Vaciar tarjetas</button>}
                 </div>
               ) : (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button onClick={() => archivar(n.slug, "desarchivar")} style={botonSecundario}>Recuperar</button>
-                  <button onClick={() => setBorrando(borrando === n.slug ? null : n.slug)} style={{ ...botonPrimario("#b42318") }}>
+                  {n.clientes > 0 && <button onClick={() => confirmar(n, "vaciar")} style={{ ...botonSecundario, color: C.mal }}>Vaciar tarjetas</button>}
+                  <button onClick={() => confirmar(n, "borrar")} style={{ ...botonPrimario("#b42318") }}>
                     Borrar del todo
                   </button>
                 </div>
               )}
 
-              {borrando === n.slug && (
-                <ConfirmarBorrado negocio={n} onCancelar={() => setBorrando(null)} onBorrar={(escrito) => borrarDelTodo(n, escrito)} />
+              {borrando?.slug === n.slug && (
+                <Confirmar key={borrando.modo} negocio={n} modo={borrando.modo} onCancelar={() => setBorrando(null)}
+                  onConfirmar={(escrito) => confirmado(n, borrando.modo, escrito)} />
               )}
             </div>
           ))}
@@ -176,19 +185,43 @@ export default function Admin() {
   );
 }
 
-// --------------------------------------------------- borrado definitivo
-// Hay que escribir el identificador exacto. No es por ceremonia: se lleva por
-// delante los clientes y sus pases dejan de actualizarse para siempre.
-function ConfirmarBorrado({ negocio, onCancelar, onBorrar }) {
+// ------------------------------------------- borrar del todo / vaciar tarjetas
+// Hay que escribir el identificador exacto. No es por ceremonia: los dos se llevan
+// por delante los clientes y su historial, y no se puede deshacer.
+const CONFIRMAR = {
+  borrar: {
+    titulo: (n) => `Borrar «${n.nombre}» para siempre`,
+    texto: (n) => (
+      <>
+        Se borran también sus <strong>{n.clientes} cliente(s)</strong> y su historial. Los pases que
+        ya estén en un teléfono dejan de actualizarse (para anularlos, vacía antes sus tarjetas).
+        Esto no se puede deshacer.
+      </>
+    ),
+    boton: "Borrar del todo",
+  },
+  vaciar: {
+    titulo: (n) => `Dar de baja las tarjetas de «${n.nombre}»`,
+    texto: (n) => (
+      <>
+        Sus <strong>{n.clientes} cliente(s)</strong> desaparecen con sus sellos y su historial; la tienda
+        se queda como está. En el iPhone la tarjeta pasa a anulada (avisa «Esta tarjeta ya no es
+        válida») y en Google Wallet, a caducada: borrarla del teléfono es cosa de cada uno. Esto no se
+        puede deshacer.
+      </>
+    ),
+    boton: "Vaciar tarjetas",
+  },
+};
+
+function Confirmar({ negocio, modo, onCancelar, onConfirmar }) {
   const [escrito, setEscrito] = useState("");
   const coincide = escrito.trim() === negocio.slug;
+  const t = CONFIRMAR[modo];
   return (
     <div style={{ width: "100%", marginTop: 12, padding: 14, borderRadius: 10, background: "#fdecea", border: "1px solid #f7c9c3" }}>
-      <strong style={{ color: "#b42318", fontSize: 14 }}>Borrar «{negocio.nombre}» para siempre</strong>
-      <p style={{ fontSize: 13, color: C.texto, margin: "6px 0 10px" }}>
-        Se borran también sus <strong>{negocio.clientes} cliente(s)</strong> y su historial. Los pases que
-        ya estén en un teléfono dejan de actualizarse. Esto no se puede deshacer.
-      </p>
+      <strong style={{ color: "#b42318", fontSize: 14 }}>{t.titulo(negocio)}</strong>
+      <p style={{ fontSize: 13, color: C.texto, margin: "6px 0 10px" }}>{t.texto(negocio)}</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input
           value={escrito}
@@ -197,9 +230,9 @@ function ConfirmarBorrado({ negocio, onCancelar, onBorrar }) {
           autoFocus
           style={{ ...campo, width: "auto", flex: "1 1 200px" }}
         />
-        <button disabled={!coincide} onClick={() => onBorrar(escrito.trim())}
+        <button disabled={!coincide} onClick={() => onConfirmar(escrito.trim())}
           style={{ ...botonPrimario("#b42318"), opacity: coincide ? 1 : 0.45, cursor: coincide ? "pointer" : "default" }}>
-          Borrar del todo
+          {t.boton}
         </button>
         <button onClick={onCancelar} style={botonSecundario}>Cancelar</button>
       </div>

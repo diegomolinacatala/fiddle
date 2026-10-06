@@ -112,6 +112,17 @@ Ver [`src/lib/unaTarjeta.js`](src/lib/unaTarjeta.js). Dos capas:
   (`clienteVigente`). Lo que lea `clientes` a mano tiene que filtrarla igual.
 - En Android no hay id del teléfono: ahí solo está la cookie.
 
+## Dar de baja tarjetas
+
+Un pase no se puede quitar del teléfono de nadie: solo ANULAR. `/admin` → «Vaciar
+tarjetas» (`anularTarjetas` + `avisarDeBaja` + `purgarAnuladas` en `store.js`/`wallet.js`):
+la tarjeta se vacía y marca `anulado_en`, el iPhone se baja la versión `voided` («Esta
+tarjeta ya no es válida») y Google la pasa a INACTIVE. La fila vacía se queda mientras siga
+en algún iPhone (el web service la necesita para servir el pase anulado) y se borra al
+quitarla o a los 30 días (el reloj). **Nunca borrar tarjetas a pelo**: el iPhone se queda
+con la suya, sellos incluidos, para siempre. Una anulada no es un cliente: `getCliente` la
+devuelve como null salvo con `incluirAnuladas` (solo el web service de Apple).
+
 ## Lo que hace que la web vaya rápida
 
 - **Vercel corre en `lhr1` (Londres) porque Supabase está en eu-west-2** (`vercel.json`).

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { repasarTodas } from "@/lib/motorAvisos";
+import { purgarAnuladas } from "@/lib/store";
 import { igualSeguro } from "@/lib/auth";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -25,7 +26,12 @@ async function pasada(request) {
   }
   try {
     const resultados = await repasarTodas();
-    return NextResponse.json({ ok: true, resultados });
+    // De paso, las tarjetas dadas de baja que ya no hacen falta (ver purgarAnuladas).
+    const purgadas = await purgarAnuladas().catch((e) => {
+      console.error("[cron] no se pudieron purgar tarjetas anuladas:", e);
+      return 0;
+    });
+    return NextResponse.json({ ok: true, resultados, purgadas });
   } catch (e) {
     return errorInterno("cron avisos", e);
   }

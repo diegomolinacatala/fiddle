@@ -154,3 +154,22 @@ export async function tiendaEnGoogle(negocio, { promoNueva = null, clientes = nu
     return 0;
   }
 }
+
+/**
+ * Tarjetas dadas de baja (anularTarjetas en store.js): las que estén en Google
+ * pasan a "caducadas", en silencio. Google no vuelve a preguntarnos por ellas.
+ * @param {object[]} clientes  ya anulados
+ * @returns {Promise<number>} cuántas
+ */
+export async function anularEnGoogle(clientes, negocio) {
+  if (!hayGoogle() || !clientes.length) return 0;
+  try {
+    const config = configGoogle();
+    const conGoogle = await serialesEnGoogle({ seriales: clientes.map((c) => c.serial) });
+    const r = await enLotes(clientes.filter((c) => conGoogle.has(c.serial)), (c) => actualizarObjeto(config, c, negocio));
+    return r.hechos;
+  } catch (e) {
+    console.error(`[google] no se pudieron anular las tarjetas de ${negocio.slug}:`, e);
+    return 0;
+  }
+}

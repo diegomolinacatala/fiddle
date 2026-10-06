@@ -5,7 +5,7 @@ import {
 } from "./store";
 import { hayApple, configsDeTienda } from "./apple/config";
 import { enviarAvisos } from "./apple/apns";
-import { hayGoogle, rutaGuardarGoogle, actualizarEnGoogle, mensajeEnGoogle, tiendaEnGoogle } from "./googlewallet";
+import { hayGoogle, rutaGuardarGoogle, actualizarEnGoogle, mensajeEnGoogle, tiendaEnGoogle, anularEnGoogle } from "./googlewallet";
 import { enviarPush } from "./push/enviar";
 import { TIPO_WEB } from "./push/suscripcion";
 import { avisoDeCambio, avisoDePromo, avisoDeMensaje, avisoPush } from "./avisos";
@@ -139,6 +139,26 @@ export async function notificarCliente(cliente, negocio, { antes = null } = {}) 
   } catch (e) {
     console.error(`[wallet] aviso fallido para ${cliente.serial}:`, e);
     return { proveedor, avisados: 0, web, google, error: String(e?.message || e) };
+  }
+}
+
+/**
+ * Tarjetas dadas de baja (anularTarjetas en store.js). Cada iPhone se baja el
+ * pase anulado ("Esta tarjeta ya no es válida", suena) y en Google pasan a
+ * caducadas. Al navegador no se le dice nada: su tarjeta web deja de existir.
+ * Llamar ANTES de purgarAnuladas: Google mira sus registros para saber a quién.
+ * Nunca lanza.
+ * @returns {Promise<{avisados:number, total:number, google:number, error?:string}>}
+ */
+export async function avisarDeBaja(clientes, negocio) {
+  const google = await anularEnGoogle(clientes, negocio);
+  if (proveedorWallet() !== "apple" || !clientes.length) return { avisados: 0, total: 0, google };
+  try {
+    const r = await avisarApple({ seriales: clientes.map((c) => c.serial) }, negocio.slug);
+    return { avisados: r.enviados, total: r.tokens, google };
+  } catch (e) {
+    console.error(`[wallet] avisos de baja fallidos (${negocio.slug}):`, e);
+    return { avisados: 0, total: 0, google, error: String(e?.message || e) };
   }
 }
 

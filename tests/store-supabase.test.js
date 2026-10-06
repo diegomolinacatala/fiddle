@@ -156,8 +156,8 @@ describe("store con Supabase", () => {
     encolar("clientes", { data: [{ serial: "s1", negocio: "nube", sellos: 1, premios: 0, auth_token: "x", creado: "c" }], error: null });
     const lista = await store.listClientes("nube");
     expect(lista[0]).toMatchObject({ serial: "s1", nombre: null, actualizado: "c" });
-    // Sin las tarjetas fusionadas en otra: ya no son clientes.
-    expect(metodos(0)).toEqual(["select", "is", "order", "eq"]);
+    // Sin las tarjetas fusionadas en otra ni las dadas de baja: ya no son clientes.
+    expect(metodos(0)).toEqual(["select", "is", "is", "order", "eq"]);
   });
 });
 

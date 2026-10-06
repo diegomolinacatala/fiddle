@@ -110,6 +110,17 @@ export function ubicacionesApple(negocio) {
  * @returns {{headerFields:object[], primaryFields:object[], secondaryFields:object[], auxiliaryFields:object[], backFields:object[]}}
  */
 export function camposDelPase(cliente, negocio) {
+  // Dada de baja desde /admin (anularTarjetas en store.js): no se puede quitar del
+  // teléfono de nadie, así que dice que ya no vale y que se puede borrar.
+  if (cliente.anulado_en) {
+    return {
+      headerFields: [],
+      primaryFields: [],
+      secondaryFields: [{ key: "premio", label: "TARJETA ANULADA", value: "Esta tarjeta ya no es válida", changeMessage: "%@" }],
+      auxiliaryFields: [],
+      backFields: [{ key: "como", label: "Puedes borrarla", value: `Esta tarjeta ya no se usa. Si vuelves por ${negocio.nombre}, pide una nueva en el mostrador.` }],
+    };
+  }
   // Tarjeta sustituida por otra en el mismo iPhone (lib/unaTarjeta.js): ya no
   // cuenta nada, solo dice dónde están los sellos.
   if (cliente.fusionado_en) {
@@ -225,8 +236,8 @@ export function construirPassJson(cliente, negocio, { passTypeId, teamId, appUrl
   const ubicaciones = ubicacionesApple(negocio);
   if (ubicaciones.length) pase.locations = ubicaciones;
   // Anulado: iOS lo aparta a "pases caducados". Una tarjeta fusionada en otra
-  // también, para que no queden dos vivas de la misma tienda.
-  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en) pase.voided = true;
+  // también, para que no queden dos vivas de la misma tienda, y una dada de baja.
+  if ((esCupon && cuponUsado(cliente)) || cliente.fusionado_en || cliente.anulado_en) pase.voided = true;
 
   return pase;
 }

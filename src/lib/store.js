@@ -309,7 +309,7 @@ export async function borrarNegocio(slug) {
 // ============================ CLIENTES ============================
 const CAMPOS_CLIENTE =
   "serial, negocio, codigo, sellos, sellos2, premios, nombre, auth_token, actualizado, creado, " +
-  "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en";
+  "visitas, ultima_visita, instalado, desinstalado, origen, mensaje, nota, guardados, guardados2, fusionado_en, anulado_en";
 
 // Datos personales de un cliente: van cifrados en la base (lib/cifrado.js). Se
 // cifran al guardarlos y se descifran aquí, al leer: lo demás del código los ve
@@ -337,6 +337,8 @@ function normalizarCliente(c) {
         guardados2: c.guardados2 ?? 0,
         // Serial de la tarjeta que sustituyó a esta (mismo iPhone, ver unaTarjeta.js).
         fusionado_en: c.fusionado_en ?? null,
+        // Dada de baja (anularTarjetas): solo la ve el web service de Apple.
+        anulado_en: c.anulado_en ?? null,
         nombre: descifrarCampo(c, "nombre"),
         auth_token: c.auth_token ?? null,
         actualizado: c.actualizado ?? c.creado ?? null,
@@ -414,16 +416,22 @@ export async function getClientePorCodigo(negocio, codigo) {
   return lista.find((c) => c.codigo === cod) || null;
 }
 
-export async function getCliente(serial) {
+/**
+ * Una tarjeta dada de baja no existe para nadie (null), salvo para quien pida
+ * `incluirAnuladas`: el web service de Apple, que tiene que servir el pase anulado.
+ */
+export async function getCliente(serial, { incluirAnuladas = false } = {}) {
   if (typeof serial !== "string" || !serial) return null;
+  let c;
   if (hasSupabase()) {
-    const data = sinError(
+    c = normalizarCliente(sinError(
       await supa().from("clientes").select(CAMPOS_CLIENTE).eq("serial", serial).maybeSingle(),
       "leer cliente",
-    );
-    return normalizarCliente(data);
+    ));
+  } else {
+    c = await enFila(async () => normalizarCliente((await leer("clientes", {}))[serial]));
   }
-  return enFila(async () => normalizarCliente((await leer("clientes", {}))[serial]));
+  return c?.anulado_en && !incluirAnuladas ? null : c;
 }
 
 /**
@@ -501,15 +509,16 @@ export async function tocarClientesDeNegocio(slug) {
 export async function listClientes(negocio, { limite } = {}) {
   if (hasSupabase()) {
     // Las tarjetas fusionadas en otra (ver unaTarjeta.js) ya no son clientes:
-    // su historial y sus sellos viven en la que las sustituyó.
-    let q = supa().from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).order("creado", { ascending: false });
+    // su historial y sus sellos viven en la que las sustituyó. Las dadas de baja, tampoco.
+    let q = supa().from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).is("anulado_en", null)
+      .order("creado", { ascending: false });
     if (negocio) q = q.eq("negocio", negocio);
     if (limite) q = q.limit(limite);
     return (sinError(await q, "listar clientes") || []).map(normalizarCliente);
   }
   const all = await enFila(() => leer("clientes", {}));
   const lista = Object.values(all)
-    .filter((c) => (!negocio || c.negocio === negocio) && !c.fusionado_en)
+    .filter((c) => (!negocio || c.negocio === negocio) && !c.fusionado_en && !c.anulado_en)
     .sort((a, b) => (b.creado || "").localeCompare(a.creado || ""))
     .map(normalizarCliente);
   return limite ? lista.slice(0, limite) : lista;
@@ -936,6 +945,9 @@ export async function borrarRegistro({ dispositivo, passType, serial }) {
   });
 }
 
+// Un registro de iPhone: su pass_type es un Pass Type ID, no uno de los otros canales.
+const deApple = (t) => t && t !== "web" && t !== "google";
+
 /**
  * Los Pass Type ID con que esta tarjeta está metida en algún iPhone (sin los
  * canales "web" y "google"). Lo pregunta la descarga del .pkpass: si se firma
@@ -943,7 +955,6 @@ export async function borrarRegistro({ dispositivo, passType, serial }) {
  * @returns {Promise<string[]>}
  */
 export async function tiposDePaseInstalados(serial) {
-  const deApple = (t) => t && t !== "web" && t !== "google";
   if (hasSupabase()) {
     const data = sinError(
       await supa().from("registros").select("pass_type").eq("serial", serial),
@@ -1287,6 +1298,123 @@ export async function fusionarClientes(viejo, nuevo, campos) {
     const eventos = await leer("eventos", []);
     await escribir("eventos", eventos.map((e) => (e.serial === viejo.serial ? { ...e, serial: nuevo.serial } : e)));
     return true;
+  });
+}
+
+// ============================ BAJA DE TARJETAS ============================
+// Un pase de Apple no se puede borrar del teléfono de nadie: solo ANULAR (iOS lo
+// aparta a "pases caducados" y la persona lo quita). Y para eso el iPhone tiene
+// que bajarse la versión anulada, que el web service solo sirve si la fila sigue
+// ahí con su auth_token. Así que dar de baja va en dos pasos:
+//   1. anularTarjetas: todas vacías y marcadas; se avisa a los teléfonos.
+//   2. purgarAnuladas: fuera las que ya no están en ningún iPhone (las que nunca
+//      se instalaron, de inmediato) y, pasados `DIAS_ANULADAS`, todas.
+// Borrarlas sin más dejaría en cada iPhone la tarjeta con sus sellos, para siempre.
+
+const DIAS_ANULADAS = 30;
+
+/**
+ * Da de baja TODAS las tarjetas de una tienda: sin nombre, nota, mensaje ni
+ * saldo, y fuera su historial, sus campañas y quién tenía cuál. La tienda sigue.
+ * Los registros se quedan: hacen falta para avisar a los teléfonos (purgarAnuladas
+ * se los lleva después).
+ * @returns {Promise<object[]>} las tarjetas anuladas, ya vacías (para avisar)
+ */
+export async function anularTarjetas(slug) {
+  const ts = ahoraISO();
+  const patch = { anulado_en: ts, actualizado: ts, mensaje: null, nombre: null, nota: null };
+  for (const k of SALDO) patch[k] = 0;
+
+  if (hasSupabase()) {
+    const db = supa();
+    const anuladas = (sinError(
+      await db.from("clientes").update(patch).eq("negocio", slug).is("anulado_en", null).select(CAMPOS_CLIENTE),
+      "anular tarjetas",
+    ) || []).map(normalizarCliente);
+    const seriales = anuladas.map((c) => c.serial);
+    // Por negocio y por serial: los eventos de antes de la columna `negocio` no la llevan.
+    sinError(await db.from("eventos").delete().eq("negocio", slug), "borrar eventos");
+    for (const lote of enLotes(seriales)) sinError(await db.from("eventos").delete().in("serial", lote), "borrar eventos");
+    sinError(await db.from("campanas").delete().eq("negocio", slug), "borrar campañas");
+    sinError(await db.from("tarjetas_de_dispositivo").delete().eq("negocio", slug), "borrar tarjetas de dispositivo");
+    return anuladas;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const seriales = Object.values(all).filter((c) => c.negocio === slug && !c.anulado_en).map((c) => c.serial);
+    for (const s of seriales) all[s] = { ...all[s], ...patch };
+    await escribir("clientes", all);
+    const fuera = new Set(seriales);
+    await escribir("eventos", (await leer("eventos", [])).filter((e) => e.negocio !== slug && !fuera.has(e.serial)));
+    await escribir("campanas", (await leer("campanas", [])).filter((c) => c.negocio !== slug));
+    const tarjetas = await leer("tarjetas_de_dispositivo", {});
+    await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => t.negocio !== slug)));
+    return seriales.map((s) => normalizarCliente(all[s]));
+  });
+}
+
+/**
+ * Borra de verdad las tarjetas anuladas que ya no hacen falta: las que no están
+ * en ningún iPhone (Google y el navegador no vuelven a preguntar por ellas) y
+ * las de hace más de `DIAS_ANULADAS`, que ya tuvieron tiempo de enterarse.
+ * Idempotente: lo llaman la baja, el reloj y el iPhone al quitar el pase.
+ * @param {{negocio?: string}} [filtro]
+ * @returns {Promise<number>} cuántas se borraron
+ */
+export async function purgarAnuladas({ negocio } = {}) {
+  const limite = Date.now() - DIAS_ANULADAS * 24 * 60 * 60 * 1000;
+  const sobran = (anuladas, registros) => {
+    const enIphone = new Set(registros.filter((r) => deApple(r.pass_type)).map((r) => r.serial));
+    return anuladas.filter((c) => !enIphone.has(c.serial) || Date.parse(c.anulado_en) < limite).map((c) => c.serial);
+  };
+
+  if (hasSupabase()) {
+    const db = supa();
+    let q = db.from("clientes").select("serial, anulado_en").not("anulado_en", "is", null);
+    if (negocio) q = q.eq("negocio", negocio);
+    const anuladas = sinError(await q, "leer tarjetas anuladas") || [];
+    if (!anuladas.length) return 0;
+    const registros = [];
+    for (const lote of enLotes(anuladas.map((c) => c.serial))) {
+      registros.push(...(sinError(
+        await db.from("registros").select("serial, pass_type, dispositivo").in("serial", lote),
+        "leer registros de anuladas",
+      ) || []));
+    }
+    const fuera = sobran(anuladas, registros);
+    if (!fuera.length) return 0;
+    // `registros` cae con la tarjeta (FK); los dispositivos que se queden sin
+    // ninguno (la suscripción del navegador, el iPhone) se van detrás.
+    const set = new Set(fuera);
+    const tocados = [...new Set(registros.filter((r) => set.has(r.serial)).map((r) => r.dispositivo))];
+    for (const lote of enLotes(fuera)) {
+      sinError(await db.from("eventos").delete().in("serial", lote), "borrar eventos de anuladas");
+      sinError(await db.from("clientes").delete().in("serial", lote), "borrar tarjetas anuladas");
+    }
+    const usados = new Set();
+    for (const lote of enLotes(tocados)) {
+      for (const r of sinError(await db.from("registros").select("dispositivo").in("dispositivo", lote), "leer dispositivos") || []) {
+        usados.add(r.dispositivo);
+      }
+    }
+    await borrarDispositivos(tocados.filter((d) => !usados.has(d)));
+    return fuera.length;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const anuladas = Object.values(all).filter((c) => c.anulado_en && (!negocio || c.negocio === negocio));
+    const registros = await leer("registros", []);
+    const fuera = new Set(sobran(anuladas, registros));
+    if (!fuera.size) return 0;
+    await escribir("clientes", Object.fromEntries(Object.entries(all).filter(([s]) => !fuera.has(s))));
+    await escribir("eventos", (await leer("eventos", [])).filter((e) => !fuera.has(e.serial)));
+    const quedan = registros.filter((r) => !fuera.has(r.serial));
+    await escribir("registros", quedan);
+    const usados = new Set(quedan.map((r) => r.dispositivo));
+    const sueltos = new Set(registros.filter((r) => fuera.has(r.serial) && !usados.has(r.dispositivo)).map((r) => r.dispositivo));
+    const dispositivos = await leer("dispositivos", {});
+    await escribir("dispositivos", Object.fromEntries(Object.entries(dispositivos).filter(([id]) => !sueltos.has(id))));
+    return fuera.size;
   });
 }
 

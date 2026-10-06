@@ -108,8 +108,9 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl }, { conMen
   const objeto = {
     id: idObjeto(issuerId, cliente.serial),
     classId: idClase(issuerId, negocio.slug),
-    // Un cupón usado pasa a "caducados", como el pase anulado de Apple.
-    state: e.usado ? "INACTIVE" : "ACTIVE",
+    // Un cupón usado pasa a "caducados", como el pase anulado de Apple. Una
+    // tarjeta dada de baja, también.
+    state: e.usado || cliente.anulado_en ? "INACTIVE" : "ACTIVE",
     accountId: codigo,
     ...(cliente.nombre ? { accountName: cliente.nombre } : {}),
     loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },

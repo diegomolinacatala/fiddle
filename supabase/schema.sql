@@ -47,6 +47,10 @@ alter table clientes add column if not exists guardados     int not null default
 alter table clientes add column if not exists guardados2    int not null default 0;
 -- Tarjeta sustituida por otra del mismo iPhone (ver lib/unaTarjeta.js): serial de la nueva.
 alter table clientes add column if not exists fusionado_en  text;
+-- Tarjeta dada de baja desde /admin (ver anularTarjetas en lib/store.js): ya no es
+-- de nadie, pero la fila queda vacía mientras siga en algún iPhone, que necesita
+-- bajarse el pase anulado. Desaparece cuando la quitan o a los 30 días.
+alter table clientes add column if not exists anulado_en    timestamptz;
 -- Clientes antiguos sin token: se les genera uno (32 hex) para poder actualizar su pase.
 update clientes set auth_token = replace(gen_random_uuid()::text, '-', '') where auth_token is null;
 create index if not exists clientes_negocio on clientes (negocio);

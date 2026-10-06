@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   listNegocios, getNegocio, crearNegocio, saveNegocio, archivarNegocio, borrarNegocio, listClientes,
+  anularTarjetas, purgarAnuladas,
 } from "@/lib/store";
 import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { ACCIONES } from "@/lib/acciones";
 import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validacion";
-import { notificarNegocio } from "@/lib/wallet";
+import { notificarNegocio, avisarDeBaja } from "@/lib/wallet";
 import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
@@ -23,7 +24,8 @@ export const dynamic = "force-dynamic";
 //   GET    ?archivados=1        lista (activos, o los archivados)
 //   POST                        crea un negocio
 //   PUT                         edita uno; con `nota` guarda un comentario de campo
-//   DELETE ?slug=&modo=         archivar (por defecto) o borrar para siempre
+//   DELETE ?slug=&modo=         archivar (por defecto), borrar para siempre o
+//                               vaciar (dar de baja todas sus tarjetas)
 // ============================================================================
 
 // Cuántos clientes tiene cada negocio: el admin necesita saberlo antes de borrar.
@@ -120,13 +122,21 @@ export async function DELETE(request) {
       return NextResponse.json({ ok: true, archivado: guardado.archivado });
     }
 
-    // Borrado definitivo: hay que escribir el slug para confirmarlo.
+    // Borrado definitivo y baja de tarjetas: hay que escribir el slug para confirmarlo.
+    if ((modo === "borrar" || modo === "vaciar") && searchParams.get("confirmar") !== slug) {
+      return jsonError("Para esto hay que escribir el identificador exacto", 400);
+    }
     if (modo === "borrar") {
-      if (searchParams.get("confirmar") !== slug) {
-        return jsonError("Para borrar del todo hay que escribir el identificador exacto", 400);
-      }
       const { borrados } = await borrarNegocio(slug);
       return NextResponse.json({ ok: true, borrado: slug, clientes: borrados });
+    }
+    // Las tarjetas se anulan en los teléfonos y LUEGO se borran: borradas sin más,
+    // cada iPhone se quedaría con la suya, sellos incluidos, para siempre.
+    if (modo === "vaciar") {
+      const anuladas = await anularTarjetas(slug);
+      const aviso = await avisarDeBaja(anuladas, negocio);
+      const borradas = await purgarAnuladas({ negocio: slug });
+      return NextResponse.json({ ok: true, anuladas: anuladas.length, enIphone: anuladas.length - borradas, aviso });
     }
     return jsonError("Modo no válido", 400);
   } catch (e) {

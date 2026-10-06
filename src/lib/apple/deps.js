@@ -1,7 +1,7 @@
 import {
   getCliente, getNegocio, registrarPase, borrarRegistro, pasesDeDispositivo,
   marcarInstalacion, addEvento, tarjetaDeDispositivo, apuntarTarjetaDeDispositivo, fusionarClientes,
-  dispositivosDeTarjeta,
+  dispositivosDeTarjeta, purgarAnuladas,
 } from "../store";
 import { notificarCliente } from "../wallet";
 import { unificarTarjeta } from "../unaTarjeta";
@@ -18,8 +18,12 @@ export function depsServicio() {
     // La config de un Pass Type ID si es uno con que se firman los pases de esa
     // tienda (el suyo o el general); null si no.
     configDe: (passType, slug) => configsDeTienda(slug).find((c) => c.passTypeId === passType) || null,
-    getCliente,
+    // Una tarjeta dada de baja sigue existiendo AQUÍ: el iPhone tiene que poder
+    // bajarse el pase anulado (y quitarlo). Su tienda, aunque esté archivada.
+    getCliente: (serial) => getCliente(serial, { incluirAnuladas: true }),
     getNegocio,
+    getNegocioDeAnulada: (slug) => getNegocio(slug, { incluirArchivados: true }),
+    purgarAnuladas,
     registrarPase,
     borrarRegistro,
     pasesDeDispositivo,
