@@ -1,8 +1,9 @@
 import {
   getCliente, guardarPromos, marcarBorrado, addEvento, listEventos, listCampanas,
-  canalesDeTarjeta, registrarBorrado,
+  canalesDeTarjeta, registrarBorrado, listClientes,
 } from "./store";
-import { notificarCliente } from "./wallet";
+import { notificarCliente, refrescarPasesApple } from "./wallet";
+import { tiendaEnGoogle } from "./googlewallet";
 import { cartillasDe, totalGuardados } from "./cartillas";
 
 // ============================================================================
@@ -47,6 +48,22 @@ export async function borrarCliente(cliente, negocio, { motivo, rol = motivo }) 
   const borrado = await getCliente(cliente.serial);
   if (borrado && negocio) await notificarCliente(borrado, negocio);
   return true;
+}
+
+/**
+ * Borra TODAS las tarjetas de una tienda (primer tiempo, como borrarCliente) con
+ * un solo empujón a sus iPhone y a Google. La tienda no se toca. Lo usan la baja
+ * de una tienda archivada (lib/limpieza.js) y «Vaciar tarjetas» del admin.
+ * @returns {Promise<number>} tarjetas borradas
+ */
+export async function borrarClientesDeTienda(negocio) {
+  const vivas = await listClientes(negocio.slug);
+  if (!vivas.length) return 0;
+  for (const c of vivas) await marcarBorrado(c.serial);
+  await refrescarPasesApple(negocio);
+  const anuladas = (await Promise.all(vivas.map((c) => getCliente(c.serial)))).filter(Boolean);
+  await tiendaEnGoogle(negocio, { clientes: anuladas });
+  return vivas.length;
 }
 
 const CAMPANAS_MIRADAS = 1000;

@@ -8,6 +8,7 @@ import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validac
 import { notificarNegocio } from "@/lib/wallet";
 import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
 import { auditar } from "@/lib/auditoria";
+import { borrarClientesDeTienda } from "@/lib/derechos";
 import { normalizarLegal } from "@/lib/legal";
 import { prepararPropios } from "@/lib/propiosServidor";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
@@ -26,7 +27,8 @@ export const dynamic = "force-dynamic";
 //   GET    ?archivados=1        lista (activos, o los archivados)
 //   POST                        crea un negocio
 //   PUT                         edita uno; con `nota` guarda un comentario de campo
-//   DELETE ?slug=&modo=         archivar (por defecto) o borrar para siempre
+//   DELETE ?slug=&modo=         archivar (por defecto), borrar para siempre o
+//                               vaciar (borrar todas sus tarjetas; la tienda sigue)
 // ============================================================================
 
 // Cuántos clientes tiene cada negocio: el admin necesita saberlo antes de borrar.
@@ -145,11 +147,18 @@ export async function DELETE(request) {
       return NextResponse.json({ ok: true, archivado: guardado.archivado });
     }
 
-    // Borrado definitivo: hay que escribir el slug para confirmarlo.
+    // Borrado definitivo y vaciar: hay que escribir el slug para confirmarlo.
+    if ((modo === "borrar" || modo === "vaciar") && searchParams.get("confirmar") !== slug) {
+      return jsonError("Para esto hay que escribir el identificador exacto", 400);
+    }
+    // Como borrar a cada cliente: anuladas ya en los teléfonos, la fila cae mañana.
+    if (modo === "vaciar") {
+      const cuantos = await borrarClientesDeTienda(negocio);
+      if (cuantos) await registrarBorrado({ negocio: slug, tipo: "cliente", motivo: "admin", rol: "admin", cuantos });
+      await auditar(sesion, slug, "vaciar_tienda", `${cuantos} tarjetas`);
+      return NextResponse.json({ ok: true, clientes: cuantos });
+    }
     if (modo === "borrar") {
-      if (searchParams.get("confirmar") !== slug) {
-        return jsonError("Para borrar del todo hay que escribir el identificador exacto", 400);
-      }
       const { borrados } = await borrarNegocio(slug);
       // La constancia del borrado (sin datos personales): es lo que pide el contrato.
       await registrarBorrado({ negocio: slug, tipo: "tienda", motivo: "admin", rol: "admin", cuantos: borrados });

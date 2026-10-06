@@ -1,11 +1,9 @@
 import {
-  listNegocios, getNegocio, saveNegocio, listClientes, getCliente, borradosPendientes, purgarCliente, clientesSinUso,
-  recortarEventos, recortarTarjetasDeDispositivo, marcarBorrado, borrarNegocio, registrarBorrado,
+  listNegocios, getNegocio, saveNegocio, getCliente, borradosPendientes, purgarCliente, clientesSinUso,
+  recortarEventos, recortarTarjetasDeDispositivo, borrarNegocio, registrarBorrado,
   ultimoIntento, registrarIntento,
 } from "./store";
-import { borrarCliente } from "./derechos";
-import { refrescarPasesApple } from "./wallet";
-import { tiendaEnGoogle } from "./googlewallet";
+import { borrarCliente, borrarClientesDeTienda } from "./derechos";
 import { auditar } from "./auditoria";
 import { limiteSinUso, limiteBajaTienda, limitePurga } from "./legal";
 
@@ -82,13 +80,8 @@ async function darDeBaja(ahora, resultado) {
         continue;
       }
       if (negocio.archivadoEn > limite) continue;
-      const vivas = await listClientes(negocio.slug);
-      if (vivas.length) {
-        // Primer tiempo: todas a la vez, y un solo empujón a sus teléfonos.
-        for (const c of vivas) await marcarBorrado(c.serial);
-        await refrescarPasesApple(negocio);
-        const anuladas = (await Promise.all(vivas.map((c) => getCliente(c.serial)))).filter(Boolean);
-        await tiendaEnGoogle(negocio, { clientes: anuladas });
+      // Primer tiempo: todas a la vez, y un solo empujón a sus teléfonos.
+      if (await borrarClientesDeTienda(negocio)) {
         resultado.tiendasAnuladas.push(negocio.slug);
         continue;
       }
