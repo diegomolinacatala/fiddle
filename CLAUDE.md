@@ -17,9 +17,10 @@ un sitio de pruebas: hay clientes de verdad con sus sellos. Nada de accesos de
 prueba, y nada se borra en la base sin preguntar.
 
 **Se trabaja en `dev`, nunca en `main`** (desde el 08-10-2026, ver
-[docs/ENTORNOS.md](docs/ENTORNOS.md)). `dev` se despliega solo en su web y con su base
-de pruebas; a `main` se llega con un PR `dev → main`. Nada de `git push` a `main`, ni
-de dar a dev la base, el `AUTH_SECRET` o las credenciales de Google de producción.
+[docs/ENTORNOS.md](docs/ENTORNOS.md)). `dev` se despliega solo en su web, SIN base de
+datos: ficheros en `/tmp` que arrancan con datos inventados (`lib/datosDePrueba.js`). A
+`main` se llega con un PR `dev → main`. Nada de `git push` a `main`, ni de dar a dev la
+base, el `AUTH_SECRET` o las credenciales de Google de producción.
 
 ## Reglas de la casa
 

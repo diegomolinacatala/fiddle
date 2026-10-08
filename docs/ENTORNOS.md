@@ -5,8 +5,8 @@ en una web al minuto), pero en `dev`. `main` solo recibe lo que ya se ha visto e
 
 | | `dev` | `main` |
 |---|---|---|
-| Web | <https://fiddle-dev.vercel.app> (ver «Puesta en marcha») | <https://fiddle-zeta.vercel.app> |
-| Base de datos | Supabase **fiddle-dev** (datos de prueba) | Supabase de producción (clientes reales) |
+| Web | la de la rama: `fiddle-git-dev-victrozzs-projects.vercel.app` | <https://fiddle-zeta.vercel.app> |
+| Datos | **inventados**, sin base de datos (`lib/datosDePrueba.js`) | Supabase, clientes reales |
 | Se despliega | en cada `git push` a `dev` | al aceptar el PR `dev → main` |
 | Variables en Vercel | *Preview*, solo rama `dev` | *Production* |
 
@@ -18,7 +18,7 @@ git pull
 # ...cambios...
 npm test
 git commit -am "feat: lo que sea"
-git push            # al minuto está en fiddle-dev.vercel.app
+git push            # al minuto está en la web de dev
 ```
 
 Cuando está bien probado en `dev`, a producción con un PR:
@@ -29,40 +29,52 @@ npm run build
 gh pr create --base main --head dev --title "Lo que sube a producción"
 ```
 
-Lo acepta el otro (o uno mismo tras mirarlo otra vez) y Vercel despliega `main`.
-
 - **Nunca `git push` a `main`.** Todo entra por PR desde `dev`.
-- **Columna nueva = `supabase/schema.sql` en la base de dev primero**, probar, y en la de
-  producción ANTES de aceptar el PR (si no, producción da 500).
+- **Columna nueva = `supabase/schema.sql` en producción ANTES de aceptar el PR** (si no,
+  producción da 500). Dev no lo nota: no tiene base.
 - Ramas largas (`feat/...`) siguen valiendo: salen de `dev` y vuelven a `dev`.
 
-## Lo que NUNCA se comparte entre los dos
+## Cómo funciona dev sin base de datos
 
-- **Supabase**: dev con su propio proyecto. Con el de producción, probar en dev es
-  sellar tarjetas de clientes reales.
-- **`AUTH_SECRET`**: distinto. Con el mismo, una sesión de dev valdría en producción.
-- **Google Wallet**: dev va SIN credenciales de Google. La clase de una tienda es
-  `issuer + slug`: dev reescribiría la clase de La Delicantería y cambiaría la tarjeta
-  de todos sus clientes de Android.
-- **El reloj** (`pg_cron`) solo llama a producción. En dev no salen avisos solos.
+Sin `SUPABASE_URL`, el store guarda en ficheros (`DATA_DIR`). En Vercel eso es `/tmp`, y
+con `DATOS_DE_PRUEBA=1` lo que falta arranca con La Delicantería inventada: unos 30
+clientes y tres semanas de caja, con un sello fuera de horario, una corrección y siete
+sellos de golpe.
 
-Lo de Apple sí se comparte (mismo Pass Type ID y certificado): un pase de dev tiene su
-propio serial y su propio web service, así que es otra tarjeta y no toca las reales.
+- **Lo que se toca en dev no dura**: vive mientras la función de Vercel siga despierta.
+  Tras un rato sin uso o un despliegue nuevo, vuelve a los datos de partida. Sirve para
+  mirar pantallas y tocar; no para probar que algo se guarda de un día para otro.
+- Dos personas a la vez pueden ver datos distintos si Vercel abre dos funciones.
+- `DATOS_DE_PRUEBA` no hace nada en producción (`VERCEL_ENV=production`).
+- En local, lo mismo con `preview_start como-dev` (`.claude/launch.json`).
 
-## Puesta en marcha (una vez)
+## Lo que NUNCA se le da a dev
 
-1. **Supabase**: crear el proyecto `fiddle-dev` en **eu-west-2** (Londres, como
-   producción) y pegar `supabase/schema.sql` en su SQL Editor.
-2. **Vercel → Settings → Environment Variables**, entorno *Preview*, rama `dev`:
-   `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (los de fiddle-dev), `AUTH_SECRET` (uno nuevo),
-   `APP_URL=https://fiddle-dev.vercel.app`, `CLAVE_ADMIN_VICTOR`, `CLAVE_ADMIN_DIEGO`.
-   `CIFRADO_CLAVE` y los certificados de Apple ya están en *Preview*.
-3. **Vercel → Settings → Domains**: añadir `fiddle-dev.vercel.app` y asignarlo a la rama
-   `dev` (Git Branch). Así la dirección no cambia con cada despliegue.
-4. **Vercel → Settings → Deployment Protection**: con «Vercel Authentication» puesto en
-   las previews, el iPhone no puede hablar con el web service de dev (los pases de dev no
-   se actualizan). Quitarlo para las previews: dev solo tiene datos de prueba.
-5. **GitHub → Settings → Rules** (lo hace el dueño del repo): regla para `main` que pida
-   PR para entrar y no deje forzar (`force push`).
-6. **`.env.local`**: que apunte a la base de **dev**, no a la de producción. `npm run dev`
-   en local escribe donde diga ese fichero.
+- **`SUPABASE_URL` / `SUPABASE_SERVICE_KEY`**: con ellas, dev escribe en los clientes
+  reales.
+- **El `AUTH_SECRET` de producción**: con el mismo, una sesión de dev valdría allí.
+- **Google Wallet**: la clase de una tienda es `issuer + slug`: dev reescribiría la de La
+  Delicantería y cambiaría la tarjeta de todos sus clientes de Android.
+- **El reloj** (`pg_cron`) solo llama a producción.
+
+Lo de Apple sí se comparte: un pase de dev tiene su serial y su web service, es otra
+tarjeta. (Con la protección de Vercel puesta en las previews, el iPhone no llega al web
+service de dev y esos pases no se actualizan.)
+
+## Variables de dev (Vercel → *Preview*, rama `dev`)
+
+`DATOS_DE_PRUEBA=1`, `DATA_DIR=/tmp/fiddle`, `AUTH_SECRET` (uno propio de dev), `APP_URL`
+(la web de dev) y las contraseñas: `CLAVE_DELICANTERIA_MANAGER`, `CLAVE_DELICANTERIA_CAJA`,
+`CLAVE_ADMIN_VICTOR`, `CLAVE_ADMIN_DIEGO`. `CIFRADO_CLAVE` y los certificados de Apple ya
+estaban en *Preview*.
+
+## Vercel Hobby y el repo privado
+
+Con el repo privado, Vercel Hobby solo despliega commits de quien es dueño de la cuenta
+(Victor, con su GitHub conectado en *Account Settings → Authentication*). Los commits de
+Diego, y los merges de PR que haga él desde GitHub, **no se despliegan**, ni en dev ni en
+producción. Hasta pasar a Pro, los merges a `main` los hace Victor.
+
+## Proteger `main` en GitHub (lo hace el dueño del repo)
+
+*Settings → Rules → New ruleset* para `main`: pedir PR para entrar y no dejar forzar.

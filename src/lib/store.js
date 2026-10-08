@@ -5,6 +5,7 @@ import { SEMILLAS, componerNegocio, configInicial, esSlug } from "./negocios";
 import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
 import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
 import { UMBRALES } from "./crm";
+import { semillaDe } from "./datosDePrueba";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -53,7 +54,8 @@ async function leer(nombre, fallback) {
   try {
     return JSON.parse(await fs.readFile(fichero(nombre), "utf8"));
   } catch (e) {
-    if (e.code === "ENOENT") return fallback;
+    // La web de dev arranca con datos inventados, no vacía (lib/datosDePrueba.js).
+    if (e.code === "ENOENT") return semillaDe(nombre) ?? fallback;
     throw new Error(`No se pudo leer ${nombre}.json: ${e.message}`);
   }
 }
