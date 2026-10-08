@@ -10,13 +10,16 @@ import { perfilDe, metricas, conteoGrupos, cohortes, efectoCampana, LISTA_GRUPOS
  * hora local —a qué hora viene la gente— hay que hacerlas en el navegador: el
  * servidor vive en UTC y sacaría el café de las 9 a las 7.
  */
+// La ventana de historial que ve el panel. Con tope: ver listEventosDeNegocio.
+const VENTANA = { dias: 120, limite: 5000 };
+
 export async function datosCrm(slug) {
   const negocio = await getNegocio(slug);
   if (!negocio) return null;
 
   const [clientes, eventos, campanas, registrados] = await Promise.all([
     listClientes(slug),
-    listEventosDeNegocio(slug),
+    listEventosDeNegocio(slug, VENTANA),
     listCampanas(slug),
     serialesRegistrados(slug),
   ]);
@@ -58,5 +61,10 @@ export async function datosCrm(slug) {
       ...efectoCampana(c, eventos),
     })),
     eventos,
+    // Desde cuándo está TODO el historial. Si se llenó el tope, el día más viejo
+    // llega a medias y la Actividad no debe cuadrar caja con él (lib/actividad.js).
+    historialCompletoDesde: eventos.length >= VENTANA.limite
+      ? eventos.at(-1).ts
+      : new Date(Date.now() - VENTANA.dias * 864e5).toISOString(),
   };
 }

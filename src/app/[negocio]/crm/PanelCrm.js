@@ -3,12 +3,14 @@
 import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
 import CabeceraGestion from "../CabeceraGestion";
-import { serieVisitas, rejillaHoraria, tendencia, haceTexto, cadenciaTexto, GRUPOS } from "@/lib/crm";
+import { serieVisitas, rejillaHoraria, tendencia, cadenciaTexto, GRUPOS } from "@/lib/crm";
+import { ultimaVezTexto, fechaHoraTexto, zonaDe } from "@/lib/actividad";
 import { observaciones, enlaceDeAccion } from "@/lib/observaciones";
 import { csvClientes } from "@/lib/exportar";
 import { Cifra, Barras, Rejilla, Reparto, Chip } from "./piezas";
 import Ficha from "./Ficha";
-import Exportar from "./Exportar";
+import Exportar, { bajarCsv } from "./Exportar";
+import Actividad from "./Actividad";
 import { saldoCorto } from "@/lib/cartillas";
 import { C, pagina, panel, campo, h2, botonPequeno, chipCodigo, solapa } from "@/app/ui";
 
@@ -17,20 +19,22 @@ const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 // ============================================================================
 // CRM DE UNA TIENDA
 // ----------------------------------------------------------------------------
-// Dos pestañas, dos preguntas:
+// Una pestaña por pregunta:
 //   RESUMEN   ¿cómo va la tienda? cifras, reparto de clientes, cuándo vienen y
 //             lo que dicen los números (lib/observaciones.js), con su botón
 //   GRUPOS    los grupos del CRM en tarjetas: quién hay en cada uno y, con un
 //             toque, escribirles (lleva a Avisos con el grupo ya elegido)
 //   CLIENTES  ¿quién es este? la tabla, la búsqueda, la ficha de cada uno y la
 //             exportación (de lo que se está viendo, y solo aquí)
+//   ACTIVIDAD ¿cuadra con la caja? lo que pasó un día, hora a hora y movimiento
+//             a movimiento, para compararlo con los tickets (lib/actividad.js)
 // Escribir el mensaje vive en Avisos: aquí se ve a quién, allí se dice qué.
 //
 // Todo llega en UNA petición a /api/crm; las cuentas que dependen de la hora
 // local (a qué hora viene la gente) se hacen aquí, con el reloj de la tienda.
 // ============================================================================
 
-const PESTANAS = [["resumen", "Resumen"], ["grupos", "Grupos"], ["clientes", "Clientes"]];
+const PESTANAS = [["resumen", "Resumen"], ["grupos", "Grupos"], ["clientes", "Clientes"], ["actividad", "Actividad"]];
 const ORDENES = {
   reciente: { label: "Última visita", cmp: (a, b) => (a.perfil.diasSinVenir ?? 1e9) - (b.perfil.diasSinVenir ?? 1e9) },
   visitas: { label: "Más visitas", cmp: (a, b) => b.perfil.visitas - a.perfil.visitas },
@@ -82,23 +86,13 @@ export default function PanelCrm({ slug, inicial }) {
 
   const { negocio: n, metricas: m, grupos, estados } = d;
   const accent = n.tema.accent;
+  const zona = zonaDe(n);
   const grupoActivo = grupos.find((g) => g.key === grupo);
 
   // La hoja se arma AQUÍ, con la lista que se ve: lo que hay en pantalla es lo que baja.
   function descargar() {
     const csv = csvClientes(lista.map((c) => ({ cliente: c, perfil: c.perfil })), n);
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: `${slug}-${grupo || "clientes"}.csv` });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    // Queda apuntado quién bajó cuántos clientes (el registro de auditoría).
-    fetch("/api/crm/exportar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ b: slug, cuantos: lista.length, que: grupo || "todos" }),
-    }).catch(() => {});
+    bajarCsv({ csv, fichero: `${slug}-${grupo || "clientes"}.csv`, slug, cuantos: lista.length, que: grupo || "todos" });
   }
   const queContiene = [
     grupoActivo ? `Los de «${grupoActivo.label}»` : "Todos tus clientes",
@@ -285,7 +279,9 @@ export default function PanelCrm({ slug, inicial }) {
                       <td style={td}><Chip estado={c.perfil.estado} estados={estados} /></td>
                       <td style={td}>{c.perfil.visitas}</td>
                       <td style={{ ...td, color: C.suave }}>{cadenciaTexto(c.perfil.cadencia)}</td>
-                      <td style={{ ...td, color: C.suave }}>{haceTexto(c.perfil.diasSinVenir)}</td>
+                      <td style={{ ...td, color: C.suave }} title={fechaHoraTexto(c.ultima_visita || c.creado, zona)}>
+                        {ultimaVezTexto(c.ultima_visita || c.creado, zona)}
+                      </td>
                       <td style={td}>
                         {saldoCorto(c, n)}
                       </td>
@@ -307,6 +303,9 @@ export default function PanelCrm({ slug, inicial }) {
             </div>
           </section>
         )}
+
+        {/* ---------------------------------------------------- actividad */}
+        {pestana === "actividad" && <Actividad d={d} n={n} slug={slug} accent={accent} onVerFicha={setVerFicha} />}
 
         {verFicha && (
           <Ficha
@@ -351,7 +350,7 @@ function DetalleGrupo({ g, d, n, slug, accent, onVerFicha, onVerLista }) {
             <span style={{ flex: 1, minWidth: 0, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {c.nombre || <span style={{ color: C.tenue }}>sin nombre</span>}
             </span>
-            <span style={{ fontSize: 13, color: C.suave, whiteSpace: "nowrap" }}>{haceTexto(c.perfil.diasSinVenir)} · {saldoCorto(c, n)}</span>
+            <span style={{ fontSize: 13, color: C.suave, whiteSpace: "nowrap" }}>{ultimaVezTexto(c.ultima_visita || c.creado, zonaDe(n))} · {saldoCorto(c, n)}</span>
           </button>
         ))}
         {dentro.length > 8 && <span style={{ fontSize: 13, color: C.suave }}>Y {dentro.length - 8} más: «Ver en la lista».</span>}

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
   metricas, tendencia, serieVisitas, rejillaHoraria, cohortes, efectoCampana,
-  haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS,
+  haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -279,5 +279,27 @@ describe("textos", () => {
     expect(cadenciaTexto(4)).toBe("cada 4 días");
     expect(cadenciaTexto(21)).toBe("cada 3 semanas");
     expect(cadenciaTexto(90)).toBe("cada 3 meses");
+  });
+});
+
+describe("el Resumen cuenta visitas, no sellos", () => {
+  const ev = (serial, ts, tipo = "sellar") => ({ serial, tipo, ts });
+  // Siete cafés de golpe (traía la cartilla de papel) y, al día siguiente, otro.
+  const eventos = [
+    ...Array.from({ length: 7 }, (_, i) => ev("a", `2026-10-07T08:00:${String(i).padStart(2, "0")}Z`)),
+    ev("a", "2026-10-07T08:05:00Z", "canjear"),
+    ev("a", "2026-10-08T08:00:00Z"),
+    ev("b", "2026-10-07T08:00:30Z"), // otra tarjeta a la vez: otra visita
+    ev("a", "2026-10-07T09:00:00Z", "restar"), // una corrección no es visita
+  ];
+  it("soloVisitas junta lo de la misma tarjeta a menos de horasVisita", () => {
+    expect(soloVisitas(eventos).map((e) => `${e.serial} ${e.ts}`)).toEqual([
+      "a 2026-10-07T08:00:00Z", "b 2026-10-07T08:00:30Z", "a 2026-10-08T08:00:00Z",
+    ]);
+  });
+  it("la serie de 30 días y la rejilla usan esa cuenta", () => {
+    const serie = serieVisitas(eventos, 30, Date.parse("2026-10-08T12:00:00Z"));
+    expect(serie.find((d) => d.dia === "2026-10-07").n).toBe(2);
+    expect(rejillaHoraria(eventos).flat().reduce((a, b) => a + b, 0)).toBe(3);
   });
 });

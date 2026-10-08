@@ -50,6 +50,26 @@ const dias = (desde, hasta) => (desde && hasta ? Math.max(0, (hasta - desde) / D
 const ms = (v) => (v ? Date.parse(v) || null : null);
 
 /**
+ * Del historial, UNA entrada por visita: la primera de cada rato en el mostrador.
+ * Misma regla que store.registrarVisita (lo de la misma tarjeta a menos de
+ * `horasVisita` de lo anterior es la misma visita), para que el Resumen cuente
+ * igual que la ficha: siete cafés de golpe a quien traía la cartilla de papel,
+ * o una ronda para los amigos, son UNA visita, no siete.
+ */
+export function soloVisitas(eventos) {
+  const ultima = new Map();
+  return (eventos || [])
+    .filter((e) => TIPOS_VISITA.includes(e.tipo) && ms(e.ts))
+    .sort((a, b) => ms(a.ts) - ms(b.ts))
+    .filter((e) => {
+      const t = ms(e.ts);
+      const antes = ultima.get(e.serial);
+      ultima.set(e.serial, t);
+      return !antes || t - antes >= UMBRALES.horasVisita * HORA;
+    });
+}
+
+/**
  * Todo lo que se puede decir de un cliente a partir de lo guardado, sin tocar
  * el historial: las columnas `visitas` / `ultima_visita` ya son ese resumen.
  *
@@ -252,7 +272,7 @@ const pct = (parte, total) => (total ? Math.round((parte / total) * 100) : 0);
  * @param {object[]} clientes  filas crudas (para altas por fecha)
  */
 export function metricas(perfiles, eventos, clientes, ahora = Date.now()) {
-  const visitas = eventos.filter((e) => TIPOS_VISITA.includes(e.tipo));
+  const visitas = soloVisitas(eventos);
   const enVentana = (lista, desdeDias, hastaDias = 0) =>
     lista.filter((e) => {
       const t = ms(e.ts || e.creado);
@@ -299,10 +319,9 @@ export const tendencia = (ahora, antes) => (antes ? Math.round(((ahora - antes) 
  */
 export function serieVisitas(eventos, dias = 30, ahora = Date.now()) {
   const cuenta = new Map();
-  for (const e of eventos) {
-    if (!TIPOS_VISITA.includes(e.tipo)) continue;
+  for (const e of soloVisitas(eventos)) {
     const t = ms(e.ts);
-    if (!t || t < ahora - dias * DIA) continue;
+    if (t < ahora - dias * DIA) continue;
     const dia = new Date(t).toISOString().slice(0, 10);
     cuenta.set(dia, (cuenta.get(dia) || 0) + 1);
   }
@@ -322,11 +341,8 @@ export function serieVisitas(eventos, dias = 30, ahora = Date.now()) {
  */
 export function rejillaHoraria(eventos) {
   const rejilla = Array.from({ length: 7 }, () => new Array(24).fill(0));
-  for (const e of eventos) {
-    if (!TIPOS_VISITA.includes(e.tipo)) continue;
-    const t = ms(e.ts);
-    if (!t) continue;
-    const d = new Date(t);
+  for (const e of soloVisitas(eventos)) {
+    const d = new Date(ms(e.ts));
     rejilla[(d.getDay() + 6) % 7][d.getHours()] += 1; // getDay(): 0 = domingo
   }
   return rejilla;
