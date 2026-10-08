@@ -5,7 +5,7 @@ en una web al minuto), pero en `dev`. `main` solo recibe lo que ya se ha visto e
 
 | | `dev` | `main` |
 |---|---|---|
-| Web | la de la rama: `fiddle-git-dev-victrozzs-projects.vercel.app` | <https://fiddle-zeta.vercel.app> |
+| Web | <https://fiddle-dev.vercel.app> (dominio asignado a la rama `dev`) | <https://fiddle-zeta.vercel.app> |
 | Datos | **inventados**, sin base de datos (`lib/datosDePrueba.js`) | Supabase, clientes reales |
 | Se despliega | en cada `git push` a `dev` | al aceptar el PR `dev → main` |
 | Variables en Vercel | *Preview*, solo rama `dev` | *Production* |
@@ -65,7 +65,7 @@ service de dev y esos pases no se actualizan.)
 
 `DATOS_DE_PRUEBA=1`, `DATA_DIR=/tmp/fiddle`, `AUTH_SECRET` (uno propio de dev), `APP_URL`
 (la web de dev) y las contraseñas: `CLAVE_DELICANTERIA_MANAGER`, `CLAVE_DELICANTERIA_CAJA`,
-`CLAVE_ADMIN_VICTOR`, `CLAVE_ADMIN_DIEGO`. `CIFRADO_CLAVE` y los certificados de Apple ya
+`CLAVE_ADMIN_VICTOR`, `CLAVE_ADMIN_DIEGO` (las que se pongan; ninguna es la de producción). `CIFRADO_CLAVE` y los certificados de Apple ya
 estaban en *Preview*.
 
 ## Vercel Hobby y el repo privado
