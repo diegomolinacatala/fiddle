@@ -16,6 +16,11 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 un sitio de pruebas: hay clientes de verdad con sus sellos. Nada de accesos de
 prueba, y nada se borra en la base sin preguntar.
 
+**Se trabaja en `dev`, nunca en `main`** (desde el 08-10-2026, ver
+[docs/ENTORNOS.md](docs/ENTORNOS.md)). `dev` se despliega solo en su web y con su base
+de pruebas; a `main` se llega con un PR `dev → main`. Nada de `git push` a `main`, ni
+de dar a dev la base, el `AUTH_SECRET` o las credenciales de Google de producción.
+
 ## Reglas de la casa
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
@@ -270,6 +275,15 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   sello). La cadencia no baja de un día y nadie está "en riesgo" por faltar menos de
   `riesgoMinDias` (7). Sin esto, diez sellos de prueba = "habitual que viene cada
   segundo y lleva horas sin venir".
+
+- **Una visita se cuenta igual en todas partes.** La ficha lleva su contador
+  (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
+  rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
+  son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
+  cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
+  (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
+  medias y no se enseña (`historialCompletoDesde`). Su hoja no lleva nombres.
 
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.

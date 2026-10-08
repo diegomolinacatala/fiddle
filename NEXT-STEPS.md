@@ -2,6 +2,7 @@
 
 **Estado (05-10-2026):** en producción en **<https://fiddle-zeta.vercel.app>**,
 desplegado automáticamente desde `main`. Un cliente de pago: **La Delicantería**.
+Se trabaja en `dev` (su propia web y su base de pruebas): ver [docs/ENTORNOS.md](docs/ENTORNOS.md).
 
 | Pieza | Estado |
 |-------|--------|
@@ -64,7 +65,7 @@ Necesitas **Node 22 o superior** (`node -v`) y git. Nada más.
 - `/p/<serial>` es la tarjeta de un cliente; `/p/<serial>/datos`, sus datos (RGPD).
 
 ```bash
-npm test          # 651 tests
+npm test          # 665 tests
 npm run build     # comprobar que compila antes de subir
 ```
 
