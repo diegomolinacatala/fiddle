@@ -45,11 +45,12 @@ trae la *semilla* de La Delicantería y las plantillas de estilo.
 |---------|------|------|
 | **La Delicantería** (`delicanteria`) | dos cartillas: cookies y cafés | `/delicanteria` · `/delicanteria/caja` · `/delicanteria/manager` · `/api/tap?b=delicanteria` |
 
-El dueño tiene tres pestañas, una por pregunta, y cada cosa en **un solo sitio**:
+El dueño tiene cuatro pestañas, una por pregunta, y cada cosa en **un solo sitio**:
 **Tienda** (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; la
-exportación va junto a la lista) y **Avisos** (enviar a todos o a un grupo, ahora o a una
-hora; los [automáticos y programados](docs/AVISOS.md), solo si el admin los enciende).
-Aparte, **Ajustes**: la contraseña de la caja.
+exportación va junto a la lista), **Avisos** (enviar a todos o a un grupo, ahora o a una
+hora; los [automáticos y programados](docs/AVISOS.md), solo si el admin los enciende) y
+**Plantilla** (quién atiende la caja: cada empleado elige su nombre en su móvil una vez al
+día, y aquí se ve qué hace cada uno). Aparte, **Ajustes**: la contraseña de la caja.
 
 ## Cómo funciona
 

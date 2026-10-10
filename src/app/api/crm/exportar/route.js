@@ -7,8 +7,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // POST /api/crm/exportar  body: { b, cuantos, que } -> apunta que se bajó la lista
-// de clientes o la actividad de un día (`que` = "actividad-aaaa-mm-dd") (docs/RGPD.md, 6.8). El CSV se arma en el navegador con lo que ya
-// tiene la pantalla; esto solo deja constancia de quién, cuándo y cuántos.
+// de clientes, la actividad de un día (`que` = "actividad-aaaa-mm-dd") o el registro
+// de la plantilla (`que` = "plantilla-registro") (docs/RGPD.md, 6.8). El CSV se arma en
+// el navegador con lo que ya tiene la pantalla; esto solo deja constancia de quién,
+// cuándo y cuántos.
 export async function POST(request) {
   try {
     const { b, cuantos, que } = await request.json().catch(() => ({}));
@@ -18,7 +20,7 @@ export async function POST(request) {
     const n = Number.isInteger(cuantos) && cuantos >= 0 ? cuantos : null;
     // `que` es la clave del grupo, nunca la búsqueda: lo que se busca puede ser un nombre.
     const grupo = typeof que === "string" && /^[a-z0-9_-]{1,40}$/i.test(que) ? que : "todos";
-    const filas = grupo.startsWith("actividad-") ? "movimientos" : "clientes";
+    const filas = /^(actividad|plantilla)-/.test(grupo) ? "movimientos" : "clientes";
     await auditar(sesion, b, "exportar", `${n ?? "?"} ${filas} · ${grupo}`);
     return NextResponse.json({ ok: true });
   } catch (e) {

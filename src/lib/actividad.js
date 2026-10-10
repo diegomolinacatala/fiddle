@@ -38,6 +38,10 @@ export function ultimaVezTexto(iso, zona, ahora = Date.now()) {
   return haceTexto(Math.max(0, diasEntre(fecha, hoy)));
 }
 
+/** Una fecha de calendario ("2026-10-08") en corto: "jue, 8 oct". No depende de la zona: ya es la de la tienda. */
+export const diaCortoTexto = (fecha) =>
+  new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
 /** Fecha y hora completas en la tienda: "mié 8 oct 2026, 13:42". Para el `title`. */
 export function fechaHoraTexto(iso, zona) {
   const t = Date.parse(iso || "");
@@ -63,6 +67,16 @@ const CLASES = {
 function tipoBase(tipo) {
   const segunda = /2$/.test(tipo || "");
   return { base: segunda ? tipo.slice(0, -1) : tipo, cartilla: segunda ? 1 : 0 };
+}
+
+/**
+ * Qué es un evento para las cuentas de la caja (aquí y en lib/plantilla.js):
+ * `{ base, cartilla, clase }`, o null si no es actividad de la caja.
+ */
+export function clasificar(tipo) {
+  const { base, cartilla } = tipoBase(tipo);
+  const clase = CLASES[base];
+  return clase ? { base, cartilla, clase } : null;
 }
 
 // Lo hace alguien de la tienda: solo eso puede estar "fuera de horario". Un alta
@@ -98,6 +112,8 @@ export function actividadDelDia(eventos, fecha, { zona, horario = null, cartilla
       cartilla: ["sello", "correccion", "premio", "guardado"].includes(clase) ? cartilla : null,
       mensaje: e.mensaje,
       actor: e.actor || null,
+      // Quién de la plantilla (lib/plantilla.js): la columna «Quién» lo enseña por su nombre.
+      empleado: e.empleado || null,
       // Sin horario no hay "fuera": no se acusa a nadie con un dato que no existe.
       fueraDeHorario: Boolean(tramos && delPersonal && !tramos.some((r) => reloj.minutos >= r.abre && reloj.minutos < r.cierra)),
     });

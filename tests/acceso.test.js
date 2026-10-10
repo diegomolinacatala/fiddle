@@ -48,6 +48,14 @@ describe("reglaDeRuta", () => {
     expect(regla("/crm")).toEqual({ tipo: "sesion" });
   });
 
+  it("la plantilla es del manager; quién atiende lo pide la caja", () => {
+    expect(regla("/delicanteria/plantilla")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });
+    expect(regla("/api/plantilla?b=delicanteria")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });
+    expect(regla("/api/plantilla?b=delicanteria", "POST")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });
+    expect(regla("/api/plantilla/quien?b=delicanteria")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "caja" });
+    expect(regla("/api/plantilla/quien?b=delicanteria", "POST")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "caja" });
+  });
+
   it("los avisos son del manager; el reloj no tiene sesión (lo protege su secreto)", () => {
     expect(regla("/delicanteria/avisos")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });
     expect(regla("/api/automatizaciones?b=delicanteria", "PUT")).toEqual({ tipo: "negocio", slug: "delicanteria", rol: "manager" });

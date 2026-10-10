@@ -220,7 +220,7 @@ describe("CRM", () => {
   it("los eventos llevan negocio y actor, y se pueden leer por tienda", async () => {
     await nuevo("s1");
     await nuevo("s2", "fade");
-    await store.addEvento("s1", "sellar", "Sello 1/8", { negocio: "nube", actor: "caja" });
+    await store.addEvento("s1", "sellar", "Sello 1/8", { negocio: "nube", actor: "caja", empleado: "sebas001" });
     await store.addEventos([
       { serial: "s1", tipo: "campana", mensaje: "Campaña «vuelve»", negocio: "nube", actor: "manager" },
       { serial: "s2", tipo: "sellar", mensaje: "Sello 1/6", negocio: "fade", actor: "caja" },
@@ -229,7 +229,7 @@ describe("CRM", () => {
     const deNube = await store.listEventosDeNegocio("nube");
     expect(deNube).toHaveLength(2);
     expect(deNube.every((e) => e.serial === "s1")).toBe(true);
-    expect((await store.listEventos("s1"))[0]).toMatchObject({ actor: expect.any(String) });
+    expect((await store.listEventos("s1")).find((e) => e.mensaje === "Sello 1/8")).toMatchObject({ actor: "caja", empleado: "sebas001" });
     expect(await store.listEventosDeNegocio("fade")).toHaveLength(1);
     await store.addEventos([]); // no revienta
   });

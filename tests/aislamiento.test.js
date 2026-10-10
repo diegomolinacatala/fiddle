@@ -72,6 +72,11 @@ const DEL_PERSONAL = [
   ["propios", "DELETE", () => "/api/propios?b=nube&tipo=iconos&id=0123456789abcdef0123"],
   ["negocio", "GET", () => "/api/negocio?b=nube"],
   ["negocio", "PUT", () => "/api/negocio?b=nube", () => ({ premio: "nada" })],
+  ["plantilla", "GET", () => "/api/plantilla?b=nube"],
+  ["plantilla", "POST", () => "/api/plantilla?b=nube", () => ({ nombre: "Sebas" })],
+  ["plantilla", "PUT", () => "/api/plantilla?b=nube", () => ({ id: "sebas001", activo: false })],
+  ["plantilla/quien", "GET", () => "/api/plantilla/quien?b=nube"],
+  ["plantilla/quien", "POST", () => "/api/plantilla/quien?b=nube", () => ({ id: "sebas001" })],
   ["promo", "POST", () => "/api/promo", () => ({ b: "nube", texto: "2x1" })],
 ];
 

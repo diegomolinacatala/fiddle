@@ -41,6 +41,8 @@ export async function datosCrm(slug) {
       horario: negocio.horario ?? null,
       // Sin automáticos ni programados, «Programarles un aviso» no sale.
       avisosAvanzados: negocio.avisosAvanzados === true,
+      // Para poner nombre a quién hizo cada movimiento en Actividad (lib/plantilla.js).
+      plantilla: negocio.plantilla,
     },
     metricas: metricas(perfiles, eventos, clientes),
     grupos: conteoGrupos(perfiles),

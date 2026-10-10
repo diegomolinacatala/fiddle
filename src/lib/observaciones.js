@@ -20,7 +20,8 @@
 
 import { DIAS, tramosDe, sumarDias } from "./horario";
 
-const BLOQUES = [
+// Los tramos del día con los que se habla: también los usa lib/plantilla.js.
+export const BLOQUES = [
   { id: "manana", plural: "mañanas", desde: 0, hasta: 12, texto: "Esta mañana estamos tranquilos: ven a por lo tuyo sin colas." },
   { id: "mediodia", plural: "mediodías", desde: 12, hasta: 16, texto: "A mediodía hay sitio de sobra: pásate y suma en tu tarjeta." },
   { id: "tarde", plural: "tardes", desde: 16, hasta: 24, texto: "Esta tarde está tranquilo: ven con calma, tu tarjeta sigue sumando." },

@@ -38,9 +38,10 @@ base, el `AUTH_SECRET` o las credenciales de Google de producción.
 - **PowerShell 5.1**: nada de `&&`. Encadenar con `;` o `if ($?) { ... }`.
   Y ejecutarlo uno mismo, no pasárselo al usuario para que lo pegue.
 - **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
-  pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
+  pantalla "por si acaso". El dueño tiene cuatro pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
-  a la lista y baja lo que se ve) y **Avisos** (enviar a todos o a un grupo, ahora o a una hora). Y aparte,
+  a la lista y baja lo que se ve), **Avisos** (enviar a todos o a un grupo, ahora o a una hora)
+  y **Plantilla** (quién atiende la caja y qué hace cada uno). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -169,6 +170,34 @@ Qué PUEDE hacer la caja son las `acciones` de la tienda; cómo se le ENSEÑA, `
 de caja", con la caja de verdad (`TarjetaCaja demo`) al lado. Una FILA por cartilla que suma
 entera, con el "−" pequeño dentro (corregir no merece un botón igual de grande), y el "+2"
 si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, no un botón suelto.
+
+## La plantilla: quién atiende la caja
+
+Ver [`src/lib/plantilla.js`](src/lib/plantilla.js). La cuenta de la caja sigue siendo UNA por
+tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
+
+- **La lista vive en `config.plantilla`** (`{id, nombre, alta, baja}`), la lleva el manager en
+  la pestaña **Plantilla** → Equipo. Solo nombre o apodo: ni PIN ni turnos. **Dar de baja no
+  borra nada** (sus movimientos siguen con su nombre); el id no cambia nunca. Tope de 30 de
+  alta a la vez (y 200 contando bajas). Ninguna semilla mete gente en una tienda: la plantilla
+  inventada de dev va en la fila de `lib/datosDePrueba.js`, y un despliegue no da de alta a nadie.
+- **Cada empleado se elige en SU móvil, una vez al día**: cookie `quien` (caduca a la medianoche
+  de la tienda) y `quien_ultimo` (90 días, para proponer «¿Sigues siendo Sebas?»). Lo pide la
+  caja y también `/w/<serial>` (el QR entra ahí directo desde la cámara). `/api/accion` lo
+  exige por detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de
+  alta: sin plantilla, la caja funciona como siempre. **El dueño no elige**: desde su cuenta
+  sale como «Dueño» (`actor: "manager"`, `empleado` null).
+- **`eventos.empleado`** es la única columna nueva. De ahí salen Rendimiento y Registro de la
+  pestaña y el nombre en Clientes → Actividad (`quienTexto`). Un movimiento de la caja sin
+  `empleado` es «Sin nombre» (lo de antes de la plantilla).
+- **Las cuentas son puras y con la hora de la tienda** (`cuentasDePlantilla`): una «hora de
+  caja» es una hora del reloj con algún movimiento suyo (lo más parecido al tiempo trabajado
+  sin apuntar turnos) y el **ritmo esperado** de cada uno es lo que da el equipo en los mismos
+  (día de la semana, tramo) que trabajó, para que cubrir las tardes flojas no penalice. Sin
+  podio: cada uno contra lo normal en sus franjas.
+- **Las conclusiones son reglas fijas** (`observacionesPlantilla`), como «lo que dicen los
+  números»: cada frase lleva la cifra de la que sale. Una conclusión nueva = una regla ahí.
+- Lo del empleado en su móvil es SOLO lo suyo de hoy; los números del equipo son del manager.
 
 ## El premio: dar o guardar
 

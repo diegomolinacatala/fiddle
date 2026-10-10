@@ -61,6 +61,14 @@ const TRAZOS = {
       <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.6a6.2 6.2 0 0 1 3.5 5.4" />
     </>
   ),
+  // La tarjeta de empleado: la plantilla y quién atiende la caja.
+  credencial: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+      <circle cx="9" cy="11" r="2.2" />
+      <path d="M5.8 16.2a3.4 3.4 0 0 1 6.4 0M14.5 10h3.5M14.5 13.5h3.5" />
+    </>
+  ),
   lupa: (
     <>
       <circle cx="11" cy="11" r="6.5" />

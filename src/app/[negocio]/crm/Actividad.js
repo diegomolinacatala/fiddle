@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Icono from "@/app/Icono";
 import { actividadDelDia, diaCompleto, zonaDe } from "@/lib/actividad";
-import { csvActividad, QUIEN, QUE } from "@/lib/exportar";
+import { csvActividad, QUE } from "@/lib/exportar";
+import { quienTexto } from "@/lib/plantilla";
 import { fechaLocal, sumarDias, abreEl } from "@/lib/horario";
 import { cartillasDe } from "@/lib/cartillas";
 import { Cifra } from "./piezas";
@@ -61,7 +62,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
   }
 
   function descargar() {
-    const csv = csvActividad({ fecha, filas: act.filas, codigoDe, negocio: n });
+    const csv = csvActividad({ fecha, filas: act.filas, codigoDe, negocio: n, quienDe: (f) => quienTexto(f, n.plantilla) });
     bajarCsv({ csv, fichero: `${slug}-actividad-${fecha}.csv`, slug, cuantos: act.filas.length, que: `actividad-${fecha}` });
   }
 
@@ -177,7 +178,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
                           </span>
                         )}
                       </td>
-                      <td style={{ ...td, color: C.suave }}>{QUIEN[f.actor] || "—"}</td>
+                      <td style={{ ...td, color: C.suave }}>{quienTexto(f, n.plantilla) || "—"}</td>
                     </tr>
                   );
                 })}

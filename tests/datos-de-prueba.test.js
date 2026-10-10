@@ -26,6 +26,25 @@ describe("datos de prueba de dev", () => {
     expect(a.eventos.every((e) => Date.parse(e.ts) <= ahora)).toBe(true);
   });
 
+  it("trae la plantilla y las dos últimas semanas llevan nombre; lo de antes, no", () => {
+    const { negocios, eventos } = generar(ahora);
+    const { plantilla } = negocios.delicanteria.config;
+    expect(plantilla.map((e) => e.nombre)).toEqual(["Sebas", "Andreina", "Marta", "Jorge", "Lucía"]);
+    expect(negocios.delicanteria.config.cartillas).toEqual(SEMILLAS.delicanteria.cartillas);
+    const caja = eventos.filter((e) => e.actor === "caja");
+    const hace15 = new Date(ahora - 15 * 864e5).toISOString();
+    const hace13 = new Date(ahora - 13 * 864e5).toISOString();
+    expect(caja.filter((e) => e.ts < hace15).every((e) => e.empleado === null)).toBe(true);
+    const recientes = caja.filter((e) => e.ts > hace13);
+    expect(recientes.length).toBeGreaterThan(50);
+    expect(recientes.every((e) => plantilla.some((p) => p.id === e.empleado))).toBe(true);
+    // Jorge corrige: al menos las tres de propósito.
+    expect(eventos.filter((e) => e.empleado === "jorge001" && e.tipo.startsWith("restar")).length).toBeGreaterThanOrEqual(3);
+    process.env.DATOS_DE_PRUEBA = "1";
+    process.env.VERCEL_ENV = "preview";
+    expect(semillaDe("negocios").delicanteria.config.plantilla).toHaveLength(5);
+  });
+
   it("la caja trabaja en horario, salvo el sello de después de cerrar", () => {
     const { horario } = SEMILLAS.delicanteria;
     const fuera = generar(ahora).eventos.filter((e) => {

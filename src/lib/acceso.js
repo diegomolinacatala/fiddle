@@ -78,9 +78,9 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
 
   // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager,
-  // /<slug>/crm, /<slug>/avisos, /<slug>/ajustes. Todo lo que no es la caja es del
-  // manager: ve a todos los clientes, les manda avisos y cambia las contraseñas.
-  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos|ajustes))?\/?$/);
+  // /<slug>/crm, /<slug>/avisos, /<slug>/plantilla, /<slug>/ajustes. Todo lo que no es
+  // la caja es del manager: ve a todos los clientes, les manda avisos y cambia las contraseñas.
+  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos|plantilla|ajustes))?\/?$/);
   if (pagina && !RESERVADOS.has(pagina[1])) {
     if (!pagina[2]) return { tipo: "publica" };
     return { tipo: "negocio", slug: pagina[1], rol: pagina[2] === "caja" ? "caja" : "manager" };
@@ -108,6 +108,10 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   if (pathname === "/api/crm" || pathname === "/api/automatizaciones") {
     return { tipo: "negocio", slug: b, rol: "manager" };
   }
+  // La plantilla (lib/plantilla.js): la lista y sus cuentas son del manager;
+  // «quién atiende desde este móvil» lo pide y lo deja la caja.
+  if (pathname === "/api/plantilla") return { tipo: "negocio", slug: b, rol: "manager" };
+  if (pathname === "/api/plantilla/quien") return { tipo: "negocio", slug: b, rol: "caja" };
 
   // /w/<serial>, /api/accion, /api/cliente/<serial>, /api/promo y cualquier
   // otra: sesión válida; el handler valida el negocio concreto.

@@ -26,6 +26,7 @@ import { normalizarCartillas } from "./validacion";
 import { normalizarContacto } from "./contacto";
 import { normalizarLegal } from "./legal";
 import { normalizarCaja } from "./caja";
+import { normalizarPlantilla } from "./plantilla";
 import { normalizarHorario } from "./horario";
 import { normalizarPendientes } from "./envios";
 import { normalizarPropios } from "./propios";
@@ -529,6 +530,10 @@ export function componerNegocio(slug, guardado) {
     pedirNombre: c.pedirNombre === true,
     // Cómo se ve la caja (lib/caja.js): lo que no esté, como siempre.
     caja: normalizarCaja(c.caja),
+    // Quién atiende la caja (lib/plantilla.js). Solo lo guardado: ninguna semilla
+    // mete gente en una tienda (la plantilla inventada de dev va en la fila de
+    // lib/datosDePrueba.js).
+    plantilla: normalizarPlantilla(c.plantilla),
     // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
     contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,

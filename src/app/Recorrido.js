@@ -31,6 +31,7 @@ export const RECORRIDOS = {
     { ancla: "pedir-nombre", titulo: "¿Pedir el nombre?", texto: "Apagado, el cliente va directo a la Wallet. Encendido, escribe su nombre antes: un paso más, pero la caja sabe quién es." },
     { ancla: "pestana-clientes", titulo: "Tus clientes", texto: "Quién viene, quién ha dejado de venir y a quién le falta un sello." },
     { ancla: "pestana-avisos", titulo: "Avisos", texto: "Promos para todos y mensajes a un grupo, ahora o a la hora que elijas de hoy o de mañana." },
+    { ancla: "pestana-plantilla", titulo: "Tu plantilla", texto: "Quién atiende la caja. Cada uno elige su nombre en su móvil y aquí ves los sellos, el ritmo y las correcciones de cada persona." },
     { ancla: "pestana-ajustes", titulo: "Ajustes", texto: "La contraseña de la caja (si se va alguien, cámbiala aquí) y cómo abrir la caja en otro móvil." },
     { ancla: "ayuda", titulo: "¿Otra vez?", texto: "Este botón vuelve a enseñar el recorrido cuando quieras." },
   ],
@@ -38,6 +39,8 @@ export const RECORRIDOS = {
     { ancla: "escanear", titulo: "Escanea la tarjeta", texto: "El cliente enseña su tarjeta en el móvil y apuntas al QR. Se abre su ficha con los botones para sellar." },
     { ancla: "codigo", titulo: "Si el QR no se lee", texto: "Debajo del QR hay un código de 3 letras. Escríbelo aquí y abre la misma ficha." },
     { ancla: "clientes", titulo: "Los últimos clientes", texto: "Toca uno para abrir su ficha sin escanear." },
+    { ancla: "hoy", titulo: "Lo tuyo de hoy", texto: "Los sellos, clientes y premios que llevas hoy. Solo lo tuyo: cada sello se apunta a quien atiende." },
+    { ancla: "cambiar-quien", titulo: "El relevo", texto: "Si coges el móvil de otra persona, toca «Cambiar» y elige tu nombre. Se pregunta solo una vez al día en cada móvil." },
     { ancla: "ayuda", titulo: "¿Otra vez?", texto: "Este botón vuelve a enseñar el recorrido cuando quieras." },
   ],
 };

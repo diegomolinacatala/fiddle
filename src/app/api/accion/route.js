@@ -3,6 +3,7 @@ import { getCliente, saveCliente, getNegocio, addEvento, registrarVisita, client
 import { TIPOS_VISITA } from "@/lib/crm";
 import { ACCIONES, accionPermitida } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
+import { quienDeCookie, hayQueElegir, COOKIE_QUIEN } from "@/lib/plantilla";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -32,6 +33,15 @@ export async function POST(request) {
     if (!negocio) return jsonError("Negocio no encontrado", 404);
     if (!accionPermitida(negocio, accion)) return jsonError("Esa acción no está activada por el manager", 403);
 
+    // Quién atiende desde este móvil (lib/plantilla.js). Con gente dada de alta, la
+    // caja tiene que haber elegido a alguien hoy; la pantalla lo pide con `elegir`.
+    // El dueño, con su cuenta, no elige: queda como actor "manager".
+    const quien = quienDeCookie(request.cookies.get(COOKIE_QUIEN)?.value, negocio.slug, negocio.plantilla);
+    if (hayQueElegir(sesion, negocio.plantilla) && !quien) {
+      return NextResponse.json({ ok: false, elegir: true, mensaje: "Antes de sellar, di quién atiende en este móvil." }, { status: 428 });
+    }
+    const empleado = sesion.rol === "caja" ? quien?.id ?? null : null;
+
     const r = def.aplicar(cliente, negocio);
     if (r.ok === false) return NextResponse.json({ ok: false, mensaje: r.mensaje, cliente: clientePublico(cliente) });
 
@@ -44,7 +54,7 @@ export async function POST(request) {
         { status: 409 },
       );
     }
-    if (r.evento) await addEvento(serial, accion, r.evento, { negocio: cliente.negocio, actor: sesion.rol });
+    if (r.evento) await addEvento(serial, accion, r.evento, { negocio: cliente.negocio, actor: sesion.rol, empleado });
     // El cliente estuvo aquí: cuenta como visita. Una corrección, no (ver crm.js).
     if (TIPOS_VISITA.includes(accion)) await registrarVisita(serial);
     // Con el estado de antes se sabe qué pasó (un sello, un canje) y si Android debe sonar.

@@ -127,7 +127,9 @@ Respuesta: `{ ok, cliente, aviso }`.
 { "ok": false, "mensaje": "Aún no llega · 3/8", "cliente": { … } }   // rechazada por la lógica
 ```
 `400` falta serial/acción o acción desconocida · `403` acción desactivada u otro negocio · `404` cliente ·
-`409` otra caja modificó al cliente a la vez (`ok: false`, se devuelve el estado actual; repetir).
+`409` otra caja modificó al cliente a la vez (`ok: false`, se devuelve el estado actual; repetir) ·
+`428` la tienda tiene plantilla y en este móvil nadie ha dicho hoy quién atiende (`{ ok: false, elegir: true }`:
+la caja manda a elegir, ver `/api/plantilla/quien`). El evento se guarda con `empleado` = quien atendía.
 Si el aviso al Wallet falla, la acción **no** falla (el estado ya está guardado):
 `aviso.error` lo indica y el pase se pondrá al día en la próxima sincronización.
 
@@ -140,7 +142,27 @@ Un solo cliente por su **código corto** (3 caracteres), o `404`. La búsqueda s
 queda dentro de `<negocio>`: el mismo código en otra tienda es otro cliente y no
 se puede resolver desde aquí. Lo usa la caja cuando el QR no se deja leer.
 
+### `GET /api/plantilla/quien?b=<negocio>` · `POST /api/plantilla/quien?b=<negocio>` — `{ "id": "sebas001" }`
+Quién atiende desde **este móvil** ([`plantilla.js`](../src/lib/plantilla.js)). La cuenta de la
+caja la comparten; cada empleado elige su nombre en su móvil la primera vez cada día.
+```json
+{ "elegir": true, "empleado": null, "ultimo": { "id": "sebas001", "nombre": "Sebas" },
+  "plantilla": [ { "id": "sebas001", "nombre": "Sebas" } ], "hoy": null }
+```
+`elegir`: hace falta elegir antes de sellar (cuenta de caja, gente dada de alta y nadie elegido hoy).
+`ultimo`: quién fue la última vez en este móvil, para proponerlo con un toque. `hoy`: lo de hoy de
+quien atiende (`{ sellos, quitados, premios, clientes }`). El POST deja dos cookies httpOnly: `quien`
+(hasta la medianoche de la tienda) y `quien_ultimo` (90 días); `400` si no está dado de alta. El
+manager no elige: para él `elegir` es siempre `false` y sus sellos quedan como `actor: "manager"`.
+
 ## Manager
+
+### `GET /api/plantilla?b=<negocio>` · `POST` — `{ "nombre": "Sebas" }` · `PUT` — `{ "id", "nombre"?, "activo"? }`
+La lista de la plantilla: alta, renombrar, baja (`activo: false`) y vuelta. Respuesta
+`{ plantilla, empleado }`; `400` nombre vacío, repetido o más de 30 personas. Dar de baja no borra
+nada: deja de salir en la caja y sus movimientos siguen con su nombre. Queda en la auditoría
+(`plantilla`, con el id). Las cuentas y el registro no tienen API: la página los calcula con los
+eventos ([`plantillaDatos.js`](../src/lib/plantillaDatos.js)).
 
 ### `GET /api/negocio?b=<negocio>` · `PUT /api/negocio?b=<negocio>`
 ```json
