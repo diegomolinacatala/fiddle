@@ -66,20 +66,26 @@ export default function Caja() {
       .finally(() => setListo(true));
   }
 
-  async function elegir(e) {
+  /** Se identifica (`{ id, pin }`) o elige su PIN (`{ id, nuevoPin }`). Devuelve el error en texto, o null si entró. */
+  async function enviar(cuerpo) {
     setGuardando(true);
-    setError(null);
     try {
       const res = await fetch(`/api/plantilla/quien?b=${negocio}`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: e.id }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return data.error || "No se pudo guardar. Vuelve a intentarlo.";
       setEligiendo(false);
-      if (volver) return router.push(volver);
+      setPerdido(false);
+      if (volver) {
+        router.push(volver);
+        return null;
+      }
       window.history.replaceState(null, "", `/${negocio}/caja`);
       cargarQuien();
+      return null;
     } catch {
-      setError("No se pudo guardar quién atiende. Vuelve a intentarlo.");
+      return "Sin conexión. Vuelve a intentarlo.";
     } finally {
       setGuardando(false);
     }
@@ -151,11 +157,11 @@ export default function Caja() {
           <div style={{ marginTop: 16 }}>
             {perdido && (
               <div role="alert" style={{ ...aviso(false), marginBottom: 10 }}>
-                El último sello no se ha guardado: hoy nadie había dicho quién atiende en este móvil. Elige tu nombre y vuelve a darlo.
+                El último sello no se ha guardado: en este móvil nadie se había identificado (o pasaron las dos horas). Pon tu PIN y vuelve a darlo.
               </div>
             )}
             {/* Con «Cambiar» ya hay alguien: a la lista directa, no a proponer al mismo. */}
-            <QuienAtiende plantilla={quien.plantilla} ultimo={atiende ? null : quien.ultimo} accent={accent} onElegir={elegir} ocupado={guardando} />
+            <QuienAtiende plantilla={quien.plantilla} ultimo={atiende ? null : quien.ultimo} accent={accent} onEnviar={enviar} ocupado={guardando} />
             {error && <div role="alert" style={{ ...aviso(false), marginTop: 10 }}>{error}</div>}
             {atiende && (
               <button type="button" onClick={() => setEligiendo(false)} style={{ ...botonSecundario, width: "100%", marginTop: 10 }}>

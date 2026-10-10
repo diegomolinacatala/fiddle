@@ -1,0 +1,25 @@
+# Lo que la CLI de Vercel NO sube al desplegar desde esta carpeta (`vercel`).
+# Con este fichero la CLI deja de mirar el .gitignore, así que va todo lo de allí
+# (secretos incluidos: certificados, .env) más lo que solo está excluido en local
+# (.git/info/exclude): los worktrees de .claude/, los vídeos de brag-output y el
+# material de marca en binario. El build solo necesita la raíz del repo.
+node_modules
+.next
+out
+.env
+.env*.local
+.data
+.vercel
+.DS_Store
+*.log
+coverage
+certs/
+*.p12
+*.pem
+*.cer
+*.certSigningRequest
+.claude/
+brag-output/
+docs/marca/*.pdf
+docs/marca/*.pptx
+docs/marca/WhatsApp Image *

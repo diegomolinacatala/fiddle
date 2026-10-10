@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { sumarDias } from "@/lib/horario";
+import { firmarTexto, verificarTexto } from "@/lib/auth";
 import {
   normalizarPlantilla, nombreDeEmpleado, nuevoEmpleado, cambiarEmpleado, empleadosActivos, empleadoDe,
-  valorQuien, quienDeCookie, caducidadDelDia, hayQueElegir,
+  valorQuien, quienDePayload, empleadoDeValor, huellaDePin, pinValido, ponerPin, plantillaPublica, hayQueElegir,
   autorDe, quienTexto, ventanaDe, cuentasDePlantilla, serieDiaria, observacionesPlantilla, resumenDeHoy, colorDe,
   movimientosDePlantilla,
 } from "@/lib/plantilla";
@@ -41,15 +42,18 @@ describe("la lista de la plantilla", () => {
       null,
     ]);
     expect(lista).toEqual([
-      { id: "sebas1", nombre: "Sebas", alta: "2026-09-01T08:00:00Z", baja: null },
-      { id: "marta1", nombre: "Marta", alta: null, baja: null },
+      { id: "sebas1", nombre: "Sebas", alta: "2026-09-01T08:00:00Z", baja: null, pin: null },
+      { id: "marta1", nombre: "Marta", alta: null, baja: null, pin: null },
     ]);
     expect(normalizarPlantilla("nada")).toEqual([]);
+    // Del PIN solo se guarda el hash; cualquier otra cosa es «sin PIN».
+    const hash = "scrypt$00ff$abcdef0123456789";
+    expect(normalizarPlantilla([{ id: "sebas1", nombre: "Sebas", pin: hash }, { id: "marta1", nombre: "Marta", pin: "1234" }]).map((e) => e.pin)).toEqual([hash, null]);
   });
 
   it("da de alta sin pisar la lista, sin nombres repetidos y con tope", () => {
     const r = nuevoEmpleado(plantilla, "Jorge", { ahora: Date.parse("2026-10-10T10:00:00Z"), id: "jorge1" });
-    expect(r.empleado).toEqual({ id: "jorge1", nombre: "Jorge", alta: "2026-10-10T10:00:00.000Z", baja: null });
+    expect(r.empleado).toEqual({ id: "jorge1", nombre: "Jorge", alta: "2026-10-10T10:00:00.000Z", baja: null, pin: null });
     expect(r.plantilla).toHaveLength(5);
     expect(plantilla).toHaveLength(4);
     expect(nuevoEmpleado(plantilla, "sebas").error).toMatch(/Ya hay alguien/);
@@ -98,23 +102,58 @@ describe("la lista de la plantilla", () => {
   });
 });
 
-describe("la cookie de quién atiende", () => {
-  it("vale solo para su tienda y para alguien dado de alta", () => {
-    expect(valorQuien("delicanteria", "sebas1")).toBe("delicanteria.sebas1");
-    expect(quienDeCookie("delicanteria.sebas1", "delicanteria", plantilla)?.nombre).toBe("Sebas");
-    expect(quienDeCookie("delicanteria.sebas1", "nube", plantilla)).toBeNull();
-    expect(quienDeCookie("delicanteria.luis01", "delicanteria", plantilla)).toBeNull(); // de baja
-    expect(quienDeCookie("delicanteria.nadie", "delicanteria", plantilla)).toBeNull();
-    expect(quienDeCookie(undefined, "delicanteria", plantilla)).toBeNull();
-    expect(quienDeCookie("sebas1", "delicanteria", plantilla)).toBeNull();
+describe("la cookie de quién atiende y el PIN", () => {
+  const hash = "scrypt$00ff$abcdef0123456789abcdef";
+  const conPin = plantilla.map((e) => (e.id === "sebas1" ? { ...e, pin: hash } : e));
+
+  it("el texto firmado lleva la tienda, el id y la huella del PIN, y solo vale con el PIN de ahora", () => {
+    const payload = valorQuien("delicanteria", "sebas1", huellaDePin(hash));
+    expect(payload).toBe(`delicanteria.sebas1.${hash.slice(-12)}`);
+    expect(quienDePayload(payload, "delicanteria", conPin)?.nombre).toBe("Sebas");
+    expect(quienDePayload(payload, "nube", conPin)).toBeNull();
+    expect(quienDePayload(valorQuien("delicanteria", "sebas1", "otrahuella1"), "delicanteria", conPin)).toBeNull(); // le quitaron el PIN
+    expect(quienDePayload(valorQuien("delicanteria", "marta1", huellaDePin(null)), "delicanteria", conPin)).toBeNull(); // sin PIN no hay cookie que valga
+    expect(quienDePayload(valorQuien("delicanteria", "luis01", "sin"), "delicanteria", conPin)).toBeNull(); // de baja
+    expect(quienDePayload(undefined, "delicanteria", conPin)).toBeNull();
+    expect(quienDePayload("sebas1", "delicanteria", conPin)).toBeNull();
   });
 
-  it("caduca a la medianoche de la tienda, no a las 24 h", () => {
-    // 23:30 en Madrid (21:30Z): quedan 30 minutos.
-    expect(caducidadDelDia(Date.parse("2026-10-05T21:30:00Z"), zona)).toBe(30 * 60);
-    // 00:00:30 en Madrid: casi el día entero, nunca menos de un minuto.
-    expect(caducidadDelDia(Date.parse("2026-10-04T22:00:30Z"), zona)).toBe(24 * 3600 - 30);
-    expect(caducidadDelDia(Date.parse("2026-10-05T21:59:30Z"), zona)).toBe(60);
+  it("«la última vez» va sin firmar y solo propone a alguien de alta", () => {
+    expect(empleadoDeValor("delicanteria.sebas1", "delicanteria", plantilla)?.nombre).toBe("Sebas");
+    expect(empleadoDeValor("delicanteria.luis01", "delicanteria", plantilla)).toBeNull();
+    expect(empleadoDeValor("nube.sebas1", "delicanteria", plantilla)).toBeNull();
+    expect(empleadoDeValor(undefined, "delicanteria", plantilla)).toBeNull();
+  });
+
+  it("firmar y verificar un texto: caduca y no se puede tocar", async () => {
+    const ahora = Date.parse("2026-10-10T10:00:00Z");
+    const token = await firmarTexto("delicanteria.sebas1.abc", ahora + 1000);
+    expect(await verificarTexto(token, ahora)).toBe("delicanteria.sebas1.abc");
+    expect(await verificarTexto(token, ahora + 2000)).toBeNull();
+    expect(await verificarTexto(`${token}x`, ahora)).toBeNull();
+    expect(await verificarTexto(token.replace("sebas1", "marta1"), ahora)).toBeNull();
+    expect(await verificarTexto("nada", ahora)).toBeNull();
+    expect(await verificarTexto(undefined, ahora)).toBeNull();
+  });
+
+  it("el PIN: de 4 a 6 cifras, no todas iguales; se pone una vez y el manager lo quita", () => {
+    expect(pinValido("2468")).toBe("2468");
+    expect(pinValido(" 123456 ")).toBe("123456");
+    expect(pinValido("123")).toBeNull();
+    expect(pinValido("1234567")).toBeNull();
+    expect(pinValido("1111")).toBeNull();
+    expect(pinValido("12a4")).toBeNull();
+    expect(pinValido(null)).toBeNull();
+    const puesto = ponerPin(plantilla, "marta1", hash);
+    expect(puesto.empleado.pin).toBe(hash);
+    expect(ponerPin(puesto.plantilla, "marta1", hash).error).toMatch(/Ya tiene PIN/);
+    expect(ponerPin(plantilla, "luis01", hash).error).toMatch(/no está/);
+    expect(ponerPin(plantilla, "marta1", "1234").error).toMatch(/no válido/);
+    const quitado = cambiarEmpleado(puesto.plantilla, "marta1", { quitarPin: true });
+    expect(quitado.empleado.pin).toBeNull();
+    // Hacia el navegador nunca va el hash, solo si lo tiene.
+    expect(plantillaPublica(puesto.plantilla).find((e) => e.id === "marta1")).toEqual({ id: "marta1", nombre: "Marta", alta: "2026-09-01T08:00:00Z", baja: null, tienePin: true });
+    expect(JSON.stringify(plantillaPublica(puesto.plantilla))).not.toContain("scrypt");
   });
 
   it("solo la caja elige, y solo con gente dada de alta", () => {

@@ -5,8 +5,9 @@ import path from "node:path";
 import { NextRequest } from "next/server";
 
 // ============================================================================
-// LA PLANTILLA POR LAS RUTAS: el manager lleva la lista, la caja elige quién
-// atiende en su móvil y cada sello sale con su nombre (lib/plantilla.js).
+// LA PLANTILLA POR LAS RUTAS: el manager lleva la lista, cada empleado se
+// identifica con su PIN en su móvil (cookie firmada, lib/quien.js) y cada
+// sello sale con su nombre (lib/plantilla.js).
 // ============================================================================
 
 vi.mock("@/lib/wallet", async (original) => ({
@@ -16,7 +17,7 @@ vi.mock("@/lib/wallet", async (original) => ({
 }));
 
 const store = await import("@/lib/store");
-const { firmarSesion } = await import("@/lib/auth");
+const { firmarSesion, firmarTexto } = await import("@/lib/auth");
 const lista = await import("@/app/api/plantilla/route.js");
 const quien = await import("@/app/api/plantilla/quien/route.js");
 const accion = await import("@/app/api/accion/route.js");
@@ -37,13 +38,14 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-async function pedir(url, { metodo = "GET", cuerpo, como, cookies = {} } = {}) {
+async function pedir(url, { metodo = "GET", cuerpo, como, cookies = {}, ip } = {}) {
   const headers = {};
   const trozos = [];
   if (como) trozos.push(`sesion=${await firmarSesion(...como)}`);
   for (const [k, v] of Object.entries(cookies)) trozos.push(`${k}=${v}`);
   if (trozos.length) headers.cookie = trozos.join("; ");
   if (cuerpo) headers["content-type"] = "application/json";
+  if (ip) headers["x-forwarded-for"] = ip;
   return new NextRequest(`http://x${url}`, { method: metodo, headers, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
 }
 const leer = async (r) => ({ status: r.status, data: await r.json(), cookies: r.cookies.getAll() });
@@ -52,12 +54,15 @@ const manager = ["nube", "manager"];
 const caja = ["nube", "caja"];
 const sellar = async (opciones) =>
   accion.POST(await pedir("/api/accion", { metodo: "POST", cuerpo: { serial: cliente.serial, accion: "sellar" }, ...opciones }));
+const identificar = async (cuerpo, opciones = {}) =>
+  leer(await quien.POST(await pedir("/api/plantilla/quien?b=nube", { metodo: "POST", cuerpo, como: caja, ...opciones })));
+const estado = async (opciones = {}) => leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: caja, ...opciones })));
 
 describe("la lista, desde el manager", () => {
   it("alta, renombrar, baja y vuelta; queda apuntado sin el nombre", async () => {
     let r = await leer(await lista.POST(await pedir("/api/plantilla?b=nube", { metodo: "POST", cuerpo: { nombre: " Sebas " }, como: manager })));
     expect(r.status).toBe(200);
-    expect(r.data.empleado).toMatchObject({ nombre: "Sebas", baja: null });
+    expect(r.data.empleado).toEqual({ id: expect.any(String), nombre: "Sebas", alta: expect.any(String), baja: null, tienePin: false });
     const { id } = r.data.empleado;
 
     r = await leer(await lista.POST(await pedir("/api/plantilla?b=nube", { metodo: "POST", cuerpo: { nombre: "sebas" }, como: manager })));
@@ -78,6 +83,7 @@ describe("la lista, desde el manager", () => {
 
     r = await leer(await lista.GET(await pedir("/api/plantilla?b=nube", { como: manager })));
     expect(r.data.plantilla).toHaveLength(1);
+    expect(JSON.stringify(r.data)).not.toContain("pin\":\"");
 
     const apuntado = await store.listAuditoria("nube");
     expect(apuntado.filter((a) => a.accion === "plantilla").map((a) => a.detalle)).toEqual([`vuelta ${id}`, `baja ${id}`, `nombre ${id}`, `alta ${id}`]);
@@ -92,14 +98,14 @@ describe("la lista, desde el manager", () => {
 
 describe("quién atiende, desde la caja", () => {
   it("sin gente dada de alta no hay que elegir y la caja sella como siempre", async () => {
-    const r = await leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: caja })));
+    const r = await estado();
     expect(r.data).toEqual({ elegir: false, empleado: null, ultimo: null, plantilla: [], hoy: null });
     const a = await leer(await sellar({ como: caja }));
     expect(a.status).toBe(200);
     expect((await store.listEventos(cliente.serial))[0]).toMatchObject({ actor: "caja", empleado: null });
   });
 
-  it("con gente: hay que elegir, la cookie dura hasta medianoche y cada sello lleva su nombre", async () => {
+  it("con gente: PIN la primera vez, cookie firmada que se renueva, y cada sello con su nombre", async () => {
     await store.saveNegocio("nube", {
       plantilla: [
         { id: "sebas001", nombre: "Sebas", alta: null, baja: null },
@@ -107,58 +113,102 @@ describe("quién atiende, desde la caja", () => {
         { id: "luis0001", nombre: "Luis", alta: null, baja: "2026-01-01T00:00:00Z" },
       ],
     });
-    let r = await leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: caja })));
+    let r = await estado();
     expect(r.data).toMatchObject({ elegir: true, empleado: null, ultimo: null, hoy: null });
-    expect(r.data.plantilla).toEqual([{ id: "sebas001", nombre: "Sebas" }, { id: "marta001", nombre: "Marta" }]);
+    expect(r.data.plantilla).toEqual([{ id: "sebas001", nombre: "Sebas", tienePin: false }, { id: "marta001", nombre: "Marta", tienePin: false }]);
 
-    // Sin elegir no se sella, y la tarjeta no cambia.
+    // Sin identificarse no se sella, y la tarjeta no cambia.
     let a = await leer(await sellar({ como: caja }));
     expect(a.status).toBe(428);
     expect(a.data).toMatchObject({ ok: false, elegir: true });
     expect((await store.getCliente(cliente.serial)).sellos).toBe(0);
 
-    // Alguien de baja no puede atender.
-    r = await leer(await quien.POST(await pedir("/api/plantilla/quien?b=nube", { metodo: "POST", cuerpo: { id: "luis0001" }, como: caja })));
+    // Alguien de baja no puede atender; sin PIN hay que elegir uno, y que valga.
+    expect((await identificar({ id: "luis0001", nuevoPin: "2468" })).status).toBe(400);
+    r = await identificar({ id: "sebas001" });
     expect(r.status).toBe(400);
+    expect(r.data.error).toMatch(/cifras/);
+    expect((await identificar({ id: "sebas001", nuevoPin: "1111" })).status).toBe(400);
+    expect((await identificar({ id: "sebas001", pin: "2468" })).status).toBe(400); // aún no tiene: hay que crearlo
 
-    // Sebas elige: dos cookies, la de hoy caduca a la medianoche de la tienda.
-    r = await leer(await quien.POST(await pedir("/api/plantilla/quien?b=nube", { metodo: "POST", cuerpo: { id: "sebas001" }, como: caja })));
+    // Sebas elige su PIN: dos cookies; la firmada dura dos horas y no lleva el PIN.
+    r = await identificar({ id: "sebas001", nuevoPin: "2468" });
     expect(r.status).toBe(200);
-    const hoy = r.cookies.find((c) => c.name === "quien");
-    expect(hoy).toMatchObject({ value: "nube.sebas001", httpOnly: true, path: "/" });
-    expect(hoy.maxAge).toBeGreaterThanOrEqual(60);
-    expect(hoy.maxAge).toBeLessThanOrEqual(24 * 3600);
+    expect(r.data).toMatchObject({ ok: true, creado: true, empleado: { id: "sebas001", tienePin: true } });
+    const firmada = r.cookies.find((c) => c.name === "quien");
+    expect(firmada).toMatchObject({ httpOnly: true, path: "/", maxAge: 2 * 3600 });
+    expect(firmada.value).toMatch(/^nube\.sebas001\.[0-9a-f]{12}\.\d+\.[0-9a-f]{64}$/);
+    expect(firmada.value).not.toContain("2468");
     expect(r.cookies.find((c) => c.name === "quien_ultimo")).toMatchObject({ value: "nube.sebas001", maxAge: 90 * 24 * 3600 });
+    expect((await store.getNegocio("nube")).plantilla[0].pin).toMatch(/^scrypt\$/);
+    const token = firmada.value;
 
-    const cookies = { quien: "nube.sebas001", quien_ultimo: "nube.sebas001" };
-    r = await leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: caja, cookies })));
-    expect(r.data).toMatchObject({ elegir: false, empleado: { id: "sebas001", nombre: "Sebas" }, hoy: { sellos: 0, clientes: 0 } });
+    // Con la cookie: la caja sabe quién es, lo de hoy, y cada uso la renueva.
+    const cookies = { quien: token, quien_ultimo: "nube.sebas001" };
+    r = await estado({ cookies });
+    expect(r.data).toMatchObject({ elegir: false, empleado: { id: "sebas001", nombre: "Sebas", tienePin: true }, hoy: { sellos: 0, clientes: 0 } });
+    expect(r.cookies.find((c) => c.name === "quien")).toMatchObject({ maxAge: 2 * 3600 });
 
     a = await leer(await sellar({ como: caja, cookies }));
     expect(a.status).toBe(200);
+    expect(a.cookies.find((c) => c.name === "quien")).toMatchObject({ maxAge: 2 * 3600 });
     expect((await store.listEventos(cliente.serial))[0]).toMatchObject({ actor: "caja", empleado: "sebas001" });
-    r = await leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: caja, cookies })));
+    r = await estado({ cookies });
     expect(r.data.hoy).toEqual({ sellos: 1, quitados: 0, premios: 0, clientes: 1 });
 
-    // Mañana (la cookie de hoy ya no está) se propone al último.
-    r = await leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: caja, cookies: { quien_ultimo: "nube.sebas001" } })));
-    expect(r.data).toMatchObject({ elegir: true, empleado: null, ultimo: { id: "sebas001", nombre: "Sebas" } });
+    // Pasadas las dos horas (sin cookie firmada) se le pide solo el PIN al último.
+    r = await estado({ cookies: { quien_ultimo: "nube.sebas001" } });
+    expect(r.data).toMatchObject({ elegir: true, empleado: null, ultimo: { id: "sebas001", nombre: "Sebas", tienePin: true } });
 
-    // La cookie de otra tienda no vale aquí, ni la de alguien dado de baja a media mañana.
-    a = await leer(await sellar({ como: caja, cookies: { quien: "fade.sebas001" } }));
-    expect(a.status).toBe(428);
-    a = await leer(await sellar({ como: caja, cookies: { quien: "nube.luis0001" } }));
-    expect(a.status).toBe(428);
+    // Con PIN puesto no se cambia desde la caja; el malo da 401; el bueno entra.
+    expect((await identificar({ id: "sebas001", nuevoPin: "1357" })).status).toBe(400);
+    r = await identificar({ id: "sebas001", pin: "0000" });
+    expect(r.status).toBe(401);
+    r = await identificar({ id: "sebas001", pin: "2468" });
+    expect(r.status).toBe(200);
+    expect(r.cookies.find((c) => c.name === "quien").value).toMatch(/^nube\.sebas001\./);
 
-    // El dueño no elige: su sello queda como "manager", sin empleado, aunque el móvil tenga cookie.
-    a = await leer(await sellar({ como: manager, cookies }));
+    // Forjada o tocada, no: otra tienda, firma rota, otra huella de PIN, sin PIN, de baja.
+    const dentroDe = Date.now() + 60_000;
+    for (const falsa of [
+      "fade.sebas001.abcdef012345",
+      token.slice(0, -2),
+      await firmarTexto("nube.sebas001.otrahuella01", dentroDe),
+      await firmarTexto("nube.marta001.sin", dentroDe),
+      await firmarTexto("nube.luis0001.sin", dentroDe),
+    ]) {
+      a = await leer(await sellar({ como: caja, cookies: { quien: falsa } }));
+      expect(a.status, falsa).toBe(428);
+    }
+
+    // Cinco fallos seguidos: 15 minutos sin poder intentarlo, aunque el PIN sea el bueno.
+    for (let i = 0; i < 4; i += 1) expect((await identificar({ id: "sebas001", pin: "9999" })).status).toBe(401);
+    expect((await identificar({ id: "sebas001", pin: "2468" })).status).toBe(429);
+    // Marta no está bloqueada por los fallos de Sebas.
+    expect((await identificar({ id: "marta001", nuevoPin: "8642" })).status).toBe(200);
+
+    // El manager le quita el PIN: la cookie de todos sus móviles deja de valer y elige otro.
+    r = await leer(await lista.PUT(await pedir("/api/plantilla?b=nube", { metodo: "PUT", cuerpo: { id: "sebas001", quitarPin: true }, como: manager })));
+    expect(r.status).toBe(200);
+    expect(r.data.empleado.tienePin).toBe(false);
+    expect((await store.listAuditoria("nube")).some((x) => x.detalle === "pin-quitado sebas001")).toBe(true);
+    a = await leer(await sellar({ como: caja, cookies }));
+    expect(a.status).toBe(428);
+    r = await identificar({ id: "sebas001", nuevoPin: "1357" }, { ip: "9.9.9.9" });
+    expect(r.status).toBe(200);
+    expect(r.data.creado).toBe(true);
+    const nueva = { quien: r.cookies.find((c) => c.name === "quien").value };
+    expect((await leer(await sellar({ como: caja, cookies: nueva }))).status).toBe(200);
+
+    // El dueño no se identifica: su sello queda como "manager", sin empleado, aunque el móvil tenga cookie.
+    a = await leer(await sellar({ como: manager, cookies: nueva }));
     expect(a.status).toBe(200);
     expect((await store.listEventos(cliente.serial))[0]).toMatchObject({ actor: "manager", empleado: null });
-    r = await leer(await quien.GET(await pedir("/api/plantilla/quien?b=nube", { como: manager, cookies })));
+    r = await estado({ como: manager, cookies: nueva });
     expect(r.data).toMatchObject({ elegir: false, empleado: null });
   });
 
-  it("salir borra quién atiende hoy (no la última vez): quien entre después elige de nuevo", async () => {
+  it("salir borra quién atiende (no la última vez): quien entre después se identifica de nuevo", async () => {
     const r = await salir.POST();
     const nombres = r.cookies.getAll().map((c) => [c.name, c.maxAge]);
     expect(nombres).toContainEqual(["sesion", 0]);
@@ -172,5 +222,6 @@ describe("quién atiende, desde la caja", () => {
     expect(r.status).toBe(200);
     expect(r.data.eventos[0]).toMatchObject({ tipo: "sellar", actor: "caja" });
     expect(r.data.eventos[0]).not.toHaveProperty("empleado");
+    expect(r.data.negocio).not.toHaveProperty("plantilla");
   });
 });

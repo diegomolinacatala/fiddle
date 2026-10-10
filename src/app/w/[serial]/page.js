@@ -6,7 +6,8 @@ import { puedeAcceder, COOKIE } from "@/lib/auth";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { sesionDeCookie } from "@/lib/sesionVigente";
 import { estadoDe } from "@/lib/resumen";
-import { quienDeCookie, hayQueElegir, COOKIE_QUIEN } from "@/lib/plantilla";
+import { hayQueElegir, COOKIE_QUIEN } from "@/lib/plantilla";
+import { leerQuien } from "@/lib/quien";
 import TarjetaCaja from "./TarjetaCaja";
 import { negocioDeTarjeta } from "@/lib/tarjeta";
 import SetNombre from "./SetNombre";
@@ -61,10 +62,11 @@ export default async function Page({ params }) {
   await apuntarEntradaAdmin(sesion, cliente.negocio, `Ficha ${cliente.codigo}`);
 
   const n = await getNegocio(cliente.negocio);
-  // Quién atiende desde este móvil (lib/plantilla.js). El QR se escanea muchas veces
+  // Quién atiende desde este móvil (lib/quien.js). El QR se escanea muchas veces
   // con la cámara del móvil y entra aquí directo, sin pasar por la caja: si la
-  // tienda tiene plantilla y hoy nadie se ha elegido en este móvil, a elegir primero.
-  const quien = quienDeCookie(jar.get(COOKIE_QUIEN)?.value, n.slug, n.plantilla);
+  // tienda tiene plantilla y en este móvil nadie se ha identificado (o pasaron
+  // las dos horas), a identificarse primero.
+  const quien = await leerQuien(jar.get(COOKIE_QUIEN)?.value, n.slug, n.plantilla);
   if (hayQueElegir(sesion, n.plantilla) && !quien) {
     redirect(`/${n.slug}/caja?quien=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
   }

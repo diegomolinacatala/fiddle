@@ -23,8 +23,10 @@ manager; sin ellos en la fila, valen los de la semilla o los de partida (ver
 datos de la tienda para su `/privacidad`) solo los cambia el admin; `caja` es cómo se le
 enseña la caja ([`caja.js`](../src/lib/caja.js)) y `propios` lo que la tienda subió para
 su tarjeta ([`propios.js`](../src/lib/propios.js)); `plantilla` es quién atiende la caja
-(`[{ id, nombre, alta, baja }]`, [`plantilla.js`](../src/lib/plantilla.js)): la lleva el
-manager en su pestaña, y la semilla solo la aporta sin fila (la demo y dev). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
+(`[{ id, nombre, alta, baja, pin }]`, [`plantilla.js`](../src/lib/plantilla.js)): la lleva el
+manager en su pestaña; `pin` es el hash scrypt del PIN que eligió cada uno (null hasta que lo
+elige; el manager solo puede quitarlo). Ninguna semilla la aporta (la de dev va en la fila de
+`datosDePrueba.js`). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
 solo aporta las *semillas* y las plantillas de estilo. Un tema guardado antes de
 las piezas sueltas sigue valiendo: `piezasDeTema()` las deduce de su `estilo`, y
 hay un test que fija que el SVG que sale es idéntico al de antes.

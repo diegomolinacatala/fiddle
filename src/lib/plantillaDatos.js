@@ -1,4 +1,5 @@
 import { listClientes, listEventosDeNegocio, getNegocio } from "./store";
+import { plantillaPublica } from "./plantilla";
 
 // La misma ventana de historial que el CRM (lib/crmDatos.js). Con tope: ver listEventosDeNegocio.
 const VENTANA = { dias: 120, limite: 5000 };
@@ -19,7 +20,8 @@ export async function datosPlantilla(slug) {
   return {
     negocio: {
       slug: negocio.slug, nombre: negocio.nombre, tipo: negocio.tipo, tema: negocio.tema,
-      horario: negocio.horario ?? null, cartillas: negocio.cartillas ?? null, plantilla: negocio.plantilla,
+      // Sin el hash del PIN: al manager le basta saber si lo tiene.
+      horario: negocio.horario ?? null, cartillas: negocio.cartillas ?? null, plantilla: plantillaPublica(negocio.plantilla),
     },
     clientes: clientes.map((c) => ({ serial: c.serial, codigo: c.codigo, creado: c.creado })),
     eventos,

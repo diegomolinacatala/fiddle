@@ -24,8 +24,24 @@ import { BLOQUES, listaDias } from "./observaciones";
 export const MAX_EMPLEADOS = 30;  // dados de alta a la vez
 export const MAX_TOTAL = 200;     // contando bajas: nunca se borra a nadie, pero tampoco crece sin fin
 export const MAX_NOMBRE = 30;
+// El PIN: lo elige cada uno la primera vez que se elige en la caja y vale
+// HORAS_PIN sin usar la caja en ese móvil (cada sello lo renueva). Con cola no
+// se teclea a cada cliente; tras el descanso, sí. Si se olvida, el manager lo
+// quita y la persona elige otro: nadie puede leerlo, solo se guarda su hash.
+export const HORAS_PIN = 2;
+export const PIN_MIN = 4;
+export const PIN_MAX = 6;
+const PIN_RE = /^\d{4,6}$/;
 const ID_RE = /^[a-z0-9]{4,16}$/;
 const LETRAS_ID = "abcdefghijklmnopqrstuvwxyz0123456789";
+const HASH_RE = /^scrypt\$[0-9a-f]+\$[0-9a-f]+$/;
+
+/** El PIN tal cual se teclea, o null si no vale: de 4 a 6 cifras y no todas iguales. */
+export function pinValido(valor) {
+  const s = String(valor ?? "").trim();
+  if (!PIN_RE.test(s) || /^(.)\1+$/.test(s)) return null;
+  return s;
+}
 
 // ------------------------------------------------------------------ la lista
 
@@ -59,7 +75,8 @@ export function normalizarPlantilla(lista) {
     if (out.length >= MAX_TOTAL) break;
     vistos.add(id);
     if (!baja) activos += 1;
-    out.push({ id, nombre, alta: fechaValida(e.alta), baja });
+    // Solo el hash del PIN (lib/claves.js); cualquier otra cosa es que no tiene.
+    out.push({ id, nombre, alta: fechaValida(e.alta), baja, pin: typeof e.pin === "string" && HASH_RE.test(e.pin) ? e.pin : null });
   }
   return out;
 }
@@ -90,7 +107,7 @@ export function nuevoEmpleado(plantilla, nombre, { ahora = Date.now(), id = null
   if (empleadosActivos(plantilla).length >= MAX_EMPLEADOS) return { error: `Como mucho ${MAX_EMPLEADOS} personas en la plantilla` };
   if ((plantilla || []).length >= MAX_TOTAL) return { error: `La lista ya tiene ${MAX_TOTAL} personas contando las bajas: no caben más` };
   if (repetido(plantilla, limpio)) return { error: `Ya hay alguien que se llama ${limpio}. Añade una inicial o un apodo.` };
-  const empleado = { id: id || idLibre(plantilla), nombre: limpio, alta: new Date(ahora).toISOString(), baja: null };
+  const empleado = { id: id || idLibre(plantilla), nombre: limpio, alta: new Date(ahora).toISOString(), baja: null, pin: null };
   return { empleado, plantilla: [...(plantilla || []), empleado] };
 }
 
@@ -116,33 +133,66 @@ export function cambiarEmpleado(plantilla, id, cambios = {}, { ahora = Date.now(
     e = { ...e, baja: null };
   }
   if (cambios.activo === false && !e.baja) e = { ...e, baja: new Date(ahora).toISOString() };
+  // Se le olvidó: el manager se lo quita y la persona elige otro en la caja.
+  // Todos sus móviles vuelven a preguntar (la cookie lleva la huella del PIN).
+  if (cambios.quitarPin === true) e = { ...e, pin: null };
   return { empleado: e, plantilla: plantilla.map((x) => (x.id === id ? e : x)) };
 }
 
+/** Guarda el hash del PIN que acaba de elegir (solo si aún no tenía: cambiarlo pasa por quitarlo). */
+export function ponerPin(plantilla, id, hash) {
+  const actual = empleadoDe(plantilla, id);
+  if (!actual || actual.baja) return { error: "Esa persona no está en la plantilla" };
+  if (actual.pin) return { error: "Ya tiene PIN. Si lo ha olvidado, el manager se lo quita desde Plantilla." };
+  if (!HASH_RE.test(String(hash))) return { error: "PIN no válido" };
+  const e = { ...actual, pin: hash };
+  return { empleado: e, plantilla: plantilla.map((x) => (x.id === id ? e : x)) };
+}
+
+/** Lo que de cada persona puede salir del servidor: nunca el hash del PIN, solo si lo tiene. */
+export const empleadoPublico = (e) => e && { id: e.id, nombre: e.nombre, alta: e.alta ?? null, baja: e.baja ?? null, tienePin: Boolean(e.pin) };
+export const plantillaPublica = (plantilla) => (plantilla || []).map(empleadoPublico);
+
 // ----------------------------------------------------- la cookie de la caja
-// `quien`: quién atiende desde este móvil HOY (caduca a la medianoche de la
-// tienda). `quien_ultimo`: quién fue la última vez, para proponerlo mañana con
-// un toque. Llevan el slug: un móvil que entra en dos tiendas no se mezcla.
+// `quien`: quién atiende desde este móvil, FIRMADA (lib/quien.js) y con la huella
+// de su PIN: sin firma se forjaría y el PIN no serviría de nada; con la huella,
+// quitarle el PIN deja sin valor la cookie de todos sus móviles. Dura HORAS_PIN
+// desde el último uso de la caja. `quien_ultimo`: quién fue la última vez, sin
+// firmar (solo propone un nombre). Llevan el slug: un móvil que entra en dos
+// tiendas no se mezcla.
 
 export const COOKIE_QUIEN = "quien";
 export const COOKIE_ULTIMO = "quien_ultimo";
 export const DIAS_ULTIMO = 90;
 
-export const valorQuien = (slug, id) => `${slug}.${id}`;
+/** Lo que de un hash va en la cookie: cambia si el PIN cambia, y no sirve para adivinarlo. */
+export const huellaDePin = (hash) => (typeof hash === "string" && hash ? hash.slice(-12) : "sin");
 
-/** El empleado (dado de alta) al que apunta la cookie, o null. */
-export function quienDeCookie(valor, slug, plantilla) {
+/** El texto que se firma: `<slug>.<id>.<huella del PIN>`. */
+export const valorQuien = (slug, id, huella) => `${slug}.${id}.${huella}`;
+
+/**
+ * El empleado al que apunta un texto YA VERIFICADO de la cookie `quien`, o null:
+ * de esta tienda, dado de alta, con PIN, y con la huella del PIN que tiene ahora.
+ */
+export function quienDePayload(payload, slug, plantilla) {
+  if (typeof payload !== "string") return null;
+  const partes = payload.split(".");
+  if (partes.length < 3) return null;
+  const huella = partes.pop();
+  const id = partes.pop();
+  if (partes.join(".") !== slug) return null;
+  const e = empleadoDe(plantilla, id);
+  return e && !e.baja && e.pin && huellaDePin(e.pin) === huella ? e : null;
+}
+
+/** El empleado (dado de alta) de un `<slug>.<id>` sin firmar: la cookie «la última vez». */
+export function empleadoDeValor(valor, slug, plantilla) {
   if (typeof valor !== "string") return null;
   const i = valor.lastIndexOf(".");
   if (i <= 0 || valor.slice(0, i) !== slug) return null;
   const e = empleadoDe(plantilla, valor.slice(i + 1));
   return e && !e.baja ? e : null;
-}
-
-/** Segundos hasta la medianoche de la tienda (nunca menos de un minuto). */
-export function caducidadDelDia(ahora, zona = ZONA_POR_DEFECTO) {
-  const manana = sumarDias(fechaLocal(ahora, zona), 1);
-  return Math.max(60, Math.round((inicioDelDia(manana, zona) - ahora) / 1000));
 }
 
 /** ¿Hay que elegir quién atiende? Solo la cuenta de caja, y solo con gente dada de alta. */

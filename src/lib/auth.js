@@ -184,6 +184,40 @@ export async function verificarSesion(token, ahora = Date.now()) {
   }
 }
 
+/**
+ * Firma un texto cualquiera con el mismo secreto que las sesiones:
+ * `<texto>.<exp>.<firma>`. Para cookies que no son la sesión pero tampoco
+ * pueden forjarse (quién atiende la caja, lib/quien.js). El texto puede llevar
+ * puntos: la caducidad y la firma van al final y se leen desde la derecha.
+ * Lanza sin secreto en producción, como firmarSesion.
+ */
+export async function firmarTexto(texto, exp) {
+  const secreto = secretoSesion();
+  if (!secreto) throw new Error("Falta AUTH_SECRET en producción");
+  if (typeof texto !== "string" || !texto || !Number.isFinite(exp)) throw new Error("Texto inválido");
+  const payload = `${texto}.${exp}`;
+  return `${payload}.${await hmacHex(secreto, payload)}`;
+}
+
+/** El texto de un token de `firmarTexto` si la firma vale y no ha caducado; si no, null. Nunca lanza. */
+export async function verificarTexto(token, ahora = Date.now()) {
+  try {
+    const secreto = secretoSesion();
+    if (!token || !secreto) return null;
+    const i = token.lastIndexOf(".");
+    const payload = token.slice(0, i);
+    const firma = token.slice(i + 1);
+    const j = payload.lastIndexOf(".");
+    if (i <= 0 || j <= 0) return null;
+    const expMs = Number(payload.slice(j + 1));
+    if (!Number.isFinite(expMs) || expMs < ahora) return null;
+    const esperada = await hmacHex(secreto, payload);
+    return igualSeguro(firma, esperada) ? payload.slice(0, j) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Lee y verifica la sesión de una Request (route handlers). */
 export async function sesionDeRequest(request) {
   const cookie = request.cookies?.get?.(COOKIE)?.value;

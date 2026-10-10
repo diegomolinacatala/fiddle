@@ -39,6 +39,11 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
     if (!window.confirm(`¿Dar de baja a ${p.nombre}?\n\nDejará de salir en la caja. Lo que hizo se queda con su nombre.`)) return;
     onCambiar(p.id, { activo: false });
   }
+  // Se le olvidó: nadie puede leerlo, así que se quita y elige otro en la caja.
+  function quitarPin(p) {
+    if (!window.confirm(`¿Quitar el PIN de ${p.nombre}?\n\nLa próxima vez que se elija en la caja pondrá uno nuevo. Sus móviles volverán a pedírselo.`)) return;
+    onCambiar(p.id, { quitarPin: true });
+  }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18 }}>
@@ -88,6 +93,8 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
                       {f?.movimientos
                         ? `${f.sellos} ${f.sellos === 1 ? "sello" : "sellos"} y ${f.clientes} ${f.clientes === 1 ? "cliente" : "clientes"} en ${f.dias} ${f.dias === 1 ? "día" : "días"} de estos ${dias}.`
                         : `Sin movimientos en estos ${dias} días.`}
+                      {" "}
+                      {p.tienePin ? "Con PIN." : <span style={{ color: C.tenue }}>Sin PIN todavía: lo elige la primera vez en la caja.</span>}
                     </div>
                   </>
                 )}
@@ -97,6 +104,7 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
                   <button type="button" onClick={() => { setEditando(p.id); setNuevo(p.nombre); }} aria-label={`Renombrar a ${p.nombre}`} title="Renombrar" style={botonIcono}>
                     <Icono nombre="editar" tam={16} />
                   </button>
+                  {p.tienePin && <button type="button" onClick={() => quitarPin(p)} disabled={ocupado} style={botonPequeno}>Quitar el PIN</button>}
                   <button type="button" onClick={() => baja(p)} disabled={ocupado} style={botonPequeno}>Dar de baja</button>
                 </div>
               )}

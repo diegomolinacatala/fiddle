@@ -181,12 +181,19 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
   borra nada** (sus movimientos siguen con su nombre); el id no cambia nunca. Tope de 30 de
   alta a la vez (y 200 contando bajas). Ninguna semilla mete gente en una tienda: la plantilla
   inventada de dev va en la fila de `lib/datosDePrueba.js`, y un despliegue no da de alta a nadie.
-- **Cada empleado se elige en SU móvil, una vez al día**: cookie `quien` (caduca a la medianoche
-  de la tienda) y `quien_ultimo` (90 días, para proponer «¿Sigues siendo Sebas?»). Lo pide la
-  caja y también `/w/<serial>` (el QR entra ahí directo desde la cámara). `/api/accion` lo
-  exige por detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de
-  alta: sin plantilla, la caja funciona como siempre. **El dueño no elige**: desde su cuenta
-  sale como «Dueño» (`actor: "manager"`, `empleado` null).
+- **Cada empleado se identifica en SU móvil con su PIN** (`lib/quien.js`): lo elige la primera
+  vez que se elige en la caja (4 a 6 cifras, solo su hash scrypt en `plantilla[i].pin`) y la
+  cookie `quien` va **firmada** con el secreto de las sesiones (sin firma se forjaría y el PIN
+  no serviría), dura `HORAS_PIN` (2) y **cada uso de la caja la renueva**: con cola no se
+  teclea, tras el descanso sí. Lleva la huella del PIN: **cambiar el PIN es quitárselo** desde
+  Plantilla → Equipo («Quitar el PIN»), que invalida la cookie de todos sus móviles y la persona
+  elige otro. Nadie puede leer un PIN. Cinco fallos seguidos, 15 minutos (`limitador.js`).
+  `quien_ultimo` (90 días, sin firmar) solo propone «¿Sigues siendo Sebas?». Lo pide la caja y
+  también `/w/<serial>` (el QR entra ahí directo desde la cámara). `/api/accion` lo exige por
+  detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de alta: sin
+  plantilla, la caja funciona como siempre. **El dueño no se identifica**: desde su cuenta sale
+  como «Dueño» (`actor: "manager"`, `empleado` null). Al navegador va `plantillaPublica`
+  (`tienePin`), nunca el hash.
 - **`eventos.empleado`** es la única columna nueva. De ahí salen Rendimiento y Registro de la
   pestaña y el nombre en Clientes → Actividad (`quienTexto`). Un movimiento de la caja sin
   `empleado` es «Sin nombre» (lo de antes de la plantilla).
