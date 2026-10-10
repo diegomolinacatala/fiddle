@@ -69,3 +69,62 @@ export function csvClientes(filas, negocio) {
   ];
   return BOM + lineas.join("\r\n") + "\r\n";
 }
+
+// Cómo se lee en la hoja quién hizo cada cosa.
+export const QUIEN = { caja: "Caja", manager: "Dueño", admin: "Fiddle", cliente: "El cliente", tap: "El cliente", apple: "El cliente" };
+
+// Y qué fue cada movimiento (las clases de lib/actividad.js).
+export const QUE = {
+  sello: "Sello", correccion: "Sello quitado", premio: "Premio entregado",
+  guardado: "Premio guardado", visita: "Visita", alta: "Tarjeta nueva",
+};
+
+/**
+ * La actividad de un día (`actividadDelDia`), para cuadrarla con los tickets.
+ * Una fila por movimiento. Sin nombres a propósito: para cuadrar basta el código
+ * y la hora, y esta hoja se pasa al gestor o al contable.
+ *
+ * @param {{fecha:string, filas:object[], codigoDe:(serial:string)=>string, negocio:object}} datos
+ */
+export function csvActividad({ fecha, filas, codigoDe, negocio, quienDe = (f) => QUIEN[f.actor] || "" }) {
+  const nombres = negocio.cartillas ? cartillasDe({}, negocio).map((k) => k.nombre) : null;
+  const cols = [
+    ["Fecha", () => fecha],
+    ["Hora", (f) => f.hora],
+    ["Código", (f) => codigoDe(f.serial)],
+    ["Qué", (f) => QUE[f.clase] || f.tipo],
+    ...(nombres ? [["Cartilla", (f) => (f.cartilla === null ? "" : nombres[f.cartilla] || "")]] : []),
+    ["Detalle", (f) => f.mensaje],
+    ["Quién", (f) => quienDe(f)],
+    ["Fuera de horario", (f) => (f.fueraDeHorario ? "Sí" : "")],
+  ];
+  const lineas = [
+    cols.map(([titulo]) => celda(titulo)).join(SEPARADOR),
+    ...filas.map((f) => cols.map(([, saca]) => celda(saca(f))).join(SEPARADOR)),
+  ];
+  return BOM + lineas.join("\r\n") + "\r\n";
+}
+
+/**
+ * El registro de la plantilla (lib/plantilla.js, `movimientosDePlantilla`): una
+ * fila por movimiento con quién lo hizo. Sin nombres de clientes, como la hoja
+ * de Actividad: para cuadrar y para mirar a quién le toca cada franja.
+ *
+ * @param {{filas:object[], codigoDe:(serial:string)=>string}} datos
+ */
+export function csvRegistro({ filas, codigoDe }) {
+  const cols = [
+    ["Fecha", (f) => f.fecha],
+    ["Hora", (f) => f.hora],
+    ["Código", (f) => codigoDe(f.serial)],
+    ["Qué", (f) => QUE[f.clase] || f.clase],
+    ["Detalle", (f) => f.mensaje],
+    ["Quién", (f) => f.quien],
+    ["Fuera de horario", (f) => (f.fueraDeHorario ? "Sí" : "")],
+  ];
+  const lineas = [
+    cols.map(([titulo]) => celda(titulo)).join(SEPARADOR),
+    ...filas.map((f) => cols.map(([, saca]) => celda(saca(f))).join(SEPARADOR)),
+  ];
+  return BOM + lineas.join("\r\n") + "\r\n";
+}

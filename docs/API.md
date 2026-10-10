@@ -127,7 +127,9 @@ Respuesta: `{ ok, cliente, aviso }`.
 { "ok": false, "mensaje": "Aún no llega · 3/8", "cliente": { … } }   // rechazada por la lógica
 ```
 `400` falta serial/acción o acción desconocida · `403` acción desactivada u otro negocio · `404` cliente ·
-`409` otra caja modificó al cliente a la vez (`ok: false`, se devuelve el estado actual; repetir).
+`409` otra caja modificó al cliente a la vez (`ok: false`, se devuelve el estado actual; repetir) ·
+`428` la tienda tiene plantilla y en este móvil nadie ha dicho hoy quién atiende (`{ ok: false, elegir: true }`:
+la caja manda a elegir, ver `/api/plantilla/quien`). El evento se guarda con `empleado` = quien atendía.
 Si el aviso al Wallet falla, la acción **no** falla (el estado ya está guardado):
 `aviso.error` lo indica y el pase se pondrá al día en la próxima sincronización.
 
@@ -140,7 +142,32 @@ Un solo cliente por su **código corto** (3 caracteres), o `404`. La búsqueda s
 queda dentro de `<negocio>`: el mismo código en otra tienda es otro cliente y no
 se puede resolver desde aquí. Lo usa la caja cuando el QR no se deja leer.
 
+### `GET /api/plantilla/quien?b=<negocio>` · `POST /api/plantilla/quien?b=<negocio>` — `{ "id", "pin" }` o `{ "id", "nuevoPin" }`
+Quién atiende desde **este móvil** ([`plantilla.js`](../src/lib/plantilla.js), [`quien.js`](../src/lib/quien.js)).
+La cuenta de la caja la comparten; cada empleado se identifica en su móvil con su PIN.
+```json
+{ "elegir": true, "empleado": null, "ultimo": { "id": "sebas001", "nombre": "Sebas", "tienePin": true },
+  "plantilla": [ { "id": "sebas001", "nombre": "Sebas", "tienePin": true } ], "hoy": null }
+```
+`elegir`: hace falta identificarse antes de sellar (cuenta de caja, gente dada de alta y nadie válido
+en este móvil). `ultimo`: quién fue la última vez, para pedirle solo el PIN. `hoy`: lo de hoy de quien
+atiende (`{ sellos, quitados, premios, clientes }`). Si la cookie vale, el GET la renueva.
+
+El POST con `nuevoPin` es la primera vez (sin PIN aún): lo guarda (solo el hash) y deja la cookie. Con
+`pin`, lo comprueba. Deja dos cookies httpOnly: `quien` (firmada, 2 horas desde el último uso de la
+caja, con la huella del PIN) y `quien_ultimo` (90 días). `400` no está dado de alta, PIN mal formado
+(4 a 6 cifras, no todas iguales) o ya tenía PIN; `401` PIN incorrecto; `429` cinco fallos en 15 minutos.
+El manager no se identifica: para él `elegir` es siempre `false` y sus sellos quedan como `actor: "manager"`.
+
 ## Manager
+
+### `GET /api/plantilla?b=<negocio>` · `POST` — `{ "nombre": "Sebas" }` · `PUT` — `{ "id", "nombre"?, "activo"?, "quitarPin"? }`
+La lista de la plantilla: alta, renombrar, baja (`activo: false`), vuelta y quitar el PIN
+(`quitarPin: true`: se le olvidó; elige otro en la caja y sus móviles vuelven a pedirlo). Respuesta
+`{ plantilla, empleado }` con `tienePin`, nunca el hash; `400` nombre vacío, repetido o más de 30
+personas. Dar de baja no borra nada: deja de salir en la caja y sus movimientos siguen con su
+nombre. Queda en la auditoría (`plantilla`, con el id). Las cuentas y el registro no tienen API: la
+página los calcula con los eventos ([`plantillaDatos.js`](../src/lib/plantillaDatos.js)).
 
 ### `GET /api/negocio?b=<negocio>` · `PUT /api/negocio?b=<negocio>`
 ```json

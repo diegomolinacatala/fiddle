@@ -5,6 +5,7 @@ import { SEMILLAS, componerNegocio, configInicial, esSlug } from "./negocios";
 import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
 import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
 import { UMBRALES } from "./crm";
+import { semillaDe } from "./datosDePrueba";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -53,7 +54,8 @@ async function leer(nombre, fallback) {
   try {
     return JSON.parse(await fs.readFile(fichero(nombre), "utf8"));
   } catch (e) {
-    if (e.code === "ENOENT") return fallback;
+    // La web de dev arranca con datos inventados, no vacía (lib/datosDePrueba.js).
+    if (e.code === "ENOENT") return semillaDe(nombre) ?? fallback;
     throw new Error(`No se pudo leer ${nombre}.json: ${e.message}`);
   }
 }
@@ -177,6 +179,8 @@ function fusionarConfig(actual, patch) {
     avisosActivos: patch.avisosActivos ?? actual.avisosActivos,
     pedirNombre: patch.pedirNombre ?? actual.pedirNombre,
     caja: patch.caja ?? actual.caja,
+    // Quién atiende la caja (lib/plantilla.js): la lista entera cada vez.
+    plantilla: patch.plantilla ?? actual.plantilla,
     // Teléfono, web e Instagram del reverso (lib/contacto.js). null lo quita.
     contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
@@ -615,10 +619,12 @@ export async function listClientes(negocio, { limite } = {}) {
  * @param {string} serial
  * @param {string} tipo    clave de acción, o `alta` / `instalado` / `desinstalado` / `campana`
  * @param {string} mensaje texto ya montado, tal cual se lee en la ficha
- * @param {{negocio?:string, actor?:string}} [contexto] `actor`: caja, manager, admin, cliente, apple
+ * @param {{negocio?:string, actor?:string, empleado?:string|null}} [contexto]
+ *   `actor`: caja, manager, admin, cliente, apple. `empleado`: quién de la
+ *   plantilla atendía desde ese móvil (lib/plantilla.js), si lo eligió.
  */
-export async function addEvento(serial, tipo, mensaje, { negocio = null, actor = null } = {}) {
-  const fila = { serial, tipo, mensaje, negocio, actor };
+export async function addEvento(serial, tipo, mensaje, { negocio = null, actor = null, empleado = null } = {}) {
+  const fila = { serial, tipo, mensaje, negocio, actor, empleado };
   if (hasSupabase()) {
     sinError(await supa().from("eventos").insert(fila), "guardar evento");
     return;
@@ -636,7 +642,7 @@ export async function addEvento(serial, tipo, mensaje, { negocio = null, actor =
  */
 export async function addEventos(filas) {
   if (!filas.length) return;
-  const completas = filas.map((f) => ({ negocio: null, actor: null, ...f }));
+  const completas = filas.map((f) => ({ negocio: null, actor: null, empleado: null, ...f }));
   if (hasSupabase()) {
     for (const lote of enLotes(completas)) {
       sinError(await supa().from("eventos").insert(lote), "guardar eventos");
@@ -650,7 +656,7 @@ export async function addEventos(filas) {
   });
 }
 
-const CAMPOS_EVENTO = "serial, tipo, mensaje, actor, ts";
+const CAMPOS_EVENTO = "serial, tipo, mensaje, actor, empleado, ts";
 
 export async function listEventos(serial, limit = 8) {
   if (hasSupabase()) {

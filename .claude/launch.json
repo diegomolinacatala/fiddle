@@ -4,16 +4,49 @@
     {
       "name": "dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
     },
     {
       "name": "demo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3100"],
-      "env": { "SUPABASE_URL": "", "SUPABASE_SERVICE_KEY": "", "APP_URL": "http://localhost:3100", "DATA_DIR": ".data/demo" },
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3100"
+      ],
+      "env": {
+        "SUPABASE_URL": "",
+        "SUPABASE_SERVICE_KEY": "",
+        "APP_URL": "http://localhost:3100",
+        "DATA_DIR": ".data/demo"
+      },
       "port": 3100
+    },
+    {
+      "name": "como-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3200"
+      ],
+      "env": {
+        "SUPABASE_URL": "",
+        "SUPABASE_SERVICE_KEY": "",
+        "APP_URL": "http://localhost:3200",
+        "DATA_DIR": ".data/como-dev",
+        "DATOS_DE_PRUEBA": "1"
+      },
+      "port": 3200
     }
   ]
 }

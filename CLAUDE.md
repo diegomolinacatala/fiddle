@@ -16,6 +16,12 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 un sitio de pruebas: hay clientes de verdad con sus sellos. Nada de accesos de
 prueba, y nada se borra en la base sin preguntar.
 
+**Se trabaja en `dev`, nunca en `main`** (desde el 08-10-2026, ver
+[docs/ENTORNOS.md](docs/ENTORNOS.md)). `dev` se despliega solo en su web, SIN base de
+datos: ficheros en `/tmp` que arrancan con datos inventados (`lib/datosDePrueba.js`). A
+`main` se llega con un PR `dev → main`. Nada de `git push` a `main`, ni de dar a dev la
+base, el `AUTH_SECRET` o las credenciales de Google de producción.
+
 ## Reglas de la casa
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
@@ -32,9 +38,10 @@ prueba, y nada se borra en la base sin preguntar.
 - **PowerShell 5.1**: nada de `&&`. Encadenar con `;` o `if ($?) { ... }`.
   Y ejecutarlo uno mismo, no pasárselo al usuario para que lo pegue.
 - **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
-  pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
+  pantalla "por si acaso". El dueño tiene cuatro pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
-  a la lista y baja lo que se ve) y **Avisos** (enviar a todos o a un grupo, ahora o a una hora). Y aparte,
+  a la lista y baja lo que se ve), **Avisos** (enviar a todos o a un grupo, ahora o a una hora)
+  y **Plantilla** (quién atiende la caja y qué hace cada uno). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -164,6 +171,41 @@ de caja", con la caja de verdad (`TarjetaCaja demo`) al lado. Una FILA por carti
 entera, con el "−" pequeño dentro (corregir no merece un botón igual de grande), y el "+2"
 si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, no un botón suelto.
 
+## La plantilla: quién atiende la caja
+
+Ver [`src/lib/plantilla.js`](src/lib/plantilla.js). La cuenta de la caja sigue siendo UNA por
+tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
+
+- **La lista vive en `config.plantilla`** (`{id, nombre, alta, baja}`), la lleva el manager en
+  la pestaña **Plantilla** → Equipo. Solo nombre o apodo: ni PIN ni turnos. **Dar de baja no
+  borra nada** (sus movimientos siguen con su nombre); el id no cambia nunca. Tope de 30 de
+  alta a la vez (y 200 contando bajas). Ninguna semilla mete gente en una tienda: la plantilla
+  inventada de dev va en la fila de `lib/datosDePrueba.js`, y un despliegue no da de alta a nadie.
+- **Cada empleado se identifica en SU móvil con su PIN** (`lib/quien.js`): lo elige la primera
+  vez que se elige en la caja (4 a 6 cifras, solo su hash scrypt en `plantilla[i].pin`) y la
+  cookie `quien` va **firmada** con el secreto de las sesiones (sin firma se forjaría y el PIN
+  no serviría), dura `HORAS_PIN` (2) y **cada uso de la caja la renueva**: con cola no se
+  teclea, tras el descanso sí. Lleva la huella del PIN: **cambiar el PIN es quitárselo** desde
+  Plantilla → Equipo («Quitar el PIN»), que invalida la cookie de todos sus móviles y la persona
+  elige otro. Nadie puede leer un PIN. Cinco fallos seguidos, 15 minutos (`limitador.js`).
+  `quien_ultimo` (90 días, sin firmar) solo propone «¿Sigues siendo Sebas?». Lo pide la caja y
+  también `/w/<serial>` (el QR entra ahí directo desde la cámara). `/api/accion` lo exige por
+  detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de alta: sin
+  plantilla, la caja funciona como siempre. **El dueño no se identifica**: desde su cuenta sale
+  como «Dueño» (`actor: "manager"`, `empleado` null). Al navegador va `plantillaPublica`
+  (`tienePin`), nunca el hash.
+- **`eventos.empleado`** es la única columna nueva. De ahí salen Rendimiento y Registro de la
+  pestaña y el nombre en Clientes → Actividad (`quienTexto`). Un movimiento de la caja sin
+  `empleado` es «Sin nombre» (lo de antes de la plantilla).
+- **Las cuentas son puras y con la hora de la tienda** (`cuentasDePlantilla`): una «hora de
+  caja» es una hora del reloj con algún movimiento suyo (lo más parecido al tiempo trabajado
+  sin apuntar turnos) y el **ritmo esperado** de cada uno es lo que da el equipo en los mismos
+  (día de la semana, tramo) que trabajó, para que cubrir las tardes flojas no penalice. Sin
+  podio: cada uno contra lo normal en sus franjas.
+- **Las conclusiones son reglas fijas** (`observacionesPlantilla`), como «lo que dicen los
+  números»: cada frase lleva la cifra de la que sale. Una conclusión nueva = una regla ahí.
+- Lo del empleado en su móvil es SOLO lo suyo de hoy; los números del equipo son del manager.
+
 ## El premio: dar o guardar
 
 Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"
@@ -270,6 +312,15 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   sello). La cadencia no baja de un día y nadie está "en riesgo" por faltar menos de
   `riesgoMinDias` (7). Sin esto, diez sellos de prueba = "habitual que viene cada
   segundo y lleva horas sin venir".
+
+- **Una visita se cuenta igual en todas partes.** La ficha lleva su contador
+  (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
+  rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
+  son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
+  cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
+  (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
+  medias y no se enseña (`historialCompletoDesde`). Su hoja no lleva nombres.
 
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.

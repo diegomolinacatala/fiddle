@@ -19,7 +19,8 @@ export async function GET(request, { params }) {
     if (respuesta) return respuesta;
 
     const negocio = await getNegocio(cliente.negocio);
-    const eventos = await listEventos(serial);
+    // Sin `empleado`: quién dio cada sello es del manager (Plantilla), no de la caja.
+    const eventos = (await listEventos(serial)).map(({ empleado: _e, ...e }) => e);
     const acciones = accionesDe(negocio);
     return NextResponse.json({ cliente: clientePublico(cliente), negocio: negocioDelPersonal(negocio), eventos, acciones });
   } catch (e) {

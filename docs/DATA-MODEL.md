@@ -11,7 +11,7 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 |-------|------|-------|
 | `slug` | text PK | `delicanteria` (su semilla vive en `negocios.js`) |
 | `nombre`, `tipo` | text | copia informativa del preset |
-| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, archivadoEn, cartillas, cartillasAparcadas, horario, automatizaciones, pausaAvisos, limiteAvisosDia, avisosActivos, avisosAvanzados, enviosProgramados, estadoPase, caja, contacto, legal, propios, pedirNombre }` |
+| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, archivadoEn, cartillas, cartillasAparcadas, horario, automatizaciones, pausaAvisos, limiteAvisosDia, avisosActivos, avisosAvanzados, enviosProgramados, estadoPase, caja, contacto, legal, propios, pedirNombre, plantilla }` |
 
 `tema` (colores, emoji y las piezas del dibujo: `marca` · `texto` · `forma` ·
 `banda` · `modo`, ver [`dibujo.js`](../src/lib/apple/dibujo.js)), `brief` (texto libre para Claude), `notas`
@@ -22,7 +22,11 @@ manager; sin ellos en la fila, valen los de la semilla o los de partida (ver
 [AVISOS.md](AVISOS.md)). `avisosAvanzados` (automáticos y programados) y `legal` (los
 datos de la tienda para su `/privacidad`) solo los cambia el admin; `caja` es cómo se le
 enseña la caja ([`caja.js`](../src/lib/caja.js)) y `propios` lo que la tienda subió para
-su tarjeta ([`propios.js`](../src/lib/propios.js)). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
+su tarjeta ([`propios.js`](../src/lib/propios.js)); `plantilla` es quién atiende la caja
+(`[{ id, nombre, alta, baja, pin }]`, [`plantilla.js`](../src/lib/plantilla.js)): la lleva el
+manager en su pestaña; `pin` es el hash scrypt del PIN que eligió cada uno (null hasta que lo
+elige; el manager solo puede quitarlo). Ninguna semilla la aporta (la de dev va en la fila de
+`datosDePrueba.js`). Ninguno necesita columna nueva: van dentro de `config`. Las tiendas se crean y se borran ahí: `negocios.js`
 solo aporta las *semillas* y las plantillas de estilo. Un tema guardado antes de
 las piezas sueltas sigue valiendo: `piezasDeTema()` las deduce de su `estilo`, y
 hay un test que fija que el SVG que sale es idéntico al de antes.
@@ -51,11 +55,14 @@ hay un test que fija que el SVG que sale es idéntico al de antes.
 | `borrado_en` | timestamptz? | se pidió borrarla: vacía y anulada al momento, la fila cae en la pasada diaria |
 
 ### `eventos` — historial
-`id` · `serial` · `negocio` · `tipo` · `mensaje` · `actor` · `ts`
+`id` · `serial` · `negocio` · `tipo` · `mensaje` · `actor` · `empleado` · `ts`
 
 `tipo` es una clave de acción (`sellar`, `canjear`…) o uno de los que pasan solos:
 `alta` (pase emitido), `instalado` / `desinstalado` (Wallet) y `campana`.
-`actor` dice desde dónde: `caja`, `manager`, `admin`, `tap`, `apple`.
+`actor` dice desde dónde: `caja`, `manager`, `admin`, `tap`, `apple`. `empleado` es el id
+de quien atendía (de `config.plantilla` de la tienda, [`plantilla.js`](../src/lib/plantilla.js)),
+o null: antes de la plantilla, el dueño desde su cuenta, o no fue la caja. De ahí salen
+Plantilla → Rendimiento y Registro, y el nombre en la columna «Quién» de Actividad.
 
 `negocio` va **desnormalizado**: el CRM siempre pregunta por tienda ("toda la
 actividad de la Delicantería") y sin esa columna habría que leer antes sus miles de seriales

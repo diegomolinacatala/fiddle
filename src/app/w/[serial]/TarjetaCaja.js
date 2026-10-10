@@ -102,6 +102,13 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
           body: JSON.stringify({ serial, accion: key }),
         });
         const data = await res.json();
+        // Nadie ha dicho quién atiende hoy en este móvil (lib/plantilla.js): a
+        // elegir. El sello que se acaba de pintar NO se guardó: la caja lo avisa
+        // (`perdido=1`) y la ficha vuelve a cargarse con lo que haya en el servidor.
+        if (data.elegir) {
+          router.push(`/${negocio.slug}/caja?quien=1&perdido=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
+          return;
+        }
         if (!res.ok || data.ok === false) {
           if (data.cliente) setCliente(data.cliente);
           setToast({ ok: false, msg: data.mensaje || data.error || "No se ha guardado. Vuelve a intentarlo." });

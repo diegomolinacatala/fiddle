@@ -77,6 +77,9 @@ create index if not exists eventos_serial_ts on eventos (serial, ts desc);
 -- desde dónde se hizo (caja, manager, admin, el propio cliente o Apple).
 alter table eventos add column if not exists negocio text;
 alter table eventos add column if not exists actor   text;
+-- Quién de la plantilla lo hizo (id de `config.plantilla` de la tienda, ver
+-- lib/plantilla.js). null: antes de la plantilla, el dueño, o no fue la caja.
+alter table eventos add column if not exists empleado text;
 update eventos e set negocio = c.negocio from clientes c
  where e.negocio is null and c.serial = e.serial;
 create index if not exists eventos_negocio_ts on eventos (negocio, ts desc);
