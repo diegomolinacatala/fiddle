@@ -8,9 +8,11 @@ import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario } fro
 // INVITACIÓN — el dueño de una tienda nueva elige sus contraseñas
 // ----------------------------------------------------------------------------
 // Llega aquí desde el enlace del correo (/invitacion#<token>). Dos pasos: la
-// suya (manager) y la del móvil de la caja. Al terminar entra directo a su
-// manager. El token vive detrás de `#`: se lee aquí y viaja en el cuerpo de la
-// petición, nunca en una URL que quede en un log (ver lib/invitaciones.js).
+// suya (manager) y la del móvil de la caja, cada una escrita dos veces (lo pidió
+// La Delicantería: con una sola no sabes si la has tecleado bien, y no se puede
+// volver a usar el enlace). Al terminar entra directo a su manager. El token
+// vive detrás de `#`: se lee aquí y viaja en el cuerpo de la petición, nunca en
+// una URL que quede en un log (ver lib/invitaciones.js).
 // ============================================================================
 
 const MIN = 10; // el mismo mínimo que lib/claves.js (problemaClaveElegida)
@@ -21,7 +23,9 @@ export default function Invitacion() {
   const [error, setError] = useState(null);
   const [paso, setPaso] = useState(1);
   const [manager, setManager] = useState("");
+  const [manager2, setManager2] = useState("");
   const [caja, setCaja] = useState("");
+  const [caja2, setCaja2] = useState("");
   const [ver, setVer] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -39,10 +43,14 @@ export default function Invitacion() {
       .catch((e) => setError(e.message));
   }, []);
 
+  // Al volver a escribir se quita el aviso: si no, «No son iguales» sigue ahí
+  // debajo de un «Son iguales.» recién arreglado.
+  const escribir = (set) => (v) => { set(v); setError(null); };
+
   function siguiente(e) {
     e.preventDefault();
     setError(null);
-    const problema = revisar(manager, info.usuarios.manager);
+    const problema = revisar(manager, manager2, info.usuarios.manager);
     if (problema) return setError(problema);
     setPaso(2);
   }
@@ -50,7 +58,7 @@ export default function Invitacion() {
   async function terminar(e) {
     e.preventDefault();
     setError(null);
-    const problema = revisar(caja, info.usuarios.caja) || (caja.trim() === manager.trim() ? "Tiene que ser distinta de la tuya: la sabrá quien use la caja." : null);
+    const problema = revisar(caja, caja2, info.usuarios.caja) || (caja.trim() === manager.trim() ? "Tiene que ser distinta de la tuya: la sabrá quien use la caja." : null);
     if (problema) return setError(problema);
     setBusy(true);
     try {
@@ -116,10 +124,13 @@ export default function Invitacion() {
             {/* Para que el gestor de contraseñas la guarde con su usuario. */}
             <input type="text" name="username" autoComplete="username" value={usuarios.manager} readOnly hidden />
             <label style={etiqueta} htmlFor="clave-manager">Elige tu contraseña</label>
-            <Clave id="clave-manager" valor={manager} onChange={setManager} ver={ver} setVer={setVer} autoFocus />
+            <Clave id="clave-manager" valor={manager} onChange={escribir(setManager)} ver={ver} setVer={setVer} autoFocus />
             <Ayuda valor={manager} />
+            <label style={etiqueta} htmlFor="clave-manager-2">Repítela</label>
+            <Clave id="clave-manager-2" valor={manager2} onChange={escribir(setManager2)} ver={ver} />
+            <Coinciden clave={manager} repetida={manager2} />
             {error && <div role="alert" style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
-            <button type="submit" style={principal(accent, manager.trim().length >= MIN)}>Siguiente</button>
+            <button type="submit" style={principal(accent, lista(manager, manager2))}>Siguiente</button>
           </form>
         )}
 
@@ -132,10 +143,13 @@ export default function Invitacion() {
             <label style={etiqueta}>Usuario de la caja</label>
             <div style={usuarioFijo}>{usuarios.caja}</div>
             <label style={etiqueta} htmlFor="clave-caja">Contraseña de la caja</label>
-            <Clave id="clave-caja" valor={caja} onChange={setCaja} ver={ver} setVer={setVer} autoFocus />
+            <Clave id="clave-caja" valor={caja} onChange={escribir(setCaja)} ver={ver} setVer={setVer} autoFocus />
             <Ayuda valor={caja} />
+            <label style={etiqueta} htmlFor="clave-caja-2">Repítela</label>
+            <Clave id="clave-caja-2" valor={caja2} onChange={escribir(setCaja2)} ver={ver} />
+            <Coinciden clave={caja} repetida={caja2} />
             {error && <div role="alert" style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
-            <button type="submit" disabled={busy} style={principal(accent, caja.trim().length >= MIN && !busy)}>
+            <button type="submit" disabled={busy} style={principal(accent, lista(caja, caja2) && !busy)}>
               {busy ? "Guardando…" : "Guardar y entrar"}
             </button>
             <button type="button" onClick={() => { setPaso(1); setError(null); }} style={{ ...botonSecundario, width: "100%", marginTop: 8 }}>
@@ -166,11 +180,24 @@ function Clave({ id, valor, onChange, ver, setVer, autoFocus }) {
         autoFocus={autoFocus}
         style={{ ...campo, minWidth: 0 }}
       />
-      <button type="button" onClick={() => setVer((v) => !v)} style={{ ...botonSecundario, flexShrink: 0 }}>
-        {ver ? "Ocultar" : "Ver"}
-      </button>
+      {/* Un solo «Ver», en la primera: enseña las dos, que es cuando se ve en qué no coinciden. */}
+      {setVer && (
+        <button type="button" onClick={() => setVer((v) => !v)} style={{ ...botonSecundario, flexShrink: 0 }}>
+          {ver ? "Ocultar" : "Ver"}
+        </button>
+      )}
     </div>
   );
+}
+
+function Coinciden({ clave, repetida }) {
+  const a = clave.trim();
+  const b = repetida.trim();
+  const [color, frase] =
+    b && a === b ? [C.ok, "Son iguales."]
+    : b.length >= a.length && b ? [C.mal, "No es igual que la de arriba."]
+    : [C.tenue, "Otra vez, para saber que está bien escrita."];
+  return <div style={{ fontSize: 12, color, marginTop: 6 }}>{frase}</div>;
 }
 
 function Ayuda({ valor }) {
@@ -182,14 +209,20 @@ function Ayuda({ valor }) {
   );
 }
 
-// Lo mismo que comprueba el servidor, para avisar antes de enviar.
-function revisar(clave, usuario) {
+// Lo mismo que comprueba el servidor, para avisar antes de enviar. Que las dos sean
+// iguales solo se mira aquí: al servidor llega una. Se comparan sin los espacios de
+// los lados, que el servidor también quita (normalizarClave en lib/claves.js).
+function revisar(clave, repetida, usuario) {
   const s = clave.trim();
   if (s.length < MIN) return `Tiene que tener al menos ${MIN} caracteres.`;
   if (s.toLowerCase() === usuario.toLowerCase()) return "No puede ser igual que el usuario.";
   if (/^(.)\1+$/.test(s)) return "No puede ser el mismo carácter repetido.";
+  if (!repetida.trim()) return "Escríbela otra vez en «Repítela».";
+  if (repetida.trim() !== s) return "Las dos no son iguales. Con «Ver» puedes mirarlas.";
   return null;
 }
+
+const lista = (clave, repetida) => clave.trim().length >= MIN && repetida.trim() === clave.trim();
 
 const titulo = { fontSize: "1.35rem", fontWeight: 650, margin: "0 0 6px", letterSpacing: "-0.01em" };
 const texto = { color: C.suave, fontSize: 14, lineHeight: 1.5, margin: "0 0 4px" };
