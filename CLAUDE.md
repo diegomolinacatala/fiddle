@@ -22,6 +22,12 @@ datos: ficheros en `/tmp` que arrancan con datos inventados (`lib/datosDePrueba.
 `main` se llega con un PR `dev → main`. Nada de `git push` a `main`, ni de dar a dev la
 base, el `AUTH_SECRET` o las credenciales de Google de producción.
 
+**Vercel Hobby solo despliega los commits de Víctor.** Un push o un merge con el git de
+Diego queda «Deployment was blocked» (ni dev ni producción). Se despliega a mano con la CLI
+de Vercel desde la carpeta del repo, con la sesión de `victrozz`: `vercel` para dev,
+`vercel --prod` para producción (ver [docs/ENTORNOS.md](docs/ENTORNOS.md)). Tras un push,
+comprobar siempre que de verdad desplegó.
+
 ## Reglas de la casa
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
@@ -466,8 +472,9 @@ cueste lo que cueste (es lo que hacen Square, Loopy o Boomerangme):
 - **La caja es un dispositivo vinculado**: el dueño pulsa "Añadir caja" en el manager y
   el móvil del mostrador escanea un código que dura unos minutos. Sin contraseña
   compartida; el manager ve sus cajas y desconecta la que quiera.
-- **PIN personal por empleado** (4-6 cifras) en la caja. Cada tienda elige cuándo se
-  pide: siempre, solo para dar premios o nunca.
+- **PIN personal por empleado** (4-6 cifras) en la caja. **Ya está** (11-10-2026, pestaña
+  Plantilla, `lib/quien.js`): se pide al identificarse en cada móvil y cada dos horas sin
+  usar la caja. Queda por decidir si alguna tienda lo quiere solo para dar premios.
 - **Sesiones guardadas en el servidor**: cambiar la contraseña o quitar a alguien cierra
   sus sesiones (hoy no pasa).
 - **Registro de actividad**: quién dio cada sello y cada premio, desde qué caja, y quién

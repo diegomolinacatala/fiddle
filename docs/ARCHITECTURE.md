@@ -25,6 +25,7 @@ significa un escaneo hoy, y qué muestra el pase, lo decide el servidor.
 | **Manager** (pestaña Tienda) | La tarjeta (se edita tocándola en la vista previa Apple/Google), la caja, horario, ubicación y QR | [`[negocio]/manager`](../src/app/[negocio]/manager) |
 | **Clientes** | Quién viene, quién dejó de venir, grupos, "lo que dicen los números" y exportar | [`[negocio]/crm`](../src/app/[negocio]/crm), [`lib/crm.js`](../src/lib/crm.js) |
 | **Avisos** | Enviar a todos o a un grupo, ahora o a una hora; automáticos y programados si el admin los enciende | [`[negocio]/avisos`](../src/app/[negocio]/avisos), [AVISOS.md](AVISOS.md) |
+| **Plantilla** | Quién atiende la caja: cada empleado se identifica en su móvil con su PIN y cada sello lleva su nombre; Equipo, Rendimiento (conclusiones por reglas) y Registro | [`[negocio]/plantilla`](../src/app/[negocio]/plantilla), [`lib/plantilla.js`](../src/lib/plantilla.js), [`lib/quien.js`](../src/lib/quien.js) |
 | **Ajustes** | La contraseña de la caja | [`[negocio]/ajustes`](../src/app/[negocio]/ajustes) |
 | **Admin** | Crea, edita, archiva y borra tiendas; contraseñas, invitaciones, datos legales, estado de la integración; comenta campos del pase para Claude | [`admin/`](../src/app/admin) |
 | **Backend** | Guarda estado, aplica acciones, avisa al Wallet | [`src/lib`](../src/lib), `/api/*` |
@@ -153,6 +154,15 @@ Cada dependencia se detecta por separado:
   no puede leer nada).
 - **Certificados.** Clave privada y `.cer` en `certs/` (ignorado por git); en Vercel,
   como variables de entorno.
+- **Quién atiende la caja (plantilla).** La cuenta de la caja es una por tienda; el
+  nombre lo pone una cookie `quien` firmada con `AUTH_SECRET` (`<slug>.<id>.<huella del
+  PIN>.<exp>.<firma>`, 2 horas desde el último uso) que solo se emite al teclear el PIN
+  de esa persona ([`lib/quien.js`](../src/lib/quien.js)). Del PIN solo se guarda el hash
+  scrypt; quitarlo cambia la huella y echa a todos sus móviles. 5 fallos por persona e
+  IP (y 30 por persona) cada 15 minutos. **Aceptado:** un PIN de 4 cifras lo adivina
+  quien tenga la contraseña de la caja y paciencia (10.000 combinaciones a 5 por cuarto
+  de hora); el PIN separa a compañeros, no a atacantes, y la contraseña de la caja sigue
+  siendo la puerta. Al navegador de la caja nunca va quién dio cada sello ni el hash.
 - **Aceptado: fundir la tarjeta de otro con su serial.** Con el serial y el token de su
   `.pkpass`, un iPhone inventado registra la tarjeta ajena y luego la propia, y
   `unificarTarjeta` funde la ajena en la propia si no está registrada en ningún sitio

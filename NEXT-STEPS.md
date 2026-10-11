@@ -92,17 +92,22 @@ Las variables reales se ven y se editan en **Vercel → Settings → Environment
 
 ### Cómo subir cambios
 
+Se trabaja en `dev` (ver [docs/ENTORNOS.md](docs/ENTORNOS.md)); `main` solo recibe un PR
+`dev → main` cuando lo de `dev` está visto.
+
 ```bash
-git switch main && git pull
-git switch -c feat/lo-que-sea
+git switch dev && git pull
 # ... trabajar ...
 npm test
 npm run build
-git push -u origin feat/lo-que-sea
+git push
 ```
 
-Abre el Pull Request en GitHub, revisa y fusiona a `main`. **Al fusionar en `main`,
-Vercel despliega solo** a producción. Si el cambio trae columnas o tablas nuevas,
+**Vercel Hobby solo despliega los commits de Víctor** (el check de GitHub dice
+«Deployment was blocked» con los de Diego), en `dev` y en `main`. Si el commit es de
+Diego, se despliega a mano con la CLI de Vercel desde la carpeta del repo, con la
+sesión de `victrozz`: `vercel` (dev) o `vercel --prod` (producción). El `.vercelignore`
+del repo hace que suba solo el código. Si el cambio trae columnas o tablas nuevas,
 **primero** `supabase/schema.sql` en Supabase y **después** fusionar.
 
 ---
@@ -173,9 +178,16 @@ Cosas de configuración que no se ven desde el código. Tachar o borrar al confi
 - [ ] Revisión por alguien que sepa de RGPD antes de pasar de unas pocas tiendas.
 
 ### Código
+- [ ] **Subir la Plantilla a producción**: el PR en borrador
+      [#25](https://github.com/diegomolinacatala/fiddle/pull/25) (`dev → main`) lleva la
+      plantilla con PIN y todo lo de `dev`. La columna `eventos.empleado` ya está en la base
+      de producción (11-10-2026). Cuando se vea bien en dev: quitarle el borrador y que lo
+      fusione **Víctor** (un merge de Diego no despliega).
 - [ ] **Cuentas de persona**: lo decidido está en
-      [CLAUDE.md](CLAUDE.md#cuentas-lo-decidido-01-10-2026-sin-empezar). Antes de empezar:
-      dominio propio, PIN por defecto y si se entra con Google/Apple.
+      [CLAUDE.md](CLAUDE.md#cuentas-lo-decidido-01-10-2026-sin-empezar). El PIN por empleado
+      en la caja ya existe (Plantilla, `lib/quien.js`); quedan las cuentas con email, la caja
+      como dispositivo vinculado y las sesiones en el servidor. Antes de empezar: dominio
+      propio y si se entra con Google/Apple.
 - [ ] **Quien pierde el móvil**: hoy la ficha del cliente (Clientes) tiene *Ver su pase*
       (`/p/<serial>`) y ese enlace se le puede mandar a mano. Falta un botón para enviárselo.
 - [ ] Tests end-to-end (Playwright) del camino feliz: login → escanear → sellar → canjear.

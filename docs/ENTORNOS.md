@@ -65,15 +65,47 @@ service de dev y esos pases no se actualizan.)
 
 `DATOS_DE_PRUEBA=1`, `DATA_DIR=/tmp/fiddle`, `AUTH_SECRET` (uno propio de dev), `APP_URL`
 (la web de dev) y las contraseñas: `CLAVE_DELICANTERIA_MANAGER`, `CLAVE_DELICANTERIA_CAJA`,
-`CLAVE_ADMIN_VICTOR`, `CLAVE_ADMIN_DIEGO` (las que se pongan; ninguna es la de producción). `CIFRADO_CLAVE` y los certificados de Apple ya
-estaban en *Preview*.
+`CLAVE_ADMIN_VICTOR`, `CLAVE_ADMIN_DIEGO` (las que se pongan; ninguna es la de producción;
+las de la tienda y la de Diego las puso Diego el 11-10-2026). `CIFRADO_CLAVE` y los
+certificados de Apple ya estaban en *Preview*.
+
+Como dev no tiene base, **esas variables son la única contraseña que vale**: si falta una,
+ese usuario no entra («Usuario o contraseña incorrectos»). Para verlas o cambiarlas: panel
+de Vercel → `fiddle` → Settings → Environment Variables, filtro *Preview*, rama `dev`; o
+`vercel env ls` y `vercel env add CLAVE_X preview dev` (pide el valor en pantalla). Una
+variable nueva no vale hasta el siguiente despliegue (`vercel`).
 
 ## Vercel Hobby y el repo privado
 
 Con el repo privado, Vercel Hobby solo despliega commits de quien es dueño de la cuenta
 (Victor, con su GitHub conectado en *Account Settings → Authentication*). Los commits de
 Diego, y los merges de PR que haga él desde GitHub, **no se despliegan**, ni en dev ni en
-producción. Hasta pasar a Pro, los merges a `main` los hace Victor.
+producción: el check de GitHub sale «Vercel: failure, Deployment was blocked» y el
+«Redeploy» del panel pide pasar a Pro. Hasta pasar a Pro, los merges a `main` los hace
+Victor.
+
+**La salida mientras tanto: la CLI de Vercel**, que sube la carpeta tal cual y no mira el
+autor del commit. Una vez por ordenador, con la cuenta `victrozz` (no la personal de cada
+uno: el proyecto vive en `victrozzs-projects` y en Hobby no se puede añadir a nadie):
+
+```bash
+npm install -g vercel
+vercel login
+vercel whoami     # tiene que decir victrozz
+```
+
+Y luego, desde la carpeta del repo con la rama que se quiere desplegar:
+
+```bash
+vercel            # despliegue de Preview; desde `dev` se queda con fiddle-dev.vercel.app
+vercel --prod     # producción (fiddle-zeta.vercel.app)
+```
+
+La primera vez pregunta a qué proyecto enlazar (`fiddle`) y si traer las variables a
+`.env.local`: **no** (traería secretos a local). El `.vercelignore` del repo hace que solo
+suba el código (sin certificados, `.env`, worktrees ni material de marca). Comprobar que
+el despliegue cogió el dominio con `vercel inspect <url>` (apartado *Aliases*). Hecho así
+en dev el 11-10-2026.
 
 ## Proteger `main` en GitHub (lo hace el dueño del repo)
 

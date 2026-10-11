@@ -49,8 +49,9 @@ El dueño tiene cuatro pestañas, una por pregunta, y cada cosa en **un solo sit
 **Tienda** (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; la
 exportación va junto a la lista), **Avisos** (enviar a todos o a un grupo, ahora o a una
 hora; los [automáticos y programados](docs/AVISOS.md), solo si el admin los enciende) y
-**Plantilla** (quién atiende la caja: cada empleado elige su nombre en su móvil una vez al
-día, y aquí se ve qué hace cada uno). Aparte, **Ajustes**: la contraseña de la caja.
+**Plantilla** (quién atiende la caja: cada empleado se identifica en su móvil con su PIN,
+que vale dos horas sin usar la caja, y aquí se ve qué hace cada uno). Aparte, **Ajustes**:
+la contraseña de la caja.
 
 ## Cómo funciona
 
