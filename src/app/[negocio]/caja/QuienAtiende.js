@@ -29,6 +29,7 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState(null);
   const enviando = useRef(false); // la última cifra y el botón no mandan dos veces
+  const campo1 = useRef(null); // para devolver el foco tras un fallo: se vuelve a teclear sin tocar nada
   const paso = !elegido ? "lista" : elegido.tienePin ? "pin" : "crear";
   const largo = paso === "pin" ? elegido.largoPin || null : null;
 
@@ -58,21 +59,25 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
     if (paso === "crear") {
       if (!/^\d+$/.test(p1) || p1.length < PIN_MIN || p1.length > PIN_MAX) return setError(`El PIN son de ${PIN_MIN} a ${PIN_MAX} cifras.`);
       if (/^(.)\1+$/.test(p1)) return setError("Todas las cifras iguales no vale.");
-      if (p1 !== p2) { setPin(""); setPin2(""); return setError("Los dos PIN no coinciden. Vuelve a escribirlo."); }
+      if (p1 !== p2) return reempezar("Los dos PIN no coinciden. Vuelve a escribirlo.");
     } else if (!p1) {
       return setError("Escribe tu PIN.");
     }
     enviando.current = true;
     try {
       const problema = await onEnviar(paso === "crear" ? { id: elegido.id, nuevoPin: p1 } : { id: elegido.id, pin: p1 });
-      if (problema) {
-        setError(problema);
-        setPin("");
-        setPin2("");
-      }
+      if (problema) reempezar(problema);
     } finally {
       enviando.current = false;
     }
+  }
+
+  /** Tras un fallo: campos vacíos y el foco en el primero, para volver a teclear sin tocar nada. */
+  function reempezar(mensaje) {
+    setError(mensaje);
+    setPin("");
+    setPin2("");
+    campo1.current?.focus();
   }
 
   function enviar(ev) {
@@ -113,15 +118,16 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
         </div>
       ) : (
         <form onSubmit={enviar} style={{ marginTop: 18, display: "grid", gap: 10 }}>
+          {/* `readOnly` mientras se comprueba, no `disabled`: así no pierde el foco ni se cierra el teclado del móvil. */}
           <input
-            value={pin} onChange={(e) => cambiarPin(e.target.value)} disabled={ocupado}
+            ref={campo1} value={pin} onChange={(e) => cambiarPin(e.target.value)} readOnly={ocupado}
             type="password" inputMode="numeric" pattern="[0-9]*" autoComplete={paso === "crear" ? "new-password" : "current-password"}
-            maxLength={largo || PIN_MAX} autoFocus aria-label={paso === "crear" ? "PIN nuevo" : "Tu PIN"} placeholder={paso === "crear" ? "PIN nuevo" : "PIN"}
+            maxLength={PIN_MAX} autoFocus aria-label={paso === "crear" ? "PIN nuevo" : "Tu PIN"} placeholder={paso === "crear" ? "PIN nuevo" : "PIN"}
             style={campoPin}
           />
           {paso === "crear" && (
             <input
-              value={pin2} onChange={(e) => cambiarPin2(e.target.value)} disabled={ocupado}
+              value={pin2} onChange={(e) => cambiarPin2(e.target.value)} readOnly={ocupado}
               type="password" inputMode="numeric" pattern="[0-9]*" autoComplete="new-password"
               maxLength={PIN_MAX} aria-label="Repite el PIN" placeholder="Repítelo"
               style={campoPin}

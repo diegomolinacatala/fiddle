@@ -49,7 +49,8 @@ sellos de golpe.
 - **El PIN de toda la plantilla inventada es `1234`**, con un hash fijo en la semilla: un
   PIN elegido en dev vive en el `/tmp` de UNA función y la siguiente petición puede caer en
   otra que no lo tiene (la cookie lleva la huella del hash), y la caja lo pedía sin parar.
-  Para ver el «elige tu PIN», quitárselo a alguien desde Plantilla → Equipo.
+  Para ver el «elige tu PIN», quitárselo a alguien desde Plantilla → Equipo; el que elija vive
+  en una sola función, así que puede volver a pedirlo al rato (en producción no pasa).
 - En local, lo mismo con `preview_start como-dev` (`.claude/launch.json`).
 
 ## Lo que NUNCA se le da a dev

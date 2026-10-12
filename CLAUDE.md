@@ -217,7 +217,7 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
   detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de alta: sin
   plantilla, la caja funciona como siempre. **El dueño no se identifica**: desde su cuenta sale
   como «Dueño» (`actor: "manager"`, `empleado` null). Al navegador va `plantillaPublica`
-  (`tienePin`), nunca el hash.
+  (`tienePin`, `largoPin`), nunca el hash.
 - **`eventos.empleado`** es la única columna nueva. De ahí salen Rendimiento y Registro de la
   pestaña y el nombre en Clientes → Actividad (`quienTexto`). Un movimiento de la caja sin
   `empleado` es «Sin nombre» (lo de antes de la plantilla).

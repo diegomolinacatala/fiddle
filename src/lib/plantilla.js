@@ -2,13 +2,14 @@
 // LA PLANTILLA: QUIÉN ATIENDE LA CAJA Y QUÉ HACE CADA UNO
 // ----------------------------------------------------------------------------
 // La cuenta de la caja es una por tienda y la comparten todos. Para saber quién
-// dio cada sello, cada empleado elige su nombre en SU móvil la primera vez que
-// abre la caja cada día (una cookie que caduca a la medianoche de la tienda), y
+// dio cada sello, cada empleado se identifica en SU móvil con su PIN (una cookie
+// firmada que dura HORAS_PIN desde el último uso de la caja, lib/quien.js), y
 // cada movimiento de la caja se guarda con su id (`eventos.empleado`).
 //
 // La lista vive en la config de la tienda (`negocio.plantilla`): id, nombre o
-// apodo, alta y baja. Nada más: ni PIN ni turnos. Dar de baja no borra nada
-// (sus movimientos siguen con su nombre); solo se le deja de ofrecer en la caja.
+// apodo, alta, baja, el hash de su PIN y cuántas cifras tiene. Turnos, no. Dar de
+// baja no borra nada (sus movimientos siguen con su nombre); solo se le deja de
+// ofrecer en la caja.
 // El dueño, con su cuenta de manager, no elige: sale como «Dueño».
 //
 // Las cuentas salen de `eventos`, como la Actividad de Clientes, y se hacen con

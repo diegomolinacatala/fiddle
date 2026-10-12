@@ -88,8 +88,16 @@ export async function POST(request) {
       await anotarFalloPin(slug, e.id, ip).catch((err) => console.error("[quien] no se pudo anotar el fallo:", err));
       return jsonError("PIN incorrecto", 401);
     }
-    const res = NextResponse.json({ ok: true, empleado: empleadoPublico(e) });
-    return ponerCookiesQuien(res, slug, e);
+    // Un PIN de antes de que se guardara cuántas cifras tiene: al entrar bien se
+    // apunta, y la próxima vez entra con la última cifra como los demás.
+    let empleado = e;
+    const largo = pinValido(body.pin)?.length ?? null;
+    if (!e.largoPin && largo) {
+      empleado = { ...e, largoPin: largo };
+      await saveNegocio(slug, { plantilla: negocio.plantilla.map((x) => (x.id === e.id ? empleado : x)) });
+    }
+    const res = NextResponse.json({ ok: true, empleado: empleadoPublico(empleado) });
+    return ponerCookiesQuien(res, slug, empleado);
   } catch (e) {
     return errorInterno("quien POST", e);
   }

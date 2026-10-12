@@ -152,6 +152,7 @@ describe("la cookie de quién atiende y el PIN", () => {
     expect(pinValido(null)).toBeNull();
     const puesto = ponerPin(plantilla, "marta1", hash, 5);
     expect(puesto.empleado).toMatchObject({ pin: hash, largoPin: 5 });
+    expect(ponerPin(plantilla, "marta1", hash, 6).empleado.largoPin).toBe(6);
     expect(ponerPin(plantilla, "marta1", hash).empleado.largoPin).toBeNull();
     expect(ponerPin(plantilla, "marta1", hash, 7).empleado.largoPin).toBeNull();
     expect(ponerPin(puesto.plantilla, "marta1", hash).error).toMatch(/Ya tiene PIN/);

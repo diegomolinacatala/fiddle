@@ -18,6 +18,7 @@ vi.mock("@/lib/wallet", async (original) => ({
 
 const store = await import("@/lib/store");
 const { firmarSesion, firmarTexto } = await import("@/lib/auth");
+const { hashClave } = await import("@/lib/claves");
 const lista = await import("@/app/api/plantilla/route.js");
 const quien = await import("@/app/api/plantilla/quien/route.js");
 const accion = await import("@/app/api/accion/route.js");
@@ -97,6 +98,19 @@ describe("la lista, desde el manager", () => {
 });
 
 describe("quién atiende, desde la caja", () => {
+  it("un PIN de antes de guardar cuántas cifras tiene lo aprende al entrar bien", async () => {
+    const hash = await hashClave("24680");
+    await store.saveNegocio("nube", { plantilla: [{ id: "sebas001", nombre: "Sebas", alta: null, baja: null, pin: hash }] });
+    let r = await estado();
+    expect(r.data.plantilla).toEqual([{ id: "sebas001", nombre: "Sebas", tienePin: true, largoPin: null }]);
+    expect((await identificar({ id: "sebas001", pin: "0000" })).status).toBe(401);
+    r = await identificar({ id: "sebas001", pin: "24680" });
+    expect(r.status).toBe(200);
+    expect(r.data.empleado).toMatchObject({ tienePin: true, largoPin: 5 });
+    expect((await store.getNegocio("nube")).plantilla[0]).toMatchObject({ pin: hash, largoPin: 5 });
+    expect((await estado()).data.plantilla[0].largoPin).toBe(5);
+  });
+
   it("sin gente dada de alta no hay que elegir y la caja sella como siempre", async () => {
     const r = await estado();
     expect(r.data).toEqual({ elegir: false, empleado: null, ultimo: null, plantilla: [], hoy: null });
