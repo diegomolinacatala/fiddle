@@ -95,6 +95,18 @@ describe("eventos", () => {
     expect((await store.listEventos("s1")).map((e) => e.mensaje)).toEqual(["dos", "uno"]);
     expect(await store.listEventos("s1", 1)).toHaveLength(1);
   });
+
+  it("ultimoEvento: el más reciente de esos tipos, de esa tarjeta", async () => {
+    await store.addEvento("s1", "sellar", "Sello 1/8");
+    await new Promise((r) => setTimeout(r, 2));
+    await store.addEvento("s1", "sellar2", "Sello Cafés 1/8");
+    await new Promise((r) => setTimeout(r, 2));
+    await store.addEvento("s1", "canjear", "Canjeó: café");
+    await store.addEvento("s2", "sellar", "Sello 5/8");
+    expect(await store.ultimoEvento("s1", ["sellar", "sellar2"])).toMatchObject({ serial: "s1", tipo: "sellar2", mensaje: "Sello Cafés 1/8", ts: expect.any(String) });
+    expect(await store.ultimoEvento("s1", ["restar"])).toBeNull();
+    expect(await store.ultimoEvento("s1", [])).toBeNull();
+  });
 });
 
 describe("registros de Apple Wallet", () => {

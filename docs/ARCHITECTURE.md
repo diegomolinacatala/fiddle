@@ -94,6 +94,11 @@ negocio y avisan a todos sus dispositivos.
 iPhone lo recogerá en su próxima sincronización. Los tokens que Apple rechaza
 (`410`, `BadDeviceToken`) se borran.
 
+**Dar, guardar o usar un premio espera unos segundos en la caja** (`SEGUNDOS_DESHACER`)
+antes del `POST /api/accion`, con «Deshacer» a la vista. Deshacer cancela la petición: el
+servidor no se entera y no queda rastro. Al salir de la página se manda con `sendBeacon`
+(o `fetch keepalive`); si el móvil muere en esos segundos, ese premio no queda apuntado.
+
 ## Modo demo vs real
 
 Cada dependencia se detecta por separado:

@@ -675,6 +675,27 @@ export async function listEventos(serial, limit = 8) {
 }
 
 /**
+ * El último evento de una tarjeta de alguno de esos tipos (la ficha de la caja
+ * dice cuándo fue el último sello). null si nunca hubo.
+ * @param {string} serial @param {string[]} tipos
+ * @returns {Promise<{serial:string, tipo:string, mensaje:string, actor:string|null, empleado:string|null, ts:string}|null>}
+ */
+export async function ultimoEvento(serial, tipos) {
+  if (!tipos?.length) return null;
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("eventos").select(CAMPOS_EVENTO).eq("serial", serial).in("tipo", tipos)
+        .order("ts", { ascending: false }).limit(1).maybeSingle(),
+      "último evento",
+    ) || null;
+  }
+  const all = await enFila(() => leer("eventos", []));
+  return all
+    .filter((e) => e.serial === serial && tipos.includes(e.tipo))
+    .sort((a, b) => b.ts.localeCompare(a.ts))[0] || null;
+}
+
+/**
  * Historial de TODA una tienda, para las cuentas del CRM (visitas por día, a qué
  * horas viene la gente, si una campaña sirvió de algo).
  *

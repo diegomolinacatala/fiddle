@@ -38,6 +38,25 @@ export function ultimaVezTexto(iso, zona, ahora = Date.now()) {
   return haceTexto(Math.max(0, diasEntre(fecha, hoy)));
 }
 
+// Los eventos que son un sello (una cartilla o la otra): lo que mira la ficha de
+// la caja para decir cuándo fue el último.
+export const TIPOS_SELLO = ["sellar", "sellar2"];
+
+/**
+ * Cuándo fue el último sello, para la ficha de la caja: "hace un momento",
+ * "hace 12 min" y, más atrás, como ultimaVezTexto ("hoy, 13:42", "ayer, 18:05",
+ * "hace 3 días"). Solo el cuándo: la cuenta ya la enseña la tarjeta, y la del
+ * evento mentiría tras una corrección. null si nunca se le selló: nada que decir.
+ * @param {{ts:string}|null} evento el último de TIPOS_SELLO
+ */
+export function ultimoSelloTexto(evento, zona, ahora = Date.now()) {
+  const t = Date.parse(evento?.ts || "");
+  if (!t) return null;
+  const minutos = Math.floor((ahora - t) / 60000);
+  const cuando = minutos < 1 ? "hace un momento" : minutos < 60 ? `hace ${minutos} min` : ultimaVezTexto(evento.ts, zona, ahora);
+  return `Último sello ${cuando}`;
+}
+
 /** Una fecha de calendario ("2026-10-08") en corto: "jue, 8 oct". No depende de la zona: ya es la de la tienda. */
 export const diaCortoTexto = (fecha) =>
   new Date(`${fecha}T12:00:00Z`).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });

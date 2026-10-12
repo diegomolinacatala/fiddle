@@ -160,6 +160,19 @@ describe("store con Supabase", () => {
     expect(metodos(0)).toEqual(["select", "is", "is", "order", "eq"]);
     expect(llamadas[0].cadena.filter((c) => c[0] === "is").map((c) => c[1])).toEqual(["fusionado_en", "borrado_en"]);
   });
+
+  it("ultimoEvento pide UNA fila de esos tipos, la más reciente", async () => {
+    encolar("eventos", { data: { serial: "s1", tipo: "sellar", mensaje: "Sello 3/8", ts: "2026-10-08T07:42:00Z" }, error: null }, { data: null, error: null });
+    expect(await store.ultimoEvento("s1", ["sellar", "sellar2"])).toMatchObject({ tipo: "sellar", mensaje: "Sello 3/8" });
+    expect(llamadas[0].cadena).toEqual([
+      ["select", "serial, tipo, mensaje, actor, empleado, ts"], ["eq", "serial", "s1"], ["in", "tipo", ["sellar", "sellar2"]],
+      ["order", "ts", { ascending: false }], ["limit", 1], ["maybeSingle"],
+    ]);
+    expect(await store.ultimoEvento("s1", ["sellar"])).toBeNull();
+    // Sin tipos no hay nada que preguntar: ni viaje a la base.
+    expect(await store.ultimoEvento("s1", [])).toBeNull();
+    expect(llamadas).toHaveLength(2);
+  });
 });
 
 describe("datos personales cifrados con Supabase", () => {

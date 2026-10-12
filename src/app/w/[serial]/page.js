@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getCliente, getNegocio, listEventos, clientePublico } from "@/lib/store";
+import { getCliente, getNegocio, listEventos, ultimoEvento, clientePublico } from "@/lib/store";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { puedeAcceder, COOKIE } from "@/lib/auth";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { sesionDeCookie } from "@/lib/sesionVigente";
 import { estadoDe } from "@/lib/resumen";
+import { ultimoSelloTexto, fechaHoraTexto, zonaDe, TIPOS_SELLO } from "@/lib/actividad";
 import { hayQueElegir, COOKIE_QUIEN } from "@/lib/plantilla";
 import { leerQuien } from "@/lib/quien";
 import TarjetaCaja from "./TarjetaCaja";
@@ -70,9 +71,12 @@ export default async function Page({ params }) {
   if (hayQueElegir(sesion, n.plantilla) && !quien) {
     redirect(`/${n.slug}/caja?quien=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
   }
-  const eventos = await listEventos(serial);
+  // Cuándo fue el último sello, aparte del historial (que puede estar apagado o no
+  // llegar tan atrás): «no me has sellado» se zanja mirando la hora.
+  const [eventos, ultimoSello] = await Promise.all([listEventos(serial), ultimoSelloDe(serial, n)]);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
+  const ultimoSelloLinea = ultimoSelloTexto(ultimoSello, zonaDe(n));
 
   return (
     <main style={pagina}>
@@ -98,6 +102,9 @@ export default async function Page({ params }) {
               {cliente.visitas ? `${cliente.visitas} ${cliente.visitas === 1 ? "visita" : "visitas"}` : "Primera visita"}
               {cliente.premios > 0 && !e.esCupon ? ` · ${cliente.premios} ${cliente.premios === 1 ? "premio canjeado" : "premios canjeados"}` : ""}
             </div>
+            {ultimoSelloLinea && (
+              <div style={{ fontSize: 12, color: C.tenue, marginTop: 1 }} title={fechaHoraTexto(ultimoSello.ts, zonaDe(n))}>{ultimoSelloLinea}</div>
+            )}
           </div>
         </div>
 
@@ -126,6 +133,10 @@ export default async function Page({ params }) {
     </main>
   );
 }
+
+// Un cupón no se sella: ni se pregunta. Y una línea de adorno no tumba la ficha si la base falla.
+const ultimoSelloDe = (serial, n) =>
+  (n.tipo === "descuento" ? Promise.resolve(null) : ultimoEvento(serial, TIPOS_SELLO).catch(() => null));
 
 function Aviso({ titulo, texto, children }) {
   return (

@@ -13,7 +13,7 @@ import { C, aviso } from "@/app/ui";
 // prisa se pulsa el que no es). Las filas salen de filasDeCaja (lib/caja.js).
 // ============================================================================
 
-export default function WorkerActions({ filas, premios = [], accent = C.texto, ejecutar, toast, grande = false, onCancelarVuelta }) {
+export default function WorkerActions({ filas, premios = [], accent = C.texto, ejecutar, toast, grande = false, onCancelarVuelta, onDeshacer }) {
   if (!filas.length && !premios.length) {
     return <p style={{ color: C.suave, fontSize: 14, marginTop: 18 }}>El manager no ha activado ninguna acción.</p>;
   }
@@ -35,9 +35,10 @@ export default function WorkerActions({ filas, premios = [], accent = C.texto, e
           )))}
       </div>
       {toast && (
-        <div role="status" style={{ ...aviso(toast.ok), marginTop: 12 }}>
+        <div role="status" style={{ ...aviso(toast.ok), marginTop: 12, position: "relative", overflow: "hidden" }}>
           {toast.msg}
           {toast.detalle && <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>{toast.detalle}</div>}
+          {toast.deshacer && <Deshacer key={toast.id} segundos={toast.deshacer} onDeshacer={onDeshacer} />}
           {toast.vuelta && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, fontSize: 13 }}>
               <span style={{ flex: 1 }}>Volviendo al escáner en {toast.vuelta} s…</span>
@@ -49,6 +50,31 @@ export default function WorkerActions({ filas, premios = [], accent = C.texto, e
         </div>
       )}
     </div>
+  );
+}
+
+// DESHACER, dentro del mismo aviso que confirma el premio: donde ya está mirando
+// quien lo dio. Un botón de verdad (no un enlace) y, bajo el aviso, una barra que
+// se vacía en `segundos`: se ve que el plazo corre sin una cuenta atrás que meta
+// prisa. Al acabar, TarjetaCaja quita esto y el aviso se queda como siempre.
+// Con «reducir movimiento», la barra no se mueve: el aviso cambia igual al acabar.
+// Va con `key` del premio en espera: un segundo premio seguido estrena su barra.
+const CSS_DESHACER = `
+@keyframes caja-deshacer { from { transform: scaleX(1) } to { transform: scaleX(0) } }
+.caja-deshacer { transform-origin: left; animation: caja-deshacer linear forwards; }
+@media (prefers-reduced-motion: reduce) { .caja-deshacer { animation: none } }
+`;
+function Deshacer({ segundos, onDeshacer }) {
+  return (
+    <>
+      <style>{CSS_DESHACER}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+        <span style={{ flex: 1, fontSize: 13 }}>¿Ha sido sin querer?</span>
+        <button type="button" onClick={onDeshacer} style={botonDeshacer}>Deshacer</button>
+      </div>
+      <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 3, background: "currentColor", opacity: 0.15 }} />
+      <div aria-hidden="true" className="caja-deshacer" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 3, background: "currentColor", animationDuration: `${segundos}s` }} />
+    </>
   );
 }
 
@@ -150,6 +176,11 @@ const botonPremio = (principal, accent) => ({
   border: principal ? 0 : `1.5px solid ${accent}`,
   background: principal ? accent : "#fff", color: principal ? "#fff" : accent,
 });
+
+const botonDeshacer = {
+  minHeight: 40, padding: "0 16px", borderRadius: 10, cursor: "pointer",
+  border: "1.5px solid currentColor", background: "#fff", color: "inherit", fontWeight: 650, fontSize: 14,
+};
 
 const sumar = (accent) => ({
   flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, padding: "0 18px",

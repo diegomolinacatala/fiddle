@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { actividadDelDia, ultimaVezTexto, diaCompleto } from "@/lib/actividad";
+import { actividadDelDia, ultimaVezTexto, ultimoSelloTexto, TIPOS_SELLO, diaCompleto } from "@/lib/actividad";
 import { csvActividad } from "@/lib/exportar";
 import { componerNegocio } from "@/lib/negocios";
 
@@ -23,6 +23,25 @@ describe("ultimaVezTexto: la hora, en la tienda", () => {
   it("más atrás, como antes", () => {
     expect(ultimaVezTexto("2026-10-05T10:00:00Z", zona, ahora)).toBe("hace 3 días");
     expect(ultimaVezTexto(null, zona, ahora)).toBe("nunca");
+  });
+});
+
+describe("ultimoSelloTexto: cuándo fue el último sello, para el mostrador", () => {
+  const ahora = Date.parse("2026-10-08T10:00:00Z"); // 12:00 en Madrid
+  const sello = (ts) => ({ tipo: "sellar", mensaje: "Sello 3/8", ts });
+  it("los primeros minutos van al minuto: es lo que se discute", () => {
+    expect(ultimoSelloTexto(sello("2026-10-08T09:59:40Z"), zona, ahora)).toBe("Último sello hace un momento");
+    expect(ultimoSelloTexto(sello("2026-10-08T09:48:00Z"), zona, ahora)).toBe("Último sello hace 12 min");
+  });
+  it("más atrás, como la lista de clientes, con la hora de la tienda", () => {
+    expect(ultimoSelloTexto(sello("2026-10-08T07:42:00Z"), zona, ahora)).toBe("Último sello hoy, 09:42");
+    expect(ultimoSelloTexto(sello("2026-10-07T21:30:00Z"), zona, ahora)).toBe("Último sello ayer, 23:30");
+    expect(ultimoSelloTexto(sello("2026-10-05T10:00:00Z"), zona, ahora)).toBe("Último sello hace 3 días");
+  });
+  it("sin sello nunca, nada que decir", () => {
+    expect(ultimoSelloTexto(null, zona, ahora)).toBeNull();
+    expect(ultimoSelloTexto({ tipo: "sellar", mensaje: "", ts: "no es fecha" }, zona, ahora)).toBeNull();
+    expect(TIPOS_SELLO).toEqual(["sellar", "sellar2"]);
   });
 });
 

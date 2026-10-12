@@ -177,6 +177,20 @@ de caja", con la caja de verdad (`TarjetaCaja demo`) al lado. Una FILA por carti
 entera, con el "−" pequeño dentro (corregir no merece un botón igual de grande), y el "+2"
 si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, no un botón suelto.
 
+- **Dar, guardar o usar un premio se puede deshacer unos segundos** (`SEGUNDOS_DESHACER`,
+  las acciones con `deshecho` en `lib/acciones.js`). NO es una acción del servidor: la
+  caja se pinta al instante pero se guarda la petición ese tiempo y, si se deshace, no la
+  manda (como el «Deshacer envío» del correo). Así no queda evento, ni visita, ni aviso al
+  cliente: un premio dado sin querer y vuelto a poner a mano serían dos movimientos falsos
+  en las cuentas. Otro toque lo confirma al momento; al salir de la página o pasar a
+  segundo plano se manda con `sendBeacon` (o `fetch keepalive`). Lo que se acepta a cambio:
+  si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
+  «deshacer» en `/api/accion`: habría que borrar eventos.
+- **La ficha dice cuándo fue el último sello** («Último sello hace 12 min»,
+  `ultimoSelloTexto`), discreto, bajo las visitas: zanja el «no me has sellado» sin
+  depender del historial (que la tienda puede apagar). Solo el cuándo (la cuenta la enseña
+  la tarjeta) y sin nombre de quién lo dio: al navegador de la caja nunca va eso.
+
 ## La plantilla: quién atiende la caja
 
 Ver [`src/lib/plantilla.js`](src/lib/plantilla.js). La cuenta de la caja sigue siendo UNA por
