@@ -28,6 +28,8 @@ export const MAX_NOMBRE = 30;
 // HORAS_PIN sin usar la caja en ese móvil (cada sello lo renueva). Con cola no
 // se teclea a cada cliente; tras el descanso, sí. Si se olvida, el manager lo
 // quita y la persona elige otro: nadie puede leerlo, solo se guarda su hash.
+// Con el hash se guarda CUÁNTAS cifras tiene (`largoPin`): la caja entra sola al
+// teclear la última, sin botón. Quien lo sepa ya tiene la contraseña de la caja.
 export const HORAS_PIN = 2;
 export const PIN_MIN = 4;
 export const PIN_MAX = 6;
@@ -76,10 +78,13 @@ export function normalizarPlantilla(lista) {
     vistos.add(id);
     if (!baja) activos += 1;
     // Solo el hash del PIN (lib/claves.js); cualquier otra cosa es que no tiene.
-    out.push({ id, nombre, alta: fechaValida(e.alta), baja, pin: typeof e.pin === "string" && HASH_RE.test(e.pin) ? e.pin : null });
+    const pin = typeof e.pin === "string" && HASH_RE.test(e.pin) ? e.pin : null;
+    out.push({ id, nombre, alta: fechaValida(e.alta), baja, pin, largoPin: pin ? largoValido(e.largoPin) : null });
   }
   return out;
 }
+
+const largoValido = (n) => (Number.isInteger(n) && n >= PIN_MIN && n <= PIN_MAX ? n : null);
 
 export const empleadosActivos = (plantilla) => (plantilla || []).filter((e) => !e.baja);
 export const empleadoDe = (plantilla, id) => (plantilla || []).find((e) => e.id === id) || null;
@@ -107,7 +112,7 @@ export function nuevoEmpleado(plantilla, nombre, { ahora = Date.now(), id = null
   if (empleadosActivos(plantilla).length >= MAX_EMPLEADOS) return { error: `Como mucho ${MAX_EMPLEADOS} personas en la plantilla` };
   if ((plantilla || []).length >= MAX_TOTAL) return { error: `La lista ya tiene ${MAX_TOTAL} personas contando las bajas: no caben más` };
   if (repetido(plantilla, limpio)) return { error: `Ya hay alguien que se llama ${limpio}. Añade una inicial o un apodo.` };
-  const empleado = { id: id || idLibre(plantilla), nombre: limpio, alta: new Date(ahora).toISOString(), baja: null, pin: null };
+  const empleado = { id: id || idLibre(plantilla), nombre: limpio, alta: new Date(ahora).toISOString(), baja: null, pin: null, largoPin: null };
   return { empleado, plantilla: [...(plantilla || []), empleado] };
 }
 
@@ -135,22 +140,28 @@ export function cambiarEmpleado(plantilla, id, cambios = {}, { ahora = Date.now(
   if (cambios.activo === false && !e.baja) e = { ...e, baja: new Date(ahora).toISOString() };
   // Se le olvidó: el manager se lo quita y la persona elige otro en la caja.
   // Todos sus móviles vuelven a preguntar (la cookie lleva la huella del PIN).
-  if (cambios.quitarPin === true) e = { ...e, pin: null };
+  if (cambios.quitarPin === true) e = { ...e, pin: null, largoPin: null };
   return { empleado: e, plantilla: plantilla.map((x) => (x.id === id ? e : x)) };
 }
 
-/** Guarda el hash del PIN que acaba de elegir (solo si aún no tenía: cambiarlo pasa por quitarlo). */
-export function ponerPin(plantilla, id, hash) {
+/**
+ * Guarda el hash del PIN que acaba de elegir (solo si aún no tenía: cambiarlo pasa por
+ * quitarlo) y cuántas cifras tiene, para que la caja entre sola con la última.
+ */
+export function ponerPin(plantilla, id, hash, largo = null) {
   const actual = empleadoDe(plantilla, id);
   if (!actual || actual.baja) return { error: "Esa persona no está en la plantilla" };
   if (actual.pin) return { error: "Ya tiene PIN. Si lo ha olvidado, el manager se lo quita desde Plantilla." };
   if (!HASH_RE.test(String(hash))) return { error: "PIN no válido" };
-  const e = { ...actual, pin: hash };
+  const e = { ...actual, pin: hash, largoPin: largoValido(largo) };
   return { empleado: e, plantilla: plantilla.map((x) => (x.id === id ? e : x)) };
 }
 
-/** Lo que de cada persona puede salir del servidor: nunca el hash del PIN, solo si lo tiene. */
-export const empleadoPublico = (e) => e && { id: e.id, nombre: e.nombre, alta: e.alta ?? null, baja: e.baja ?? null, tienePin: Boolean(e.pin) };
+/** Lo que de cada persona puede salir del servidor: nunca el hash del PIN, solo si lo tiene y de cuántas cifras. */
+export const empleadoPublico = (e) => e && {
+  id: e.id, nombre: e.nombre, alta: e.alta ?? null, baja: e.baja ?? null,
+  tienePin: Boolean(e.pin), largoPin: e.pin ? e.largoPin ?? null : null,
+};
 export const plantillaPublica = (plantilla) => (plantilla || []).map(empleadoPublico);
 
 // ----------------------------------------------------- la cookie de la caja

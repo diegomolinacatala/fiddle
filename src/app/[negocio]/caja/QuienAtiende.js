@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Icono from "@/app/Icono";
 import { PIN_MIN, PIN_MAX, HORAS_PIN } from "@/lib/plantilla";
 import { C, panel, campo, botonPrimario, botonSecundario, aviso, RADIO } from "@/app/ui";
@@ -14,6 +14,11 @@ import { C, panel, campo, botonPrimario, botonSecundario, aviso, RADIO } from "@
 // última fue Marta, se le pide directamente el PIN («¿Sigues siendo Marta?») y
 // la lista queda detrás de «Soy otra persona».
 //
+// Entra SOLO al teclear la última cifra: el servidor dice cuántas tiene el PIN
+// (`largoPin`), así que no hay que darle a nada. Al elegirlo, igual: en cuanto el
+// segundo tiene las mismas cifras que el primero, se guarda. El botón se queda
+// para los PIN de antes, que no saben su largo.
+//
 // `onEnviar({ id, pin })` o `onEnviar({ id, nuevoPin })` devuelve el error en
 // texto, o null si entró.
 // ============================================================================
@@ -23,7 +28,9 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
   const [pin, setPin] = useState("");
   const [pin2, setPin2] = useState("");
   const [error, setError] = useState(null);
+  const enviando = useRef(false); // la última cifra y el botón no mandan dos veces
   const paso = !elegido ? "lista" : elegido.tienePin ? "pin" : "crear";
+  const largo = paso === "pin" ? elegido.largoPin || null : null;
 
   function elegir(e) {
     setElegido(e);
@@ -32,22 +39,45 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
     setError(null);
   }
 
-  async function enviar(ev) {
-    ev.preventDefault();
+  const soloCifras = (v) => v.replace(/\D/g, "").slice(0, PIN_MAX);
+
+  function cambiarPin(v) {
+    const limpio = soloCifras(v);
+    setPin(limpio);
+    if (largo && limpio.length === largo) mandar(limpio, pin2);
+  }
+  function cambiarPin2(v) {
+    const limpio = soloCifras(v);
+    setPin2(limpio);
+    if (pin.length >= PIN_MIN && limpio.length === pin.length) mandar(pin, limpio);
+  }
+
+  async function mandar(p1, p2) {
+    if (enviando.current || ocupado) return;
     setError(null);
     if (paso === "crear") {
-      if (!/^\d+$/.test(pin) || pin.length < PIN_MIN || pin.length > PIN_MAX) return setError(`El PIN son de ${PIN_MIN} a ${PIN_MAX} cifras.`);
-      if (/^(.)\1+$/.test(pin)) return setError("Todas las cifras iguales no vale.");
-      if (pin !== pin2) return setError("Los dos PIN no coinciden.");
-    } else if (!pin) {
+      if (!/^\d+$/.test(p1) || p1.length < PIN_MIN || p1.length > PIN_MAX) return setError(`El PIN son de ${PIN_MIN} a ${PIN_MAX} cifras.`);
+      if (/^(.)\1+$/.test(p1)) return setError("Todas las cifras iguales no vale.");
+      if (p1 !== p2) { setPin(""); setPin2(""); return setError("Los dos PIN no coinciden. Vuelve a escribirlo."); }
+    } else if (!p1) {
       return setError("Escribe tu PIN.");
     }
-    const problema = await onEnviar(paso === "crear" ? { id: elegido.id, nuevoPin: pin } : { id: elegido.id, pin });
-    if (problema) {
-      setError(problema);
-      setPin("");
-      setPin2("");
+    enviando.current = true;
+    try {
+      const problema = await onEnviar(paso === "crear" ? { id: elegido.id, nuevoPin: p1 } : { id: elegido.id, pin: p1 });
+      if (problema) {
+        setError(problema);
+        setPin("");
+        setPin2("");
+      }
+    } finally {
+      enviando.current = false;
     }
+  }
+
+  function enviar(ev) {
+    ev.preventDefault();
+    mandar(pin, pin2);
   }
 
   const titulo = paso === "lista" ? "¿Quién atiende?"
@@ -56,7 +86,7 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
     : `${elegido.nombre}, tu PIN`;
   const explicacion = paso === "lista" ? "Cada sello se apunta a tu nombre. Con tu PIN, nadie sella por ti."
     : paso === "crear" ? `De ${PIN_MIN} a ${PIN_MAX} cifras. Lo pedirá cuando este móvil lleve ${HORAS_PIN} horas sin usar la caja; si lo olvidas, el manager te lo quita y eliges otro.`
-    : `Se pide cuando este móvil lleva ${HORAS_PIN} horas sin usar la caja, o al cambiar de persona.`;
+    : `${largo ? "Con la última cifra entras. " : ""}Se pide cuando este móvil lleva ${HORAS_PIN} horas sin usar la caja, o al cambiar de persona.`;
 
   return (
     <section style={{ ...panel, padding: 20 }} aria-labelledby="quien-titulo">
@@ -84,14 +114,14 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
       ) : (
         <form onSubmit={enviar} style={{ marginTop: 18, display: "grid", gap: 10 }}>
           <input
-            value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_MAX))}
+            value={pin} onChange={(e) => cambiarPin(e.target.value)} disabled={ocupado}
             type="password" inputMode="numeric" pattern="[0-9]*" autoComplete={paso === "crear" ? "new-password" : "current-password"}
-            maxLength={PIN_MAX} autoFocus aria-label={paso === "crear" ? "PIN nuevo" : "Tu PIN"} placeholder={paso === "crear" ? "PIN nuevo" : "PIN"}
+            maxLength={largo || PIN_MAX} autoFocus aria-label={paso === "crear" ? "PIN nuevo" : "Tu PIN"} placeholder={paso === "crear" ? "PIN nuevo" : "PIN"}
             style={campoPin}
           />
           {paso === "crear" && (
             <input
-              value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, "").slice(0, PIN_MAX))}
+              value={pin2} onChange={(e) => cambiarPin2(e.target.value)} disabled={ocupado}
               type="password" inputMode="numeric" pattern="[0-9]*" autoComplete="new-password"
               maxLength={PIN_MAX} aria-label="Repite el PIN" placeholder="Repítelo"
               style={campoPin}

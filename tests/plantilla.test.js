@@ -42,18 +42,24 @@ describe("la lista de la plantilla", () => {
       null,
     ]);
     expect(lista).toEqual([
-      { id: "sebas1", nombre: "Sebas", alta: "2026-09-01T08:00:00Z", baja: null, pin: null },
-      { id: "marta1", nombre: "Marta", alta: null, baja: null, pin: null },
+      { id: "sebas1", nombre: "Sebas", alta: "2026-09-01T08:00:00Z", baja: null, pin: null, largoPin: null },
+      { id: "marta1", nombre: "Marta", alta: null, baja: null, pin: null, largoPin: null },
     ]);
     expect(normalizarPlantilla("nada")).toEqual([]);
-    // Del PIN solo se guarda el hash; cualquier otra cosa es «sin PIN».
+    // Del PIN solo se guarda el hash; cualquier otra cosa es «sin PIN». El largo, solo con hash y de 4 a 6.
     const hash = "scrypt$00ff$abcdef0123456789";
-    expect(normalizarPlantilla([{ id: "sebas1", nombre: "Sebas", pin: hash }, { id: "marta1", nombre: "Marta", pin: "1234" }]).map((e) => e.pin)).toEqual([hash, null]);
+    const conPines = normalizarPlantilla([
+      { id: "sebas1", nombre: "Sebas", pin: hash, largoPin: 4 },
+      { id: "marta1", nombre: "Marta", pin: "1234", largoPin: 4 },
+      { id: "jorge1", nombre: "Jorge", pin: hash, largoPin: 9 },
+      { id: "lucia1", nombre: "Lucía", pin: hash },
+    ]);
+    expect(conPines.map((e) => [e.pin, e.largoPin])).toEqual([[hash, 4], [null, null], [hash, null], [hash, null]]);
   });
 
   it("da de alta sin pisar la lista, sin nombres repetidos y con tope", () => {
     const r = nuevoEmpleado(plantilla, "Jorge", { ahora: Date.parse("2026-10-10T10:00:00Z"), id: "jorge1" });
-    expect(r.empleado).toEqual({ id: "jorge1", nombre: "Jorge", alta: "2026-10-10T10:00:00.000Z", baja: null, pin: null });
+    expect(r.empleado).toEqual({ id: "jorge1", nombre: "Jorge", alta: "2026-10-10T10:00:00.000Z", baja: null, pin: null, largoPin: null });
     expect(r.plantilla).toHaveLength(5);
     expect(plantilla).toHaveLength(4);
     expect(nuevoEmpleado(plantilla, "sebas").error).toMatch(/Ya hay alguien/);
@@ -144,15 +150,18 @@ describe("la cookie de quién atiende y el PIN", () => {
     expect(pinValido("1111")).toBeNull();
     expect(pinValido("12a4")).toBeNull();
     expect(pinValido(null)).toBeNull();
-    const puesto = ponerPin(plantilla, "marta1", hash);
-    expect(puesto.empleado.pin).toBe(hash);
+    const puesto = ponerPin(plantilla, "marta1", hash, 5);
+    expect(puesto.empleado).toMatchObject({ pin: hash, largoPin: 5 });
+    expect(ponerPin(plantilla, "marta1", hash).empleado.largoPin).toBeNull();
+    expect(ponerPin(plantilla, "marta1", hash, 7).empleado.largoPin).toBeNull();
     expect(ponerPin(puesto.plantilla, "marta1", hash).error).toMatch(/Ya tiene PIN/);
     expect(ponerPin(plantilla, "luis01", hash).error).toMatch(/no está/);
     expect(ponerPin(plantilla, "marta1", "1234").error).toMatch(/no válido/);
     const quitado = cambiarEmpleado(puesto.plantilla, "marta1", { quitarPin: true });
-    expect(quitado.empleado.pin).toBeNull();
-    // Hacia el navegador nunca va el hash, solo si lo tiene.
-    expect(plantillaPublica(puesto.plantilla).find((e) => e.id === "marta1")).toEqual({ id: "marta1", nombre: "Marta", alta: "2026-09-01T08:00:00Z", baja: null, tienePin: true });
+    expect(quitado.empleado).toMatchObject({ pin: null, largoPin: null });
+    // Hacia el navegador nunca va el hash: solo si lo tiene y cuántas cifras (para entrar con la última).
+    expect(plantillaPublica(puesto.plantilla).find((e) => e.id === "marta1")).toEqual({ id: "marta1", nombre: "Marta", alta: "2026-09-01T08:00:00Z", baja: null, tienePin: true, largoPin: 5 });
+    expect(plantillaPublica(quitado.plantilla).find((e) => e.id === "marta1")).toMatchObject({ tienePin: false, largoPin: null });
     expect(JSON.stringify(plantillaPublica(puesto.plantilla))).not.toContain("scrypt");
   });
 

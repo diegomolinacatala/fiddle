@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 // Quién atiende desde ESTE móvil (lib/plantilla.js, lib/quien.js). La cuenta de
 // la caja la comparten; cada empleado se identifica en su móvil con su PIN.
-//   GET  ?b=<slug>  -> { elegir, empleado, ultimo, plantilla: [{id, nombre, tienePin}], hoy }
+//   GET  ?b=<slug>  -> { elegir, empleado, ultimo, plantilla: [{id, nombre, tienePin, largoPin}], hoy }
 //        elegir:    hay que identificarse antes de sellar (cuenta de caja, gente dada de alta, nadie válido ahora)
 //        ultimo:    quién fue la última vez en este móvil, para pedirle solo el PIN
 //        hoy:       lo de hoy de quien atiende (sellos, clientes, premios), para su pantalla
@@ -23,7 +23,8 @@ export const dynamic = "force-dynamic";
 //        400 PIN mal formado o ya tenía · 401 PIN incorrecto · 429 demasiados fallos (15 min)
 // El dueño no se identifica: su cuenta ya dice quién es.
 
-const solo = (e) => (e ? { id: e.id, nombre: e.nombre, tienePin: Boolean(e.pin) } : null);
+// `largoPin`: cuántas cifras tiene, para que la caja entre sola al teclear la última.
+const solo = (e) => (e ? { id: e.id, nombre: e.nombre, tienePin: Boolean(e.pin), largoPin: e.pin ? e.largoPin ?? null : null } : null);
 
 export async function GET(request) {
   try {
@@ -74,7 +75,7 @@ export async function POST(request) {
       // Primera vez: elige su PIN. Cambiarlo después pasa por que el manager se lo quite.
       const nuevo = pinValido(body.nuevoPin);
       if (!nuevo) return jsonError(`Elige un PIN de ${PIN_MIN} a ${PIN_MAX} cifras, no todas iguales`, 400);
-      const r = ponerPin(negocio.plantilla, e.id, await hashClave(nuevo));
+      const r = ponerPin(negocio.plantilla, e.id, await hashClave(nuevo), nuevo.length);
       if (r.error) return jsonError(r.error, 400);
       await saveNegocio(slug, { plantilla: r.plantilla });
       await auditar(sesion, slug, "plantilla", `pin ${e.id}`);

@@ -46,6 +46,10 @@ sellos de golpe.
   mirar pantallas y tocar; no para probar que algo se guarda de un día para otro.
 - Dos personas a la vez pueden ver datos distintos si Vercel abre dos funciones.
 - `DATOS_DE_PRUEBA` no hace nada en producción (`VERCEL_ENV=production`).
+- **El PIN de toda la plantilla inventada es `1234`**, con un hash fijo en la semilla: un
+  PIN elegido en dev vive en el `/tmp` de UNA función y la siguiente petición puede caer en
+  otra que no lo tiene (la cookie lleva la huella del hash), y la caja lo pedía sin parar.
+  Para ver el «elige tu PIN», quitárselo a alguien desde Plantilla → Equipo.
 - En local, lo mismo con `preview_start como-dev` (`.claude/launch.json`).
 
 ## Lo que NUNCA se le da a dev

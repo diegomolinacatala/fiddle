@@ -37,6 +37,13 @@ const NOMBRES = [
 // verdad en una tienda que la estrene. Cada uno con su patrón, para que las
 // conclusiones tengan algo que decir.
 const DIAS_PLANTILLA = 14;
+// El PIN de TODOS en dev. Con hash FIJO (sal fija, solo aquí): cada función de
+// Vercel arranca con su propia copia de la semilla en /tmp, y un PIN elegido en
+// una no existe en las demás (ni la cookie, que lleva la huella del hash): la caja
+// pedía el PIN una y otra vez. Con el mismo hash en todas, entra en cualquiera.
+// Para ver el «elige tu PIN», el manager se lo quita a alguien desde Plantilla.
+export const PIN_DEV = "1234";
+const HASH_PIN_DEV = "scrypt$666964646c652d6465762d70696e2d31$873d56773dd6db6c471f7768a5f9e1e71ee22b8078301b872a090844999ec367";
 const QUIEN = {
   sebas: "sebas001",   // mañanas entre semana, el más rápido, estrena tarjetas
   andreina: "andre001", // tardes entre semana
@@ -191,11 +198,11 @@ export function generar(ahora = Date.now()) {
       config: {
         cartillas: tienda.cartillas,
         plantilla: [
-          { id: QUIEN.sebas, nombre: "Sebas", alta: alta(DIAS_PLANTILLA), baja: null },
-          { id: QUIEN.andreina, nombre: "Andreina", alta: alta(DIAS_PLANTILLA), baja: null },
-          { id: QUIEN.marta, nombre: "Marta", alta: alta(DIAS_PLANTILLA), baja: null },
-          { id: QUIEN.jorge, nombre: "Jorge", alta: alta(DIAS_PLANTILLA), baja: null },
-          { id: QUIEN.lucia, nombre: "Lucía", alta: alta(5), baja: null },
+          { id: QUIEN.sebas, nombre: "Sebas", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
+          { id: QUIEN.andreina, nombre: "Andreina", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
+          { id: QUIEN.marta, nombre: "Marta", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
+          { id: QUIEN.jorge, nombre: "Jorge", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
+          { id: QUIEN.lucia, nombre: "Lucía", alta: alta(5), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
         ],
       },
     },

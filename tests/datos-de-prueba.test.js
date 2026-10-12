@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { generar, semillaDe } from "@/lib/datosDePrueba";
+import { generar, semillaDe, PIN_DEV } from "@/lib/datosDePrueba";
 import { tramosDe, relojLocal } from "@/lib/horario";
 import { SEMILLAS } from "@/lib/negocios";
+import { comprobarClave } from "@/lib/claves";
+import { normalizarPlantilla } from "@/lib/plantilla";
 
 const ahora = Date.parse("2026-10-08T10:00:00Z");
 
@@ -24,6 +26,17 @@ describe("datos de prueba de dev", () => {
     const codigos = Object.values(a.clientes).map((c) => c.codigo);
     expect(new Set(codigos).size).toBe(codigos.length);
     expect(a.eventos.every((e) => Date.parse(e.ts) <= ahora)).toBe(true);
+  });
+
+  it("toda la plantilla entra con el mismo PIN, con un hash fijo que vale en cualquier función de Vercel", async () => {
+    const { plantilla } = generar(ahora).negocios.delicanteria.config;
+    const leida = normalizarPlantilla(plantilla);
+    expect(leida).toHaveLength(5);
+    for (const e of leida) {
+      expect(e.largoPin, e.nombre).toBe(PIN_DEV.length);
+      expect(await comprobarClave(PIN_DEV, e.pin), e.nombre).toBe(true);
+    }
+    expect(await comprobarClave("0000", leida[0].pin)).toBe(false);
   });
 
   it("trae la plantilla y las dos últimas semanas llevan nombre; lo de antes, no", () => {

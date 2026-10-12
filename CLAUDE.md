@@ -208,6 +208,10 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
   teclea, tras el descanso sí. Lleva la huella del PIN: **cambiar el PIN es quitárselo** desde
   Plantilla → Equipo («Quitar el PIN»), que invalida la cookie de todos sus móviles y la persona
   elige otro. Nadie puede leer un PIN. Cinco fallos seguidos, 15 minutos (`limitador.js`).
+  Con el hash se guarda `largoPin` (cuántas cifras): la caja entra sola al teclear la
+  última, sin botón (`QuienAtiende`). **En dev, el PIN de todos es `1234`** con hash fijo
+  en `datosDePrueba.js`: cada función de Vercel tiene su `/tmp`, y un PIN elegido en una
+  no existe en las demás (docs/ENTORNOS.md).
   `quien_ultimo` (90 días, sin firmar) solo propone «¿Sigues siendo Sebas?». Lo pide la caja y
   también `/w/<serial>` (el QR entra ahí directo desde la cámara). `/api/accion` lo exige por
   detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de alta: sin
