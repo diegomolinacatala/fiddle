@@ -289,7 +289,7 @@ Todo el panel en una petición.
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
   "metricas": { "total": 33, "activos": 11, "enRiesgo": 10, "porEstado": { "activo": 11, … },
                 "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
-                "instalados": 28, "tasaInstalacion": 85, "tasaVuelta": 79, "cadenciaMedia": 7.1 },
+                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79, "cadenciaMedia": 7.1 },
   "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
   "cohortes": [ { "mes": "2026-08", "altas": 5, "repiten": 3, "vivos": 2, "retencion": 40 } ],
   "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],

@@ -44,6 +44,9 @@ export const UMBRALES = {
   horasVisita: 3,
   cadenciaMin: 1,     // el ritmo más rápido que se mide: a diario
   riesgoMinDias: 7,   // nadie está en riesgo por faltar menos de una semana (cierres, puentes)
+  // Un pase que nadie guardó ni usó, pasado este rato, no es un cliente: es
+  // alguien que escaneó y se fue. Antes del plazo aún puede estar guardándolo.
+  descartadaDias: 1,
 };
 
 const dias = (desde, hasta) => (desde && hasta ? Math.max(0, (hasta - desde) / DIA) : null);
@@ -126,6 +129,8 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
   };
   // A quién le llega un aviso de la tienda: lo que cuentan Clientes y Avisos.
   perfil.avisable = perfil.contactable && !perfil.sinPromos;
+  // Ni en el teléfono ni en caja: no cuenta como cliente en las cifras (metricas).
+  perfil.descartada = !visitas && !perfil.instalado && (perfil.diasDesdeAlta ?? 0) >= UMBRALES.descartadaDias;
   perfil.estado = estadoDe(perfil);
   return perfil;
 }
@@ -138,6 +143,8 @@ export const ESTADOS = {
   riesgo:   { label: "En riesgo", icon: "alerta", color: "#c26b04", descripcion: "Lleva más tiempo del habitual sin venir." },
   dormido:  { label: "Inactivo", icon: "reloj", color: "#6b7280", descripcion: "Más de 60 días sin visitas." },
   perdido:  { label: "Perdido",  icon: "cerrar", color: "#b42318", descripcion: "Más de 120 días sin visitas." },
+  // Fuera de la escalera: no sale en el reparto ni en las cifras, solo en la lista.
+  descartada: { label: "Sin guardar", icon: "fantasma", color: "#a3a9b3", descripcion: "Sacó la tarjeta, pero ni la guardó en el teléfono ni la usó en caja. No cuenta como cliente." },
 };
 
 export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, ...v }));
@@ -148,6 +155,7 @@ export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, .
  * exigir ritmo todavía), y después el reloj.
  */
 export function estadoDe(p) {
+  if (p.descartada) return "descartada";
   if (!p.visitas) return "fantasma";
   if (p.diasDesdeAlta !== null && p.diasDesdeAlta <= UMBRALES.nuevoDias && p.visitas < UMBRALES.nuevoVisitas) {
     return "nuevo";
@@ -219,7 +227,8 @@ export const GRUPOS = {
     icon: "cartera",
     descripcion: "Tienen la tarjeta pero nunca la han usado en caja.",
     idea: "Enseña esta tarjeta en caja y empieza a sumar",
-    incluye: (p) => p.visitas === 0,
+    // Los que ni la guardaron no son un grupo al que escribir: no les llegaría nada.
+    incluye: (p) => p.visitas === 0 && !p.descartada,
   },
   campeones: {
     label: "Mejores clientes",
@@ -267,11 +276,18 @@ const pct = (parte, total) => (total ? Math.round((parte / total) * 100) : 0);
  * Las cifras de cabecera. `eventos` solo hace falta para contar visitas por
  * ventana de tiempo; todo lo demás sale del resumen que llevan los clientes.
  *
+ * Las tarjetas descartadas (ni guardadas ni usadas) NO entran en ninguna cifra:
+ * quien escaneó y se fue no es un cliente, y contarlo hundía la vuelta, la
+ * instalación y el reparto. Se cuentan aparte, en `descartadas`.
+ *
  * @param {object[]} perfiles  de perfilDe()
  * @param {object[]} eventos   [{tipo, ts}] del negocio
  * @param {object[]} clientes  filas crudas (para altas por fecha)
  */
-export function metricas(perfiles, eventos, clientes, ahora = Date.now()) {
+export function metricas(todos, eventos, clientesTodos, ahora = Date.now()) {
+  const perfiles = todos.filter((p) => !p.descartada);
+  const fuera = new Set(todos.filter((p) => p.descartada).map((p) => p.serial));
+  const clientes = clientesTodos.filter((c) => !fuera.has(c.serial));
   const visitas = soloVisitas(eventos);
   const enVentana = (lista, desdeDias, hastaDias = 0) =>
     lista.filter((e) => {
@@ -281,12 +297,13 @@ export function metricas(perfiles, eventos, clientes, ahora = Date.now()) {
 
   const total = perfiles.length;
   const porEstado = Object.fromEntries(
-    Object.keys(ESTADOS).map((k) => [k, perfiles.filter((p) => p.estado === k).length]),
+    Object.keys(ESTADOS).filter((k) => k !== "descartada").map((k) => [k, perfiles.filter((p) => p.estado === k).length]),
   );
   const cadencias = perfiles.map((p) => p.cadencia).filter((c) => c !== null && c > 0);
 
   return {
     total,
+    descartadas: fuera.size,
     porEstado,
     // Activo = viene a su ritmo. No es "vino en los últimos 30 días": quien pasa
     // una vez al trimestre y está en fecha también es un cliente vivo.
@@ -370,8 +387,9 @@ export function cohortes(clientes, perfiles, meses = 6, ahora = Date.now()) {
 
   return [...grupos.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
+    .filter(([, ps]) => ps.some((p) => p && !p.descartada))
     .map(([mes, ps]) => {
-      const dentro = ps.filter(Boolean);
+      const dentro = ps.filter((p) => p && !p.descartada);
       const vivos = dentro.filter((p) => ["activo", "nuevo"].includes(p.estado)).length;
       return {
         mes,

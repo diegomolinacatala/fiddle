@@ -95,6 +95,14 @@ describe("estadoDe: la escalera", () => {
     expect(estado({ visitas: 0, alta: 3 })).toBe("fantasma");
   });
 
+  it("quien ni lo guardó ni lo usó no es un cliente: descartada (pasado un día)", () => {
+    expect(estado({ visitas: 0, alta: 3, instalado: false })).toBe("descartada");
+    expect(estado({ visitas: 0, alta: 0.2, instalado: false })).toBe("fantasma"); // aún puede estar guardándolo
+    expect(estado({ visitas: 2, alta: 3, ultima: 1, instalado: false })).not.toBe("descartada"); // la usa sin Wallet (Android)
+    const p = perfilDe(cli({ visitas: 0, alta: 3, instalado: false }), NUBE, AHORA);
+    expect(GRUPOS.fantasmas.incluye(p)).toBe(false); // no hay a quién escribir
+  });
+
   it("al recién llegado no se le exige ritmo todavía", () => {
     expect(estado({ alta: 5, visitas: 1, ultima: 5 })).toBe("nuevo");
     // Pasados 30 días, o con costumbre ya hecha, deja de ser nuevo.
@@ -176,7 +184,8 @@ describe("métricas", () => {
     cli({ serial: "a", alta: 3, visitas: 1, ultima: 3 }),          // nuevo
     cli({ serial: "b", alta: 90, visitas: 20, ultima: 1 }),        // activo
     cli({ serial: "c", alta: 90, visitas: 6, ultima: 60, premios: 2 }), // frío
-    cli({ serial: "d", alta: 200, visitas: 0, instalado: false }), // fantasma sin instalar
+    cli({ serial: "d", alta: 200, visitas: 0, instalado: false }), // ni guardada ni usada: no cuenta
+    cli({ serial: "e", alta: 40, visitas: 3, ultima: 5, instalado: false }), // la usa sin Wallet
   ];
   const eventos = [
     { serial: "b", tipo: "sellar", ts: haceDias(1) },
@@ -192,15 +201,21 @@ describe("métricas", () => {
     expect(m.total).toBe(4);
   });
 
+  it("las tarjetas descartadas van aparte y no hunden las tasas", () => {
+    expect(m.descartadas).toBe(1);
+    expect(m.nuevos30).toBe(1); // `a`; `d` es de hace 200 días, pero tampoco contaría
+  });
+
   it("mide el embudo de instalación y la vuelta", () => {
     expect(m.instalados).toBe(3);
     expect(m.tasaInstalacion).toBe(75);
-    expect(m.repiten).toBe(2);      // b y c: `a` tiene una sola visita y `d` ninguna
-    expect(m.tasaVuelta).toBe(50);
+    expect(m.repiten).toBe(3);      // b, c y e: `a` tiene una sola visita
+    expect(m.tasaVuelta).toBe(75);
   });
 
-  it("el reparto por estado suma el total", () => {
+  it("el reparto por estado suma el total, sin las descartadas", () => {
     expect(Object.values(m.porEstado).reduce((a, b) => a + b, 0)).toBe(4);
+    expect(m.porEstado.descartada).toBeUndefined();
   });
 
   it("la tendencia aguanta el mes sin nada detrás", () => {

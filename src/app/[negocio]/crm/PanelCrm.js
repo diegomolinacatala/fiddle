@@ -2,19 +2,24 @@
 
 import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
-import CabeceraGestion from "../CabeceraGestion";
 import { serieVisitas, rejillaHoraria, tendencia, cadenciaTexto, GRUPOS } from "@/lib/crm";
 import { ultimaVezTexto, fechaHoraTexto, zonaDe } from "@/lib/actividad";
-import { observaciones, enlaceDeAccion } from "@/lib/observaciones";
+import { observaciones, enlaceDeAccion, suficiencia } from "@/lib/observaciones";
 import { csvClientes } from "@/lib/exportar";
-import { Cifra, Barras, Rejilla, Reparto, Chip } from "./piezas";
+import { Cifra, Barras, Rejilla, Reparto, Chip, FaltanDatos } from "./piezas";
 import Ficha from "./Ficha";
 import Exportar, { bajarCsv } from "./Exportar";
 import Actividad from "./Actividad";
+import Solapas from "../Solapas";
+import { PESTANAS } from "./pestanas";
 import { saldoCorto } from "@/lib/cartillas";
-import { C, pagina, panel, campo, h2, botonPequeno, chipCodigo, solapa } from "@/app/ui";
+import { C, panel, campo, h2, botonPequeno, chipCodigo } from "@/app/ui";
 
 const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
+// Filtro de la lista que no es un grupo del CRM: las tarjetas que nadie guardó
+// ni usó (lib/crm.js, `descartada`). No son clientes: fuera de "Todos" salvo
+// que se busquen por código o nombre.
+const DESCARTADAS = "descartadas";
 
 // ============================================================================
 // CRM DE UNA TIENDA
@@ -34,7 +39,6 @@ const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 // local (a qué hora viene la gente) se hacen aquí, con el reloj de la tienda.
 // ============================================================================
 
-const PESTANAS = [["resumen", "Resumen"], ["grupos", "Grupos"], ["clientes", "Clientes"], ["actividad", "Actividad"]];
 const ORDENES = {
   reciente: { label: "Última visita", cmp: (a, b) => (a.perfil.diasSinVenir ?? 1e9) - (b.perfil.diasSinVenir ?? 1e9) },
   visitas: { label: "Más visitas", cmp: (a, b) => b.perfil.visitas - a.perfil.visitas },
@@ -71,14 +75,15 @@ export default function PanelCrm({ slug, inicial }) {
   // Estas dos dependen de la hora del navegador, que es la de la tienda.
   const serie = useMemo(() => (d ? serieVisitas(d.eventos, 30) : []), [d]);
   const rejilla = useMemo(() => (d ? rejillaHoraria(d.eventos) : []), [d]);
-  const ideas = useMemo(() => (d ? observaciones({ rejilla, horario: d.negocio.horario, metricas: d.metricas, grupos: d.grupos }) : []), [d, rejilla]);
+  const hay = useMemo(() => suficiencia({ eventos: d.eventos, horario: d.negocio.horario }), [d]);
+  const ideas = useMemo(() => (d ? observaciones({ rejilla, horario: d.negocio.horario, metricas: d.metricas, grupos: d.grupos, suficiencia: hay }) : []), [d, rejilla, hay]);
   const [grupoVisto, setGrupoVisto] = useState(null);
 
   const lista = useMemo(() => {
     if (!d) return [];
     const q = busca.trim().toLowerCase();
     return d.clientes
-      .filter((c) => !grupo || GRUPOS[grupo]?.incluye(c.perfil))
+      .filter((c) => (grupo === DESCARTADAS ? c.perfil.descartada : (!grupo || GRUPOS[grupo]?.incluye(c.perfil)) && (q || !c.perfil.descartada)))
       .filter((c) => !q || (c.nombre || "").toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q))
       .sort(ORDENES[orden].cmp);
   }, [d, busca, orden, grupo]);
@@ -88,6 +93,7 @@ export default function PanelCrm({ slug, inicial }) {
   const accent = n.tema.accent;
   const zona = zonaDe(n);
   const grupoActivo = grupos.find((g) => g.key === grupo);
+  const enLaEscalera = estados.filter((e) => e.key !== "descartada");
 
   // La hoja se arma AQUÍ, con la lista que se ve: lo que hay en pantalla es lo que baja.
   function descargar() {
@@ -95,22 +101,14 @@ export default function PanelCrm({ slug, inicial }) {
     bajarCsv({ csv, fichero: `${slug}-${grupo || "clientes"}.csv`, slug, cuantos: lista.length, que: grupo || "todos" });
   }
   const queContiene = [
-    grupoActivo ? `Los de «${grupoActivo.label}»` : "Todos tus clientes",
+    grupoActivo ? `Los de «${grupoActivo.label}»` : grupo === DESCARTADAS ? "Las tarjetas sin guardar ni usar" : "Todos tus clientes",
     busca.trim() && `que coinciden con «${busca.trim()}»`,
   ].filter(Boolean).join(" ");
 
   return (
-    <main style={pagina}>
-      <div style={{ width: "min(1100px, 100%)" }}>
-        <CabeceraGestion negocio={n} slug={slug} activa="crm" />
+    <>
 
-        <div style={{ display: "flex", gap: 8, margin: "20px 0 16px", flexWrap: "wrap", paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
-          {PESTANAS.map(([id, texto]) => (
-            <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id, accent)}>
-              {texto}
-            </button>
-          ))}
-        </div>
+        <Solapas pestanas={PESTANAS} activa={pestana} accent={accent} onCambiar={setPestana} />
 
         {/* ------------------------------------------------------ resumen */}
         {pestana === "resumen" && (
@@ -126,7 +124,7 @@ export default function PanelCrm({ slug, inicial }) {
 
             <section style={panel}>
               <h2 style={h2}>Estado de los clientes</h2>
-              <Reparto porEstado={m.porEstado} estados={estados} total={m.total} />
+              <Reparto porEstado={m.porEstado} estados={enLaEscalera} total={m.total} />
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 18, fontSize: 13, color: C.suave }}>
                 <span>Vuelven una segunda vez: <strong style={{ color: C.texto }}>{m.tasaVuelta}%</strong></span>
                 <span>Instalan el pase: <strong style={{ color: C.texto }}>{m.tasaInstalacion}%</strong></span>
@@ -138,6 +136,13 @@ export default function PanelCrm({ slug, inicial }) {
                   Solo el {m.tasaInstalacion}% ha añadido la tarjeta al teléfono; al resto no le llegan los avisos.
                 </p>
               )}
+              {m.descartadas > 0 && (
+                <p style={{ fontSize: 12.5, color: C.tenue, margin: "14px 0 0" }}>
+                  Aparte, {m.descartadas} tarjeta{m.descartadas === 1 ? "" : "s"} que nadie guardó en el teléfono ni usó en caja: no
+                  cuenta{m.descartadas === 1 ? "" : "n"} como cliente{m.descartadas === 1 ? "" : "s"}.{" "}
+                  <button type="button" onClick={() => { setGrupo(DESCARTADAS); setPestana("clientes"); }} style={enlaceSuave}>Verlas</button>
+                </p>
+              )}
             </section>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 18 }}>
@@ -147,7 +152,7 @@ export default function PanelCrm({ slug, inicial }) {
               </section>
               <section style={panel}>
                 <h2 style={h2}>A qué horas viene la gente</h2>
-                <Rejilla rejilla={rejilla} accent={accent} />
+                {hay.suficiente ? <Rejilla rejilla={rejilla} accent={accent} /> : <FaltanDatos s={hay} accent={accent} />}
               </section>
             </div>
 
@@ -170,9 +175,11 @@ export default function PanelCrm({ slug, inicial }) {
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 12, color: C.tenue, margin: "12px 0 0" }}>
-                  Salen de las visitas de los últimos meses y del horario de la tienda. Son orientativas: mira la rejilla de arriba.
-                </p>
+                {hay.suficiente && (
+                  <p style={{ fontSize: 12, color: C.tenue, margin: "12px 0 0" }}>
+                    Salen de las visitas de los últimos meses y del horario de la tienda. Son orientativas: mira la rejilla de arriba.
+                  </p>
+                )}
               </section>
             )}
 
@@ -249,12 +256,16 @@ export default function PanelCrm({ slug, inicial }) {
               <select value={grupo} onChange={(e) => setGrupo(e.target.value)} aria-label="Grupo" style={{ ...campo, width: "auto" }}>
                 <option value="">Todos los grupos</option>
                 {grupos.map((g) => <option key={g.key} value={g.key} disabled={!g.total}>{g.label} · {g.total}</option>)}
+                {m.descartadas > 0 && <option value={DESCARTADAS}>Sin guardar ni usar · {m.descartadas}</option>}
               </select>
               <select value={orden} onChange={(e) => setOrden(e.target.value)} aria-label="Orden" style={{ ...campo, width: "auto" }}>
                 {Object.entries(ORDENES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
               <Exportar cuantos={lista.length} queContiene={queContiene} accent={accent} onDescargar={descargar} />
             </div>
+            {grupo === DESCARTADAS && (
+              <p style={{ ...nota, marginBottom: 14 }}>{estados.find((e) => e.key === "descartada")?.descripcion}</p>
+            )}
             {grupoActivo && (
               <p style={{ ...nota, marginBottom: 14 }}>
                 {grupoActivo.descripcion} ¿Quieres decirles algo? <a href={`/${slug}/avisos`} style={{ color: accent, fontWeight: 600 }}>Avisos</a>.
@@ -268,7 +279,7 @@ export default function PanelCrm({ slug, inicial }) {
                 </thead>
                 <tbody>
                   {lista.slice(0, mostrar).map((c) => (
-                    <tr key={c.serial} onClick={() => setVerFicha(c.serial)} style={{ cursor: "pointer" }}>
+                    <tr key={c.serial} onClick={() => setVerFicha(c.serial)} style={{ cursor: "pointer", opacity: c.perfil.descartada ? 0.6 : 1 }}>
                       <td style={td}><span style={chipCodigo(accent)}>{c.codigo}</span></td>
                       <td style={td}>
                         {c.nombre || <span style={{ color: C.tenue }}>sin nombre</span>}
@@ -300,6 +311,12 @@ export default function PanelCrm({ slug, inicial }) {
                   {busca || grupo ? "Ningún cliente con esa búsqueda." : "Todavía no hay clientes."}
                 </p>
               )}
+              {!grupo && !busca.trim() && m.descartadas > 0 && (
+                <p style={{ fontSize: 12.5, color: C.tenue, margin: "12px 0 0" }}>
+                  No salen {m.descartadas} tarjeta{m.descartadas === 1 ? "" : "s"} sin guardar ni usar.{" "}
+                  <button type="button" onClick={() => setGrupo(DESCARTADAS)} style={enlaceSuave}>Verlas</button>
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -317,8 +334,7 @@ export default function PanelCrm({ slug, inicial }) {
           />
         )}
         {msg && <div role="status" style={toast}>{msg}</div>}
-      </div>
-    </main>
+    </>
   );
 }
 
@@ -374,6 +390,7 @@ const botonPrimarioEnlace = (accent) => ({
   display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 10, background: accent, color: "#fff",
   fontWeight: 600, fontSize: 14, textDecoration: "none",
 });
+const enlaceSuave = { background: "none", border: 0, padding: 0, font: "inherit", color: C.suave, textDecoration: "underline", cursor: "pointer" };
 const marcaFila = { display: "inline-flex", verticalAlign: "-2px", marginLeft: 6, color: C.suave };
 const th = {
   textAlign: "left", fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase",

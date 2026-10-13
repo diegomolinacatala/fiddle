@@ -2,6 +2,7 @@
 
 import Icono from "@/app/Icono";
 import { C, panel } from "@/app/ui";
+import { textoFalta } from "@/lib/observaciones";
 
 // ============================================================================
 // PIEZAS DEL PANEL — los trozos que se repiten en el CRM
@@ -118,6 +119,37 @@ export function Rejilla({ rejilla, accent }) {
           </tr>
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/**
+ * En vez de la rejilla mientras no hay con qué (lib/observaciones.js, `suficiencia`):
+ * la semana, con los días que ya se han visto llenos y los que faltan vacíos. Así
+ * se ve que se va llenando, no un "vuelve más tarde".
+ */
+export function FaltanDatos({ s, accent }) {
+  const estado = (x) => (!x.abre ? "cerrado" : x.listo ? "listo" : x.fechas ? "a medias" : "sin ver");
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {s.dias.map((x) => (
+          <span key={x.d} title={`${DIAS[x.d]}: ${estado(x)}`} style={{
+            width: 32, height: 32, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, fontWeight: 650,
+            background: !x.abre ? "transparent" : x.listo || x.fechas ? accent : C.borde,
+            opacity: x.abre && !x.listo && x.fechas ? 0.4 : 1,
+            color: x.abre && (x.listo || x.fechas) ? "#fff" : C.tenue,
+            border: x.abre ? "none" : `1px dashed ${C.bordeFuerte}`,
+          }}>
+            {DIAS[x.d]}
+          </span>
+        ))}
+      </div>
+      <p style={{ fontSize: 14, fontWeight: 600, margin: "12px 0 4px" }}>Aún no hay datos suficientes</p>
+      <p style={{ fontSize: 13, color: C.suave, margin: 0 }}>
+        {textoFalta(s)} Con una semana suelta, un día raro parecería la costumbre de la tienda.
+      </p>
     </div>
   );
 }
