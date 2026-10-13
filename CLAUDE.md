@@ -165,6 +165,10 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
 - **Manager y CRM cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
   cliente) y cada ruta tiene `loading.js` con su esqueleto (`app/Esqueleto.js`).
   Nada de pantallas que arrancan vacías y piden sus datos con `fetch`.
+- **La cabecera del dueño vive en el layout** (`[negocio]/MarcoGestion.js`): marca, nombre y
+  pestañas no se vuelven a pintar al cambiar de pestaña, y `loading.js` solo pone en gris lo
+  de debajo. Las pestañas de dentro (`Solapas`) salen ya con su texto en el loading. Lo que
+  cambie en Tienda (nombre, tema) sube con `useGestion().actualizar`.
 - **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
   la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
   siendo PURA y sin imports del servidor.
@@ -346,6 +350,15 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
   medias y no se enseña (`historialCompletoDesde`). Su hoja no lleva nombres.
 
+- **Una tarjeta que nadie guardó ni usó no es un cliente** (`perfil.descartada`: sin visitas,
+  sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto, las tasas y las
+  cohortes la dejan fuera y la cuentan aparte (`descartadas`); en la lista solo sale si se
+  pide («Sin guardar ni usar») o se busca. Nunca se borra por esto.
+- **Sin datos, ni rejilla ni patrones** (`suficiencia` en `lib/observaciones.js`): cada día
+  que abre la tienda visto con visitas 2 veces (o 4 semanas abierto sin nadie) y 30 visitas.
+  Los días cerrados del horario no cuentan. Hasta entonces la pantalla dice qué falta; los
+  grupos (premios, a punto…) sí salen, que son hechos, no patrones.
+
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.
 - `ESTADOS` son EXCLUYENTES (cada cliente está en uno) y `GRUPOS` SE SOLAPAN a
@@ -442,7 +455,9 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan al crear la tienda
   en `/admin`, se enseñan UNA vez y se cambian desde la ficha de la tienda en `/admin`
   o, la de la caja, desde el manager. La única vez que las elige alguien es la
-  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja.
+  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja, cada una
+  escrita dos veces. Mínimo 10 caracteres y sin reglas de mayúsculas o números a propósito:
+  se aconseja una frase («un café por favor»), que es más larga y más fácil de recordar.
 - **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
   detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
   desde el correo del admin: no hay proveedor de correo.
