@@ -12,7 +12,11 @@ import { PALETA as P } from "./paleta";
 // Movimiento: solo opacidad y desplazamiento. El texto de la portada no se anima:
 // tiene que verse aunque el navegador no llegue a correr ni una animación. Las
 // entradas al hacer scroll van con animation-timeline: donde no existe, todo se
-// ve desde el principio; y con «reducir movimiento», nada se mueve.
+// ve desde el principio; y con «reducir movimiento», nada se mueve. Los precios,
+// no: entran una vez y por tiempo (Aparece.js), sin quedarse a medias.
+//
+// Lo que solo es del móvil (menú, filas que se deslizan, barra de abajo) está en
+// estiloMovil.js; aquí, lo de todas las pantallas.
 // ============================================================================
 
 // "#rrggbb" + alfa, para sombras y líneas.
@@ -23,12 +27,16 @@ export const css = `
   --fondo:${P.papel}; --superficie:${P.superficie}; --tinta:${P.espresso}; --tinta-2:${P.vison}; --tinta-3:${P.tintaSuave};
   --linea:${alfa(P.espresso, 0.11)}; --marca:${P.verde}; --marca-encima:${P.verdeEncima}; --acento:${P.camel}; --avena:${P.avena};
   --claro:${P.papel}; --claro-2:${alfa(P.papel, 0.74)}; --claro-linea:${alfa(P.papel, 0.14)};
-  --ancho:1120px; --margen:clamp(20px,4vw,40px); --curva:cubic-bezier(.16,1,.3,1);
+  --ancho:1120px; --curva:cubic-bezier(.16,1,.3,1);
+  /* Con viewport-fit=cover (layout.js), en horizontal el notch se come los lados. */
+  --margen:max(clamp(20px,4vw,40px),env(safe-area-inset-left),env(safe-area-inset-right));
   --apple:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
   min-height:100dvh; background:var(--fondo); color:var(--tinta); color-scheme:light;
   font-family:var(--fuente-web),system-ui,-apple-system,"Segoe UI",sans-serif;
   font-size:16px; line-height:1.5; overflow-x:clip; -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%; interpolate-size:allow-keywords;
 }
+.home button{font:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 body:has(.home){background:${P.papel}}
 @media (prefers-reduced-motion:no-preference){html:has(.home){scroll-behavior:smooth}}
 .home [id]{scroll-margin-top:76px}
@@ -59,7 +67,8 @@ body:has(.home){background:${P.papel}}
 .entrar::before{content:"";position:absolute;inset:-4px}
 @media (hover:hover){.entrar:hover{background:var(--marca-encima)}}
 .entrar:active{transform:scale(.97)}
-@media (max-width:719px){.solo-ancho{display:none!important}}
+/* Lo del móvil (estiloMovil.js) no existe en pantalla ancha. */
+.menu,.barra,.indicador{display:none}
 
 /* ---------- comunes ---------- */
 .punto{display:inline-block;width:.19em;height:.19em;margin-left:.07em;border-radius:50%;background:var(--acento);vertical-align:baseline}
@@ -111,12 +120,29 @@ body:has(.home){background:${P.papel}}
 .movil-mas{display:inline-flex;align-items:center;justify-content:center;gap:3px;width:28px;height:28px;border-radius:50%;background:rgba(0,122,255,.12)}
 .movil-mas i{width:4px;height:4px;border-radius:50%;background:currentColor}
 .movil-tarjetas{position:relative;flex:1}
-.movil-tarjeta{position:absolute;inset:0 0 auto 0;transition:transform .65s var(--curva),opacity .65s var(--curva)}
+.movil-tarjeta{position:absolute;inset:0 0 auto 0;transition:transform .55s var(--curva),opacity .55s var(--curva)}
 .movil-tarjeta.activa{transform:none;opacity:1}
 .movil-tarjeta.sale{transform:translateX(-112%);opacity:0}
 /* Las que esperan se colocan a la derecha sin animar: entran desde ahí. */
 .movil-tarjeta.espera{transform:translateX(112%);opacity:0;visibility:hidden;transition:none}
+/* Hacia atrás, al revés: la nueva viene de la izquierda y la que sale se va por la derecha. */
+.atras > .movil-tarjeta.sale{transform:translateX(112%)}
+.atras > .movil-tarjeta.espera{transform:translateX(-112%)}
 .movil img{pointer-events:none;-webkit-user-drag:none}
+/* Las flechas de los lados: casi no se ven hasta que se buscan (el móvil manda).
+   Centradas en el cuerpo del teléfono (662 px de alto). */
+.movil-flecha{position:absolute;z-index:4;top:331px;translate:0 -50%;width:44px;height:44px;display:grid;place-items:center;
+  padding:0;border:0;border-radius:50%;background:transparent;color:var(--tinta-2);opacity:.38;cursor:pointer;
+  transition:opacity .2s,background-color .2s,transform .15s}
+.movil-flecha-antes{left:-62px}
+.movil-flecha-antes svg{rotate:180deg}
+.movil-flecha-despues{right:-62px}
+@media (hover:hover){
+  .movil:hover .movil-flecha{opacity:.6}
+  .movil .movil-flecha:hover{opacity:1;background:${alfa(P.espresso, 0.06)}}
+}
+.movil-flecha:focus-visible{opacity:1}
+.movil-flecha:active{transform:scale(.9);opacity:1}
 .movil-qr{display:grid;justify-items:center;gap:8px;padding:16px 18px 18px}
 .movil-qr img{padding:4px;background:#fff;border-radius:10px}
 .movil-qr span{font-size:13px;font-weight:600;letter-spacing:.18em;opacity:.75}
@@ -132,8 +158,20 @@ body:has(.home){background:${P.papel}}
 .movil-pausa{margin-left:10px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;cursor:pointer;
   border:1px solid ${alfa(P.espresso, 0.18)};background:none;color:var(--tinta-2)}
 @media (hover:hover){.movil-pausa:hover{color:var(--tinta);border-color:${alfa(P.espresso, 0.32)}}}
-@media (max-width:379px){.movil{zoom:.88}}
-@media (max-width:339px){.movil{zoom:.8}}
+
+/* la cinta de tarjetitas entre secciones (Cinta.js, Desfile.js): rellena el hueco
+   que antes era solo margen, así que lo de alrededor se aprieta. */
+.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:10px 0 30px;cursor:default;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.cinta-pista{display:flex;width:max-content}
+.cinta-tanda{display:flex;gap:var(--hueco);padding-right:var(--hueco)}
+.cinta-tarjeta{flex-shrink:0;width:300px;zoom:.62}
+.cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important}
+.portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
+.cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
+.bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
+@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.52}}
 
 /* un aviso de la pantalla de bloqueo */
 .aviso{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;align-items:center;padding:11px 14px 12px 11px;
@@ -264,6 +302,23 @@ body:has(.home){background:${P.papel}}
 .plan-lista svg{margin-top:1px;color:var(--acento)}
 .plan-destacado .plan-lista svg{color:var(--avena)}
 .plan .boton{width:100%}
+/* La entrada de los precios (Aparece.js): cada tarjeta sube una vez, la cifra sale
+   de debajo de su línea y la lista se escribe de arriba abajo. Nunca transparente
+   a medias: el desplazamiento va sin opacidad y lo poco que se funde, se funde
+   deprisa y por tiempo. --i es la tarjeta, --j la línea. */
+.plan-precio{overflow:hidden;padding-bottom:4px}
+@media (prefers-reduced-motion:no-preference){
+  [data-aparece=espera] .plan{transform:translateY(44px)}
+  [data-aparece=espera] .plan-precio > *{transform:translateY(110%)}
+  [data-aparece=espera] .plan-lista li{opacity:0;transform:translateX(-10px)}
+  [data-aparece=espera] .plan-etiqueta{opacity:0;transform:scale(.8)}
+  [data-aparece=visto] .plan{transition:transform 1.1s var(--curva) calc(var(--i) * 120ms)}
+  [data-aparece=visto] .plan-precio > *{transition:transform .9s var(--curva) calc(var(--i) * 120ms + 180ms)}
+  [data-aparece=visto] .plan-precio > :last-child{transition-delay:calc(var(--i) * 120ms + 260ms)}
+  [data-aparece=visto] .plan-lista li{transition:opacity .35s ease-out,transform .6s var(--curva);
+    transition-delay:calc(var(--i) * 120ms + 340ms + var(--j) * 55ms)}
+  [data-aparece=visto] .plan-etiqueta{transition:opacity .3s,transform .5s cubic-bezier(.34,1.56,.64,1);transition-delay:.75s}
+}
 .planes-nota{margin-top:28px;text-align:center;color:var(--tinta-2)}
 .planes-nota a{font-weight:600;color:var(--marca);text-decoration-thickness:1px;text-underline-offset:3px}
 
@@ -277,6 +332,11 @@ body:has(.home){background:${P.papel}}
 .pregunta[open] summary svg{rotate:45deg}
 @media (hover:hover){.pregunta summary:hover svg{color:var(--tinta)}}
 .pregunta p{padding:0 44px 24px 0;color:var(--tinta-2);line-height:1.6;max-width:62ch}
+/* Abrir y cerrar sin saltos donde se puede animar hasta «auto»; donde no, como siempre. */
+@media (prefers-reduced-motion:no-preference){
+  .pregunta::details-content{block-size:0;overflow:hidden;transition:block-size .32s var(--curva),content-visibility .32s allow-discrete}
+  .pregunta[open]::details-content{block-size:auto}
+}
 
 /* ---------- contacto ---------- */
 .contacto-dentro{display:grid;grid-template-columns:minmax(0,1fr);gap:44px;align-items:center}
@@ -331,6 +391,13 @@ body:has(.home){background:${P.papel}}
     .cabecera{animation:borde linear both;animation-timeline:scroll(root);animation-range:0 120px}
   }
 }
+@media (prefers-reduced-motion:no-preference){
+  .cinta-pista.corre{animation:cinta var(--vuelta) linear infinite}
+  .cinta-pista.quieta{animation-play-state:paused}
+}
+@media (prefers-reduced-motion:no-preference) and (hover:hover){.cinta:hover .cinta-pista{animation-play-state:paused}}
+/* Una tanda de las --tandas que lleva la pista (Desfile.js). */
+@keyframes cinta{to{transform:translate3d(calc(-100% / var(--tandas)),0,0)}}
 @media (prefers-reduced-motion:reduce){.movil-tarjeta{transition:none}}
 @keyframes sube{from{opacity:0;transform:translateY(36px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes llega{from{opacity:0;transform:translateY(-16px) scale(.94)}to{opacity:1;transform:none}}

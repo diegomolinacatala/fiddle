@@ -31,7 +31,9 @@ export const metadata = {
   },
 };
 
-export const viewport = { themeColor: PALETA.papel };
+// viewportFit cover: la barra de WhatsApp del móvil se apoya en el borde de abajo
+// y respeta la raya del iPhone con env(safe-area-inset-bottom), que sin esto vale 0.
+export const viewport = { themeColor: PALETA.papel, viewportFit: "cover" };
 
 export default function LayoutHome({ children }) {
   return <div className={geist.variable}>{children}</div>;

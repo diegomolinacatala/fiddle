@@ -544,9 +544,19 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   los números» están copiadas del Resumen: si cambian allí, se cambian aquí.
 - **Las tarjetas de ejemplo son de verdad** (`demo.js`): tiendas inventadas con un estilo
   de partida, pintadas con `CaraDelPase`, y el aviso sale de `camposDelPase`. Nunca un
-  kit de marca ni una tienda real. El móvil de la portada va pasando una por cosa que
-  sabe hacer (`CARRUSEL`; quién se ve lo decide `Carrusel.js`). Una novedad del pase que
-  se quiera enseñar = una entrada ahí. «● Abierto hasta…» lo escribe `estadoParaPase`.
+  kit de marca ni una tienda real. Salen de UN catálogo (`DISENOS`, 14-10-2026): cada una
+  con su paleta (NO la de fiddle: se enseña la variedad) y todas «Tu cafetería», nunca un
+  nombre inventado que parezca un cliente. El móvil de la portada pasa una cada 2,2 s
+  (`CARRUSEL`; quién se ve lo decide `Carrusel.js`) y las dos cintas de tarjetitas que
+  separan secciones (`CINTAS`, `Cinta.js`) no repiten diseño entre sí. Una novedad del
+  pase que se quiera enseñar = una entrada en `DISENOS`. «● Abierto hasta…» lo escribe
+  `estadoParaPase`. Un test fija el contraste de cada una.
+- **En el móvil es otra página** (`estiloMovil.js`, `CONSULTA_MOVIL`: hasta 759 px y el
+  móvil en horizontal): menú desplegable (`Menu.js`), pasos, panel y precios en filas que
+  se deslizan con pestañas o puntos (`Indicador.js`) y WhatsApp siempre abajo
+  (`BarraMovil.js`). Lo que se diga en /home se mira a 320, 375 y 430 px y en horizontal.
+- **Los precios entran por tiempo, no con el scroll** (`Aparece.js`): con la entrada de
+  `.revela` (opacidad atada al scroll) la tarjeta clara se quedaba sucia a medio bajar.
 - **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
   mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` («Verde y
   espresso» desde el 13-10-2026: verde botella para la marca y camel, avena, visón y espresso,
