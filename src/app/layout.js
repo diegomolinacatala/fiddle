@@ -1,8 +1,8 @@
 import { C } from "./ui";
 
 export const metadata = {
-  title: "Sellos",
-  description: "Tarjetas de fidelización en Wallet — multi-negocio",
+  title: "fiddle",
+  description: "Tarjetas de fidelización en Apple Wallet y Android",
 };
 
 export const viewport = { width: "device-width", initialScale: 1 };
