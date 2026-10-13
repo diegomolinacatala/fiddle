@@ -84,22 +84,3 @@ export const CARRUSEL = [
 
 /** La diapositiva hecha tienda + cliente + línea de estado. */
 export const ejemploDe = (d) => ejemplo(d.tienda, d.sellos, { sellos2: d.sellos2, estado: d.estado });
-
-// «Con tu marca»: tres tiendas distintas, cada una con lo suyo.
-export const MUESTRARIO = [
-  { ...CAFETERIA, sellos: 5 },
-  {
-    slug: "tu-obrador",
-    nombre: "Tu obrador",
-    premio: "croissant gratis",
-    tema: { estilo: "panaderia", forma: "redondeado", cardBg: P.salviaClara, ink: P.carbon, accent: P.ebano },
-    sellos: 3,
-  },
-  {
-    slug: "tu-tostadero",
-    nombre: "Tu tostadero",
-    premio: "bolsa de café",
-    tema: { estilo: "coffee", marca: "grano", cardBg: P.carbon, ink: P.papel, accent: P.ebano, detalle: P.salvia },
-    sellos: 6,
-  },
-];

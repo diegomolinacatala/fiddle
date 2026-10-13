@@ -1,20 +1,22 @@
 import QRCode from "qrcode";
-import CaraDelPase from "@/app/CaraDelPase";
 import Icono from "@/app/Icono";
 import { LogoApple } from "@/app/LogoTienda";
 import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { appUrl } from "@/lib/url";
 import Telefono, { Aviso } from "./Telefono";
+import Panel from "./Panel";
+import Correo from "./Correo";
 import LogoFiddle from "@/app/LogoFiddle";
-import { ejemplo, avisoDe, CAFETERIA, MUESTRARIO } from "./demo";
+import { ejemplo, avisoDe, CAFETERIA } from "./demo";
 import { PALETA } from "./paleta";
-import { PLANES, TELEFONO_VISIBLE, CORREO, enlaceWhatsApp, enlaceCorreo, mensajeDePlan } from "./datos";
+import { PLANES, TELEFONO_VISIBLE, CORREO, enlaceWhatsApp, mensajeDePlan } from "./datos";
 import { css } from "./estilo";
 
 // ============================================================================
 // LA WEB DE FIDDLE (/home)
 // ----------------------------------------------------------------------------
-// Lo que se le enseña a una cafetería que aún no nos conoce: qué es, cómo va,
+// Lo que se le enseña a una cafetería que aún no nos conoce, de menos a más: qué
+// es (portada), que va rápido (Cero fricción), lo que ve el dueño (el panel),
 // cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
 // «Entrar» arriba a la derecha (y al pie).
 //
@@ -44,6 +46,7 @@ export default async function Home() {
           </a>
           <nav className="cabecera-nav" aria-label="Secciones">
             <a href="#como-funciona" className="solo-ancho">Cómo funciona</a>
+            <a href="#panel" className="solo-ancho">El panel</a>
             <a href="#precios">Precios</a>
             <a href="#contacto" className="solo-ancho">Contacto</a>
           </nav>
@@ -77,9 +80,9 @@ export default async function Home() {
         </section>
 
         <section id="como-funciona" className="bloque">
-          <Encabezado titulo="Así de sencillo">
-            Tus clientes no instalan nada. La tarjeta se guarda en la cartera del móvil, junto a sus
-            entradas y sus billetes de avión.
+          <Encabezado titulo="Cero fricción">
+            Una tarjeta digital suena a apps que instalar, registros y colas en caja. Con fiddle no hay
+            nada de eso: cada paso va en segundos.
           </Encabezado>
 
           <ol className="pasos">
@@ -91,9 +94,9 @@ export default async function Home() {
                   <span>Escanea y guarda tu tarjeta</span>
                 </div>
               </div>
-              <span className="paso-numero">1</span>
-              <h3>Escanean tu QR</h3>
-              <p>Está en tu mostrador. Con la cámara del móvil, sin descargar nada, y la tarjeta queda guardada.</p>
+              <span className="paso-dato">0 apps</span>
+              <h3>Escanean y ya la tienen</h3>
+              <p>Con la cámara del móvil, sin descargar nada ni crearse una cuenta. La tarjeta se guarda en su móvil al momento.</p>
             </li>
 
             <li className="paso revela">
@@ -109,9 +112,9 @@ export default async function Home() {
                   </span>
                 </div>
               </div>
-              <span className="paso-numero">2</span>
+              <span className="paso-dato">1 toque</span>
               <h3>Sumas el sello</h3>
-              <p>Desde la caja, que es el móvil de la tienda: escaneas su tarjeta y un toque.</p>
+              <p>Escaneas su tarjeta con el móvil de la tienda y tocas una vez. La cola no se para.</p>
             </li>
 
             <li className="paso revela">
@@ -122,29 +125,32 @@ export default async function Home() {
                   <Aviso negocio={antes.negocio} texto={avisoDe(antes)} cuando="ayer" className="aviso-viejo" />
                 </div>
               </div>
-              <span className="paso-numero">3</span>
+              <span className="paso-dato">Al instante</span>
               <h3>Les llega al móvil</h3>
-              <p>Al momento ven en su móvil cuánto les falta para el premio. Y vuelven.</p>
+              <p>La tarjeta se pone al día sola y ven cuánto les falta para el premio. Y vuelven.</p>
             </li>
           </ol>
+
+          <div className="montaje revela">
+            <span className="montaje-icono" aria-hidden="true"><Icono nombre="check" tam={22} grosor={2.4} /></span>
+            <p>
+              <strong>Y el montaje corre de nuestra cuenta.</strong> Vamos a tu cafetería, preparamos tu
+              tarjeta y te dejamos el QR en el mostrador. Tú no configuras nada.
+            </p>
+          </div>
         </section>
 
-        <section className="bloque oscuro fondo-nogal" aria-labelledby="titulo-marca">
-          <div className="marca-dentro">
-            <Encabezado id="titulo-marca" titulo="Con tu marca">
-              Tu logo, tus colores y tu premio. Lo cambias cuando quieras desde tu panel y la tarjeta se pone
-              al día sola en el móvil de cada cliente.
+        <section id="panel" className="bloque oscuro fondo-nogal" aria-labelledby="titulo-panel">
+          <div className="panel-dentro">
+            <Encabezado id="titulo-panel" titulo="Sabes quién vuelve">
+              Desde tu panel ves quién viene, cada cuánto y quién se te está escapando. Y desde ahí mismo
+              les escribes.
             </Encabezado>
-            <div className="mazo">
-              {MUESTRARIO.map((m) => {
-                const e = ejemplo(m, m.sellos);
-                return (
-                  <div key={m.slug} className="mazo-carta revela">
-                    <CaraDelPase cliente={e.cliente} negocio={e.negocio} />
-                  </div>
-                );
-              })}
-            </div>
+            <Panel />
+            <p className="panel-nota">
+              Las estadísticas, los grupos y el aviso al pasar cerca van en el plan Completo.{" "}
+              <a href="#precios">Ver precios</a>
+            </p>
           </div>
         </section>
 
@@ -223,15 +229,14 @@ export default async function Home() {
                 </span>
                 <Flecha />
               </a>
-              <a href={enlaceCorreo()} className="contacto-via">
+              <Correo>
                 <span className="contacto-icono"><Icono nombre="correo" tam={22} /></span>
                 <span>
                   <strong>Correo</strong>
                   {/* Si no cabe, que parta tras la @ y no deje una letra suelta. */}
                   <span>{CORREO.split("@")[0]}@<wbr />{CORREO.split("@")[1]}</span>
                 </span>
-                <Flecha />
-              </a>
+              </Correo>
             </div>
           </div>
         </section>
@@ -242,6 +247,7 @@ export default async function Home() {
           <LogoFiddle tam={28} color={PALETA.salvia} id="efe-pie" />
           <nav className="pie-nav" aria-label="Pie">
             <a href="#como-funciona">Cómo funciona</a>
+            <a href="#panel">El panel</a>
             <a href="#precios">Precios</a>
             <a href="#preguntas">Preguntas</a>
             <a href="#contacto">Contacto</a>

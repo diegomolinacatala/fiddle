@@ -5,7 +5,7 @@ import { PALETA as P } from "./paleta";
 // ----------------------------------------------------------------------------
 // Los colores de la marca salen de paleta.js (los del iPhone, de iOS). Reparto:
 //   papel de fondo, carbón para el texto, nogal para el violín y los botones;
-//   bandas oscuras en nogal («Con tu marca») y carbón (contacto y pie).
+//   bandas oscuras en nogal (el panel) y carbón (contacto y pie).
 //   El punto de los títulos es el sello: topo sobre claro, salvia sobre oscuro.
 //   La salvia nunca va en texto sobre claro (2,2:1).
 //
@@ -150,11 +150,11 @@ body:has(.home){background:${P.papel}}
 @media (min-width:900px){.pasos{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}}
 .paso{display:grid;align-content:start;background:var(--superficie);border-radius:30px;padding-bottom:30px;
   box-shadow:0 0 0 1px var(--linea);overflow:hidden}
-.paso > h3,.paso > p,.paso-numero{margin-left:28px;margin-right:28px}
-.paso > h3{margin-top:10px;font-size:21px;font-weight:620;letter-spacing:-.025em}
+.paso > h3,.paso > p,.paso-dato{margin-left:28px;margin-right:28px}
+.paso > h3{margin-top:4px;font-size:21px;font-weight:620;letter-spacing:-.025em}
 .paso > p{margin-top:6px;color:var(--tinta-2);line-height:1.55}
-.paso-numero{margin-top:26px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;
-  box-shadow:inset 0 0 0 1px ${alfa(P.carbon, 0.22)};font-size:13px;font-weight:650;color:var(--tinta-2)}
+/* El dato grande de cada paso: lo que se tarda o lo que cuesta, que es lo que nos distingue. */
+.paso-dato{margin-top:24px;font-size:clamp(30px,1.4rem + 1vw,38px);line-height:1.05;font-weight:680;letter-spacing:-.045em;color:var(--marca)}
 .paso-visual{height:236px;display:grid;place-items:center;overflow:hidden}
 .paso-cartel{background:linear-gradient(160deg,${P.salviaClara},${P.salviaHonda})}
 .paso-caja{background:linear-gradient(160deg,${P.topoClaro},${P.topoHondo})}
@@ -171,6 +171,12 @@ body:has(.home){background:${P.papel}}
 .caja-boton{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;background:var(--marca);color:var(--claro);font-size:15px;font-weight:600}
 .avisos{display:grid;gap:8px;width:272px}
 .aviso-viejo{opacity:.62;scale:.95}
+.montaje{display:flex;align-items:center;gap:18px;margin-top:18px;padding:22px 26px;border-radius:26px;
+  background:var(--superficie);box-shadow:0 0 0 1px var(--linea)}
+.montaje p{color:var(--tinta-2);line-height:1.55;text-wrap:pretty}
+.montaje strong{color:var(--tinta);font-weight:620}
+.montaje-icono{flex-shrink:0;width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:var(--salvia);color:var(--marca)}
+@media (max-width:400px){.montaje{flex-direction:column;align-items:flex-start;gap:12px;padding:20px}}
 
 /* ---------- bandas oscuras ---------- */
 /* Van de lado a lado; lo de dentro, al ancho de las demás. */
@@ -179,18 +185,64 @@ body:has(.home){background:${P.papel}}
 .bloque.oscuro{max-width:none;padding-left:0;padding-right:0}
 .fondo-nogal{background:var(--marca)}
 .fondo-carbon{background:var(--tinta)}
-.marca-dentro,.contacto-dentro{max-width:var(--ancho);margin:0 auto;padding:0 var(--margen)}
+.panel-dentro,.contacto-dentro{max-width:var(--ancho);margin:0 auto;padding:0 var(--margen)}
 
-/* ---------- con tu marca ---------- */
-.mazo{display:grid;justify-items:center;max-width:340px;margin:0 auto}
-.mazo-carta{width:100%;position:relative}
-.mazo-carta + .mazo-carta{margin-top:-72px}
+/* ---------- el panel del dueño (Panel.js) ---------- */
+.panel{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
 @media (min-width:900px){
-  .mazo{max-width:none;display:flex;justify-content:center;align-items:flex-start;gap:28px}
-  .mazo-carta{width:320px}
-  .mazo-carta + .mazo-carta{margin-top:0}
-  .mazo-carta:nth-child(2){margin-top:44px}
+  .panel{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .panel-ancha{grid-column:span 4}
+  .panel-estrecha{grid-column:span 2}
+  .panel-media{grid-column:span 3}
 }
+.panel-pieza{display:grid;align-content:start;gap:22px;padding:clamp(20px,2.4vw,28px);border-radius:28px;
+  background:${alfa(P.papel, 0.06)};box-shadow:inset 0 0 0 1px var(--claro-linea)}
+.panel-texto{display:grid;gap:6px}
+.panel-texto h3{font-size:21px;font-weight:620;letter-spacing:-.025em}
+.panel-texto p{color:var(--claro-2);line-height:1.5;text-wrap:pretty}
+.panel-ui{display:grid;gap:12px;padding:18px;border-radius:20px;background:var(--superficie);color:var(--tinta);
+  box-shadow:0 24px 40px -24px rgba(0,0,0,.55)}
+.panel-etiqueta{font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-3)}
+.panel-cifras{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:6px}
+.panel-cifras > div{display:grid;align-content:start;gap:2px;padding:12px;border-radius:14px;background:var(--fondo)}
+.panel-cifras strong{font-size:28px;font-weight:660;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
+.panel-pie{font-size:11.5px;color:var(--tinta-3);line-height:1.3}
+@media (max-width:480px){.panel-pie{display:none}.panel-cifras > div{align-content:space-between}}
+@media (max-width:400px){
+  .panel-cifras{gap:6px}
+  .panel-cifras > div{padding:10px 8px}
+  .panel-cifras .panel-etiqueta{font-size:10px;letter-spacing:.03em}
+  .panel-cifras strong{font-size:24px}
+}
+.panel-barras{display:flex;align-items:flex-end;gap:3px;height:84px}
+.panel-barras i{flex:1;border-radius:3px 3px 1px 1px;background:${alfa(P.ebano, 0.45)}}
+.panel-barras i.hoy{background:var(--marca)}
+.panel-barras i.cerrado{background:${alfa(P.carbon, 0.12)}}
+.panel-linea{font-size:13.5px;color:var(--tinta-2)}
+.panel-linea strong{color:var(--tinta)}
+.panel-mapa{position:relative;display:grid;align-content:end;min-height:270px;padding:14px;border-radius:20px;overflow:hidden;
+  background-color:${P.salviaClara};
+  background-image:linear-gradient(35deg,transparent 46%,rgba(255,255,255,.9) 46% 54%,transparent 54%),
+    repeating-linear-gradient(90deg,transparent 0 46px,rgba(255,255,255,.75) 46px 54px),
+    repeating-linear-gradient(0deg,transparent 0 58px,rgba(255,255,255,.75) 58px 66px)}
+.panel-chincheta{position:absolute;left:50%;top:36%;width:18px;height:18px;border-radius:50%;background:var(--marca);translate:-50% -50%;
+  box-shadow:0 0 0 5px ${alfa(P.papel, 0.95)},0 0 0 26px ${alfa(P.nogal, 0.14)},0 0 0 52px ${alfa(P.nogal, 0.07)}}
+.panel-grupos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.panel-grupos span{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:550;
+  background:var(--fondo);color:var(--tinta-2);box-shadow:inset 0 0 0 1px var(--linea)}
+.panel-grupos .elegido{background:var(--marca);color:var(--claro);box-shadow:none}
+.panel-mensaje{padding:12px 14px;border-radius:14px;background:var(--fondo);font-size:14.5px;line-height:1.4}
+.panel-enviar{justify-self:start;display:inline-flex;align-items:center;height:40px;padding:0 18px;border-radius:999px;
+  background:var(--marca);color:var(--claro);font-size:14px;font-weight:600}
+.panel-rejilla{display:grid;gap:3px;align-items:center;margin-bottom:6px}
+.panel-fila{display:contents}
+.panel-fila span{font-size:11px;font-weight:600;color:var(--tinta-3)}
+.panel-fila i{height:16px;border-radius:4px;background:var(--tinta-2)}
+.panel-idea{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:var(--fondo);
+  font-size:14px;font-weight:600;line-height:1.35}
+.panel-idea svg{flex-shrink:0;color:${P.topoOscuro}}
+.panel-nota{margin-top:26px;color:var(--claro-2)}
+.panel-nota a{color:var(--claro);font-weight:600;text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* ---------- precios ---------- */
 .planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:900px;margin:0 auto}
@@ -245,6 +297,16 @@ body:has(.home){background:${P.papel}}
 @media (max-width:400px){.contacto-via > span:nth-child(2) span{font-size:13.5px}}
 .contacto-icono{flex-shrink:0;width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:${alfa(P.papel, 0.1)}}
 .flecha{flex-shrink:0;margin-left:auto;opacity:.7;transition:translate .2s var(--curva)}
+/* El correo y «Copiar» (Correo.js). Un botón no puede ir dentro del enlace, así que va
+   al lado en el código y encima en pantalla, donde las otras filas llevan la flecha:
+   así no le quita ancho a la dirección. */
+.contacto-correo{position:relative}
+.contacto-correo .contacto-via{padding-right:92px}
+.contacto-copiar{position:absolute;top:50%;right:12px;translate:0 -50%;display:grid;place-items:center;align-content:center;gap:3px;
+  min-width:68px;height:56px;padding:0 8px;border:0;border-radius:16px;cursor:pointer;background:${alfa(P.papel, 0.08)};
+  box-shadow:inset 0 0 0 1px var(--claro-linea);color:var(--claro);font-size:12.5px;font-weight:600;transition:background-color .2s}
+@media (hover:hover){.contacto-copiar:hover{background:${alfa(P.papel, 0.11)}}}
+.solo-lector{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* ---------- pie ---------- */
 .pie{background:var(--tinta);border-top:1px solid var(--claro-linea)}

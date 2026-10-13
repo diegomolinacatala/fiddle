@@ -49,7 +49,7 @@ export function Aviso({ negocio, texto, cuando = "ahora", className = "" }) {
       <div className="aviso-texto">
         <div className="aviso-cabeza">
           <strong>{negocio.nombre}</strong>
-          <span>{cuando}</span>
+          {cuando && <span>{cuando}</span>}
         </div>
         <p>{texto}</p>
       </div>
