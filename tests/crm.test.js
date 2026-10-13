@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
   metricas, tendencia, serieVisitas, rejillaHoraria, cohortes, efectoCampana,
-  haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS,
+  haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -95,6 +95,14 @@ describe("estadoDe: la escalera", () => {
     expect(estado({ visitas: 0, alta: 3 })).toBe("fantasma");
   });
 
+  it("quien ni lo guardó ni lo usó no es un cliente: descartada (pasado un día)", () => {
+    expect(estado({ visitas: 0, alta: 3, instalado: false })).toBe("descartada");
+    expect(estado({ visitas: 0, alta: 0.2, instalado: false })).toBe("fantasma"); // aún puede estar guardándolo
+    expect(estado({ visitas: 2, alta: 3, ultima: 1, instalado: false })).not.toBe("descartada"); // la usa sin Wallet (Android)
+    const p = perfilDe(cli({ visitas: 0, alta: 3, instalado: false }), NUBE, AHORA);
+    expect(GRUPOS.fantasmas.incluye(p)).toBe(false); // no hay a quién escribir
+  });
+
   it("al recién llegado no se le exige ritmo todavía", () => {
     expect(estado({ alta: 5, visitas: 1, ultima: 5 })).toBe("nuevo");
     // Pasados 30 días, o con costumbre ya hecha, deja de ser nuevo.
@@ -176,7 +184,8 @@ describe("métricas", () => {
     cli({ serial: "a", alta: 3, visitas: 1, ultima: 3 }),          // nuevo
     cli({ serial: "b", alta: 90, visitas: 20, ultima: 1 }),        // activo
     cli({ serial: "c", alta: 90, visitas: 6, ultima: 60, premios: 2 }), // frío
-    cli({ serial: "d", alta: 200, visitas: 0, instalado: false }), // fantasma sin instalar
+    cli({ serial: "d", alta: 200, visitas: 0, instalado: false }), // ni guardada ni usada: no cuenta
+    cli({ serial: "e", alta: 40, visitas: 3, ultima: 5, instalado: false }), // la usa sin Wallet
   ];
   const eventos = [
     { serial: "b", tipo: "sellar", ts: haceDias(1) },
@@ -192,15 +201,21 @@ describe("métricas", () => {
     expect(m.total).toBe(4);
   });
 
+  it("las tarjetas descartadas van aparte y no hunden las tasas", () => {
+    expect(m.descartadas).toBe(1);
+    expect(m.nuevos30).toBe(1); // `a`; `d` es de hace 200 días, pero tampoco contaría
+  });
+
   it("mide el embudo de instalación y la vuelta", () => {
     expect(m.instalados).toBe(3);
     expect(m.tasaInstalacion).toBe(75);
-    expect(m.repiten).toBe(2);      // b y c: `a` tiene una sola visita y `d` ninguna
-    expect(m.tasaVuelta).toBe(50);
+    expect(m.repiten).toBe(3);      // b, c y e: `a` tiene una sola visita
+    expect(m.tasaVuelta).toBe(75);
   });
 
-  it("el reparto por estado suma el total", () => {
+  it("el reparto por estado suma el total, sin las descartadas", () => {
     expect(Object.values(m.porEstado).reduce((a, b) => a + b, 0)).toBe(4);
+    expect(m.porEstado.descartada).toBeUndefined();
   });
 
   it("la tendencia aguanta el mes sin nada detrás", () => {
@@ -279,5 +294,27 @@ describe("textos", () => {
     expect(cadenciaTexto(4)).toBe("cada 4 días");
     expect(cadenciaTexto(21)).toBe("cada 3 semanas");
     expect(cadenciaTexto(90)).toBe("cada 3 meses");
+  });
+});
+
+describe("el Resumen cuenta visitas, no sellos", () => {
+  const ev = (serial, ts, tipo = "sellar") => ({ serial, tipo, ts });
+  // Siete cafés de golpe (traía la cartilla de papel) y, al día siguiente, otro.
+  const eventos = [
+    ...Array.from({ length: 7 }, (_, i) => ev("a", `2026-10-07T08:00:${String(i).padStart(2, "0")}Z`)),
+    ev("a", "2026-10-07T08:05:00Z", "canjear"),
+    ev("a", "2026-10-08T08:00:00Z"),
+    ev("b", "2026-10-07T08:00:30Z"), // otra tarjeta a la vez: otra visita
+    ev("a", "2026-10-07T09:00:00Z", "restar"), // una corrección no es visita
+  ];
+  it("soloVisitas junta lo de la misma tarjeta a menos de horasVisita", () => {
+    expect(soloVisitas(eventos).map((e) => `${e.serial} ${e.ts}`)).toEqual([
+      "a 2026-10-07T08:00:00Z", "b 2026-10-07T08:00:30Z", "a 2026-10-08T08:00:00Z",
+    ]);
+  });
+  it("la serie de 30 días y la rejilla usan esa cuenta", () => {
+    const serie = serieVisitas(eventos, 30, Date.parse("2026-10-08T12:00:00Z"));
+    expect(serie.find((d) => d.dia === "2026-10-07").n).toBe(2);
+    expect(rejillaHoraria(eventos).flat().reduce((a, b) => a + b, 0)).toBe(3);
   });
 });

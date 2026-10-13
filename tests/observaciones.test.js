@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { observaciones, enlaceDeAccion, listaDias } from "@/lib/observaciones";
+import { observaciones, enlaceDeAccion, listaDias, suficiencia, textoFalta } from "@/lib/observaciones";
 
 // Lunes a viernes de 8 a 20. Mucha gente por la mañana, casi nadie martes y miércoles por la tarde.
 const horario = {
@@ -74,4 +74,55 @@ it("un solo día: «las tardes de los sábados»", () => {
   const h6 = { zona: "Europe/Madrid", semana: Array.from({ length: 7 }, () => ({ abre: "08:00", cierra: "20:00" })), cerrados: [] };
   for (let d = 0; d < 7; d++) for (let h = 8; h < 20; h++) r[d][h] = d === 5 && h >= 16 ? 0 : 4;
   expect(observaciones({ rejilla: r, horario: h6 }).find((o) => o.id.startsWith("tranquilo")).texto).toBe("Lo más tranquilo: las tardes de los sábados.");
+});
+
+describe("¿hay con qué? (suficiencia)", () => {
+  // Lunes 5 de octubre de 2026 en adelante; la tienda abre de lunes a viernes.
+  const AHORA = Date.parse("2026-10-19T18:00:00Z"); // lunes, dos semanas después
+  const visita = (fecha, serial, hora = "09") => ({ serial, tipo: "sellar", ts: `${fecha}T${hora}:00:00Z` });
+  const semana = (lunes, por = 4) => [0, 1, 2, 3, 4].flatMap((d) => {
+    const f = new Date(Date.parse(`${lunes}T12:00:00Z`) + d * 864e5).toISOString().slice(0, 10);
+    return Array.from({ length: por }, (_, i) => visita(f, `c${i}`));
+  });
+
+  it("la primera semana no basta, aunque haya visitas de sobra", () => {
+    const s = suficiencia({ eventos: semana("2026-10-05", 10), horario, ahora: Date.parse("2026-10-10T12:00:00Z") });
+    expect(s.visitas).toBe(50);
+    expect(s.suficiente).toBe(false);
+    expect(s.faltan).toEqual([0, 1, 2, 3, 4]); // sábado y domingo cierra: no faltan
+    expect(textoFalta(s)).toBe("Hace falta ver cada día que abres al menos 2 veces con visitas (faltan de lunes a viernes).");
+  });
+
+  it("con dos semanas de cada día y visitas suficientes, sí", () => {
+    const s = suficiencia({ eventos: [...semana("2026-10-05"), ...semana("2026-10-12")], horario, ahora: AHORA });
+    expect(s).toMatchObject({ suficiente: true, faltan: [] });
+  });
+
+  it("un día que no se ha visto dos veces sigue faltando, y lo dice", () => {
+    const eventos = [...semana("2026-10-05"), ...semana("2026-10-12")].filter((e) => !e.ts.startsWith("2026-10-14"));
+    const s = suficiencia({ eventos, horario, ahora: AHORA });
+    expect(s.faltan).toEqual([2]);
+    expect(textoFalta(s)).toMatch(/faltan los miércoles/);
+  });
+
+  // Cuatro semanas sin nadie un miércoles.
+  const sinMiercoles = (lunes) => semana(lunes).filter((e) => new Date(e.ts).getUTCDay() !== 3);
+  const eventosSinMiercoles = ["2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12"].flatMap(sinMiercoles);
+
+  it("un día abierto en el que nunca viene nadie no deja la barrera puesta para siempre", () => {
+    expect(suficiencia({ eventos: eventosSinMiercoles, horario, ahora: AHORA }).suficiente).toBe(true);
+  });
+
+  it("un festivo no cuenta como día visto", () => {
+    // Uno de esos miércoles cerró: solo se ha abierto tres, aún no se sabe si es un día muerto.
+    const conFestivo = { ...horario, cerrados: ["2026-10-07"] };
+    expect(suficiencia({ eventos: eventosSinMiercoles, horario: conFestivo, ahora: AHORA }).faltan).toEqual([2]);
+  });
+
+  it("sin datos suficientes, ni patrones ni tendencia: solo lo que falta", () => {
+    const s = suficiencia({ eventos: semana("2026-10-05", 10), horario, ahora: Date.parse("2026-10-10T12:00:00Z") });
+    const obs = observaciones({ rejilla: rejilla(), horario, suficiencia: s, metricas: { visitas30: 50, visitas30Previas: 20 } });
+    expect(obs.map((o) => o.id)).toEqual(["pocos"]);
+    expect(obs[0].detalle).toMatch(/^Hace falta/);
+  });
 });

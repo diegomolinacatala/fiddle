@@ -77,14 +77,14 @@ export default function EstadoIntegracion({ accent }) {
   const todoBien = filas.every((f) => f.ok || f.aviso);
 
   return (
-    <details open={!todoBien} style={{ ...panel, borderColor: todoBien ? "#bfe5cd" : `${accent}66` }}>
+    <details open={!todoBien} style={{ ...panel, borderColor: todoBien ? C.okBorde : `${accent}66` }}>
       <summary style={{ cursor: "pointer", fontSize: 14, padding: "6px 0" }}>
         Estado de la integración · {filas.filter((f) => f.ok).length}/{filas.length} listo
       </summary>
       <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
         {filas.map((f) => (
           <div key={f.titulo} style={{ display: "flex", gap: 10, fontSize: 13, alignItems: "baseline", flexWrap: "wrap" }}>
-            <span aria-label={f.ok && !f.aviso ? "bien" : f.ok || f.aviso ? "opcional" : "falla"} style={punto(f.ok && !f.aviso ? C.ok : f.ok || f.aviso ? "#c26b04" : C.mal)} />
+            <span aria-label={f.ok && !f.aviso ? "bien" : f.ok || f.aviso ? "opcional" : "falla"} style={punto(f.ok && !f.aviso ? C.ok : f.ok || f.aviso ? C.ojo : C.mal)} />
             <strong style={{ fontWeight: 600, minWidth: 170 }}>{f.titulo}</strong>
             <span style={{ color: C.suave, wordBreak: "break-word", flex: "1 1 220px" }}>{f.detalle}</span>
             {f.accion}

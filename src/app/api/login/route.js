@@ -5,6 +5,7 @@ import {
 import { listNegocios, getNegocio, getCliente } from "@/lib/store";
 import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
 import { comprobarAcceso } from "@/lib/accesos";
+import { COOKIE_QUIEN } from "@/lib/plantilla";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -73,6 +74,8 @@ export async function POST(request) {
       path: "/",
       maxAge: TTL_SEGUNDOS[acceso.rol],
     });
+    // Sesión nueva, nombre nuevo: la caja vuelve a preguntar quién atiende (lib/plantilla.js).
+    res.cookies.set(COOKIE_QUIEN, "", { path: "/", maxAge: 0 });
     return res;
   } catch (e) {
     return errorInterno("login", e);

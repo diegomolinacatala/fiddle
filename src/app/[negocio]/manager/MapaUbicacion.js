@@ -224,8 +224,8 @@ const vacio = {
   position: "absolute", left: 10, right: 10, bottom: 10, zIndex: 500, pointerEvents: "none",
   background: "rgba(255,255,255,.94)", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: C.texto, textAlign: "center",
 };
-const lista = { marginTop: 6, border: `1px solid ${C.borde}`, borderRadius: 10, overflow: "hidden", background: "#fff" };
+const lista = { marginTop: 6, border: `1px solid ${C.borde}`, borderRadius: 10, overflow: "hidden", background: C.panel };
 const opcion = {
   display: "block", width: "100%", textAlign: "left", padding: "10px 12px", border: 0, borderBottom: `1px solid ${C.borde}`,
-  background: "#fff", fontSize: 13, color: C.texto, cursor: "pointer",
+  background: C.panel, fontSize: 13, color: C.texto, cursor: "pointer",
 };

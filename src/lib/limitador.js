@@ -31,8 +31,30 @@ export const LIMITES = {
   push: { max: 20, ventanaMs: 10 * 60 * 1000 },
   google: { max: 30, ventanaMs: 10 * 60 * 1000 },
   invitacion: { max: 20, ventanaMs: 10 * 60 * 1000 },
+  // El PIN de la caja (lib/quien.js): 4 cifras son 10.000 combinaciones. 5 fallos
+  // por persona e IP, y 30 por persona desde donde sea, cada 15 minutos.
+  pinIp: { max: 5, ventanaMs: 15 * 60 * 1000 },
+  pinPersona: { max: 30, ventanaMs: 15 * 60 * 1000 },
 };
 export const MAX_POR_IP = LIMITES.loginIp.max;
+export const MAX_FALLOS_PIN = LIMITES.pinIp.max;
+
+const clavesPin = (slug, id, ip) => ({ ip: `pin:${slug}:${id}:${huellaIp(ip)}`, persona: `pin:${slug}:${id}:*` });
+
+/** @returns {Promise<boolean>} true si hay que rechazar el PIN sin mirarlo. */
+export async function pinBloqueado(slug, id, ip, ahora = Date.now()) {
+  const k = clavesPin(slug, id, ip);
+  const [porIp, porPersona] = await Promise.all([
+    supera(k.ip, LIMITES.pinIp, ahora),
+    supera(k.persona, LIMITES.pinPersona, ahora),
+  ]);
+  return porIp || porPersona;
+}
+
+export async function anotarFalloPin(slug, id, ip) {
+  const k = clavesPin(slug, id, ip);
+  await Promise.all([registrarIntento(k.ip), registrarIntento(k.persona)]);
+}
 
 async function supera(clave, { max, ventanaMs }, ahora) {
   return (await contarIntentos(clave, ahora - ventanaMs)) >= max;

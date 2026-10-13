@@ -16,6 +16,18 @@ Next.js 15 + Supabase, desplegado en Vercel desde `main`
 un sitio de pruebas: hay clientes de verdad con sus sellos. Nada de accesos de
 prueba, y nada se borra en la base sin preguntar.
 
+**Se trabaja en `dev`, nunca en `main`** (desde el 08-10-2026, ver
+[docs/ENTORNOS.md](docs/ENTORNOS.md)). `dev` se despliega solo en su web, SIN base de
+datos: ficheros en `/tmp` que arrancan con datos inventados (`lib/datosDePrueba.js`). A
+`main` se llega con un PR `dev → main`. Nada de `git push` a `main`, ni de dar a dev la
+base, el `AUTH_SECRET` o las credenciales de Google de producción.
+
+**Vercel Hobby solo despliega los commits de Víctor.** Un push o un merge con el git de
+Diego queda «Deployment was blocked» (ni dev ni producción). Se despliega a mano con la CLI
+de Vercel desde la carpeta del repo, con la sesión de `victrozz`: `vercel` para dev,
+`vercel --prod` para producción (ver [docs/ENTORNOS.md](docs/ENTORNOS.md)). Tras un push,
+comprobar siempre que de verdad desplegó.
+
 ## Reglas de la casa
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
@@ -32,9 +44,10 @@ prueba, y nada se borra en la base sin preguntar.
 - **PowerShell 5.1**: nada de `&&`. Encadenar con `;` o `if ($?) { ... }`.
   Y ejecutarlo uno mismo, no pasárselo al usuario para que lo pegue.
 - **Cada cosa en UN sitio: el más intuitivo.** Nada de repetir una acción en cada
-  pantalla "por si acaso". El dueño tiene tres pestañas, una por pregunta: **Tienda**
+  pantalla "por si acaso". El dueño tiene cuatro pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
-  a la lista y baja lo que se ve) y **Avisos** (enviar a todos o a un grupo, ahora o a una hora). Y aparte,
+  a la lista y baja lo que se ve), **Avisos** (enviar a todos o a un grupo, ahora o a una hora)
+  y **Plantilla** (quién atiende la caja y qué hace cada uno). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -152,6 +165,10 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
 - **Manager y CRM cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
   cliente) y cada ruta tiene `loading.js` con su esqueleto (`app/Esqueleto.js`).
   Nada de pantallas que arrancan vacías y piden sus datos con `fetch`.
+- **La cabecera del dueño vive en el layout** (`[negocio]/MarcoGestion.js`): marca, nombre y
+  pestañas no se vuelven a pintar al cambiar de pestaña, y `loading.js` solo pone en gris lo
+  de debajo. Las pestañas de dentro (`Solapas`) salen ya con su texto en el loading. Lo que
+  cambie en Tienda (nombre, tema) sube con `useGestion().actualizar`.
 - **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
   la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
   siendo PURA y sin imports del servidor.
@@ -163,6 +180,59 @@ Qué PUEDE hacer la caja son las `acciones` de la tienda; cómo se le ENSEÑA, `
 de caja", con la caja de verdad (`TarjetaCaja demo`) al lado. Una FILA por cartilla que suma
 entera, con el "−" pequeño dentro (corregir no merece un botón igual de grande), y el "+2"
 si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, no un botón suelto.
+
+- **Dar, guardar o usar un premio se puede deshacer unos segundos** (`SEGUNDOS_DESHACER`,
+  las acciones con `deshecho` en `lib/acciones.js`). NO es una acción del servidor: la
+  caja se pinta al instante pero se guarda la petición ese tiempo y, si se deshace, no la
+  manda (como el «Deshacer envío» del correo). Así no queda evento, ni visita, ni aviso al
+  cliente: un premio dado sin querer y vuelto a poner a mano serían dos movimientos falsos
+  en las cuentas. Otro toque lo confirma al momento; al salir de la página o pasar a
+  segundo plano se manda con `sendBeacon` (o `fetch keepalive`). Lo que se acepta a cambio:
+  si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
+  «deshacer» en `/api/accion`: habría que borrar eventos.
+- **La ficha dice cuándo fue el último sello** («Último sello hace 12 min»,
+  `ultimoSelloTexto`), discreto, bajo las visitas: zanja el «no me has sellado» sin
+  depender del historial (que la tienda puede apagar). Solo el cuándo (la cuenta la enseña
+  la tarjeta) y sin nombre de quién lo dio: al navegador de la caja nunca va eso.
+
+## La plantilla: quién atiende la caja
+
+Ver [`src/lib/plantilla.js`](src/lib/plantilla.js). La cuenta de la caja sigue siendo UNA por
+tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
+
+- **La lista vive en `config.plantilla`** (`{id, nombre, alta, baja}`), la lleva el manager en
+  la pestaña **Plantilla** → Equipo. Solo nombre o apodo: ni PIN ni turnos. **Dar de baja no
+  borra nada** (sus movimientos siguen con su nombre); el id no cambia nunca. Tope de 30 de
+  alta a la vez (y 200 contando bajas). Ninguna semilla mete gente en una tienda: la plantilla
+  inventada de dev va en la fila de `lib/datosDePrueba.js`, y un despliegue no da de alta a nadie.
+- **Cada empleado se identifica en SU móvil con su PIN** (`lib/quien.js`): lo elige la primera
+  vez que se elige en la caja (4 a 6 cifras, solo su hash scrypt en `plantilla[i].pin`) y la
+  cookie `quien` va **firmada** con el secreto de las sesiones (sin firma se forjaría y el PIN
+  no serviría), dura `HORAS_PIN` (2) y **cada uso de la caja la renueva**: con cola no se
+  teclea, tras el descanso sí. Lleva la huella del PIN: **cambiar el PIN es quitárselo** desde
+  Plantilla → Equipo («Quitar el PIN»), que invalida la cookie de todos sus móviles y la persona
+  elige otro. Nadie puede leer un PIN. Cinco fallos seguidos, 15 minutos (`limitador.js`).
+  Con el hash se guarda `largoPin` (cuántas cifras): la caja entra sola al teclear la
+  última, sin botón (`QuienAtiende`). **En dev, el PIN de todos es `1234`** con hash fijo
+  en `datosDePrueba.js`: cada función de Vercel tiene su `/tmp`, y un PIN elegido en una
+  no existe en las demás (docs/ENTORNOS.md).
+  `quien_ultimo` (90 días, sin firmar) solo propone «¿Sigues siendo Sebas?». Lo pide la caja y
+  también `/w/<serial>` (el QR entra ahí directo desde la cámara). `/api/accion` lo exige por
+  detrás (428 con `elegir: true`) **solo** con la cuenta de caja y con gente dada de alta: sin
+  plantilla, la caja funciona como siempre. **El dueño no se identifica**: desde su cuenta sale
+  como «Dueño» (`actor: "manager"`, `empleado` null). Al navegador va `plantillaPublica`
+  (`tienePin`, `largoPin`), nunca el hash.
+- **`eventos.empleado`** es la única columna nueva. De ahí salen Rendimiento y Registro de la
+  pestaña y el nombre en Clientes → Actividad (`quienTexto`). Un movimiento de la caja sin
+  `empleado` es «Sin nombre» (lo de antes de la plantilla).
+- **Las cuentas son puras y con la hora de la tienda** (`cuentasDePlantilla`): una «hora de
+  caja» es una hora del reloj con algún movimiento suyo (lo más parecido al tiempo trabajado
+  sin apuntar turnos) y el **ritmo esperado** de cada uno es lo que da el equipo en los mismos
+  (día de la semana, tramo) que trabajó, para que cubrir las tardes flojas no penalice. Sin
+  podio: cada uno contra lo normal en sus franjas.
+- **Las conclusiones son reglas fijas** (`observacionesPlantilla`), como «lo que dicen los
+  números»: cada frase lleva la cifra de la que sale. Una conclusión nueva = una regla ahí.
+- Lo del empleado en su móvil es SOLO lo suyo de hoy; los números del equipo son del manager.
 
 ## El premio: dar o guardar
 
@@ -195,6 +265,11 @@ Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WAL
   guardar y nunca lanzan hacia fuera.
 - **Endpoints de push**: solo servicios reales (`push/suscripcion.js`). Aflojar esa
   lista convierte el servidor en un proxy para pegar a URLs internas.
+- **Modo oscuro, de cada dispositivo** (`app/BotonTema.js`, al lado de «Salir» en manager, caja
+  y admin; claro de partida). Los colores de `C` son variables CSS con su valor claro y oscuro
+  en `COLORES` (`app/ui.js`): nada de `"#fff"` de fondo en lo del personal (`C.panel`), nada de
+  `${C.x}55` (alfa: `tinte`) y el color de la tienda como TEXTO va con `legible(accent)`. Lo del
+  cliente (`/<slug>`, `/p/…`, `/privacidad`) lleva la clase `claro`: siempre de día.
 - **Emojis fuera de la interfaz.** Iconos con `app/Icono.js` y la marca de la tienda
   con `app/MarcaTienda.js`.
 
@@ -270,6 +345,24 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   sello). La cadencia no baja de un día y nadie está "en riesgo" por faltar menos de
   `riesgoMinDias` (7). Sin esto, diez sellos de prueba = "habitual que viene cada
   segundo y lleva horas sin venir".
+
+- **Una visita se cuenta igual en todas partes.** La ficha lleva su contador
+  (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
+  rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
+  son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
+  cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
+  (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
+  medias y no se enseña (`historialCompletoDesde`). Su hoja no lleva nombres.
+
+- **Una tarjeta que nadie guardó ni usó no es un cliente** (`perfil.descartada`: sin visitas,
+  sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto, las tasas y las
+  cohortes la dejan fuera y la cuentan aparte (`descartadas`); en la lista solo sale si se
+  pide («Sin guardar ni usar») o se busca. Nunca se borra por esto.
+- **Sin datos, ni rejilla ni patrones** (`suficiencia` en `lib/observaciones.js`): cada día
+  que abre la tienda visto con visitas 2 veces (o 4 semanas abierto sin nadie) y 30 visitas.
+  Los días cerrados del horario no cuentan. Hasta entonces la pantalla dice qué falta; los
+  grupos (premios, a punto…) sí salen, que son hechos, no patrones.
 
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.
@@ -367,7 +460,9 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan al crear la tienda
   en `/admin`, se enseñan UNA vez y se cambian desde la ficha de la tienda en `/admin`
   o, la de la caja, desde el manager. La única vez que las elige alguien es la
-  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja.
+  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja, cada una
+  escrita dos veces. Mínimo 10 caracteres y sin reglas de mayúsculas o números a propósito:
+  se aconseja una frase («un café por favor»), que es más larga y más fácil de recordar.
 - **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
   detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
   desde el correo del admin: no hay proveedor de correo.
@@ -415,8 +510,9 @@ cueste lo que cueste (es lo que hacen Square, Loopy o Boomerangme):
 - **La caja es un dispositivo vinculado**: el dueño pulsa "Añadir caja" en el manager y
   el móvil del mostrador escanea un código que dura unos minutos. Sin contraseña
   compartida; el manager ve sus cajas y desconecta la que quiera.
-- **PIN personal por empleado** (4-6 cifras) en la caja. Cada tienda elige cuándo se
-  pide: siempre, solo para dar premios o nunca.
+- **PIN personal por empleado** (4-6 cifras) en la caja. **Ya está** (11-10-2026, pestaña
+  Plantilla, `lib/quien.js`): se pide al identificarse en cada móvil y cada dos horas sin
+  usar la caja. Queda por decidir si alguna tienda lo quiere solo para dar premios.
 - **Sesiones guardadas en el servidor**: cambiar la contraseña o quitar a alguien cierra
   sus sesiones (hoy no pasa).
 - **Registro de actividad**: quién dio cada sello y cada premio, desde qué caja, y quién

@@ -11,7 +11,7 @@ import {
   proximoDiaAbierto, frecuenciaSemanal, diasTexto,
 } from "@/lib/automatizaciones";
 import { DIAS, DIAS_CORTOS, relojLocal, diaDeFecha } from "@/lib/horario";
-import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, RADIO } from "@/app/ui";
+import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // AVISOS PROGRAMADOS: "el sábado a las 10, a todos: «hoy, 2x1»"
@@ -298,12 +298,12 @@ const opcionCheck = { display: "flex", gap: 8, alignItems: "flex-start", fontSiz
 const cuenta = { display: "flex", alignItems: "baseline", gap: 10, marginTop: 14, padding: "12px 14px", border: "1px solid", borderRadius: RADIO.fila };
 const avisoFrecuencia = {
   bien: { ...ayuda, color: C.ok },
-  ojo: { ...ayuda, color: "#9a5b00", background: "#fff6e5", border: "1px solid #f5d9a8", borderRadius: RADIO.boton, padding: "8px 10px", marginTop: 10 },
-  mal: { ...ayuda, color: C.mal, background: C.malFondo, border: "1px solid #f7c9c3", borderRadius: RADIO.boton, padding: "8px 10px", marginTop: 10 },
+  ojo: { ...ayuda, color: C.ojoTexto, background: C.ojoFondo, border: `1px solid ${C.ojoBorde}`, borderRadius: RADIO.boton, padding: "8px 10px", marginTop: 10 },
+  mal: { ...ayuda, color: C.mal, background: C.malFondo, border: `1px solid ${C.malBorde}`, borderRadius: RADIO.boton, padding: "8px 10px", marginTop: 10 },
 };
 const chipDia = (on, abre, accent) => ({
   width: 36, height: 34, borderRadius: RADIO.boton, fontWeight: 600, fontSize: 13,
-  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}14` : abre ? "#fff" : C.panelSuave,
-  color: on ? accent : abre ? C.texto : C.tenue, cursor: abre ? "pointer" : "not-allowed",
+  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}14` : abre ? C.panel : C.panelSuave,
+  color: on ? legible(accent) : abre ? C.texto : C.tenue, cursor: abre ? "pointer" : "not-allowed",
   textDecoration: abre ? "none" : "line-through",
 });

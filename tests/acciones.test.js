@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ACCIONES, LISTA_ACCIONES } from "@/lib/acciones";
+import { ACCIONES, LISTA_ACCIONES, SEGUNDOS_DESHACER, tieneDeshacer } from "@/lib/acciones";
 
 const sellos = { tipo: "sellos", meta: 3, premio: "café gratis" };
 const cupon = { tipo: "descuento", meta: 1, premio: "20%" };
@@ -36,5 +36,26 @@ describe("acciones", () => {
   it("LISTA_ACCIONES expone las que el manager activa; las de la segunda cartilla y las del premio van solas", () => {
     expect(LISTA_ACCIONES.map((a) => a.key)).toEqual(["sellar", "restar", "canjear", "confirmar"]);
     expect(LISTA_ACCIONES.map((a) => a.key)).not.toContain("sellar2");
+  });
+});
+
+describe("deshacer un premio", () => {
+  it("solo lo que mueve un premio se puede deshacer, y unos segundos", () => {
+    const con = Object.keys(ACCIONES).filter(tieneDeshacer);
+    expect(con.sort()).toEqual(["canjear", "canjear2", "guardar", "guardar2", "usarGuardado", "usarGuardado2"]);
+    expect(tieneDeshacer("sellar")).toBe(false);
+    expect(tieneDeshacer("nada")).toBe(false);
+    expect(SEGUNDOS_DESHACER).toBeGreaterThanOrEqual(5);
+    expect(SEGUNDOS_DESHACER).toBeLessThanOrEqual(10);
+  });
+
+  it("al deshacer, la caja dice en qué queda la tarjeta", () => {
+    expect(ACCIONES.canjear.deshecho(sellos)).toBe("Deshecho. La cartilla sigue completa: el premio no se ha dado.");
+    expect(ACCIONES.canjear.deshecho(cupon)).toBe("Deshecho. El cupón sigue sin usar.");
+    expect(ACCIONES.guardar.deshecho(sellos)).toBe("Deshecho. La cartilla sigue completa: no se ha guardado nada.");
+    expect(ACCIONES.usarGuardado.deshecho(sellos)).toBe("Deshecho. El premio sigue guardado en su tarjeta.");
+    const dos = { ...sellos, cartillas: [{ nombre: "Cookies", meta: 8, premio: "cookie" }, { nombre: "Cafés", meta: 8, premio: "café" }] };
+    expect(ACCIONES.canjear2.deshecho(dos)).toBe("Deshecho. La cartilla de cafés sigue completa: el premio no se ha dado.");
+    expect(ACCIONES.guardar2.deshecho(dos)).toMatch(/de cafés/);
   });
 });

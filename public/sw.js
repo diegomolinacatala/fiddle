@@ -8,13 +8,13 @@
 // 3. Al tocar un aviso, abrir la tarjeta (o traer al frente la que ya estaba
 //    abierta) y decirle que se refresque.
 // v3: la v2 guardaba también las pantallas del personal; al activarse, se borra.
-const CACHE = "sellos-v3";
+const CACHE = "sellos-v4";
 
 // Las pantallas del personal no se guardan: llevan nombres y notas de clientes en
 // el HTML y el móvil de la tienda lo usa cualquiera. Sin conexión no salen, que es
 // mejor que salgan con lo de antes de cerrar sesión. La caja (/<slug>/caja) sí:
 // pide sus datos a /api, que nunca se guarda.
-const DEL_PERSONAL = /^\/(?:admin|w)(?:\/|$)|^\/[^/]+\/(?:manager|crm|avisos|ajustes)(?:\/|$)/;
+const DEL_PERSONAL = /^\/(?:admin|w)(?:\/|$)|^\/[^/]+\/(?:manager|crm|avisos|plantilla|ajustes)(?:\/|$)/;
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>

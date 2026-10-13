@@ -15,6 +15,13 @@
 // GUARDARLO (`guardar`): la cartilla vuelve a cero y el premio queda en la
 // tarjeta para otro día (`usarGuardado`). Las dos últimas van con `canjear`
 // (`vaCon`): quien puede dar premios puede guardarlos, sin otra casilla.
+//
+// DESHACER: dar, guardar o usar un premio se puede deshacer durante unos
+// segundos (`SEGUNDOS_DESHACER`). No es una acción del servidor: la caja se
+// guarda la petición ese tiempo y, si se deshace, no la manda. Un premio dado
+// sin querer y vuelto a poner a mano dejaría dos movimientos que no pasaron
+// (y un aviso al cliente); así no queda nada. Las acciones con `deshecho`
+// son las que lo tienen: el texto que dice la caja al deshacer.
 // ============================================================================
 
 import { CONTADORES, GUARDADOS, cartillasDe } from "./cartillas";
@@ -33,6 +40,10 @@ const cuenta = (k, sellos) => `${k.nombre ? `${k.nombre} ` : ""}${sellos}/${k.me
 const deCartilla = (k) => (k.nombre ? ` de ${k.nombre.toLowerCase()}` : "");
 // "1 guardado" / "2 guardados".
 const cuantosGuardados = (n) => `${n} ${n === 1 ? "guardado" : "guardados"}`;
+
+// Cuánto espera la caja antes de mandar un premio dado, guardado o usado: lo que
+// tarda el cliente en decir "ah, no, guárdamelo" (Gmail da 5 s; Apple Mail, 10).
+export const SEGUNDOS_DESHACER = 8;
 
 const sellar = (i) => ({
   label: "Añadir sello",
@@ -73,6 +84,10 @@ const canjear = (i) => ({
     if (sellos < k.meta) return { ok: false, mensaje: `Aún no llega · ${cuenta(k, sellos)}` };
     return { cliente: { ...c, [k.clave]: 0, premios: (c.premios || 0) + 1 }, mensaje: `Premio entregado: ${k.premio}`, evento: `Canjeó: ${k.premio}` };
   },
+  deshecho(n) {
+    if (n.tipo === "descuento") return "Deshecho. El cupón sigue sin usar.";
+    return `Deshecho. La cartilla${deCartilla(cartilla(n, i))} sigue completa: el premio no se ha dado.`;
+  },
 });
 
 const guardar = (i) => ({
@@ -92,6 +107,9 @@ const guardar = (i) => ({
       evento: `Guardó: ${k.premio}`,
     };
   },
+  deshecho(n) {
+    return `Deshecho. La cartilla${deCartilla(cartilla(n, i))} sigue completa: no se ha guardado nada.`;
+  },
 });
 
 const usarGuardado = (i) => ({
@@ -109,6 +127,9 @@ const usarGuardado = (i) => ({
       mensaje: `Premio entregado: ${k.premio}${quedan ? `. Le quedan ${cuantosGuardados(quedan)}.` : ""}`,
       evento: `Usó un premio guardado: ${k.premio}`,
     };
+  },
+  deshecho() {
+    return "Deshecho. El premio sigue guardado en su tarjeta.";
   },
 });
 
@@ -153,6 +174,9 @@ export function accionPermitida(negocio, key) {
   const base = def.segunda || key;
   return negocio.acciones.includes(ACCIONES[base].vaCon || base);
 }
+
+/** ¿Se puede deshacer esta acción unos segundos? Solo las que mueven un premio. */
+export const tieneDeshacer = (key) => typeof ACCIONES[key]?.deshecho === "function";
 
 // Lo que dice el botón cuando hay dos cartillas: "Añadir cookie", no "Añadir sello".
 const ETIQUETA = { sellar: (u) => `Añadir ${u}`, restar: (u) => `Quitar ${u}`, canjear: (u) => `Canjear ${u}` };

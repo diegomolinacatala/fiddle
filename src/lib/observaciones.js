@@ -16,16 +16,28 @@
 // sería ruido, y una tienda no cambia su día por un hueco de veinte minutos.
 //
 // Pura: la rejilla se calcula en el navegador (hora local, ver lib/crm.js).
+//
+// ANTES DE NADA, ¿HAY CON QUÉ? (`suficiencia`): una semana suelta no dice nada
+// (el martes que se vio puede ser el del mercadillo). Hasta que cada día que
+// abre la tienda se ha visto con visitas y hay un mínimo de visitas, ni la
+// rejilla ni los patrones salen: la pantalla dice qué falta.
 // ============================================================================
 
-import { DIAS, tramosDe, sumarDias } from "./horario";
+import { DIAS, tramosDe, sumarDias, abreEl, diaDeFecha, fechaLocal, ZONA_POR_DEFECTO } from "./horario";
+import { soloVisitas } from "./crm";
 
-const BLOQUES = [
+// Los tramos del día con los que se habla: también los usa lib/plantilla.js.
+export const BLOQUES = [
   { id: "manana", plural: "mañanas", desde: 0, hasta: 12, texto: "Esta mañana estamos tranquilos: ven a por lo tuyo sin colas." },
   { id: "mediodia", plural: "mediodías", desde: 12, hasta: 16, texto: "A mediodía hay sitio de sobra: pásate y suma en tu tarjeta." },
   { id: "tarde", plural: "tardes", desde: 16, hasta: 24, texto: "Esta tarde está tranquilo: ven con calma, tu tarjeta sigue sumando." },
 ];
 const MIN_VISITAS = 30; // por debajo, cualquier "patrón" es casualidad
+const FECHAS_POR_DIA = 2; // cada día que abre, visto con visitas al menos dos veces
+// ...o tantas semanas abierto sin ninguna: un día muerto también es un dato, y
+// sin esto un domingo que nunca viene nadie dejaría la barrera puesta para siempre.
+const SEMANAS_DE_SOBRA = 4;
+const DIAS_TENDENCIA = 60; // "estos 30 días contra los 30 anteriores" pide dos meses de historia
 
 const plural = (d) => (DIAS[d].endsWith("s") ? DIAS[d] : `${DIAS[d]}s`);
 
@@ -71,16 +83,66 @@ const enBloque = (b, dias) => {
 const hhmm = (h) => `${String(h).padStart(2, "0")}:00`;
 
 /**
+ * ¿Hay datos para hablar de horas y días? Los días cerrados (el horario, festivos
+ * incluidos) no cuentan como vistos: una semana con el lunes de fiesta tarda una
+ * semana más en llenar el lunes. Sin horario se da por abierta toda la semana.
+ * Las fechas, con la hora de la tienda (`horario.zona`).
+ * @returns {{suficiente:boolean, visitas:number, minVisitas:number, faltan:number[], diasDeHistoria:number,
+ *   dias:{d:number, abre:boolean, fechas:number, listo:boolean}[]}}
+ */
+export function suficiencia({ eventos, horario = null, ahora = Date.now() }) {
+  const zona = horario?.zona || ZONA_POR_DEFECTO;
+  const visitas = soloVisitas(eventos);
+  const hoy = fechaLocal(ahora, zona);
+  const primera = visitas.length ? fechaLocal(Date.parse(visitas[0].ts), zona) : hoy;
+
+  const conVisitas = Array.from({ length: 7 }, () => new Set());
+  for (const e of visitas) {
+    const f = fechaLocal(Date.parse(e.ts), zona);
+    conVisitas[diaDeFecha(f)].add(f);
+  }
+  // Días abiertos ya terminados (hoy aún no) desde la primera visita.
+  const vistos = new Array(7).fill(0);
+  for (let f = primera, n = 0; f < hoy && n < 400; f = sumarDias(f, 1), n += 1) {
+    if (!horario || abreEl(horario, f)) vistos[diaDeFecha(f)] += 1;
+  }
+
+  const dias = Array.from({ length: 7 }, (_, d) => {
+    const abre = !horario || tramosDe({ ...horario, cerrados: [] }, sumarDias("2024-01-01", d)).length > 0;
+    const fechas = conVisitas[d].size;
+    return { d, abre, fechas, listo: !abre || fechas >= FECHAS_POR_DIA || vistos[d] >= SEMANAS_DE_SOBRA };
+  });
+  const faltan = dias.filter((x) => !x.listo).map((x) => x.d);
+  return {
+    suficiente: visitas.length >= MIN_VISITAS && !faltan.length,
+    visitas: visitas.length,
+    minVisitas: MIN_VISITAS,
+    faltan,
+    dias,
+    diasDeHistoria: Math.round((Date.parse(hoy) - Date.parse(primera)) / 864e5),
+  };
+}
+
+/** Qué falta para que salgan la rejilla y los patrones, en una frase. */
+export function textoFalta(s) {
+  if (!s.visitas) return "Todavía no hay visitas.";
+  const partes = [];
+  if (s.faltan.length) partes.push(`ver cada día que abres al menos ${FECHAS_POR_DIA} veces con visitas (faltan ${listaDias(s.faltan)})`);
+  if (s.visitas < s.minVisitas) partes.push(`unas ${s.minVisitas} visitas en total (van ${s.visitas})`);
+  return `Hace falta ${partes.join(" y ")}.`;
+}
+
+/**
  * Las observaciones, de la más útil a la menos.
  * @param {{rejilla:number[][], horario:object|null, metricas:object, grupos:{key:string,total:number}[]}} datos
  * @returns {{id:string, texto:string, detalle?:string, accion?:{tipo:"enviar", grupo:"momento", label:string, dia:number, hora:string, texto:string}|{tipo:"grupo", grupo:string, label:string}}[]}
  */
-export function observaciones({ rejilla, horario = null, metricas = {}, grupos = [] }) {
+export function observaciones({ rejilla, horario = null, metricas = {}, grupos = [], suficiencia: s = null }) {
   const out = [];
   const total = rejilla.flat().reduce((a, b) => a + b, 0);
   const abiertas = horasAbiertas(horario, rejilla);
 
-  if (total >= MIN_VISITAS) {
+  if (s ? s.suficiente : total >= MIN_VISITAS) {
     // Ritmo de cada (día, bloque): visitas por hora abierta.
     const celdas = [];
     for (let d = 0; d < 7; d += 1) {
@@ -156,13 +218,18 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
       }
     }
   } else {
-    out.push({ id: "pocos", texto: "Con unas cuantas visitas más, aquí saldrán las horas tranquilas y las fuertes de la tienda." });
+    out.push({
+      id: "pocos",
+      texto: "Aún es pronto para sacar conclusiones.",
+      detalle: s ? `${textoFalta(s)} Entonces saldrán aquí las horas tranquilas y las fuertes.` : "Con unas cuantas visitas más, aquí saldrán las horas tranquilas y las fuertes de la tienda.",
+    });
   }
 
-  // LA TENDENCIA del mes, solo si el cambio es grande y hay con qué comparar.
+  // LA TENDENCIA del mes, solo si el cambio es grande y hay con qué comparar:
+  // con un mes y poco de historia, "los 30 anteriores" son unos días sueltos.
   const antes = metricas.visitas30Previas || 0;
   const ahora = metricas.visitas30 || 0;
-  if (antes >= 20) {
+  if (antes >= 20 && (!s || s.diasDeHistoria >= DIAS_TENDENCIA)) {
     const cambio = Math.round(((ahora - antes) / antes) * 100);
     if (cambio <= -20) {
       out.push({

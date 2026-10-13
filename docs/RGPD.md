@@ -32,6 +32,7 @@ borra nada solo) y que alguien que sepa de RGPD confirme 2.3 y 4.3.
 | Quién toca una tarjeta sin login (llave o cookie) | `src/lib/gestion.js` |
 | La pasada diaria (borrados, plazos, bajas de tiendas) | `src/lib/limpieza.js` |
 | Registro de auditoría | `src/lib/auditoria.js`, tabla `auditoria` |
+| La plantilla (nombre o apodo de cada empleado y el hash scrypt de su PIN, en `config.plantilla`; quién dio cada sello, en `eventos.empleado`). Datos del personal de la tienda, no de clientes: solo el nombre de pila o un apodo, sin cifrar, y del PIN nunca el valor (nadie puede leerlo; el manager solo lo quita). La lista de nombres la ve la caja (para elegirse); quién dio cada sello, solo el manager y el admin. En la auditoría van ids, nunca nombres ni PIN | `src/lib/plantilla.js`, `src/lib/quien.js` |
 | Alertas | `src/lib/alertas.js` |
 | La página del cliente | `/p/<serial>/datos` (`src/app/p/[serial]/datos/`) |
 

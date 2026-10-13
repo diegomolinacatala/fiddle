@@ -1,11 +1,14 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getCliente, getNegocio, listEventos, clientePublico } from "@/lib/store";
+import { getCliente, getNegocio, listEventos, ultimoEvento, clientePublico } from "@/lib/store";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { puedeAcceder, COOKIE } from "@/lib/auth";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { sesionDeCookie } from "@/lib/sesionVigente";
 import { estadoDe } from "@/lib/resumen";
+import { ultimoSelloTexto, fechaHoraTexto, zonaDe, TIPOS_SELLO } from "@/lib/actividad";
+import { hayQueElegir, COOKIE_QUIEN } from "@/lib/plantilla";
+import { leerQuien } from "@/lib/quien";
 import TarjetaCaja from "./TarjetaCaja";
 import { negocioDeTarjeta } from "@/lib/tarjeta";
 import SetNombre from "./SetNombre";
@@ -43,7 +46,8 @@ export default async function Page({ params }) {
     );
   }
 
-  const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
+  const jar = await cookies();
+  const sesion = await sesionDeCookie(jar.get(COOKIE)?.value);
   // Sin sesión vigente (le cambiaron la contraseña, la tienda se archivó): a entrar,
   // no a "es de otra tienda", que no es verdad.
   if (!sesion) redirect(`/login?b=${cliente.negocio}&next=/w/${serial}`);
@@ -59,18 +63,36 @@ export default async function Page({ params }) {
   await apuntarEntradaAdmin(sesion, cliente.negocio, `Ficha ${cliente.codigo}`);
 
   const n = await getNegocio(cliente.negocio);
-  const eventos = await listEventos(serial);
+  // Quién atiende desde este móvil (lib/quien.js). El QR se escanea muchas veces
+  // con la cámara del móvil y entra aquí directo, sin pasar por la caja: si la
+  // tienda tiene plantilla y en este móvil nadie se ha identificado (o pasaron
+  // las dos horas), a identificarse primero.
+  const quien = await leerQuien(jar.get(COOKIE_QUIEN)?.value, n.slug, n.plantilla);
+  if (hayQueElegir(sesion, n.plantilla) && !quien) {
+    redirect(`/${n.slug}/caja?quien=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
+  }
+  // Cuándo fue el último sello, aparte del historial (que puede estar apagado o no
+  // llegar tan atrás): «no me has sellado» se zanja mirando la hora.
+  const [eventos, ultimoSello] = await Promise.all([listEventos(serial), ultimoSelloDe(serial, n)]);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
+  const ultimoSelloLinea = ultimoSelloTexto(ultimoSello, zonaDe(n));
 
   return (
     <main style={pagina}>
       <div style={{ width: "min(430px, 100%)" }}>
-        <a href={`/${n.slug}/caja`} style={volver}>
-          <Icono nombre="volver" tam={16} />
-          <MarcaTienda tema={n.tema} tam={20} />
-          {n.nombre}
-        </a>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <a href={`/${n.slug}/caja`} style={volver}>
+            <Icono nombre="volver" tam={16} />
+            <MarcaTienda tema={n.tema} tam={20} />
+            {n.nombre}
+          </a>
+          {quien && sesion.rol === "caja" && (
+            <a href={`/${n.slug}/caja?quien=1&volver=${encodeURIComponent(`/w/${serial}`)}`} title="Cambiar quién atiende" style={atiende}>
+              <Icono nombre="credencial" tam={15} /> {quien.nombre}
+            </a>
+          )}
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0 16px" }}>
           <span style={{ ...chipCodigo(accent), fontSize: 18, padding: "4px 10px" }}>{cliente.codigo}</span>
@@ -80,6 +102,9 @@ export default async function Page({ params }) {
               {cliente.visitas ? `${cliente.visitas} ${cliente.visitas === 1 ? "visita" : "visitas"}` : "Primera visita"}
               {cliente.premios > 0 && !e.esCupon ? ` · ${cliente.premios} ${cliente.premios === 1 ? "premio canjeado" : "premios canjeados"}` : ""}
             </div>
+            {ultimoSelloLinea && (
+              <div style={{ fontSize: 12, color: C.tenue, marginTop: 1 }} title={fechaHoraTexto(ultimoSello.ts, zonaDe(n))}>{ultimoSelloLinea}</div>
+            )}
           </div>
         </div>
 
@@ -109,6 +134,10 @@ export default async function Page({ params }) {
   );
 }
 
+// Un cupón no se sella: ni se pregunta. Y una línea de adorno no tumba la ficha si la base falla.
+const ultimoSelloDe = (serial, n) =>
+  (n.tipo === "descuento" ? Promise.resolve(null) : ultimoEvento(serial, TIPOS_SELLO).catch(() => null));
+
 function Aviso({ titulo, texto, children }) {
   return (
     <div style={{ textAlign: "center", width: "min(430px, 100%)", marginTop: "18vh" }}>
@@ -120,6 +149,8 @@ function Aviso({ titulo, texto, children }) {
 }
 
 const volver = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: C.suave, textDecoration: "none", fontWeight: 500, minHeight: 36 };
+// Quién atiende, arriba a la derecha: se toca para cambiar de persona (el relevo).
+const atiende = { ...volver, gap: 5, fontSize: 13, padding: "0 10px", borderRadius: 8, border: `1px solid ${C.borde}`, background: C.panel, color: C.texto, whiteSpace: "nowrap" };
 const cap = { fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 };
 const siguiente = {
   ...botonSecundario,

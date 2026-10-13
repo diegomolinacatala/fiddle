@@ -1,28 +1,80 @@
 // ============================================================================
-// ESTILO DE LA APP (claro)
+// ESTILO DE LA APP (claro y oscuro)
 // ----------------------------------------------------------------------------
 // Antes cada pantalla repetía sus propios colores oscuros en constantes sueltas.
 // Aquí viven una sola vez: colores + los trozos que se repiten (página, panel,
 // etiqueta, campo, botón). Las pantallas los importan y componen con `...`.
 //
-// El ACCENT no está aquí: lo pone cada negocio (`negocio.tema.accent`), que es
-// lo único que debe cambiar de una tienda a otra.
+// MODO OSCURO: cada color de `C` es una variable CSS (`var(--c-…)`). Sus dos
+// valores, claro y oscuro, están en COLORES y los escribe el layout raíz
+// (`hojaDeColores`). El modo lo elige cada dispositivo con BotonTema (claro de
+// partida). Por eso:
+//   - Nada de "#fff" de fondo en las pantallas del personal: `C.panel`.
+//   - Un color de `C` no se concatena con alfa (`${C.borde}55` no es un color).
+//   - El ACCENT no está aquí: lo pone cada negocio (`negocio.tema.accent`) y es
+//     un hex de verdad. Como TEXTO sobre el panel, `legible(accent)`: un marrón
+//     oscuro no se lee sobre el fondo oscuro. De fondo (con texto blanco), tal cual.
+//   - Lo del cliente (la página de la tienda, la tarjeta web, /privacidad) va
+//     siempre en claro: lleva la clase `claro`, que vuelve a poner los de día.
+//     Con los colores de su tienda, no con los de la app.
 // ============================================================================
 
-export const C = {
-  fondo: "#f5f6f8",
-  panel: "#ffffff",
-  panelSuave: "#fafbfc",
-  borde: "#e4e7ec",
-  bordeFuerte: "#cbd1d9",
-  texto: "#1b1e23",
-  suave: "#5c6371",
-  tenue: "#8b929e",
-  ok: "#136f3a",
-  okFondo: "#e8f6ee",
-  mal: "#b42318",
-  malFondo: "#fdecea",
+/** [claro, oscuro] de cada color de la app. */
+const COLORES = {
+  fondo: ["#f5f6f8", "#101216"],
+  panel: ["#ffffff", "#181b20"],
+  panelSuave: ["#fafbfc", "#1e2127"],
+  borde: ["#e4e7ec", "#2b3038"],
+  bordeFuerte: ["#cbd1d9", "#3d444f"],
+  texto: ["#1b1e23", "#e9ebee"],
+  suave: ["#5c6371", "#a6adb8"],
+  tenue: ["#8b929e", "#7d8592"],
+  ok: ["#136f3a", "#4cc38a"],
+  okFondo: ["#e8f6ee", "#13281d"],
+  okBorde: ["#bfe5cd", "#235238"],
+  mal: ["#b42318", "#f97066"],
+  malFondo: ["#fdecea", "#2e1614"],
+  malBorde: ["#f7c9c3", "#5e2621"],
+  // "Ojo": avisos que no son un error (fuera de horario, un límite alto, en riesgo).
+  ojo: ["#c26b04", "#f0a23b"],
+  ojoTexto: ["#9a5b00", "#f5bd6b"],
+  ojoFondo: ["#fff6e5", "#2a2113"],
+  ojoBorde: ["#f5d9a8", "#5a4419"],
+  // Lo elegido en un selector de opciones (diseños, marcas) y el foco.
+  azul: ["#2563eb", "#6ea2ff"],
+  azulFondo: ["#eff4ff", "#18233a"],
+  // El aviso flotante: oscuro de día, claro de noche, para que destaque siempre.
+  toastFondo: ["#1b1e23", "#e9ebee"],
+  toastTexto: ["#ffffff", "#1b1e23"],
+  // El brillo de los esqueletos de carga.
+  hueso: ["#eceef2", "#22262d"],
+  huesoBrillo: ["#f6f7f9", "#2c313a"],
+  // Cuánto se aclara el color de una tienda para leerse como texto (legible).
+  aclarar: ["0%", "42%"],
 };
+
+export const C = Object.fromEntries(Object.keys(COLORES).map((k) => [k, `var(--c-${k})`]));
+/** Los de día en hex, para lo que no entiende de variables CSS (el manifest de la app). */
+export const CLARO = Object.fromEntries(Object.entries(COLORES).map(([k, v]) => [k, v[0]]));
+
+const variables = (i) => Object.entries(COLORES).map(([k, v]) => `--c-${k}: ${v[i]};`).join(" ");
+
+/**
+ * Las variables, para el <style> del layout raíz. De día en :root y en `.claro`
+ * (lo del cliente, siempre claro); de noche con `data-tema="oscuro"` en <html>,
+ * que pone el script de TEMA_TEMPRANO antes de pintar.
+ */
+export const hojaDeColores = `
+  :root, .claro { ${variables(0)} color-scheme: light; }
+  :root[data-tema="oscuro"] { ${variables(1)} color-scheme: dark; }
+  :root[data-tema="oscuro"] .claro { ${variables(0)} color-scheme: light; }
+`;
+
+/** El color de una tienda como texto sobre el panel: igual de día, más claro de noche. */
+export const legible = (color) => `color-mix(in srgb, ${color}, #fff var(--c-aclarar))`;
+
+/** Un color con transparencia, también si es una variable (`${accent}14` solo vale con un hex). */
+export const tinte = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
 export const pagina = {
   minHeight: "100vh",
@@ -86,7 +138,7 @@ export const campo = {
   padding: "0.6rem 0.75rem",
   borderRadius: 10,
   border: `1px solid ${C.bordeFuerte}`,
-  background: "#fff",
+  background: C.panel,
   color: C.texto,
   fontSize: 15,
 };
@@ -106,7 +158,7 @@ export const botonSecundario = {
   padding: "0.65rem 1.15rem",
   borderRadius: 10,
   border: `1px solid ${C.bordeFuerte}`,
-  background: "#fff",
+  background: C.panel,
   color: C.texto,
   fontWeight: 500,
   fontSize: 14,
@@ -124,8 +176,8 @@ export const solapa = (activa, accent = C.texto) => ({
   padding: "0.5rem 0.95rem",
   borderRadius: RADIO.boton,
   border: `1px solid ${activa ? accent : C.borde}`,
-  background: activa ? `${accent}14` : "#fff",
-  color: activa ? accent : C.texto,
+  background: activa ? tinte(accent, 8) : C.panel,
+  color: activa ? legible(accent) : C.texto,
   fontSize: 14,
   fontWeight: 600,
   cursor: "pointer",
@@ -141,7 +193,7 @@ export const aviso = (ok) => ({
   fontSize: 14,
   background: ok ? C.okFondo : C.malFondo,
   color: ok ? C.ok : C.mal,
-  border: `1px solid ${ok ? "#bfe5cd" : "#f7c9c3"}`,
+  border: `1px solid ${ok ? C.okBorde : C.malBorde}`,
 });
 
 /** Chip con el código corto del pase ("K7M"): el identificador que se lee en voz alta. */
@@ -149,9 +201,9 @@ export const chipCodigo = (accent = C.texto) => ({
   display: "inline-block",
   padding: "2px 8px",
   borderRadius: 7,
-  border: `1px solid ${accent}55`,
-  background: `${accent}14`,
-  color: accent,
+  border: `1px solid ${tinte(accent, 33)}`,
+  background: tinte(accent, 8),
+  color: legible(accent),
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
   fontSize: 13,
   fontWeight: 700,

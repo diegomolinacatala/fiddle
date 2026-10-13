@@ -739,7 +739,7 @@ function Tuyo({ tipo, id, elegido, onElegir, rotulo, children }) {
 
 function Subir({ onClick, texto }) {
   return (
-    <button type="button" onClick={onClick} style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: "#fff" }}>
+    <button type="button" onClick={onClick} style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: C.panel }}>
       <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>+</span>
       <span style={{ fontSize: 11, lineHeight: 1.2, color: C.suave }}>{texto}</span>
     </button>
@@ -1079,7 +1079,7 @@ function Segmentos({ valor, opciones, onChange, fuerte = false, accent = "#2563e
           <button key={id} type="button" role="radio" aria-checked={on} onClick={() => onChange(id)} style={{
             flex: 1, minWidth: 0, padding: "7px 8px", borderRadius: 8, border: 0, cursor: "pointer", fontSize: 13,
             fontWeight: on ? 650 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            background: on ? (fuerte ? accent : "#fff") : "transparent",
+            background: on ? (fuerte ? accent : C.panel) : "transparent",
             color: on ? (fuerte ? "#fff" : C.texto) : C.suave,
             boxShadow: on ? "0 1px 3px rgba(16,20,28,.16)" : "none",
           }}>{texto}</button>
@@ -1110,7 +1110,7 @@ function Color({ titulo, valor, onChange, ayuda: texto }) {
       <label style={etiqueta}>{titulo}</label>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input type="color" value={valor || "#000000"} onChange={(e) => onChange(e.target.value)}
-          style={{ width: 52, height: 40, padding: 2, border: `1px solid ${C.borde}`, borderRadius: 8, background: "#fff", cursor: "pointer" }} />
+          style={{ width: 52, height: 40, padding: 2, border: `1px solid ${C.borde}`, borderRadius: 8, background: C.panel, cursor: "pointer" }} />
         {/* Se escribe libre y solo cuenta al quedar un color entero ("#a1b2c3"). */}
         <input defaultValue={valor || ""} key={valor} onChange={(e) => { const v = e.target.value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) onChange(v.toLowerCase()); }}
           maxLength={7} aria-label={`${titulo} en hexadecimal`}
@@ -1194,7 +1194,7 @@ const CSS = `
 .ed-centro { min-width: 0; }
 .ed-lado { min-width: 0; position: sticky; top: 0; }
 .ed-abajo { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-.ed-panel { background: #fff; border: 1px solid ${C.borde}; border-radius: 14px; padding: 16px; max-height: calc(100vh - 110px); overflow-y: auto; box-shadow: 0 12px 32px rgba(16,20,28,.12); max-width: 380px; }
+.ed-panel { background: ${C.panel}; border: 1px solid ${C.borde}; border-radius: 14px; padding: 16px; max-height: calc(100vh - 110px); overflow-y: auto; box-shadow: 0 12px 32px rgba(16,20,28,.12); max-width: 380px; }
 .ed-una .ed-panel-izq { margin-left: auto; }
 .ed-pista { color: ${C.suave}; font-size: 13px; line-height: 1.5; padding: 14px; border: 1px dashed ${C.bordeFuerte}; border-radius: 12px; }
 .ed-una .ed-abajo { margin-top: 14px; }
@@ -1208,25 +1208,25 @@ const CSS = `
 `;
 
 const capa = { position: "fixed", inset: 0, zIndex: 1200, background: C.fondo, display: "flex", flexDirection: "column", color: C.texto };
-const barra = { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#fff", borderBottom: `1px solid ${C.borde}`, flexWrap: "wrap" };
-const cerrar = { width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.borde}`, background: "#fff", fontSize: 20, lineHeight: 1, cursor: "pointer", color: C.suave };
-const chip = { padding: "8px 14px", borderRadius: 999, border: `1px solid ${C.borde}`, background: "#fff", fontSize: 13, cursor: "pointer", color: C.texto, minHeight: 36 };
+const barra = { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: C.panel, borderBottom: `1px solid ${C.borde}`, flexWrap: "wrap" };
+const cerrar = { width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.borde}`, background: C.panel, fontSize: 20, lineHeight: 1, cursor: "pointer", color: C.suave };
+const chip = { padding: "8px 14px", borderRadius: 999, border: `1px solid ${C.borde}`, background: C.panel, fontSize: 13, cursor: "pointer", color: C.texto, minHeight: 36 };
 const ayuda = { fontSize: 12, color: C.suave, margin: "6px 0 0", lineHeight: 1.45 };
 const lista = { margin: "8px 0 0", paddingLeft: 18, display: "grid", gap: 4 };
 const rotuloTel = { fontSize: 12, fontWeight: 650, color: C.suave, textAlign: "center", marginBottom: 8, letterSpacing: 0.3 };
 const miniRotulo = { fontSize: 10.5, color: C.tenue, marginTop: 4 };
 const cajaSuave = { background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: 10, padding: 10 };
-const cajaAviso = { background: "#fff8e6", border: "1px solid #f3d38a", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, lineHeight: 1.45, color: "#5c4400" };
+const cajaAviso = { background: C.ojoFondo, border: `1px solid ${C.ojoBorde}`, borderRadius: 10, padding: "10px 12px", fontSize: 12.5, lineHeight: 1.45, color: C.ojoTexto };
 const rejilla = (ancho) => ({ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(${ancho}px, 1fr))`, gap: 6 });
 const miniatura = { height: 38, maxWidth: "100%", objectFit: "contain", display: "block" };
 const quitarTuyo = {
   position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 6, border: `1px solid ${C.borde}`,
-  background: "#fff", color: C.suave, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0,
+  background: C.panel, color: C.suave, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0,
 };
-const paso = { width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.borde}`, background: "#fff", fontSize: 18, cursor: "pointer", flexShrink: 0 };
+const paso = { width: 40, height: 40, borderRadius: 8, border: `1px solid ${C.borde}`, background: C.panel, fontSize: 18, cursor: "pointer", flexShrink: 0 };
 const opcion = (activa) => ({
   display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
   padding: 6, borderRadius: 10, cursor: "pointer", textAlign: "center", minWidth: 0,
-  border: `2px solid ${activa ? "#2563eb" : "transparent"}`,
-  background: activa ? "#eff4ff" : C.panelSuave,
+  border: `2px solid ${activa ? C.azul : "transparent"}`,
+  background: activa ? C.azulFondo : C.panelSuave,
 });

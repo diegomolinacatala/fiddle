@@ -52,9 +52,12 @@ export const negocioDeTarjeta = (n) =>
  * El negocio para el PERSONAL (caja y manager): todo menos lo que es del admin,
  * el brief para Claude y sus comentarios sobre el pase. La caja vive en un móvil
  * de la tienda; lo que se escribe pensando en Claude no tiene por qué ir ahí.
+ * Tampoco la plantilla entera (con las bajas y sus fechas): la caja recibe solo
+ * los nombres que puede elegir por /api/plantilla/quien, y el manager la ve en
+ * su pestaña (lib/plantillaDatos.js).
  */
 export const negocioDelPersonal = (n) => {
   if (!n) return n;
-  const { brief: _brief, notas: _notas, ...resto } = n;
+  const { brief: _brief, notas: _notas, plantilla: _plantilla, ...resto } = n;
   return resto;
 };

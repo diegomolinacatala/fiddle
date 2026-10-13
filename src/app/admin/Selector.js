@@ -101,6 +101,6 @@ const panel = {
 const opcion = (activa) => ({
   display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
   padding: 8, borderRadius: 10, cursor: "pointer", textAlign: "center",
-  border: `2px solid ${activa ? "#2563eb" : "transparent"}`,
-  background: activa ? "#eff4ff" : C.panelSuave || "#f7f8fa",
+  border: `2px solid ${activa ? C.azul : "transparent"}`,
+  background: activa ? C.azulFondo : C.panelSuave || "#f7f8fa",
 });

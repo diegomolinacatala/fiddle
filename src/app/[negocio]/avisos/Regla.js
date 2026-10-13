@@ -9,7 +9,7 @@ import {
   DISPAROS, LISTA_DISPAROS, fraseRegla, renderTexto, candidatos, elegibles, proximoEnvio, variablesDesconocidas, varsDeEjemplo,
 } from "@/lib/automatizaciones";
 import { DIAS, DIAS_CORTOS } from "@/lib/horario";
-import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, botonPequeno, RADIO } from "@/app/ui";
+import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, botonPequeno, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // UNA REGLA: la tarjeta y, al tocar Editar, su formulario
@@ -44,7 +44,7 @@ export default function Regla({ regla, negocio, grupos, contextos, envios, topes
     <article style={{ ...panel, padding: 16, opacity: regla.activa ? 1 : 0.72 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Interruptor on={regla.activa} accent={accent} disabled={ocupado} onClick={() => acciones.alternar(regla)} etiqueta={regla.nombre} />
-        <span style={{ color: accent, display: "inline-flex" }}><Icono nombre={DISPAROS[regla.disparo]?.icon} tam={18} /></span>
+        <span style={{ color: legible(accent), display: "inline-flex" }}><Icono nombre={DISPAROS[regla.disparo]?.icon} tam={18} /></span>
         <h3 style={{ fontSize: 15, fontWeight: 650, margin: 0, flex: 1, minWidth: 0 }}>{regla.nombre}</h3>
         <button type="button" onClick={() => acciones.editar(regla.id)} style={botonPequeno} disabled={ocupado}>Editar</button>
       </div>
@@ -233,7 +233,7 @@ const ayuda = { fontSize: 12.5, color: C.tenue, margin: "6px 0 0", lineHeight: 1
 const cuenta = { display: "flex", alignItems: "baseline", gap: 10, marginTop: 14, padding: "12px 14px", border: "1px solid", borderRadius: RADIO.fila };
 const chipDia = (on, abre, accent) => ({
   width: 36, height: 34, borderRadius: RADIO.boton, fontWeight: 600, fontSize: 13,
-  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}14` : abre ? "#fff" : C.panelSuave,
-  color: on ? accent : abre ? C.texto : C.tenue, cursor: abre ? "pointer" : "not-allowed",
+  border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}14` : abre ? C.panel : C.panelSuave,
+  color: on ? legible(accent) : abre ? C.texto : C.tenue, cursor: abre ? "pointer" : "not-allowed",
   textDecoration: abre ? "none" : "line-through",
 });

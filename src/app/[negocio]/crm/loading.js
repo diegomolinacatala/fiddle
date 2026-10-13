@@ -1,14 +1,16 @@
-import { EsqueletoGestion, PanelHueso, Hueso } from "@/app/Esqueleto";
+"use client";
 
-// Mientras el servidor calcula el CRM: pestañas, cifras y paneles en gris.
+import { EsqueletoGestion, PanelHueso, Hueso } from "@/app/Esqueleto";
+import { useGestion } from "../MarcoGestion";
+import Solapas from "../Solapas";
+import { PESTANAS } from "./pestanas";
+
+// Mientras el servidor calcula el CRM: las pestañas ya de verdad, cifras y paneles en gris.
 export default function Cargando() {
+  const g = useGestion();
   return (
-    <EsqueletoGestion>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <Hueso w={90} h={34} r={10} />
-        <Hueso w={130} h={34} r={10} />
-        <Hueso w={90} h={34} r={10} />
-      </div>
+    <EsqueletoGestion margen={0}>
+      <Solapas pestanas={PESTANAS} activa="resumen" accent={g?.tema?.accent} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 18 }}>
         {Array.from({ length: 6 }, (_, i) => <Hueso key={i} h={92} r={14} />)}
       </div>

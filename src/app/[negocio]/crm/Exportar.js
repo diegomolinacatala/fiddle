@@ -10,7 +10,10 @@ import { C, panel, botonPrimario, botonPequeno } from "@/app/ui";
 //
 // No descarga a ciegas: primero dice qué hay en el fichero y qué se puede hacer
 // con él. La mayoría de dueños no sabe qué es un CSV.
-export default function Exportar({ cuantos, queContiene, accent, onDescargar }) {
+//
+// La Actividad lo usa igual, junto a SU lista (los movimientos del día): pasa
+// `titulo` y `explicacion` propios, porque esa hoja no lleva nombres.
+export default function Exportar({ cuantos, queContiene, accent, onDescargar, titulo, explicacion }) {
   const [abierto, setAbierto] = useState(false);
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
@@ -23,18 +26,20 @@ export default function Exportar({ cuantos, queContiene, accent, onDescargar }) 
       {abierto && (
         <div role="dialog" aria-label="Exportar" style={caja}>
           <p style={{ margin: "0 0 8px", fontWeight: 650 }}>
-            Descargar {cuantos} {cuantos === 1 ? "cliente" : "clientes"} en una hoja de cálculo
+            {titulo || `Descargar ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"} en una hoja de cálculo`}
           </p>
-          <p style={parrafo}>
-            {queContiene}. Una fila por cliente: código, nombre, estado, visitas, sellos, premios, fechas y notas.
-            Se abre con <strong>Excel</strong>, Numbers o Google Sheets.
-          </p>
-          <p style={parrafo}>
-            Para preguntarle a una IA (ChatGPT, Claude…) «¿qué clientes han dejado de venir?»,
-            <strong> borra antes las columnas de nombre y nota</strong>: con ellas, subirla es
-            pasarle a otra empresa datos de tus clientes.
-          </p>
-          <p style={{ ...parrafo, color: C.tenue }}>Lleva nombres y notas de clientes: no la compartas. Queda apuntado que la descargaste.</p>
+          {explicacion || (<>
+            <p style={parrafo}>
+              {queContiene}. Una fila por cliente: código, nombre, estado, visitas, sellos, premios, fechas y notas.
+              Se abre con <strong>Excel</strong>, Numbers o Google Sheets.
+            </p>
+            <p style={parrafo}>
+              Para preguntarle a una IA (ChatGPT, Claude…) «¿qué clientes han dejado de venir?»,
+              <strong> borra antes las columnas de nombre y nota</strong>: con ellas, subirla es
+              pasarle a otra empresa datos de tus clientes.
+            </p>
+            <p style={{ ...parrafo, color: C.tenue }}>Lleva nombres y notas de clientes: no la compartas. Queda apuntado que la descargaste.</p>
+          </>)}
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button type="button" onClick={() => { onDescargar(); setAbierto(false); }} style={{ ...botonPrimario(accent), padding: "0.5rem 0.95rem" }}>
               Descargar
@@ -54,3 +59,21 @@ const caja = {
   boxShadow: "0 12px 32px -12px rgba(16,20,28,.3)",
 };
 const parrafo = { margin: "0 0 8px", color: C.suave };
+
+/**
+ * Baja la hoja ya armada y deja apuntado quién bajó cuánto (el registro de
+ * auditoría). `que` es una clave, nunca lo buscado: lo buscado puede ser un nombre.
+ */
+export function bajarCsv({ csv, fichero, slug, cuantos, que }) {
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: fichero });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  fetch("/api/crm/exportar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ b: slug, cuantos, que }),
+  }).catch(() => {});
+}

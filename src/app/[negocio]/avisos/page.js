@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { datosAvisos } from "@/lib/motorAvisos";
-import { puedeAcceder, COOKIE } from "@/lib/auth";
-import { sesionDeCookie } from "@/lib/sesionVigente";
+import { sesionDePeticion } from "../negocioDePeticion";
+import { puedeAcceder } from "@/lib/auth";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
@@ -15,7 +14,7 @@ export const dynamic = "force-dynamic";
 // AQUÍ y la página llega pintada; mientras, Next enseña loading.js.
 export default async function Page({ params }) {
   const { negocio: slug } = await params;
-  const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
+  const sesion = await sesionDePeticion();
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/avisos`);
   // Lo que ve aquí el admin son los clientes de otro: queda apuntado (docs/RGPD.md, 6.9).
   await apuntarEntradaAdmin(sesion, slug, "Avisos");

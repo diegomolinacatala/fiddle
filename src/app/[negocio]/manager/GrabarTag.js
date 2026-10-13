@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Icono from "@/app/Icono";
-import { C, aviso, botonPrimario, botonSecundario } from "@/app/ui";
+import { C, aviso, botonPrimario, botonSecundario, legible } from "@/app/ui";
 
 // ============================================================================
 // GRABAR EL TAG NFC DESDE EL NAVEGADOR (Android)
@@ -55,7 +55,7 @@ export default function GrabarTag({ url, accent }) {
       {estado === "esperando" ? (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14 }}>
-            <span style={{ color: accent }}><Icono nombre="nfc" tam={22} /></span>
+            <span style={{ color: legible(accent) }}><Icono nombre="nfc" tam={22} /></span>
             Acerca el tag a la parte de atrás del móvil…
           </div>
           <button onClick={() => cancelar.current?.abort()} style={{ ...botonSecundario, marginTop: 10, fontSize: 13, padding: "0.45rem 0.85rem" }}>

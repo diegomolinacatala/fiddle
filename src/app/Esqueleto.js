@@ -1,4 +1,4 @@
-import { pagina, panel, RADIO } from "@/app/ui";
+import { C, pagina, panel, RADIO } from "@/app/ui";
 
 // ============================================================================
 // ESQUELETOS DE CARGA
@@ -11,7 +11,7 @@ import { pagina, panel, RADIO } from "@/app/ui";
 
 const css = `
 @keyframes esqueleto-brillo { from { background-position: 150% 0 } to { background-position: -50% 0 } }
-.esq { background: linear-gradient(90deg, #eceef2 0%, #f6f7f9 40%, #eceef2 80%); background-size: 200% 100%;
+.esq { background: linear-gradient(90deg, ${C.hueso} 0%, ${C.huesoBrillo} 40%, ${C.hueso} 80%); background-size: 200% 100%;
   animation: esqueleto-brillo 1.3s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .esq { animation: none } }
 `;
@@ -33,23 +33,17 @@ export function PanelHueso({ lineas = 4, alto = null }) {
   );
 }
 
-/** Página del dueño (manager / clientes): cabecera con marca, pestañas y paneles. */
-export function EsqueletoGestion({ children }) {
+/**
+ * Lo de dentro de una pantalla del dueño. La cabecera (marca, nombre, pestañas)
+ * NO va aquí: es del layout ([negocio]/MarcoGestion.js) y se queda puesta
+ * mientras carga. `margen`: 0 si lo primero son unas Solapas, que traen el suyo.
+ */
+export function EsqueletoGestion({ children, margen = 20 }) {
   return (
-    <main style={pagina} aria-busy="true" aria-label="Cargando">
+    <div aria-busy="true" aria-label="Cargando" style={{ marginTop: margen }}>
       <style>{css}</style>
-      <div style={{ width: "min(1080px, 100%)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Hueso w={42} h={42} r={12} />
-          <Hueso w={200} h={24} />
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <Hueso w={150} h={36} r={RADIO.boton} />
-          <Hueso w={110} h={36} r={RADIO.boton} />
-        </div>
-        <div style={{ marginTop: 20 }}>{children}</div>
-      </div>
-    </main>
+      {children}
+    </div>
   );
 }
 

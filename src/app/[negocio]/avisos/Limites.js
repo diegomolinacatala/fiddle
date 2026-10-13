@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Icono from "@/app/Icono";
 import { MAX_PAUSA, LIMITE_DIA, PAUSA_CORTA } from "@/lib/automatizaciones";
-import { C, panel, campo, h2, botonPequeno, RADIO } from "@/app/ui";
+import { C, panel, campo, h2, botonPequeno, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // PARA NO CANSAR A NADIE: los dos topes que valen para TODO lo que sale solo
@@ -51,8 +51,8 @@ export default function Limites({ negocio: n, ocupado, guardar, flash, children 
             {Array.from({ length: LIMITE_DIA.max - LIMITE_DIA.min + 1 }, (_, i) => LIMITE_DIA.min + i).map((v) => (
               <button key={v} type="button" role="radio" aria-checked={dia === v} onClick={() => setDia(v)} style={{
                 width: 38, height: 34, borderRadius: 8, cursor: "pointer", fontWeight: 650,
-                border: `1px solid ${dia === v ? n.tema.accent : C.borde}`, background: dia === v ? `${n.tema.accent}14` : "#fff",
-                color: dia === v ? n.tema.accent : C.texto,
+                border: `1px solid ${dia === v ? n.tema.accent : C.borde}`, background: dia === v ? `${n.tema.accent}14` : C.panel,
+                color: dia === v ? legible(n.tema.accent) : C.texto,
               }}>{v}</button>
             ))}
           </div>
@@ -76,6 +76,6 @@ export default function Limites({ negocio: n, ocupado, guardar, flash, children 
 }
 
 const alerta = {
-  display: "flex", gap: 7, alignItems: "flex-start", margin: 0, fontSize: 12.5, lineHeight: 1.45, color: "#9a5b00",
-  background: "#fff6e5", border: "1px solid #f5d9a8", borderRadius: RADIO.boton, padding: "8px 10px",
+  display: "flex", gap: 7, alignItems: "flex-start", margin: 0, fontSize: 12.5, lineHeight: 1.45, color: C.ojoTexto,
+  background: C.ojoFondo, border: `1px solid ${C.ojoBorde}`, borderRadius: RADIO.boton, padding: "8px 10px",
 };

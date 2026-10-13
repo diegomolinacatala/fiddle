@@ -556,7 +556,7 @@ const conmutador = {
 
 const opcion = (activo) => ({
   flex: 1, padding: "0.45rem 0.5rem", borderRadius: 7, border: 0,
-  background: activo ? "#fff" : "transparent", color: activo ? C.texto : C.suave,
+  background: activo ? C.panel : "transparent", color: activo ? C.texto : C.suave,
   fontSize: 13, fontWeight: activo ? 600 : 500, cursor: "pointer",
   boxShadow: activo ? "0 1px 3px rgba(16,20,28,.16)" : "none",
 });

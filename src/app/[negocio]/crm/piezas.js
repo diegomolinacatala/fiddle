@@ -1,7 +1,8 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { C, panel } from "@/app/ui";
+import { C, panel, legible } from "@/app/ui";
+import { textoFalta } from "@/lib/observaciones";
 
 // ============================================================================
 // PIEZAS DEL PANEL — los trozos que se repiten en el CRM
@@ -23,7 +24,7 @@ export function Cifra({ label, valor, pie, variacion, accent }) {
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-        <span style={{ fontSize: 26, fontWeight: 650, color: accent || C.texto, lineHeight: 1 }}>{valor}</span>
+        <span style={{ fontSize: 26, fontWeight: 650, color: accent ? legible(accent) : C.texto, lineHeight: 1 }}>{valor}</span>
         {variacion !== null && variacion !== undefined && (
           <span style={{ fontSize: 12, fontWeight: 600, color: sube ? C.ok : C.mal }}>
             {sube ? "▲" : "▼"} {Math.abs(variacion)}%
@@ -122,6 +123,37 @@ export function Rejilla({ rejilla, accent }) {
   );
 }
 
+/**
+ * En vez de la rejilla mientras no hay con qué (lib/observaciones.js, `suficiencia`):
+ * la semana, con los días que ya se han visto llenos y los que faltan vacíos. Así
+ * se ve que se va llenando, no un "vuelve más tarde".
+ */
+export function FaltanDatos({ s, accent }) {
+  const estado = (x) => (!x.abre ? "cerrado" : x.listo ? "listo" : x.fechas ? "a medias" : "sin ver");
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {s.dias.map((x) => (
+          <span key={x.d} title={`${DIAS[x.d]}: ${estado(x)}`} style={{
+            width: 32, height: 32, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, fontWeight: 650,
+            background: !x.abre ? "transparent" : x.listo || x.fechas ? accent : C.borde,
+            opacity: x.abre && !x.listo && x.fechas ? 0.4 : 1,
+            color: x.abre && (x.listo || x.fechas) ? "#fff" : C.tenue,
+            border: x.abre ? "none" : `1px dashed ${C.bordeFuerte}`,
+          }}>
+            {DIAS[x.d]}
+          </span>
+        ))}
+      </div>
+      <p style={{ fontSize: 14, fontWeight: 600, margin: "12px 0 4px" }}>Aún no hay datos suficientes</p>
+      <p style={{ fontSize: 13, color: C.suave, margin: 0 }}>
+        {textoFalta(s)} Con una semana suelta, un día raro parecería la costumbre de la tienda.
+      </p>
+    </div>
+  );
+}
+
 /** Reparto por estado, en una sola barra apilada. Al lado, la leyenda con cifras. */
 export function Reparto({ porEstado, estados, total }) {
   if (!total) return null;
@@ -159,7 +191,7 @@ export function Chip({ estado, estados }) {
       title={e.descripcion}
       style={{
         display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 7,
-        background: `${e.color}18`, color: e.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+        background: `${e.color}18`, color: legible(e.color), fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
       }}
     >
       <Icono nombre={e.icon} tam={13} grosor={2.2} /> {e.label}

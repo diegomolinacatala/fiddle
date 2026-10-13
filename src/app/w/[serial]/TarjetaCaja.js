@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConFotoBanda } from "@/app/fotoBanda";
-import { ACCIONES, premiosDe } from "@/lib/acciones";
+import { ACCIONES, premiosDe, tieneDeshacer, SEGUNDOS_DESHACER } from "@/lib/acciones";
 import { filasDeCaja, normalizarCaja } from "@/lib/caja";
 import { stripDelPase, comoDataUri, svgBandaOpaca } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
@@ -23,6 +23,15 @@ import { C, panel, RADIO } from "@/app/ui";
 // Las peticiones van EN FILA: dos sellos seguidos no compiten entre sí en el
 // guardado optimista del servidor. Cuando la fila se vacía, se refresca la
 // página por detrás (historial, visitas) sin tocar lo que ya se ve.
+//
+// DESHACER UN PREMIO (dar, guardar, usar uno guardado): se pinta al instante,
+// como todo, pero la petición ESPERA `SEGUNDOS_DESHACER` antes de salir, como
+// el «Deshacer envío» del correo. Deshacer la cancela y vuelve a lo de antes:
+// el servidor no se entera, no queda evento ni visita, y al cliente no le llega
+// el aviso. Un premio dado sin querer y vuelto a poner a mano dejaría dos
+// movimientos falsos en las cuentas. Cualquier otro toque confirma lo que
+// esperaba (deshacer es para el «uy» inmediato, no para después de otra cosa),
+// y al salir de la página se manda con `keepalive`, para que no se pierda.
 // ============================================================================
 
 // `demo`: la vista previa del manager (Editar vista de caja). Se pulsa y se ve
@@ -39,7 +48,12 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
   // visita lo quita del pase, pero aquí se queda a la vista mientras se le atiende.
   const [alLlegar] = useState(inicial.mensaje || null);
   const fila = useRef(Promise.resolve());
+  // Lo que aún no ha contestado el servidor, contando el premio que espera al deshacer.
   const pendientes = useRef(0);
+  // El premio que espera: { id, key, antes (el cliente tal cual estaba), temporizador }.
+  const enEspera = useRef(null);
+  // Un refresco que se dejó pasar porque algo seguía en vuelo: se hace al quedar libre.
+  const refrescoPendiente = useRef(false);
 
   // Lo que llegue del servidor al refrescar manda, salvo con algo aún en vuelo.
   useEffect(() => { if (!pendientes.current) setCliente(inicial); }, [inicial]);
@@ -66,9 +80,67 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
   }
   useEffect(() => () => clearInterval(vuelta.current), []);
 
+  /**
+   * Manda el premio que esperaba al deshacer, si hay uno. `alSalir`: la página se va
+   * (o pasa a segundo plano, que en un móvil puede ser lo mismo). Entonces la petición
+   * sale YA y con `keepalive`, en el mismo manejador y sin pasar por la fila: lo que se
+   * encola en una promesa al descargar la página ya no llega a salir (comprobado), y la
+   * respuesta no la va a leer nadie.
+   */
+  function confirmarEnEspera({ alSalir = false } = {}) {
+    const p = soltarEnEspera();
+    if (!p || demo) return;
+    if (!alSalir) return enviar(p.key);
+    mandarAlSalir(p.key);
+  }
+  /** Quita el premio en espera (y su temporizador) sin mandarlo. Devuelve lo que esperaba, o null. */
+  function soltarEnEspera() {
+    const p = enEspera.current;
+    if (!p) return null;
+    enEspera.current = null;
+    clearTimeout(p.temporizador);
+    pendientes.current -= 1;
+    setToast((t) => (t ? { ...t, deshacer: null } : t));
+    return p;
+  }
+  // Al salir no hay fila ni respuesta: `sendBeacon` es lo hecho para esto (sobrevive a la
+  // descarga de la página también en iOS); si el navegador no lo coge, `fetch` con keepalive.
+  function mandarAlSalir(key) {
+    const cuerpo = JSON.stringify({ serial, accion: key });
+    if (navigator.sendBeacon?.("/api/accion", new Blob([cuerpo], { type: "application/json" }))) return;
+    fetch("/api/accion", { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpo, keepalive: true }).catch(() => {});
+  }
+  function deshacer() {
+    const p = soltarEnEspera();
+    if (!p) return;
+    setCliente(p.antes);
+    setToast({ ok: true, msg: ACCIONES[p.key].deshecho(negocio) });
+    navigator.vibrate?.(30);
+    refrescarSiLibre();
+  }
+  /** El refresco de la página (historial, visitas) solo cuando nada sigue en vuelo. */
+  function refrescarSiLibre() {
+    if (demo || pendientes.current) { refrescoPendiente.current = !demo; return; }
+    refrescoPendiente.current = false;
+    router.refresh();
+  }
+  useEffect(() => {
+    const salir = () => confirmarEnEspera({ alSalir: true });
+    const visibilidad = () => { if (document.visibilityState === "hidden") salir(); };
+    window.addEventListener("pagehide", salir);
+    document.addEventListener("visibilitychange", visibilidad);
+    return () => {
+      window.removeEventListener("pagehide", salir);
+      document.removeEventListener("visibilitychange", visibilidad);
+      salir(); // la pantalla se va (a elegir quién atiende, por ejemplo): que no se pierda
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Aplica `key` `veces` veces (el "+2"): aquí al momento, y cada una a la fila del servidor. */
   function ejecutar(key, veces = 1) {
     cancelarVuelta();
+    confirmarEnEspera();
     let actual = cliente;
     let r = null;
     let hechas = 0;
@@ -85,8 +157,17 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       return;
     }
     setCliente(actual);
-    setToast({ ok: true, msg: hechas > 1 ? `${hechas} sellos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje });
+    const msg = hechas > 1 ? `${hechas} sellos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje;
     navigator.vibrate?.(50);
+    if (hechas === 1 && tieneDeshacer(key)) {
+      // `id` distingue un premio en espera del siguiente: la barra del aviso vuelve a empezar.
+      const id = Date.now();
+      setToast({ ok: true, msg, deshacer: SEGUNDOS_DESHACER, id });
+      pendientes.current += 1;
+      enEspera.current = { id, key, antes: cliente, temporizador: setTimeout(confirmarEnEspera, SEGUNDOS_DESHACER * 1000) };
+      return;
+    }
+    setToast({ ok: true, msg });
     if (opciones.volverAlEscaner && /^sellar/.test(key)) empezarVuelta();
     if (demo) return;
     for (let i = 0; i < hechas; i += 1) enviar(key);
@@ -102,7 +183,17 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
           body: JSON.stringify({ serial, accion: key }),
         });
         const data = await res.json();
+        // Nadie ha dicho quién atiende hoy en este móvil (lib/plantilla.js): a
+        // elegir. El sello que se acaba de pintar NO se guardó: la caja lo avisa
+        // (`perdido=1`) y la ficha vuelve a cargarse con lo que haya en el servidor.
+        if (data.elegir) {
+          router.push(`/${negocio.slug}/caja?quien=1&perdido=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
+          return;
+        }
         if (!res.ok || data.ok === false) {
+          // Un premio que esperaba se calculó sobre lo que acaba de fallar: no se manda. Con el
+          // estado del servidor delante, la caja lo vuelve a dar si toca.
+          soltarEnEspera();
           if (data.cliente) setCliente(data.cliente);
           setToast({ ok: false, msg: data.mensaje || data.error || "No se ha guardado. Vuelve a intentarlo." });
           navigator.vibrate?.([80, 60, 80]);
@@ -111,11 +202,12 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
           setToast((t) => (t?.ok ? { ...t, detalle: resumenAviso(data.aviso) } : t));
         }
       } catch {
+        soltarEnEspera();
         setToast({ ok: false, msg: "Sin conexión. No se ha guardado: vuelve a intentarlo." });
         router.refresh();
       } finally {
         pendientes.current -= 1;
-        if (!pendientes.current) router.refresh();
+        refrescarSiLibre();
       }
     });
   }
@@ -180,6 +272,7 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
         toast={toast}
         grande={opciones.grande}
         onCancelarVuelta={cancelarVuelta}
+        onDeshacer={deshacer}
       />
     </>
   );

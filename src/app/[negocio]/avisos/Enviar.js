@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Icono from "@/app/Icono";
 import Campana from "./Campana";
 import { TODOS, MOMENTO, DESTINOS_ESPECIALES, DURA_GRUPO, infoDestino } from "@/lib/envios";
-import { C, panel, RADIO } from "@/app/ui";
+import { C, panel, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // ENVIAR: primero a quién, luego qué y cuándo (ahora o a una hora)
@@ -57,7 +57,7 @@ export default function Enviar({ datos, flash, onDatos, onEnviado, llegada = {} 
               onClick={() => setElegido(g.key)} style={tarjeta(activo, hay, n.tema.accent)}
             >
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: n.tema.accent, display: "inline-flex" }}><Icono nombre={g.icon} tam={17} /></span>
+                <span style={{ color: legible(n.tema.accent), display: "inline-flex" }}><Icono nombre={g.icon} tam={17} /></span>
                 <strong style={{ fontSize: 13.5, fontWeight: 650, textAlign: "left" }}>{g.label}</strong>
                 <span style={{ marginLeft: "auto", fontSize: 18, fontWeight: 650 }}>{g.total}</span>
               </span>
@@ -88,6 +88,6 @@ const nota = {
 const tarjeta = (activo, hay, accent) => ({
   display: "flex", flexDirection: "column", alignItems: "stretch", padding: "11px 13px", textAlign: "left",
   borderRadius: RADIO.fila, border: `1px solid ${activo ? accent : C.borde}`,
-  background: activo ? `${accent}0f` : hay ? "#fff" : C.panelSuave,
+  background: activo ? `${accent}0f` : hay ? C.panel : C.panelSuave,
   opacity: hay || activo ? 1 : 0.55, cursor: hay ? "pointer" : "default", font: "inherit", color: C.texto,
 });

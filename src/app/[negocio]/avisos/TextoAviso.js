@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Icono from "@/app/Icono";
 import { VARIABLES, FRASES, MAX_TEXTO, renderTexto, largoMaximo, variablesDesconocidas } from "@/lib/automatizaciones";
-import { C, campo, etiqueta, RADIO } from "@/app/ui";
+import { C, campo, etiqueta, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // "LO QUE LE LLEGA": el texto de un aviso automático o programado
@@ -103,9 +103,9 @@ export default function TextoAviso({ id, valor, onChange, vars, ejemplo, encajan
           const puesta = valor.includes(`{${f.clave}}`);
           return (
             <button key={f.clave} type="button" onClick={() => meter(f.clave)} title={`{${f.clave}}`}
-              style={{ ...frase, borderColor: puesta ? accent : C.borde, background: puesta ? `${accent}0d` : "#fff" }}>
+              style={{ ...frase, borderColor: puesta ? accent : C.borde, background: puesta ? `${accent}0d` : C.panel }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontWeight: 600, fontSize: 13 }}>
-                <Icono nombre={puesta ? "check" : "mas"} tam={13} style={{ color: puesta ? accent : C.suave }} /> {f.nombre}
+                <Icono nombre={puesta ? "check" : "mas"} tam={13} style={{ color: puesta ? legible(accent) : C.suave }} /> {f.nombre}
               </span>
               <span style={{ fontSize: 12, color: C.suave, marginTop: 2 }}>«{vars[f.clave] || ejemplo[f.clave]}»</span>
               <span style={{ fontSize: 11.5, color: C.tenue, marginTop: 2 }}>
@@ -124,7 +124,7 @@ const nota = { fontSize: 12.5, color: C.tenue, margin: "6px 0 0", lineHeight: 1.
 const subtitulo = { fontSize: 12.5, fontWeight: 600, color: C.suave, marginBottom: 6 };
 const chip = {
   font: "inherit", display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", borderRadius: 8,
-  border: `1px solid ${C.borde}`, background: "#fff", color: C.texto, fontSize: 12.5, fontWeight: 500, cursor: "pointer",
+  border: `1px solid ${C.borde}`, background: C.panel, color: C.texto, fontSize: 12.5, fontWeight: 500, cursor: "pointer",
 };
 const frase = {
   display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left", padding: "8px 10px",

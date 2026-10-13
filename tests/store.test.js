@@ -95,6 +95,18 @@ describe("eventos", () => {
     expect((await store.listEventos("s1")).map((e) => e.mensaje)).toEqual(["dos", "uno"]);
     expect(await store.listEventos("s1", 1)).toHaveLength(1);
   });
+
+  it("ultimoEvento: el más reciente de esos tipos, de esa tarjeta", async () => {
+    await store.addEvento("s1", "sellar", "Sello 1/8");
+    await new Promise((r) => setTimeout(r, 2));
+    await store.addEvento("s1", "sellar2", "Sello Cafés 1/8");
+    await new Promise((r) => setTimeout(r, 2));
+    await store.addEvento("s1", "canjear", "Canjeó: café");
+    await store.addEvento("s2", "sellar", "Sello 5/8");
+    expect(await store.ultimoEvento("s1", ["sellar", "sellar2"])).toMatchObject({ serial: "s1", tipo: "sellar2", mensaje: "Sello Cafés 1/8", ts: expect.any(String) });
+    expect(await store.ultimoEvento("s1", ["restar"])).toBeNull();
+    expect(await store.ultimoEvento("s1", [])).toBeNull();
+  });
 });
 
 describe("registros de Apple Wallet", () => {
@@ -220,7 +232,7 @@ describe("CRM", () => {
   it("los eventos llevan negocio y actor, y se pueden leer por tienda", async () => {
     await nuevo("s1");
     await nuevo("s2", "fade");
-    await store.addEvento("s1", "sellar", "Sello 1/8", { negocio: "nube", actor: "caja" });
+    await store.addEvento("s1", "sellar", "Sello 1/8", { negocio: "nube", actor: "caja", empleado: "sebas001" });
     await store.addEventos([
       { serial: "s1", tipo: "campana", mensaje: "Campaña «vuelve»", negocio: "nube", actor: "manager" },
       { serial: "s2", tipo: "sellar", mensaje: "Sello 1/6", negocio: "fade", actor: "caja" },
@@ -229,7 +241,7 @@ describe("CRM", () => {
     const deNube = await store.listEventosDeNegocio("nube");
     expect(deNube).toHaveLength(2);
     expect(deNube.every((e) => e.serial === "s1")).toBe(true);
-    expect((await store.listEventos("s1"))[0]).toMatchObject({ actor: expect.any(String) });
+    expect((await store.listEventos("s1")).find((e) => e.mensaje === "Sello 1/8")).toMatchObject({ actor: "caja", empleado: "sebas001" });
     expect(await store.listEventosDeNegocio("fade")).toHaveLength(1);
     await store.addEventos([]); // no revienta
   });

@@ -1,8 +1,6 @@
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { negocioDePeticion } from "../negocioDePeticion";
-import { puedeAcceder, COOKIE, usuarioDe } from "@/lib/auth";
-import { sesionDeCookie } from "@/lib/sesionVigente";
+import { negocioDePeticion, sesionDePeticion } from "../negocioDePeticion";
+import { puedeAcceder, usuarioDe } from "@/lib/auth";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
@@ -15,7 +13,7 @@ export const dynamic = "force-dynamic";
 // la caja en otro móvil. Como el resto, llega pintado desde el servidor.
 export default async function Page({ params }) {
   const { negocio: slug } = await params;
-  const sesion = await sesionDeCookie((await cookies()).get(COOKIE)?.value);
+  const sesion = await sesionDePeticion();
   if (!puedeAcceder(sesion, slug, "manager")) redirect(`/login?b=${slug}&next=/${slug}/ajustes`);
   // Lo que ve aquí el admin son los clientes de otro: queda apuntado (docs/RGPD.md, 6.9).
   await apuntarEntradaAdmin(sesion, slug, "Ajustes");

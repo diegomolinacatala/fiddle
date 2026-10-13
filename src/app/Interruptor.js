@@ -1,7 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { C, RADIO } from "@/app/ui";
+import { C, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // ENCENDIDO / APAGADO — el mismo en todas las pantallas
@@ -34,10 +34,10 @@ export function FilaInterruptor({ on, onClick, accent, titulo, texto = null, ico
   return (
     <button type="button" role="switch" aria-checked={on} onClick={onClick} disabled={disabled} {...resto} style={{
       display: "flex", gap: 12, alignItems: "center", width: "100%", textAlign: "left", padding: "11px 13px",
-      borderRadius: RADIO.fila, border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}0d` : "#fff",
+      borderRadius: RADIO.fila, border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}0d` : C.panel,
       cursor: disabled ? "default" : "pointer", font: "inherit", color: C.texto, opacity: disabled ? 0.6 : 1, ...style,
     }}>
-      {icono && <span style={{ color: accent, display: "inline-flex" }}><Icono nombre={icono} tam={20} /></span>}
+      {icono && <span style={{ color: legible(accent), display: "inline-flex" }}><Icono nombre={icono} tam={20} /></span>}
       <span style={{ flex: 1, minWidth: 0 }}>
         <strong style={{ fontWeight: 600, fontSize: 14, display: "block" }}>{titulo}</strong>
         {texto && <span style={{ color: C.suave, fontSize: 12.5, display: "block", marginTop: 1 }}>{texto}</span>}

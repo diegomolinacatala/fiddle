@@ -5,7 +5,7 @@ import Icono from "@/app/Icono";
 import { FilaInterruptor } from "@/app/Interruptor";
 import { DIAS, DIAS_CORTOS, ZONA_POR_DEFECTO, MAX_TRAMOS, aMinutos, aHora, fechaLocal } from "@/lib/horario";
 import CalendarioCerrados from "./CalendarioCerrados";
-import { C, campo, botonPrimario, RADIO } from "@/app/ui";
+import { C, campo, botonPrimario, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // CUÁNDO ABRE LA TIENDA
@@ -275,11 +275,11 @@ const segmento = (on, accent) => ({
 const chipDia = (on, accent) => ({
   flex: "1 1 0", minWidth: 0, maxWidth: 40, height: 34, padding: 0, borderRadius: RADIO.boton, fontWeight: 600, fontSize: 13, cursor: "pointer",
   border: `1px solid ${on ? accent : C.borde}`, background: on ? `${accent}14` : C.panelSuave,
-  color: on ? accent : C.tenue, textDecoration: on ? "none" : "line-through",
+  color: on ? legible(accent) : C.tenue, textDecoration: on ? "none" : "line-through",
 });
 const plegable = {
   display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 16, padding: "10px 12px", textAlign: "left",
-  cursor: "pointer", fontFamily: "inherit", color: C.texto, border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff",
+  cursor: "pointer", fontFamily: "inherit", color: C.texto, border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: C.panel,
 };
 const fila = { display: "flex", alignItems: "center", gap: 5, minHeight: 38 };
 // Las dos horas se reparten lo que quede de fila: en la columna estrecha del
@@ -287,5 +287,5 @@ const fila = { display: "flex", alignItems: "center", gap: 5, minHeight: 38 };
 const hora = { ...campo, width: "auto", flex: "1 1 0", minWidth: 0, padding: "0.45rem 0.3rem", fontSize: 14 };
 const iconoBoton = {
   width: 30, height: 30, flexShrink: 0, display: "grid", placeItems: "center", padding: 0, cursor: "pointer",
-  border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff", color: C.suave,
+  border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: C.panel, color: C.suave,
 };

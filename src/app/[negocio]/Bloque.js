@@ -1,7 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { C, botonPequeno, RADIO } from "@/app/ui";
+import { C, botonPequeno, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // UNA FILA DE AJUSTE: la pieza con la que se arman Tienda y Ajustes
@@ -31,7 +31,7 @@ export default function Bloque({ icono, titulo, resumen, accion = null, abierto 
       {/* El botón siempre debajo del resumen, alineado con el texto: al lado
           cabía en unas filas y en otras no, y cada una acababa con su forma. */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <span aria-hidden style={{ width: 40, height: 40, borderRadius: RADIO.boton, background: `${accent}14`, color: accent, display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <span aria-hidden style={{ width: 40, height: 40, borderRadius: RADIO.boton, background: `${accent}14`, color: legible(accent), display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icono nombre={icono} tam={20} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>

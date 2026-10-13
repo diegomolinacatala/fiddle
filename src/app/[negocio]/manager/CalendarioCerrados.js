@@ -106,7 +106,7 @@ const rejilla = { display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr
 const cabecera = { textAlign: "center", fontSize: 11, fontWeight: 600, color: C.tenue, padding: "2px 0 4px" };
 const flecha = (off) => ({
   width: 30, height: 30, display: "grid", placeItems: "center", padding: 0, border: `1px solid ${C.borde}`,
-  borderRadius: RADIO.boton, background: "#fff", color: C.suave, cursor: off ? "default" : "pointer", opacity: off ? 0.35 : 1,
+  borderRadius: RADIO.boton, background: C.panel, color: C.suave, cursor: off ? "default" : "pointer", opacity: off ? 0.35 : 1,
 });
 
 // Tres aspectos: abierto (blanco, se toca), cerrado (rojo, tachado: se ve de lejos)
@@ -119,13 +119,13 @@ function celda(tipo, accent, esHoy) {
     borderRadius: 8, padding: 0, fontFamily: "inherit", borderWidth: 1, borderStyle: "solid", borderColor: esHoy ? accent : "transparent",
   };
   if (tipo === "cerrado") {
-    return { ...base, cursor: "pointer", background: C.malFondo, color: C.mal, fontWeight: 650, textDecoration: "line-through", borderColor: esHoy ? accent : "#f5c2bd" };
+    return { ...base, cursor: "pointer", background: C.malFondo, color: C.mal, fontWeight: 650, textDecoration: "line-through", borderColor: esHoy ? accent : C.malBorde };
   }
   if (tipo === "apagado") return { ...base, color: C.bordeFuerte, background: "transparent" };
-  return { ...base, cursor: "pointer", background: "#fff", color: C.texto, borderColor: esHoy ? accent : C.borde };
+  return { ...base, cursor: "pointer", background: C.panel, color: C.texto, borderColor: esHoy ? accent : C.borde };
 }
 
 const muestra = (tipo) => ({
   width: 12, height: 12, borderRadius: 3, display: "inline-block",
-  ...(tipo === "cerrado" ? { background: C.malFondo, border: "1px solid #f5c2bd" } : { background: C.borde }),
+  ...(tipo === "cerrado" ? { background: C.malFondo, border: `1px solid ${C.malBorde}` } : { background: C.borde }),
 });

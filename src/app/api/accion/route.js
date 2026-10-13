@@ -3,6 +3,8 @@ import { getCliente, saveCliente, getNegocio, addEvento, registrarVisita, client
 import { TIPOS_VISITA } from "@/lib/crm";
 import { ACCIONES, accionPermitida } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
+import { hayQueElegir } from "@/lib/plantilla";
+import { quienDeRequest, ponerCookiesQuien } from "@/lib/quien";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -32,6 +34,16 @@ export async function POST(request) {
     if (!negocio) return jsonError("Negocio no encontrado", 404);
     if (!accionPermitida(negocio, accion)) return jsonError("Esa acción no está activada por el manager", 403);
 
+    // Quién atiende desde este móvil (lib/quien.js): la cookie firmada con su PIN. Con
+    // gente dada de alta, la caja tiene que haberse identificado (y no hace más de
+    // HORAS_PIN); la pantalla lo pide con `elegir`. El dueño, con su cuenta, no: queda
+    // como actor "manager".
+    const quien = await quienDeRequest(request, negocio.slug, negocio.plantilla);
+    if (hayQueElegir(sesion, negocio.plantilla) && !quien) {
+      return NextResponse.json({ ok: false, elegir: true, mensaje: "Antes de sellar, di quién atiende en este móvil." }, { status: 428 });
+    }
+    const empleado = sesion.rol === "caja" ? quien?.id ?? null : null;
+
     const r = def.aplicar(cliente, negocio);
     if (r.ok === false) return NextResponse.json({ ok: false, mensaje: r.mensaje, cliente: clientePublico(cliente) });
 
@@ -44,13 +56,16 @@ export async function POST(request) {
         { status: 409 },
       );
     }
-    if (r.evento) await addEvento(serial, accion, r.evento, { negocio: cliente.negocio, actor: sesion.rol });
+    if (r.evento) await addEvento(serial, accion, r.evento, { negocio: cliente.negocio, actor: sesion.rol, empleado });
     // El cliente estuvo aquí: cuenta como visita. Una corrección, no (ver crm.js).
     if (TIPOS_VISITA.includes(accion)) await registrarVisita(serial);
     // Con el estado de antes se sabe qué pasó (un sello, un canje) y si Android debe sonar.
     const aviso = await notificarCliente(r.cliente, negocio, { antes: cliente });
 
-    return NextResponse.json({ ok: true, mensaje: r.mensaje, cliente: clientePublico(r.cliente), aviso });
+    const res = NextResponse.json({ ok: true, mensaje: r.mensaje, cliente: clientePublico(r.cliente), aviso });
+    // Usar la caja renueva la cookie de quién atiende: con cola no se pide el PIN.
+    if (quien) await ponerCookiesQuien(res, negocio.slug, quien);
+    return res;
   } catch (e) {
     return errorInterno("accion", e);
   }

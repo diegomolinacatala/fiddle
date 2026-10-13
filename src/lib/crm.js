@@ -44,10 +44,33 @@ export const UMBRALES = {
   horasVisita: 3,
   cadenciaMin: 1,     // el ritmo más rápido que se mide: a diario
   riesgoMinDias: 7,   // nadie está en riesgo por faltar menos de una semana (cierres, puentes)
+  // Un pase que nadie guardó ni usó, pasado este rato, no es un cliente: es
+  // alguien que escaneó y se fue. Antes del plazo aún puede estar guardándolo.
+  descartadaDias: 1,
 };
 
 const dias = (desde, hasta) => (desde && hasta ? Math.max(0, (hasta - desde) / DIA) : null);
 const ms = (v) => (v ? Date.parse(v) || null : null);
+
+/**
+ * Del historial, UNA entrada por visita: la primera de cada rato en el mostrador.
+ * Misma regla que store.registrarVisita (lo de la misma tarjeta a menos de
+ * `horasVisita` de lo anterior es la misma visita), para que el Resumen cuente
+ * igual que la ficha: siete cafés de golpe a quien traía la cartilla de papel,
+ * o una ronda para los amigos, son UNA visita, no siete.
+ */
+export function soloVisitas(eventos) {
+  const ultima = new Map();
+  return (eventos || [])
+    .filter((e) => TIPOS_VISITA.includes(e.tipo) && ms(e.ts))
+    .sort((a, b) => ms(a.ts) - ms(b.ts))
+    .filter((e) => {
+      const t = ms(e.ts);
+      const antes = ultima.get(e.serial);
+      ultima.set(e.serial, t);
+      return !antes || t - antes >= UMBRALES.horasVisita * HORA;
+    });
+}
 
 /**
  * Todo lo que se puede decir de un cliente a partir de lo guardado, sin tocar
@@ -106,6 +129,8 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
   };
   // A quién le llega un aviso de la tienda: lo que cuentan Clientes y Avisos.
   perfil.avisable = perfil.contactable && !perfil.sinPromos;
+  // Ni en el teléfono ni en caja: no cuenta como cliente en las cifras (metricas).
+  perfil.descartada = !visitas && !perfil.instalado && (perfil.diasDesdeAlta ?? 0) >= UMBRALES.descartadaDias;
   perfil.estado = estadoDe(perfil);
   return perfil;
 }
@@ -118,6 +143,8 @@ export const ESTADOS = {
   riesgo:   { label: "En riesgo", icon: "alerta", color: "#c26b04", descripcion: "Lleva más tiempo del habitual sin venir." },
   dormido:  { label: "Inactivo", icon: "reloj", color: "#6b7280", descripcion: "Más de 60 días sin visitas." },
   perdido:  { label: "Perdido",  icon: "cerrar", color: "#b42318", descripcion: "Más de 120 días sin visitas." },
+  // Fuera de la escalera: no sale en el reparto ni en las cifras, solo en la lista.
+  descartada: { label: "Sin guardar", icon: "fantasma", color: "#a3a9b3", descripcion: "Sacó la tarjeta, pero ni la guardó en el teléfono ni la usó en caja. No cuenta como cliente." },
 };
 
 export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, ...v }));
@@ -128,6 +155,7 @@ export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, .
  * exigir ritmo todavía), y después el reloj.
  */
 export function estadoDe(p) {
+  if (p.descartada) return "descartada";
   if (!p.visitas) return "fantasma";
   if (p.diasDesdeAlta !== null && p.diasDesdeAlta <= UMBRALES.nuevoDias && p.visitas < UMBRALES.nuevoVisitas) {
     return "nuevo";
@@ -199,7 +227,8 @@ export const GRUPOS = {
     icon: "cartera",
     descripcion: "Tienen la tarjeta pero nunca la han usado en caja.",
     idea: "Enseña esta tarjeta en caja y empieza a sumar",
-    incluye: (p) => p.visitas === 0,
+    // Los que ni la guardaron no son un grupo al que escribir: no les llegaría nada.
+    incluye: (p) => p.visitas === 0 && !p.descartada,
   },
   campeones: {
     label: "Mejores clientes",
@@ -247,12 +276,19 @@ const pct = (parte, total) => (total ? Math.round((parte / total) * 100) : 0);
  * Las cifras de cabecera. `eventos` solo hace falta para contar visitas por
  * ventana de tiempo; todo lo demás sale del resumen que llevan los clientes.
  *
+ * Las tarjetas descartadas (ni guardadas ni usadas) NO entran en ninguna cifra:
+ * quien escaneó y se fue no es un cliente, y contarlo hundía la vuelta, la
+ * instalación y el reparto. Se cuentan aparte, en `descartadas`.
+ *
  * @param {object[]} perfiles  de perfilDe()
  * @param {object[]} eventos   [{tipo, ts}] del negocio
  * @param {object[]} clientes  filas crudas (para altas por fecha)
  */
-export function metricas(perfiles, eventos, clientes, ahora = Date.now()) {
-  const visitas = eventos.filter((e) => TIPOS_VISITA.includes(e.tipo));
+export function metricas(todos, eventos, clientesTodos, ahora = Date.now()) {
+  const perfiles = todos.filter((p) => !p.descartada);
+  const fuera = new Set(todos.filter((p) => p.descartada).map((p) => p.serial));
+  const clientes = clientesTodos.filter((c) => !fuera.has(c.serial));
+  const visitas = soloVisitas(eventos);
   const enVentana = (lista, desdeDias, hastaDias = 0) =>
     lista.filter((e) => {
       const t = ms(e.ts || e.creado);
@@ -261,12 +297,13 @@ export function metricas(perfiles, eventos, clientes, ahora = Date.now()) {
 
   const total = perfiles.length;
   const porEstado = Object.fromEntries(
-    Object.keys(ESTADOS).map((k) => [k, perfiles.filter((p) => p.estado === k).length]),
+    Object.keys(ESTADOS).filter((k) => k !== "descartada").map((k) => [k, perfiles.filter((p) => p.estado === k).length]),
   );
   const cadencias = perfiles.map((p) => p.cadencia).filter((c) => c !== null && c > 0);
 
   return {
     total,
+    descartadas: fuera.size,
     porEstado,
     // Activo = viene a su ritmo. No es "vino en los últimos 30 días": quien pasa
     // una vez al trimestre y está en fecha también es un cliente vivo.
@@ -299,10 +336,9 @@ export const tendencia = (ahora, antes) => (antes ? Math.round(((ahora - antes) 
  */
 export function serieVisitas(eventos, dias = 30, ahora = Date.now()) {
   const cuenta = new Map();
-  for (const e of eventos) {
-    if (!TIPOS_VISITA.includes(e.tipo)) continue;
+  for (const e of soloVisitas(eventos)) {
     const t = ms(e.ts);
-    if (!t || t < ahora - dias * DIA) continue;
+    if (t < ahora - dias * DIA) continue;
     const dia = new Date(t).toISOString().slice(0, 10);
     cuenta.set(dia, (cuenta.get(dia) || 0) + 1);
   }
@@ -322,11 +358,8 @@ export function serieVisitas(eventos, dias = 30, ahora = Date.now()) {
  */
 export function rejillaHoraria(eventos) {
   const rejilla = Array.from({ length: 7 }, () => new Array(24).fill(0));
-  for (const e of eventos) {
-    if (!TIPOS_VISITA.includes(e.tipo)) continue;
-    const t = ms(e.ts);
-    if (!t) continue;
-    const d = new Date(t);
+  for (const e of soloVisitas(eventos)) {
+    const d = new Date(ms(e.ts));
     rejilla[(d.getDay() + 6) % 7][d.getHours()] += 1; // getDay(): 0 = domingo
   }
   return rejilla;
@@ -354,8 +387,9 @@ export function cohortes(clientes, perfiles, meses = 6, ahora = Date.now()) {
 
   return [...grupos.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
+    .filter(([, ps]) => ps.some((p) => p && !p.descartada))
     .map(([mes, ps]) => {
-      const dentro = ps.filter(Boolean);
+      const dentro = ps.filter((p) => p && !p.descartada);
       const vivos = dentro.filter((p) => ["activo", "nuevo"].includes(p.estado)).length;
       return {
         mes,

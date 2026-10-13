@@ -66,7 +66,7 @@ export default async function Page({ params, searchParams }) {
   // Tinta clara = fondo oscuro: el campo del nombre va en blanco translúcido
   // sobre un fondo claro y apenas insinuado sobre uno oscuro.
   return (
-    <main className={`tienda ${tintaClara(t.pageInk) ? "oscura" : "clara"}`} style={coloresDeTienda(t, colorDelPase(t))}>
+    <main className={`claro tienda ${tintaClara(t.pageInk) ? "oscura" : "clara"}`} style={coloresDeTienda(t, colorDelPase(t))}>
       <style>{css}</style>
       <div className="centro">
         {suya

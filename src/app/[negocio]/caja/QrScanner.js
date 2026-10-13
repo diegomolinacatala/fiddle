@@ -176,7 +176,7 @@ export default function QrScanner({ accent = C.texto, autoabrir = false }) {
       {activo && (
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           {linterna !== null && (
-            <button onClick={alternarLinterna} style={{ ...botonSecundario, flex: 1, ...fila, ...(linterna ? { background: "#fff7d6", borderColor: "#e8c95a" } : {}) }} aria-pressed={linterna}>
+            <button onClick={alternarLinterna} style={{ ...botonSecundario, flex: 1, ...fila, ...(linterna ? { background: C.ojoFondo, borderColor: C.ojoBorde } : {}) }} aria-pressed={linterna}>
               <Icono nombre="linterna" tam={18} /> {linterna ? "Apagar luz" : "Linterna"}
             </button>
           )}

@@ -1,19 +1,22 @@
 import Link from "next/link";
 import LogoutButton from "@/app/LogoutButton";
+import BotonTema from "@/app/BotonTema";
 import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
 import { BotonAyuda } from "@/app/Recorrido";
 import { titulo, solapa } from "@/app/ui";
 
-// Tres pestañas, una por pregunta, y cada cosa en UNA de ellas:
-//   Tienda    cómo es la tarjeta, qué hace la caja, cuándo abre, el QR
-//   Clientes  quién viene (y la exportación, junto a la lista que exporta)
-//   Avisos    qué se les dice: a mano (a todos o a un grupo) y automático
+// Cuatro pestañas, una por pregunta, y cada cosa en UNA de ellas:
+//   Tienda     cómo es la tarjeta, qué hace la caja, cuándo abre, el QR
+//   Clientes   quién viene (y la exportación, junto a la lista que exporta)
+//   Avisos     qué se les dice: a mano (a todos o a un grupo) y automático
+//   Plantilla  quién atiende la caja y qué hace cada uno
 // Y Ajustes, aparte y al final: lo de la cuenta (contraseñas), que se toca casi nunca.
 const SECCIONES = [
   ["manager", "Tienda", "puerta"],
   ["crm", "Clientes", "clientes"],
   ["avisos", "Avisos", "megafono"],
+  ["plantilla", "Plantilla", "credencial"],
 ];
 const AJUSTES = ["ajustes", "Ajustes", "ajustes"];
 
@@ -32,6 +35,7 @@ export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {ayuda && <BotonAyuda />}
+          <BotonTema />
           <LogoutButton negocio={slug} />
         </div>
       </div>
