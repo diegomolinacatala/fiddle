@@ -13,10 +13,10 @@ import EditorCaja from "./EditorCaja";
 import { normalizarCaja } from "@/lib/caja";
 import Recorrido from "@/app/Recorrido";
 import { FilaInterruptor } from "@/app/Interruptor";
-import CabeceraGestion from "../CabeceraGestion";
 import Bloque from "../Bloque";
+import { useGestion } from "../MarcoGestion";
 import Icono from "@/app/Icono";
-import { C, pagina, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo, RADIO } from "@/app/ui";
+import { C, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo, RADIO } from "@/app/ui";
 
 // La pestaña TIENDA: cómo es la tarjeta (cartillas y premios), qué botones
 // tiene la caja, cuándo abre y dónde está la tienda, y el tag/QR del mostrador.
@@ -49,6 +49,13 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
       requestAnimationFrame(() => document.getElementById("horario")?.scrollIntoView({ behavior: "smooth" }));
     }
   }, []);
+
+  // La cabecera es del layout: lo que cambie aquí de la marca o el nombre se lo pasamos.
+  const gestion = useGestion();
+  useEffect(() => {
+    gestion?.actualizar((c) => (c.nombre === n.nombre && c.tema === n.tema ? c : { ...c, nombre: n.nombre, tema: n.tema }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n.nombre, n.tema]);
 
   const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
   function flash(m) {
@@ -152,9 +159,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
   const mapaCambiado = JSON.stringify(ubicacion) !== JSON.stringify(guardada);
 
   return (
-    <main style={pagina}>
-      <div style={{ width: "min(1080px, 100%)" }}>
-        <CabeceraGestion negocio={n} slug={negocio} activa="manager" ayuda />
+    <>
 
         <div style={grid}>
           {/* ------------------------------------------------ la tienda */}
@@ -290,8 +295,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
         )}
         {msg && <div role="status" style={toast}>{msg}</div>}
         <Recorrido recorrido="manager" accent={accent} />
-      </div>
-    </main>
+    </>
   );
 }
 

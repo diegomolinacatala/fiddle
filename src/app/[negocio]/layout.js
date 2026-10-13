@@ -1,5 +1,7 @@
 import PwaRegister from "@/app/pwa-register";
-import { negocioDePeticion } from "./negocioDePeticion";
+import { negocioDePeticion, sesionDePeticion } from "./negocioDePeticion";
+import { puedeAcceder } from "@/lib/auth";
+import MarcoGestion from "./MarcoGestion";
 
 const leerNegocio = (slug) => negocioDePeticion(slug).catch(() => null);
 import { rutaIcono } from "@/lib/rutasImagen";
@@ -25,13 +27,19 @@ export async function generateViewport({ params }) {
   return { width: "device-width", initialScale: 1, maximumScale: 1, themeColor: n?.tema?.accent };
 }
 
-export default function NegocioLayout({ children }) {
+export default async function NegocioLayout({ children, params }) {
+  const { negocio: slug } = await params;
+  const [n, sesion] = await Promise.all([leerNegocio(slug), sesionDePeticion().catch(() => null)]);
+  // La cabecera del dueño, solo a quien puede entrar: al resto la página le manda al login.
+  const cabecera = n && puedeAcceder(sesion, slug, "manager")
+    ? { nombre: n.nombre, tema: n.tema, avisosAvanzados: n.avisosAvanzados === true }
+    : null;
   return (
     <>
       {/* Para ofrecer "Instalar la caja" en Android: Chrome lo avisa una sola vez. */}
       <script dangerouslySetInnerHTML={{ __html: CAPTURAR_INSTALAR }} />
       <PwaRegister />
-      {children}
+      <MarcoGestion slug={slug} negocio={cabecera}>{children}</MarcoGestion>
     </>
   );
 }

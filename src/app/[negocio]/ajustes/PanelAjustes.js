@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import ClaveNueva from "@/app/ClaveNueva";
-import CabeceraGestion from "../CabeceraGestion";
 import Bloque from "../Bloque";
-import { C, pagina, panel } from "@/app/ui";
+import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 
 // ============================================================================
@@ -46,9 +45,7 @@ La actual dejará de valer y los móviles que tengan la caja abierta se quedará
   }
 
   return (
-    <main style={pagina}>
-      <div style={{ width: "min(1080px, 100%)" }}>
-        <CabeceraGestion negocio={n} slug={slug} activa="ajustes" />
+    <>
 
         <section style={{ ...panel, maxWidth: 640, marginTop: 20, paddingTop: 6, paddingBottom: 6 }}>
           <Bloque
@@ -85,8 +82,7 @@ La actual dejará de valer y los móviles que tengan la caja abierta se quedará
         </section>
 
         {msg && <div role="status" style={toast}>{msg}</div>}
-      </div>
-    </main>
+    </>
   );
 }
 

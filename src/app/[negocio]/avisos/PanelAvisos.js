@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CabeceraGestion from "../CabeceraGestion";
 import Automaticos from "./Automaticos";
 import Enviar from "./Enviar";
 import Enviados from "./Enviados";
 import Programados from "./Programados";
-import { C, pagina, solapa } from "@/app/ui";
+import Solapas from "../Solapas";
+import { pestanasDe, primeraDe } from "./pestanas";
 
 // ============================================================================
 // AVISOS — todo lo que se les dice a los clientes, en un solo sitio
@@ -25,7 +25,6 @@ import { C, pagina, solapa } from "@/app/ui";
 // devuelve los datos frescos y se cambian de golpe.
 // ============================================================================
 
-const PESTANAS = [["automaticos", "Automáticos", true], ["programados", "Programados", true], ["enviar", "Enviar", false], ["enviados", "Enviados", false]];
 
 // Se puede llegar con algo ya empezado desde Clientes:
 //   ?grupo=<clave>        Enviar, con ese destino elegido (un grupo, "todos" o "momento")
@@ -55,8 +54,8 @@ function deLaUrl() {
 export default function PanelAvisos({ slug, inicial }) {
   const [d, setD] = useState(inicial);
   const avanzados = d.negocio.avisosAvanzados === true;
-  const pestanas = PESTANAS.filter(([, , avanzada]) => avanzados || !avanzada);
-  const [pestana, setPestana] = useState(avanzados ? "automaticos" : "enviar");
+  const pestanas = pestanasDe(avanzados);
+  const [pestana, setPestana] = useState(primeraDe(avanzados));
   const [msg, setMsg] = useState(null);
   const [llegada, setLlegada] = useState({});
 
@@ -84,17 +83,9 @@ export default function PanelAvisos({ slug, inicial }) {
   const accent = d.negocio.tema.accent;
 
   return (
-    <main style={pagina}>
-      <div style={{ width: "min(1100px, 100%)" }}>
-        <CabeceraGestion negocio={d.negocio} slug={slug} activa="avisos" />
+    <>
 
-        <div role="tablist" style={{ display: "flex", gap: 8, margin: "20px 0 16px", flexWrap: "wrap", paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
-          {pestanas.map(([id, texto]) => (
-            <button key={id} type="button" role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)} style={solapa(pestana === id, accent)}>
-              {texto}
-            </button>
-          ))}
-        </div>
+        <Solapas pestanas={pestanas} activa={pestana} accent={accent} onCambiar={setPestana} />
 
         {avanzados && pestana === "automaticos" && <Automaticos slug={slug} datos={d} onDatos={setD} flash={flash} />}
         {avanzados && pestana === "programados" && <Programados slug={slug} datos={d} onDatos={setD} flash={flash} semilla={llegada.programar} />}
@@ -102,8 +93,7 @@ export default function PanelAvisos({ slug, inicial }) {
         {pestana === "enviados" && <Enviados datos={d} />}
 
         {msg && <div role="status" style={toast}>{msg}</div>}
-      </div>
-    </main>
+    </>
   );
 }
 
