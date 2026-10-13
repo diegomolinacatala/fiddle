@@ -6,7 +6,7 @@ import CabeceraGestion from "./CabeceraGestion";
 import { pagina } from "@/app/ui";
 
 // ============================================================================
-// EL MARCO DE LAS PANTALLAS DEL DUEÑO (Tienda, Clientes, Avisos, Ajustes)
+// EL MARCO DE LAS PANTALLAS DEL DUEÑO (Tienda, Clientes, Avisos, Plantilla, Ajustes)
 // ----------------------------------------------------------------------------
 // La cabecera (marca, nombre y pestañas) vive en el LAYOUT, no en cada página:
 // el layout no se vuelve a pintar al cambiar de pestaña, así que mientras la
@@ -17,7 +17,7 @@ import { pagina } from "@/app/ui";
 // Tienda llega con `actualizar` (useGestion), sin pedir nada al servidor.
 // ============================================================================
 
-const SECCIONES = ["manager", "crm", "avisos", "ajustes"];
+const SECCIONES = ["manager", "crm", "avisos", "plantilla", "ajustes"];
 const Contexto = createContext(null);
 
 /** {nombre, tema, avisosAvanzados, actualizar} dentro de una pantalla del dueño; null fuera. */
@@ -26,7 +26,7 @@ export const useGestion = () => useContext(Contexto);
 export default function MarcoGestion({ slug, negocio, children }) {
   const seccion = useSelectedLayoutSegment();
   const [cabecera, setCabecera] = useState(negocio);
-  // Sin permiso (la página manda al login) o fuera de estas cuatro, ni marco ni cabecera.
+  // Sin permiso (la página manda al login) o fuera de estas, ni marco ni cabecera.
   if (!cabecera || !SECCIONES.includes(seccion)) return children;
   return (
     <Contexto.Provider value={{ ...cabecera, actualizar: setCabecera }}>

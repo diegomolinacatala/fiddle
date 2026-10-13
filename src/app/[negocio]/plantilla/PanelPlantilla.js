@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import CabeceraGestion from "../CabeceraGestion";
+import Solapas from "../Solapas";
+import { PESTANAS } from "./pestanas";
 import Equipo from "./Equipo";
 import Rendimiento from "./Rendimiento";
 import Registro from "./Registro";
@@ -9,7 +10,7 @@ import { zonaDe } from "@/lib/actividad";
 import {
   ventanaDe, cuentasDePlantilla, observacionesPlantilla, serieDiaria, movimientosDePlantilla, colorDe, DUENO, SIN_NOMBRE,
 } from "@/lib/plantilla";
-import { C, pagina, solapa } from "@/app/ui";
+import { C, solapa } from "@/app/ui";
 
 // ============================================================================
 // PLANTILLA DE UNA TIENDA
@@ -25,7 +26,6 @@ import { C, pagina, solapa } from "@/app/ui";
 // /api/plantilla y actualiza solo la lista: los eventos no cambian.
 // ============================================================================
 
-const PESTANAS = [["equipo", "Equipo"], ["rendimiento", "Rendimiento"], ["registro", "Registro"]];
 const PERIODOS = [[7, "7 días"], [30, "30 días"], [90, "90 días"]];
 
 export default function PanelPlantilla({ slug, inicial }) {
@@ -87,15 +87,8 @@ export default function PanelPlantilla({ slug, inicial }) {
   const cambiar = (id, cambios) => llamar("PUT", { id, ...cambios });
 
   return (
-    <main style={pagina}>
-      <div style={{ width: "min(1100px, 100%)" }}>
-        <CabeceraGestion negocio={n} slug={slug} activa="plantilla" />
-
-        <div style={{ display: "flex", gap: 8, margin: "20px 0 16px", flexWrap: "wrap", alignItems: "center", paddingTop: 16, borderTop: `1px solid ${C.borde}` }}>
-          {PESTANAS.map(([id, texto]) => (
-            <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id, accent)}>{texto}</button>
-          ))}
-          <span style={{ flex: 1 }} />
+    <>
+        <Solapas pestanas={PESTANAS} activa={pestana} accent={accent} onCambiar={setPestana}>
           {pestana !== "equipo" && (
             <div role="group" aria-label="Periodo" style={{ display: "flex", gap: 6 }}>
               {PERIODOS.map(([d, texto]) => (
@@ -103,7 +96,7 @@ export default function PanelPlantilla({ slug, inicial }) {
               ))}
             </div>
           )}
-        </div>
+        </Solapas>
 
         {pestana !== "equipo" && !completo && (
           <p style={{ ...nota, marginBottom: 16 }}>
@@ -122,8 +115,7 @@ export default function PanelPlantilla({ slug, inicial }) {
         )}
 
         {msg && <div role="status" style={toast}>{msg}</div>}
-      </div>
-    </main>
+    </>
   );
 }
 
