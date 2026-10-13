@@ -1,38 +1,44 @@
 // ============================================================================
 // LOS COLORES DE FIDDLE
 // ----------------------------------------------------------------------------
-// Los cinco de la marca (elegidos el 13-10-2026) van tal cual. Son todos
-// apagados y casi todos oscuros, así que para que respiren hacen falta un papel
-// claro y unos tintes: salen de ellos mismos, no son colores nuevos.
+// «Verde y espresso» (elegida el 13-10-2026): el verde botella de un club inglés
+// para la marca y la base de una cachemira (lino, camel, avena, visón, espresso)
+// para todo lo demás. La de antes (salvia, topo, nogal) mezclaba tres familias que
+// se parecían sin ser iguales y se leía como un error.
 //
-//   carbón  el texto y las bandas oscuras         salvia  el acento sobre oscuro
-//   ébano   el texto secundario                   topo    el acento sobre claro
-//   nogal   el violín y los botones
+//   espresso  el texto y las bandas oscuras       avena  el acento sobre oscuro
+//   visón     el texto secundario                 camel  el acento sobre claro
+//   verde     el violín, los botones y el panel
 //
-// Contraste comprobado sobre el papel: carbón 12,6:1, ébano 6,3:1, nogal 11,8:1,
-// topo 4,4:1 (solo para cosas grandes: el punto, iconos). Sobre carbón, el papel
-// 12,6:1 y la salvia 5,7:1. La salvia sobre el papel no llega (2,2:1): nunca texto.
+// Una regla que no se rompe: el verde (la marca) y el espresso (la tinta) se
+// distinguen de un vistazo, por tono y por luz. Si se parecieran, la banda del
+// panel y la del pie parecerían el mismo color mal copiado.
+//
+// Contraste comprobado sobre el papel: espresso 15,9:1, visón 6,6:1, verde 10,2:1,
+// camel 3,3:1 (solo para cosas grandes: el punto, iconos). Sobre el verde, el papel
+// 10,2:1 y la avena 6,4:1; sobre el espresso, 15,9:1 y 10,0:1. La avena sobre el
+// papel no llega (1,6:1): nunca texto.
 // ============================================================================
 
 export const PALETA = {
   // los cinco
-  salvia: "#a5a789",
-  topo: "#816c61",
-  nogal: "#402c0f",
-  ebano: "#575a4b",
-  carbon: "#2a2c24",
+  verde: "#1a422f",
+  camel: "#a67f58",
+  avena: "#d6c0a5",
+  vison: "#60544b",
+  espresso: "#1f1812",
   // los que salen de ellos
-  papel: "#f4f2ec", // el fondo: blanco roto hacia la salvia
-  superficie: "#fbfaf6", // tarjetas sobre el papel
-  crema: "#f6f1e8", // el papel con algo del nogal, para tarjetas de ejemplo
-  salviaClara: "#e3e4d6",
-  topoClaro: "#ece5df",
-  nogalClaro: "#ede6da",
-  tintaSuave: "#6b6a5c", // texto terciario: 4,9:1 sobre el papel
-  topoOscuro: "#6f5b50", // el topo para letra pequeña: 5,7:1 sobre la crema
-  nogalEncima: "#553c18", // los botones al pasar el ratón
+  papel: "#f8f3ec", // el fondo: lino, blanco roto hacia la avena
+  superficie: "#fcf9f5", // tarjetas sobre el papel
+  crema: "#f6efe4", // el papel con algo más de avena, para tarjetas de ejemplo
+  verdeClaro: "#e0e9e0",
+  camelClaro: "#f2dfcf",
+  avenaClara: "#ede9df",
+  tintaSuave: "#75695f", // texto terciario: 4,8:1 sobre el papel
+  camelOscuro: "#7e5d3f", // el camel para letra pequeña: 5,2:1 sobre la crema
+  verdeEncima: "#26523c", // los botones al pasar el ratón
   // el final de los degradados de los pasos (cada tinte, un punto más hondo)
-  salviaHonda: "#d6d8c5",
-  topoHondo: "#e0d5cc",
-  nogalHondo: "#e2d6c3",
+  verdeHondo: "#d3e1d3",
+  camelHondo: "#ecd4c0",
+  avenaHonda: "#e6dfd0",
 };
