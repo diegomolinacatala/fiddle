@@ -1,45 +1,39 @@
 // ============================================================================
-// Genera las imágenes de la web de fiddle (/home), en public/marcas/:
+// Genera las imágenes de la marca, todas del violín de src/lib/violin.js y con
+// los colores de src/app/home/paleta.js:
 //
-//   fiddle.svg       icono de la pestaña (el logo con las esquinas redondeadas)
-//   fiddle-180.png   icono al guardarla en la pantalla de inicio del iPhone
-//   fiddle-og.png    la vista previa al mandar el enlace por WhatsApp
+//   public/marcas/fiddle.svg        icono de la pestaña
+//   public/marcas/fiddle-180.png    icono al guardar la web en el iPhone
+//   public/marcas/fiddle-og.png     la vista previa al mandar el enlace por WhatsApp
+//   docs/marca/fiddle-violin.svg    el logo para subir donde haga falta (Google
+//   docs/marca/fiddle-violin-1024.png  Wallet lo enseña recortado en círculo)
 //
-// Salen del logo (docs/marca/fiddle-logo.svg). Las letras de la vista previa se
-// convierten en trazos con Inter: sharp no tiene por qué tener la fuente.
-// public/marcas/ no pasa por el middleware (si no, pedirían sesión).
+// Las letras de la vista previa se convierten en trazos con Inter: sharp no tiene
+// por qué tener la fuente. public/marcas/ no pasa por el middleware (si no,
+// pedirían sesión).
 //
-//   node scripts/gen-marca-web.mjs
+//   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-marca-web.mjs
 // ============================================================================
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import opentype from "opentype.js";
 import sharp from "sharp";
+import { svgViolin, svgIconoViolin, VIOLIN } from "../src/lib/violin.js";
+import { PALETA as P } from "../src/app/home/paleta.js";
 
 const require = createRequire(import.meta.url);
-const DESTINO = new URL("../public/marcas/", import.meta.url);
-const TINTA = "#1d1b2e";
-const CREMA = "#fff7ea";
-const ROSA = "#ff5c8a";
+const ruta = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 
-// El logo tal cual, sin su cuadrado de fondo.
-const LETRA = `
-  <g transform="translate(512 512) scale(1.15) translate(-526 -530)">
-    <path d="M452 770 V430 Q452 290 592 290 H640" fill="none" stroke="FILL" stroke-width="118" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M330 475 H560" fill="none" stroke="FILL" stroke-width="118" stroke-linecap="round"/>
-    <circle cx="672" cy="737" r="92" fill="${ROSA}"/>
-  </g>`;
-const marca = (fondo, letra, radio) =>
-  `<rect width="1024" height="1024" rx="${radio}" fill="${fondo}"/>${LETRA.replaceAll("FILL", letra)}`;
-
-const icono = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${marca(TINTA, CREMA, 230)}</svg>\n`;
-writeFileSync(new URL("fiddle.svg", DESTINO), icono);
-
-// El iPhone redondea él solo las esquinas: aquí, cuadrado entero.
-const cuadrado = readFileSync(new URL("../docs/marca/fiddle-logo.svg", import.meta.url));
-await sharp(cuadrado).resize(180, 180).png().toFile(fileURLToPath(new URL("fiddle-180.png", DESTINO)));
+// Icono: el violín verde sobre la avena (6,4:1), con esquinas para la pestaña.
+const pestana = svgIconoViolin({ color: P.verde, fondo: P.avena, radio: 230 });
+writeFileSync(ruta("../public/marcas/fiddle.svg"), `${pestana}\n`);
+// El iPhone y Google redondean ellos: aquí, cuadrado entero.
+const cuadrado = svgIconoViolin({ color: P.verde, fondo: P.avena });
+await sharp(Buffer.from(cuadrado)).resize(180, 180).png().toFile(ruta("../public/marcas/fiddle-180.png"));
+writeFileSync(ruta("../docs/marca/fiddle-violin.svg"), `${cuadrado}\n`);
+await sharp(Buffer.from(cuadrado)).resize(1024, 1024).png().toFile(ruta("../docs/marca/fiddle-violin-1024.png"));
 
 // ---- vista previa del enlace (1200x630) ----
 const fuente = (peso) => opentype.loadSync(require.resolve(`@fontsource/inter/files/inter-latin-${peso}-normal.woff`));
@@ -56,16 +50,19 @@ function texto(f, cadena, { cx, y, tam, color, tracking = 0, opacidad = 1 }) {
 
 const W = 1200;
 const H = 630;
-const titular = texto(seminegrita, "Sellos que no se pierden", { cx: W / 2 - 10, y: 398, tam: 84, color: CREMA, tracking: -0.04 });
-const punto = `<circle cx="${titular.x + titular.ancho + 10}" cy="${398 - 9}" r="9" fill="${ROSA}"/>`;
-const sub = texto(media, "Tarjetas de fidelización en Apple Wallet y Android", { cx: W / 2, y: 470, tam: 30, color: CREMA, opacidad: 0.7, tracking: -0.01 });
-const lado = 132;
+const BASE = 410;
+const titular = texto(seminegrita, "Clientes que no se pierden", { cx: W / 2 - 10, y: BASE, tam: 80, color: P.papel, tracking: -0.04 });
+const punto = `<circle cx="${titular.x + titular.ancho + 10}" cy="${BASE - 8.5}" r="8.5" fill="${P.avena}"/>`;
+const sub = texto(media, "Tarjetas de fidelización en Apple Wallet y Android", { cx: W / 2, y: BASE + 70, tam: 30, color: P.papel, opacidad: 0.72, tracking: -0.01 });
+const { x, y, ancho, alto } = VIOLIN.encuadre;
+const altoViolin = 168;
+const anchoViolin = (altoViolin * ancho) / alto;
 
 const og = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="${TINTA}"/>
-  <svg x="${(W - lado) / 2}" y="132" width="${lado}" height="${lado}" viewBox="0 0 1024 1024">${marca(CREMA, TINTA, 230)}</svg>
+  <rect width="${W}" height="${H}" fill="${P.verde}"/>
+  <svg x="${(W - anchoViolin) / 2}" y="104" width="${anchoViolin}" height="${altoViolin}" viewBox="${x} ${y} ${ancho} ${alto}">${svgViolin({ color: P.avena })}</svg>
   ${titular.svg}${punto}${sub.svg}
 </svg>`;
-await sharp(Buffer.from(og)).png({ compressionLevel: 9 }).toFile(fileURLToPath(new URL("fiddle-og.png", DESTINO)));
+await sharp(Buffer.from(og)).png({ compressionLevel: 9 }).toFile(ruta("../public/marcas/fiddle-og.png"));
 
-console.log("Hecho: public/marcas/fiddle.svg, fiddle-180.png y fiddle-og.png");
+console.log("Hecho: iconos y vista previa en public/marcas/, logo en docs/marca/");

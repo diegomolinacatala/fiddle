@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, mensajeDePlan } from "@/app/home/datos";
-import { ejemplo, avisoDeSello, CAFETERIA, MUESTRARIO } from "@/app/home/demo";
+import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan } from "@/app/home/datos";
+import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL } from "@/app/home/demo";
+import { GRUPOS } from "@/lib/crm";
+import { ubicacionesApple } from "@/lib/apple/pase";
+import { PALETA } from "@/app/home/paleta";
+import { svgViolin, svgIconoViolin } from "@/lib/violin";
 import { ESTILOS_GENERALES } from "@/lib/negocios";
 import { stripDelPase } from "@/lib/apple/dibujo";
 
@@ -14,14 +18,31 @@ describe("web de fiddle: contacto y precios", () => {
     expect(new URL(enlaceWhatsApp()).searchParams.get("text")).toMatch(/fiddle/);
   });
 
-  it("el correo lleva la dirección y el asunto", () => {
-    expect(enlaceCorreo("Hola & adiós")).toBe(`mailto:${CORREO}?subject=Hola%20%26%20adi%C3%B3s`);
+  it("el correo lleva la dirección, el asunto y el mensaje empezado", () => {
+    expect(enlaceCorreo("Hola & adiós", "Uno")).toBe(`mailto:${CORREO}?subject=Hola%20%26%20adi%C3%B3s&body=Uno`);
+    expect(enlaceCorreo()).toMatch(/^mailto:[^?]+\?subject=.+&body=.+/);
+  });
+
+  it("en el ordenador, Gmail con el correo ya escrito a nuestra dirección", () => {
+    const url = new URL(enlaceGmail("Asunto & más", "Cuerpo"));
+    expect(url.origin).toBe("https://mail.google.com");
+    expect(url.searchParams.get("view")).toBe("cm");
+    expect(url.searchParams.get("to")).toBe(CORREO);
+    expect(url.searchParams.get("su")).toBe("Asunto & más");
+    expect(url.searchParams.get("body")).toBe("Cuerpo");
   });
 
   it("dos planes: Tarjetas a 39 € y Completo a 49 €, el segundo destacado", () => {
     expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["tarjetas", 39], ["completo", 49]]);
     expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["completo"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
+    // Lo que decidieron para cada uno (13-10-2026).
+    expect(PLANES[0].incluye.join(" ")).toMatch(/sin límite/);
+    expect(PLANES[0].incluye.join(" ")).toMatch(/Promociones al momento, a todos/);
+    expect(PLANES[1].incluye[0]).toBe("Todo lo de Tarjetas");
+    for (const cosa of [/estadísticas/, /grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
+      expect(PLANES[1].incluye.join(" ")).toMatch(cosa);
+    }
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
   });
 
@@ -37,16 +58,68 @@ describe("web de fiddle: tarjetas de ejemplo", () => {
     const e = ejemplo(CAFETERIA, 7);
     expect(e.negocio.nombre).toBe("Tu cafetería");
     expect(e.cliente.sellos).toBe(7);
-    expect(avisoDeSello(e)).toBe("Faltan 1 · café gratis");
+    expect(avisoDe(e)).toBe("Faltan 1 · café gratis");
     expect(stripDelPase(e.negocio, e.cliente).svg).toMatch(/^<svg/);
   });
 
+  it("el carrusel enseña cosas distintas, y abierto/cerrado lo escribe estadoParaPase", () => {
+    expect(new Set(CARRUSEL.map((d) => d.id)).size).toBe(CARRUSEL.length);
+    expect(new Set(CARRUSEL.map((d) => d.titulo)).size).toBe(CARRUSEL.length);
+    const porId = Object.fromEntries(CARRUSEL.map((d) => [d.id, ejemploDe(d)]));
+    expect(porId.abierto.estado).toEqual({ abierta: true, texto: "Abierto hasta las 20:00" });
+    expect(porId.cerrado.estado).toEqual({ abierta: false, texto: "Cerrado hasta las 8:00" });
+    expect(porId.vaso.estado).toBeNull();
+    // Dos cartillas: el aviso dice de cuál es.
+    expect(porId.doble.negocio.cartillas).toHaveLength(2);
+    expect(avisoDe(porId.doble)).toBe("Cafés: Faltan 3");
+    for (const e of Object.values(porId)) {
+      expect(avisoDe(e)).not.toBe("");
+      expect(stripDelPase(e.negocio, e.cliente, { estado: e.estado }).svg).toMatch(/^<svg/);
+    }
+  });
+
   it("nunca enseñan un kit de marca ni el nombre de un cliente", () => {
-    for (const m of [CAFETERIA, ...MUESTRARIO]) {
-      expect(ESTILOS_GENERALES).toContain(m.estilo);
-      const e = ejemplo(m, 3);
+    for (const t of [CAFETERIA, ...CARRUSEL.map((d) => d.tienda)]) {
+      expect(ESTILOS_GENERALES).toContain(t.tema.estilo);
+      const e = ejemplo(t, 3);
       expect(e.cliente).not.toHaveProperty("nombre");
       expect(e.negocio).not.toHaveProperty("brief");
     }
+  });
+
+  it("los colores de la tienda de ejemplo se guardarían (#rrggbb)", () => {
+    for (const color of Object.values(PALETA)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("web de fiddle: el panel", () => {
+  it("los grupos que enseña existen, con su icono y su frase", () => {
+    for (const id of ["a_punto", "fieles_frios", "nuevos", "dormidos"]) {
+      expect(GRUPOS[id]?.label).toBeTruthy();
+      expect(GRUPOS[id].icon).toBeTruthy();
+    }
+    expect(GRUPOS.a_punto.idea.replace("{premio}", CAFETERIA.premio)).toBe("Te falta 1 para tu café gratis");
+  });
+
+  it("el aviso al pasar cerca es el que mete el pase", () => {
+    const { negocio } = ejemplo(CAFETERIA, 7);
+    const [u] = ubicacionesApple({ ...negocio, ubicaciones: [{ lat: 39.47, lng: -0.37 }] });
+    expect(u.relevantText).toBe("Estás cerca de Tu cafetería. Enseña tu tarjeta en caja.");
+  });
+});
+
+describe("el violín de fiddle", () => {
+  it("recorta la efe con una máscara del id que se le pide", () => {
+    const svg = svgViolin({ color: "#402c0f", id: "efe-pie" });
+    expect(svg).toContain('<mask id="efe-pie"');
+    expect(svg).toContain('mask="url(#efe-pie)"');
+    expect(svg).toContain('fill="#402c0f"');
+    expect(svg).not.toContain("<text");
+  });
+
+  it("el icono es un SVG cuadrado con su fondo", () => {
+    const svg = svgIconoViolin({ color: "#402c0f", fondo: "#a5a789", radio: 230 });
+    expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 1024 1024"/);
+    expect(svg).toContain('fill="#a5a789"');
   });
 });

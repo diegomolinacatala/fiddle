@@ -547,16 +547,34 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (39 € Tarjetas, 49 € Completo, desde el 13-10-2026). Lo que dice cada plan es lo que
-  la app hace hoy; la app NO limita nada por plan (Completo = encender los avisos
-  avanzados en `/admin/<slug>`).
+  (13-10-2026): Tarjetas, 39 € (tarjetas sin límite y promociones al momento a todos);
+  Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
+  hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
+  app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados
+  en `/admin/<slug>`; lo demás lo ve cualquier tienda).
+- **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
+  con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
+  Al lado, «Copiar».
+- **«Sabes quién vuelve»** (`home/Panel.js`) enseña el panel del dueño con los nombres y
+  frases de la app y números de ejemplo. Los grupos y el aviso de ubicación se importan
+  (`GRUPOS`, `ubicacionesApple`); las etiquetas de las cifras y la frase de «Lo que dicen
+  los números» están copiadas del Resumen: si cambian allí, se cambian aquí.
 - **Las tarjetas de ejemplo son de verdad** (`demo.js`): tiendas inventadas con un estilo
   de partida, pintadas con `CaraDelPase`, y el aviso sale de `camposDelPase`. Nunca un
-  kit de marca ni una tienda real.
+  kit de marca ni una tienda real. El móvil de la portada va pasando una por cosa que
+  sabe hacer (`CARRUSEL`; quién se ve lo decide `Carrusel.js`). Una novedad del pase que
+  se quiera enseñar = una entrada ahí. «● Abierto hasta…» lo escribe `estadoParaPase`.
+- **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
+  mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` («Verde y
+  espresso» desde el 13-10-2026: verde botella para la marca y camel, avena, visón y espresso,
+  más el papel y los tintes que salen de ellos). El verde y el espresso se distinguen siempre:
+  son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
+  de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa, `docs/marca/fiddle-logo.svg`)
+  sigue en el Perfil de Empresa de Google Wallet hasta que se suba `fiddle-violin-1024.png`.
 - **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
   enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
-- Las imágenes (icono, vista previa de WhatsApp) salen de `scripts/gen-marca-web.mjs` y
-  van en `public/marcas/`, que no pasa por el middleware.
+- Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
+  `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
 
 ## Pantallas en el móvil
 

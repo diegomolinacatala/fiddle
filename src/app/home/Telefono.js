@@ -1,41 +1,43 @@
 import CaraDelPase from "@/app/CaraDelPase";
 import { LogoApple } from "@/app/LogoTienda";
+import Carrusel from "./Carrusel";
+import { CARRUSEL, ejemploDe, avisoDe } from "./demo";
 
 // ============================================================================
 // EL MÓVIL DE LA PORTADA
 // ----------------------------------------------------------------------------
-// Un iPhone con la tarjeta abierta en la Cartera y, por encima, el aviso que
-// llega tras el sello. La tarjeta es CaraDelPase y el texto del aviso sale de
-// camposDelPase (demo.js): lo mismo que recibe el cliente. Solo el marco del
-// teléfono está dibujado aquí.
+// Un iPhone con la tarjeta abierta en la Cartera; va pasando tarjetas, una por
+// cosa que sabe hacer (CARRUSEL en demo.js), y por encima llega el aviso de cada
+// una. Las tarjetas son CaraDelPase y el aviso sale de camposDelPase: lo mismo
+// que recibe el cliente. Aquí se pintan; cuál se ve lo decide Carrusel.js.
 // ============================================================================
 
-export default function Telefono({ ejemplo, qr, aviso }) {
-  const { negocio, cliente } = ejemplo;
+export default function Telefono({ qr }) {
+  const diapositivas = CARRUSEL.map((d) => ({ ...d, ejemplo: ejemploDe(d) }));
   return (
-    <figure className="movil" aria-label={`Así se ve la tarjeta de ${negocio.nombre} en el móvil de un cliente`}>
-      <div className="movil-cuerpo">
-        <div className="movil-isla" aria-hidden="true" />
-        <div className="movil-pantalla">
-          <div className="movil-estado" aria-hidden="true">
-            <span>9:41</span>
-            <BarrasEstado />
+    <Carrusel
+      titulos={diapositivas.map((d) => d.titulo)}
+      tarjetas={diapositivas.map(({ id, ejemplo: { negocio, cliente, estado } }) => (
+        <CaraDelPase key={id} cliente={cliente} negocio={negocio} estado={estado}>
+          <div className="movil-qr">
+            <img src={qr} alt="" width={128} height={128} />
+            <span>{cliente.codigo}</span>
           </div>
-          <div className="movil-cartera" aria-hidden="true">
-            <span>Hecho</span>
-            <span className="movil-mas"><i /><i /><i /></span>
-          </div>
-          <CaraDelPase cliente={cliente} negocio={negocio}>
-            <div className="movil-qr">
-              <img src={qr} alt="" width={132} height={132} />
-              <span>{cliente.codigo}</span>
-            </div>
-          </CaraDelPase>
-        </div>
+        </CaraDelPase>
+      ))}
+      avisos={diapositivas.map(({ id, ejemplo }) => (
+        <Aviso key={id} negocio={ejemplo.negocio} texto={avisoDe(ejemplo)} />
+      ))}
+    >
+      <div className="movil-estado" aria-hidden="true">
+        <span>9:41</span>
+        <BarrasEstado />
       </div>
-
-      <Aviso negocio={negocio} texto={aviso} className="movil-aviso" />
-    </figure>
+      <div className="movil-cartera" aria-hidden="true">
+        <span>Hecho</span>
+        <span className="movil-mas"><i /><i /><i /></span>
+      </div>
+    </Carrusel>
   );
 }
 
@@ -47,7 +49,7 @@ export function Aviso({ negocio, texto, cuando = "ahora", className = "" }) {
       <div className="aviso-texto">
         <div className="aviso-cabeza">
           <strong>{negocio.nombre}</strong>
-          <span>{cuando}</span>
+          {cuando && <span>{cuando}</span>}
         </div>
         <p>{texto}</p>
       </div>
