@@ -1,6 +1,9 @@
 # Sellos — tarjetas de fidelización para iPhone y Android (multi-negocio)
 
 > ¿Retomas el proyecto? Abre **[NEXT-STEPS.md](NEXT-STEPS.md)**.
+>
+> Lo del negocio (tiendas, personas, citas, tareas) está en el repo privado
+> **`Victrozz/fiddleobsidian`**: ver [CLAUDE.md](CLAUDE.md#lo-del-negocio-el-vault-victrozzfiddleobsidian).
 
 Plataforma donde **el pase del cliente es solo un QR con su identidad**. Toda la lógica
 vive en el backend. Cada negocio tiene su tarjeta (diseño propio), su **caja** (app

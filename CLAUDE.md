@@ -5,6 +5,23 @@ que no se deducen leyendo el código.
 
 Para ponerse en marcha (instalar, arrancar, desplegar): [NEXT-STEPS.md](NEXT-STEPS.md).
 
+## Lo del negocio: el vault (`Victrozz/fiddleobsidian`)
+
+Todo lo que NO es código vive en un repo privado de Victor y Diego, el vault de
+Obsidian: tiendas (clientes y prospectos, en qué estado está cada una), personas,
+citas, tareas, ideas y documentos (logo de Fiddle, plan ante una brecha…). Para
+cualquier duda sobre el negocio (qué quiere una tienda, quién es quién, qué hay
+pendiente, qué se ha hablado) **míralo ahí antes de suponer o preguntar**. Las
+tareas y el estado del negocio salen de ahí, no de `NEXT-STEPS.md`.
+
+- Leerlo: `gh repo clone Victrozz/fiddleobsidian` (o `gh api` a sus ficheros). Empieza
+  por su `CLAUDE.md` e `Inicio.md`; las fichas de tienda están en `Tiendas/`.
+- **Este repo es público y el vault no.** Nada del vault (nombres, teléfonos, precios,
+  notas de reuniones) se copia aquí: ni en el código, ni en los docs, ni en commits o
+  PRs. Se enlaza o se resume sin datos.
+- Si algo del trabajo aquí cambia el negocio (una tienda pide algo, se cierra una
+  tarea), se apunta en el vault siguiendo sus reglas, no en este repo.
+
 ## Qué es esto
 
 Tarjetas de fidelización en Apple Wallet y Android (tarjeta web con avisos, y
