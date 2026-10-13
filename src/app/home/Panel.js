@@ -50,7 +50,7 @@ export default function Panel() {
   const [cerca] = ubicacionesApple({ ...tienda.negocio, ubicaciones: [{ lat: 39.4699, lng: -0.3763 }] });
 
   return (
-    <div className="panel">
+    <div id="panel-piezas" className="panel">
       <article className="panel-pieza panel-ancha revela">
         <div className="panel-texto">
           <h3>Tus clientes, en números</h3>

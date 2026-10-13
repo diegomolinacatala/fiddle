@@ -6,11 +6,17 @@ import { appUrl } from "@/lib/url";
 import Telefono, { Aviso } from "./Telefono";
 import Panel from "./Panel";
 import Correo from "./Correo";
+import Cinta from "./Cinta";
+import Menu from "./Menu";
+import BarraMovil from "./BarraMovil";
+import Indicador from "./Indicador";
+import Aparece from "./Aparece";
 import LogoFiddle from "@/app/LogoFiddle";
-import { ejemplo, avisoDe, CAFETERIA } from "./demo";
+import { ejemplo, avisoDe, CAFETERIA, CINTAS } from "./demo";
 import { PALETA } from "./paleta";
 import { PLANES, TELEFONO_VISIBLE, CORREO, enlaceWhatsApp, mensajeDePlan } from "./datos";
 import { css } from "./estilo";
+import { cssMovil } from "./estiloMovil";
 
 // ============================================================================
 // LA WEB DE FIDDLE (/home)
@@ -20,12 +26,27 @@ import { css } from "./estilo";
 // cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
 // «Entrar» arriba a la derecha (y al pie).
 //
+// En el móvil (estiloMovil.js) la misma página se ordena distinto: menú
+// desplegable, filas que se deslizan en vez de columnas y WhatsApp siempre a
+// mano abajo. Lo que se dice es lo mismo; solo cambia cuánto se ve a la vez.
+//
 // «Entrar» va a «/», no a /login: la raíz ya sabe a dónde mandar a cada uno
 // (con sesión, a su panel o a su caja; sin ella, al login).
 // Página estática: nada de lo de aquí depende de quién la mira.
 // ============================================================================
 
 const ENTRAR = "/";
+
+// Las secciones, en la cabecera (pantalla ancha), en el menú del móvil y al pie.
+const SECCIONES = [
+  ["#como-funciona", "Cómo funciona"],
+  ["#panel", "El panel"],
+  ["#precios", "Precios"],
+  ["#preguntas", "Preguntas"],
+  ["#contacto", "Contacto"],
+];
+// En la cabecera no caben todas: las preguntas, al pie y en el menú.
+const EN_CABECERA = ["#como-funciona", "#panel", "#precios", "#contacto"];
 
 export default async function Home() {
   const portada = ejemplo(CAFETERIA, 7);
@@ -36,7 +57,7 @@ export default async function Home() {
 
   return (
     <div className="home">
-      <style>{css}</style>
+      <style>{css + cssMovil}</style>
       <a href="#contenido" className="saltar">Saltar al contenido</a>
 
       <header className="cabecera">
@@ -45,12 +66,19 @@ export default async function Home() {
             <LogoFiddle tam={30} color={PALETA.verde} id="efe-cabecera" />
           </a>
           <nav className="cabecera-nav" aria-label="Secciones">
-            <a href="#como-funciona" className="solo-ancho">Cómo funciona</a>
-            <a href="#panel" className="solo-ancho">El panel</a>
-            <a href="#precios">Precios</a>
-            <a href="#contacto" className="solo-ancho">Contacto</a>
+            {SECCIONES.filter(([href]) => EN_CABECERA.includes(href)).map(([href, texto]) => (
+              <a key={href} href={href}>{texto}</a>
+            ))}
           </nav>
           <a href={ENTRAR} className="entrar">Entrar</a>
+          <Menu
+            enlaces={SECCIONES}
+            contacto={
+              <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
+                <IconoMensaje /> Hablemos por WhatsApp
+              </a>
+            }
+          />
         </div>
       </header>
 
@@ -79,13 +107,15 @@ export default async function Home() {
           </div>
         </section>
 
+        <Cinta disenos={CINTAS[0]} />
+
         <section id="como-funciona" className="bloque">
           <Encabezado titulo="Cero fricción">
             Una tarjeta digital suena a apps que instalar, registros y colas en caja. Con fiddle no hay
             nada de eso: cada paso va en segundos.
           </Encabezado>
 
-          <ol className="pasos">
+          <ol id="pasos" className="pasos">
             <li className="paso revela">
               <div className="paso-visual paso-cartel" aria-hidden="true">
                 <div className="cartel">
@@ -130,6 +160,7 @@ export default async function Home() {
               <p>La tarjeta se pone al día sola y ven cuánto les falta para el premio. Y vuelven.</p>
             </li>
           </ol>
+          <Indicador objetivo="pasos" nombre="Pasos" etiquetas={["el paso 1", "el paso 2", "el paso 3"]} />
 
           <div className="montaje revela">
             <span className="montaje-icono" aria-hidden="true"><Icono nombre="check" tam={22} grosor={2.4} /></span>
@@ -146,6 +177,7 @@ export default async function Home() {
               Desde tu panel ves quién viene, cada cuánto y quién se te está escapando. Y desde ahí mismo
               les escribes.
             </Encabezado>
+            <Indicador objetivo="panel-piezas" nombre="Partes del panel" tipo="pestanas" etiquetas={PIEZAS_DEL_PANEL} />
             <Panel />
             <p className="panel-nota">
               Las estadísticas, los grupos y el aviso al pasar cerca van en el plan Completo.{" "}
@@ -159,9 +191,10 @@ export default async function Home() {
             Dos opciones, las dos con la tarjeta completa en iPhone y Android.
           </Encabezado>
 
-          <div className="planes">
-            {PLANES.map((plan) => (
-              <article key={plan.id} className={`plan revela${plan.destacado ? " plan-destacado oscuro" : ""}`} aria-labelledby={`plan-${plan.id}`}>
+          <Indicador objetivo="planes" nombre="Planes" tipo="pestanas" etiquetas={PLANES.map((p) => `${p.nombre} ${p.precio} €`)} />
+          <Aparece id="planes" className="planes">
+            {PLANES.map((plan, i) => (
+              <article key={plan.id} className={`plan${plan.destacado ? " plan-destacado oscuro" : ""}`} style={{ "--i": i }} aria-labelledby={`plan-${plan.id}`}>
                 <header className="plan-cabeza">
                   <h3 id={`plan-${plan.id}`}>{plan.nombre}</h3>
                   {plan.destacado && <span className="plan-etiqueta">Todo incluido</span>}
@@ -172,8 +205,8 @@ export default async function Home() {
                   <span className="plan-periodo">al mes</span>
                 </p>
                 <ul className="plan-lista">
-                  {plan.incluye.map((linea) => (
-                    <li key={linea}>
+                  {plan.incluye.map((linea, j) => (
+                    <li key={linea} style={{ "--j": j }}>
                       <Icono nombre="check" tam={18} grosor={2.2} />
                       <span>{linea}</span>
                     </li>
@@ -184,11 +217,13 @@ export default async function Home() {
                 </a>
               </article>
             ))}
-          </div>
+          </Aparece>
           <p className="planes-nota">
             ¿Tienes más de un local? <a href={enlaceWhatsApp("Hola, tengo más de un local y me interesa fiddle.")} target="_blank" rel="noopener noreferrer">Escríbenos</a> y lo vemos.
           </p>
         </section>
+
+        <Cinta disenos={CINTAS[1]} />
 
         <section id="preguntas" className="bloque bloque-estrecho">
           <Encabezado titulo="Preguntas" />
@@ -246,19 +281,26 @@ export default async function Home() {
         <div className="pie-dentro">
           <LogoFiddle tam={28} color={PALETA.avena} id="efe-pie" />
           <nav className="pie-nav" aria-label="Pie">
-            <a href="#como-funciona">Cómo funciona</a>
-            <a href="#panel">El panel</a>
-            <a href="#precios">Precios</a>
-            <a href="#preguntas">Preguntas</a>
-            <a href="#contacto">Contacto</a>
+            {SECCIONES.map(([href, texto]) => (
+              <a key={href} href={href}>{texto}</a>
+            ))}
             <a href={ENTRAR}>Entrar</a>
           </nav>
           <p className="pie-firma">© {new Date().getFullYear()} fiddle, Valencia</p>
         </div>
       </footer>
+
+      <BarraMovil>
+        <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
+          <IconoMensaje /> Hablemos por WhatsApp
+        </a>
+      </BarraMovil>
     </div>
   );
 }
+
+// Las pestañas del panel en el móvil, en el orden de las piezas de Panel.js.
+const PIEZAS_DEL_PANEL = ["Números", "Cerca", "Avisos", "Horas"];
 
 // Las preguntas que hacen en el mostrador. La última es para quien ya es cliente.
 const PREGUNTAS = [
@@ -298,6 +340,15 @@ function Encabezado({ id, titulo, centrado = false, children }) {
       </h2>
       {children && <p className="entradilla">{children}</p>}
     </div>
+  );
+}
+
+// Un bocadillo de conversación: dice «escribir», sin copiar el logo de WhatsApp.
+function IconoMensaje() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5A8.4 8.4 0 1 1 20.5 11.6z" />
+    </svg>
   );
 }
 
