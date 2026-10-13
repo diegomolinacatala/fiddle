@@ -5,6 +5,7 @@ import Icono from "@/app/Icono";
 import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
+import BotonTema from "@/app/BotonTema";
 import { ESTILOS_GENERALES, MARCAS, FORMAS, BANDAS, MODOS, temaPorDefecto } from "@/lib/negocios";
 import Selector from "@/app/admin/Selector";
 import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
@@ -86,7 +87,10 @@ export default function Admin() {
           <div>
             <h1 style={titulo}>Plataforma</h1>
           </div>
-          <LogoutButton />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <BotonTema />
+            <LogoutButton />
+          </div>
         </header>
 
         {/* Certificados, base de datos, avisos, cifrado: es cosa de la plataforma, no de cada tienda. */}
@@ -228,7 +232,7 @@ function Confirmar({ negocio, modo, onCancelar, onConfirmar }) {
   const coincide = escrito.trim() === negocio.slug;
   const t = CONFIRMAR[modo];
   return (
-    <div style={{ width: "100%", marginTop: 12, padding: 14, borderRadius: 10, background: "#fdecea", border: "1px solid #f7c9c3" }}>
+    <div style={{ width: "100%", marginTop: 12, padding: 14, borderRadius: 10, background: C.malFondo, border: `1px solid ${C.malBorde}` }}>
       <strong style={{ color: "#b42318", fontSize: 14 }}>{t.titulo(negocio)}</strong>
       <p style={{ fontSize: 13, color: C.texto, margin: "6px 0 10px" }}>{t.texto(negocio)}</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -419,6 +423,6 @@ const sugerirSlug = (nombre) =>
 
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-  background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,
+  background: C.toastFondo, color: C.toastTexto, padding: "10px 18px", borderRadius: 10,
   fontWeight: 500, maxWidth: "90vw", textAlign: "center", boxShadow: "0 6px 20px rgba(16,20,28,.25)",
 };

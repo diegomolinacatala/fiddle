@@ -77,14 +77,14 @@ export default function Registro({ movimientos, filas, codigoDe, dias, accent, s
             </thead>
             <tbody>
               {lista.slice(0, mostrar).map((m, i) => (
-                <tr key={`${m.ts}-${i}`} style={{ background: m.fueraDeHorario ? "#fff7ed" : undefined }}>
+                <tr key={`${m.ts}-${i}`} style={{ background: m.fueraDeHorario ? C.ojoFondo : undefined }}>
                   <td style={td}>{diaCortoTexto(m.fecha)}</td>
                   <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{m.hora}</td>
                   <td style={td}><span style={chipCodigo(accent)}>{codigoDe(m.serial)}</span></td>
                   <td style={{ ...td, color: m.clase === "correccion" ? C.mal : C.texto }}>
                     {m.mensaje}
                     {m.fueraDeHorario && (
-                      <span style={{ marginLeft: 8, color: "#9a3412", fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "-2px" }}>
+                      <span style={{ marginLeft: 8, color: C.ojoTexto, fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "-2px" }}>
                         <Icono nombre="reloj" tam={13} /> fuera de horario
                       </span>
                     )}

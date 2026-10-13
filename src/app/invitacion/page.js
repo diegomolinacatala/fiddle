@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import MarcaTienda from "@/app/MarcaTienda";
-import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario } from "@/app/ui";
+import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, legible } from "@/app/ui";
 
 // ============================================================================
 // INVITACIÓN — el dueño de una tienda nueva elige sus contraseñas
@@ -233,8 +233,8 @@ const usuarioFijo = {
 const pasos = { display: "flex", gap: 8, listStyle: "none", padding: 0, margin: "0 0 12px" };
 const pasoEstilo = (activo, hecho, accent) => ({
   flex: 1, textAlign: "center", fontSize: 13, fontWeight: 600, padding: "8px 6px", borderRadius: 10,
-  border: `1px solid ${activo ? accent : C.borde}`, background: activo ? `${accent}14` : "#fff",
-  color: activo ? accent : hecho ? C.ok : C.tenue,
+  border: `1px solid ${activo ? accent : C.borde}`, background: activo ? `${accent}14` : C.panel,
+  color: activo ? legible(accent) : hecho ? C.ok : C.tenue,
 });
 const principal = (accent, listo) => ({
   marginTop: 18, width: "100%", padding: "0.75rem 1.2rem", borderRadius: 10, border: 0,

@@ -70,5 +70,5 @@ function MiniTarjeta({ negocio, cliente }) {
 
 const opcion = (activa) => ({
   display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, padding: 6, borderRadius: 12, cursor: "pointer",
-  textAlign: "center", minWidth: 0, border: `2px solid ${activa ? "#2563eb" : "transparent"}`, background: activa ? "#eff4ff" : C.panelSuave,
+  textAlign: "center", minWidth: 0, border: `2px solid ${activa ? C.azul : "transparent"}`, background: activa ? C.azulFondo : C.panelSuave,
 });

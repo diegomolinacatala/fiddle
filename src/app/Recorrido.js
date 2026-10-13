@@ -216,7 +216,7 @@ const foco = {
   boxShadow: "0 0 0 9999px rgba(15,18,24,.58)", transition: "all .25s ease",
 };
 const globoEstilo = {
-  position: "fixed", background: "#fff", borderRadius: 14, padding: "14px 16px",
+  position: "fixed", background: C.panel, borderRadius: 14, padding: "14px 16px",
   boxShadow: "0 12px 32px rgba(16,20,28,.28)", outline: "none", transition: "top .25s ease, left .25s ease",
 };
 const saltar = { border: 0, background: "transparent", color: C.suave, fontSize: 14, cursor: "pointer", padding: "0.5rem 0", minHeight: 36 };

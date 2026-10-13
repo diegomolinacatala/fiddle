@@ -125,7 +125,7 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
 
         <section className="caja-vista">
           {!esCupon && (
-            <div style={{ display: "flex", gap: 4, padding: 3, background: "#fff", border: `1px solid ${C.borde}`, borderRadius: 10, marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 4, padding: 3, background: C.panel, border: `1px solid ${C.borde}`, borderRadius: 10, marginBottom: 12 }}>
               {EJEMPLOS.map(([id, texto]) => (
                 <button key={id} type="button" onClick={() => { setEjemplo(id); setVuelta((v) => v + 1); }} style={{
                   flex: 1, padding: "6px 8px", borderRadius: 8, border: 0, fontSize: 12.5, cursor: "pointer",
@@ -166,7 +166,7 @@ const CSS = `
 `;
 
 const capa = { position: "fixed", inset: 0, zIndex: 1200, background: C.fondo, display: "flex", flexDirection: "column", color: C.texto };
-const barra = { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#fff", borderBottom: `1px solid ${C.borde}`, flexWrap: "wrap" };
+const barra = { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: C.panel, borderBottom: `1px solid ${C.borde}`, flexWrap: "wrap" };
 const h2 = { fontSize: 13, fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: 0.6, color: C.suave };
 const telefono = { background: C.fondo, border: `8px solid #1b1e23`, borderRadius: 28, padding: "18px 14px", boxShadow: "0 14px 34px rgba(16,20,28,.18)" };
 const fantasma = { marginTop: 12, padding: "10px 12px", border: `1px dashed ${C.bordeFuerte}`, borderRadius: 10, fontSize: 13, color: C.tenue };

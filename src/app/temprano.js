@@ -16,3 +16,10 @@ window.addEventListener("beforeinstallprompt", function (e) {
 
 export const REGISTRAR_SW = `
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});`;
+
+// MODO OSCURO (BotonTema): lo elige cada dispositivo y se guarda en él. Se pone
+// antes de pintar: si esperase a React, cada carga daría un fogonazo blanco.
+// Claro de partida: sin nada guardado, o si el navegador no deja leerlo.
+export const CLAVE_TEMA = "fiddle-tema";
+export const TEMA_TEMPRANO = `
+try { if (localStorage.getItem("${CLAVE_TEMA}") === "oscuro") document.documentElement.dataset.tema = "oscuro"; } catch (e) {}`;

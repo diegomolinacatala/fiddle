@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LogoutButton from "@/app/LogoutButton";
+import BotonTema from "@/app/BotonTema";
 import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
 import { BotonAyuda } from "@/app/Recorrido";
@@ -34,6 +35,7 @@ export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {ayuda && <BotonAyuda />}
+          <BotonTema />
           <LogoutButton negocio={slug} />
         </div>
       </div>

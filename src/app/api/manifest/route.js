@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCliente, getNegocio } from "@/lib/store";
 import { rutaIcono } from "@/lib/rutasImagen";
 import { jsonError, errorInterno } from "@/lib/http";
-import { C } from "@/app/ui";
+import { CLARO } from "@/app/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export async function GET(request) {
         scope: `/p/${serial}`,
         display: "standalone",
         orientation: "portrait",
-        background_color: negocio.tema.cardBg || C.fondo,
+        background_color: negocio.tema.cardBg || CLARO.fondo,
         theme_color: negocio.tema.accent,
         icons: iconos(negocio),
       });
@@ -58,7 +58,7 @@ export async function GET(request) {
       scope: "/",
       display: "standalone",
       orientation: "portrait",
-      background_color: C.fondo,
+      background_color: CLARO.fondo,
       theme_color: n.tema.accent,
       icons: iconos(n),
     });

@@ -8,7 +8,7 @@ import { FilaInterruptor } from "@/app/Interruptor";
 import { LISTA_DISPAROS, MAX_REGLAS, RELOJ_VIVO_MIN, reglaNueva, esProgramado } from "@/lib/automatizaciones";
 import Limites from "./Limites";
 import { resumenHorario } from "@/lib/horario";
-import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO } from "@/app/ui";
+import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // LOS AVISOS AUTOMÁTICOS DE LA TIENDA
@@ -140,7 +140,7 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
         ) : (
           <span><strong style={{ color: C.texto, fontWeight: 600 }}>Sin horario no sale ninguno solo.</strong> Pon cuándo abre la tienda; mientras, «Enviar ahora» sí funciona.</span>
         )}
-        <Link href={`/${slug}/manager#horario`} style={{ marginLeft: "auto", color: n.tema.accent, fontWeight: 600, whiteSpace: "nowrap" }}>
+        <Link href={`/${slug}/manager#horario`} style={{ marginLeft: "auto", color: legible(n.tema.accent), fontWeight: 600, whiteSpace: "nowrap" }}>
           {n.horario ? "Cambiar horario" : "Poner horario"}
         </Link>
       </p>
@@ -172,7 +172,7 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
               {LISTA_DISPAROS.filter((d) => !d.soloProgramado).map((d) => (
                 <button key={d.key} type="button" onClick={() => empezar(d.key)} style={opcionDisparo}>
                   <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 650, fontSize: 14 }}>
-                    <span style={{ color: n.tema.accent, display: "inline-flex" }}><Icono nombre={d.icon} tam={18} /></span>
+                    <span style={{ color: legible(n.tema.accent), display: "inline-flex" }}><Icono nombre={d.icon} tam={18} /></span>
                     {d.label}
                   </span>
                   <span style={{ fontSize: 12.5, color: C.suave, marginTop: 4, textAlign: "left" }}>{d.descripcion}</span>
@@ -199,7 +199,7 @@ function EstadoReloj({ ultimo }) {
   const minutos = ultimo ? Math.round((Date.now() - Date.parse(ultimo)) / 60000) : null;
   if (minutos !== null && minutos <= RELOJ_VIVO_MIN) {
     return (
-      <p style={{ ...lineaHorario, color: C.ok, background: C.okFondo, borderColor: "#bfe5cd" }}>
+      <p style={{ ...lineaHorario, color: C.ok, background: C.okFondo, borderColor: C.okBorde }}>
         <Icono nombre="check" tam={16} />
         Funcionando: se revisan solos cada 15 minutos. Último repaso {minutos < 1 ? "hace un momento" : `hace ${minutos} min`}.
       </p>
@@ -229,9 +229,9 @@ function resumenEnvio(e) {
 
 const lineaHorario = {
   display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: 0, fontSize: 13.5, color: C.suave,
-  padding: "10px 13px", border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: "#fff",
+  padding: "10px 13px", border: `1px solid ${C.borde}`, borderRadius: RADIO.boton, background: C.panel,
 };
 const opcionDisparo = {
   display: "flex", flexDirection: "column", alignItems: "flex-start", padding: "12px 14px", borderRadius: RADIO.fila,
-  border: `1px solid ${C.borde}`, background: "#fff", cursor: "pointer", font: "inherit", color: C.texto,
+  border: `1px solid ${C.borde}`, background: C.panel, cursor: "pointer", font: "inherit", color: C.texto,
 };

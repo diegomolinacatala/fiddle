@@ -1,4 +1,4 @@
-import { pagina, panel, RADIO } from "@/app/ui";
+import { C, pagina, panel, RADIO } from "@/app/ui";
 
 // ============================================================================
 // ESQUELETOS DE CARGA
@@ -11,7 +11,7 @@ import { pagina, panel, RADIO } from "@/app/ui";
 
 const css = `
 @keyframes esqueleto-brillo { from { background-position: 150% 0 } to { background-position: -50% 0 } }
-.esq { background: linear-gradient(90deg, #eceef2 0%, #f6f7f9 40%, #eceef2 80%); background-size: 200% 100%;
+.esq { background: linear-gradient(90deg, ${C.hueso} 0%, ${C.huesoBrillo} 40%, ${C.hueso} 80%); background-size: 200% 100%;
   animation: esqueleto-brillo 1.3s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .esq { animation: none } }
 `;

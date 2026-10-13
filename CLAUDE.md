@@ -265,6 +265,11 @@ Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WAL
   guardar y nunca lanzan hacia fuera.
 - **Endpoints de push**: solo servicios reales (`push/suscripcion.js`). Aflojar esa
   lista convierte el servidor en un proxy para pegar a URLs internas.
+- **Modo oscuro, de cada dispositivo** (`app/BotonTema.js`, al lado de «Salir» en manager, caja
+  y admin; claro de partida). Los colores de `C` son variables CSS con su valor claro y oscuro
+  en `COLORES` (`app/ui.js`): nada de `"#fff"` de fondo en lo del personal (`C.panel`), nada de
+  `${C.x}55` (alfa: `tinte`) y el color de la tienda como TEXTO va con `legible(accent)`. Lo del
+  cliente (`/<slug>`, `/p/…`, `/privacidad`) lleva la clase `claro`: siempre de día.
 - **Emojis fuera de la interfaz.** Iconos con `app/Icono.js` y la marca de la tienda
   con `app/MarcaTienda.js`.
 

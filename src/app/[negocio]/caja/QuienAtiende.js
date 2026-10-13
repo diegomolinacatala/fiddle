@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Icono from "@/app/Icono";
 import { PIN_MIN, PIN_MAX, HORAS_PIN } from "@/lib/plantilla";
-import { C, panel, campo, botonPrimario, botonSecundario, aviso, RADIO } from "@/app/ui";
+import { C, panel, campo, botonPrimario, botonSecundario, aviso, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
 // ¿QUIÉN ATIENDE? Lo que ve la caja cuando en este móvil nadie se ha identificado.
@@ -96,7 +96,7 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
   return (
     <section style={{ ...panel, padding: 20 }} aria-labelledby="quien-titulo">
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span aria-hidden style={{ width: 40, height: 40, borderRadius: RADIO.boton, background: `${accent}14`, color: accent, display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <span aria-hidden style={{ width: 40, height: 40, borderRadius: RADIO.boton, background: `${accent}14`, color: legible(accent), display: "grid", placeItems: "center", flexShrink: 0 }}>
           <Icono nombre={paso === "lista" ? "credencial" : "candado"} tam={22} />
         </span>
         <div>

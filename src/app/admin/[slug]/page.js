@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PaseVista from "@/app/PaseVista";
 import LogoutButton from "@/app/LogoutButton";
+import BotonTema from "@/app/BotonTema";
 import Accesos from "@/app/admin/Accesos";
 import DatosLegales from "@/app/admin/DatosLegales";
 import AvisosAvanzados from "@/app/admin/AvisosAvanzados";
@@ -136,7 +137,10 @@ export default function AdminNegocio() {
             <h1 style={{ ...titulo, display: "flex", alignItems: "center", gap: 10 }}><MarcaTienda tema={n.tema} tam={34} icono /> {n.nombre}</h1>
             <p style={subtitulo}>/{n.slug} · {n.clientes} cliente{n.clientes === 1 ? "" : "s"}</p>
           </div>
-          <LogoutButton />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <BotonTema />
+            <LogoutButton />
+          </div>
         </header>
 
         <div style={{ marginTop: 18 }}><Accesos slug={n.slug} /></div>
@@ -386,6 +390,6 @@ export default function AdminNegocio() {
 const volver = { fontSize: 13, color: C.suave, textDecoration: "none", display: "inline-flex", alignItems: "center", minHeight: 36 };
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-  background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,
+  background: C.toastFondo, color: C.toastTexto, padding: "10px 18px", borderRadius: 10,
   fontWeight: 500, maxWidth: "90vw", textAlign: "center", boxShadow: "0 6px 20px rgba(16,20,28,.25)",
 };

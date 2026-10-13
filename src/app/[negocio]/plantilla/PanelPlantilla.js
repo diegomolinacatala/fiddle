@@ -122,6 +122,6 @@ export default function PanelPlantilla({ slug, inicial }) {
 const nota = { fontSize: 13, color: C.suave, background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: 10, padding: "12px 14px", margin: 0 };
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-  background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,
+  background: C.toastFondo, color: C.toastTexto, padding: "10px 18px", borderRadius: 10,
   fontWeight: 500, maxWidth: "90vw", textAlign: "center", boxShadow: "0 6px 20px rgba(16,20,28,.25)", zIndex: 60,
 };

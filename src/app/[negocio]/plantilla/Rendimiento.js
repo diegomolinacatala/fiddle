@@ -6,7 +6,7 @@ import { Cifra, Rejilla } from "../crm/piezas";
 import { BarrasPorPersona, SerieApilada, RejillaEquipo, Punto } from "./graficas";
 import { cifra, unoDeCada } from "@/lib/plantilla";
 import { fechaHoraTexto, diaCortoTexto } from "@/lib/actividad";
-import { C, panel, h2, botonPequeno } from "@/app/ui";
+import { C, panel, h2, botonPequeno, legible } from "@/app/ui";
 
 // ============================================================================
 // RENDIMIENTO: qué hace cada persona, contra la media del equipo
@@ -30,7 +30,7 @@ const COLUMNAS = [
   ["fuera", "Fuera de horario"],
 ];
 const ICONO_TONO = { bien: "check", ojo: "alerta", dato: "diana" };
-const COLOR_TONO = { bien: C.ok, ojo: "#c26b04", dato: null };
+const COLOR_TONO = { bien: C.ok, ojo: C.ojo, dato: null };
 const idDeFila = (clave) => `persona-${clave.replace(/[^a-z0-9]/gi, "-")}`;
 
 export default function Rendimiento({ cuentas, ideas, serie, dias, accent, colorDe, zona }) {
@@ -77,7 +77,7 @@ export default function Rendimiento({ cuentas, ideas, serie, dias, accent, color
           <div style={{ display: "grid", gap: 10 }}>
             {ideas.map((o) => (
               <div key={o.id} style={idea}>
-                <span style={{ color: COLOR_TONO[o.tono] || accent, display: "inline-flex", marginTop: 2 }}><Icono nombre={ICONO_TONO[o.tono]} tam={18} grosor={2.1} /></span>
+                <span style={{ color: COLOR_TONO[o.tono] || legible(accent), display: "inline-flex", marginTop: 2 }}><Icono nombre={ICONO_TONO[o.tono]} tam={18} grosor={2.1} /></span>
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ fontSize: 14.5, fontWeight: 600 }}>{o.texto}</div>
                   {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>{o.detalle}</div>}
@@ -118,7 +118,7 @@ export default function Rendimiento({ cuentas, ideas, serie, dias, accent, color
               <tbody>
                 {ordenadas.map((f) => {
                   const ritmo = f.sellosPorHora !== null && f.esperado
-                    ? f.sellosPorHora >= f.esperado * 1.3 ? C.ok : f.sellosPorHora <= f.esperado * 0.7 ? "#c26b04" : null
+                    ? f.sellosPorHora >= f.esperado * 1.3 ? C.ok : f.sellosPorHora <= f.esperado * 0.7 ? C.ojo : null
                     : null;
                   const abiertaEsta = abierta === f.clave;
                   return [
@@ -146,7 +146,7 @@ export default function Rendimiento({ cuentas, ideas, serie, dias, accent, color
                       <td style={td}>{f.dias}</td>
                       <td style={td}>{f.horas}</td>
                       <td style={td}>{f.estrenos}</td>
-                      <td style={{ ...td, color: f.fuera ? "#9a3412" : C.tenue }}>{f.fuera}</td>
+                      <td style={{ ...td, color: f.fuera ? C.ojoTexto : C.tenue }}>{f.fuera}</td>
                     </tr>,
                     abiertaEsta && (
                       <tr key={`${f.clave}-detalle`}>

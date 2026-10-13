@@ -119,7 +119,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
           </div>
         )}
         {completo && t.fueraDeHorario > 0 && (
-          <p style={{ ...nota, marginTop: 14, background: "#fff7ed", borderColor: "#fed7aa", color: "#9a3412" }}>
+          <p style={{ ...nota, marginTop: 14, background: C.ojoFondo, borderColor: C.ojoBorde, color: C.ojoTexto }}>
             {t.fueraDeHorario === 1 ? "Un movimiento" : `${t.fueraDeHorario} movimientos`} con la tienda cerrada, según el
             horario. Están marcados abajo.
           </p>
@@ -165,7 +165,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
                   const c = porSerial.get(f.serial);
                   return (
                     <tr key={`${f.ts}-${i}`} onClick={c ? () => onVerFicha(f.serial) : undefined}
-                      style={{ cursor: c ? "pointer" : "default", background: f.fueraDeHorario ? "#fff7ed" : undefined }}>
+                      style={{ cursor: c ? "pointer" : "default", background: f.fueraDeHorario ? C.ojoFondo : undefined }}>
                       <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{f.hora}</td>
                       <td style={td}><span style={chipCodigo(accent)}>{c?.codigo || "—"}</span></td>
                       <td style={td}>{c ? c.nombre || <span style={{ color: C.tenue }}>sin nombre</span> : <span style={{ color: C.tenue }}>ya no está</span>}</td>
@@ -173,7 +173,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
                         {/* El texto de la caja ya dice qué y de qué cartilla ("Sello Cafés 3/8"). */}
                         {f.clase === "alta" ? QUE.alta : f.mensaje}
                         {f.fueraDeHorario && (
-                          <span style={{ marginLeft: 8, color: "#9a3412", fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "-2px" }}>
+                          <span style={{ marginLeft: 8, color: C.ojoTexto, fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "-2px" }}>
                             <Icono nombre="reloj" tam={13} /> fuera de horario
                           </span>
                         )}

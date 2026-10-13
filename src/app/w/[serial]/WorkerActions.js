@@ -1,7 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { C, aviso } from "@/app/ui";
+import { C, aviso, legible } from "@/app/ui";
 
 // ============================================================================
 // LOS BOTONES DE LA CAJA. Solo pintan: qué pasa al pulsar (al instante, y la
@@ -174,12 +174,12 @@ const botonPremio = (principal, accent) => ({
   width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
   minHeight: 60, padding: "10px 12px", borderRadius: 12, cursor: "pointer",
   border: principal ? 0 : `1.5px solid ${accent}`,
-  background: principal ? accent : "#fff", color: principal ? "#fff" : accent,
+  background: principal ? accent : C.panel, color: principal ? "#fff" : legible(accent),
 });
 
 const botonDeshacer = {
   minHeight: 40, padding: "0 16px", borderRadius: 10, cursor: "pointer",
-  border: "1.5px solid currentColor", background: "#fff", color: "inherit", fontWeight: 650, fontSize: 14,
+  border: "1.5px solid currentColor", background: C.panel, color: "inherit", fontWeight: 650, fontSize: 14,
 };
 
 const sumar = (accent) => ({
@@ -189,12 +189,12 @@ const sumar = (accent) => ({
 });
 const menos = (accent) => ({
   flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 14, cursor: "pointer",
-  border: `1.5px solid ${accent}55`, background: "#fff", color: accent,
+  border: `1.5px solid ${accent}55`, background: C.panel, color: legible(accent),
 });
 const botonFila = (accent, correccion, alto, grande) => ({
   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
   minHeight: alto, padding: "0 16px", borderRadius: 14,
   border: correccion ? `1.5px solid ${accent}` : 0,
-  background: correccion ? "#fff" : accent, color: correccion ? accent : "#fff",
+  background: correccion ? C.panel : accent, color: correccion ? legible(accent) : "#fff",
   fontWeight: 650, fontSize: grande ? 18 : 16, cursor: "pointer",
 });

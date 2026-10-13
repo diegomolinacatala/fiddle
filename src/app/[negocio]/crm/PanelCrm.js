@@ -13,7 +13,7 @@ import Actividad from "./Actividad";
 import Solapas from "../Solapas";
 import { PESTANAS } from "./pestanas";
 import { saldoCorto } from "@/lib/cartillas";
-import { C, panel, campo, h2, botonPequeno, chipCodigo } from "@/app/ui";
+import { C, panel, campo, h2, botonPequeno, chipCodigo, legible } from "@/app/ui";
 
 const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 // Filtro de la lista que no es un grupo del CRM: las tarjetas que nadie guardó
@@ -116,7 +116,7 @@ export default function PanelCrm({ slug, inicial }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
               <Cifra label="Clientes" valor={m.total} pie={`${m.instalados} con la tarjeta en el teléfono`} accent={accent} />
               <Cifra label="Activos" valor={m.activos} pie="con su frecuencia habitual" accent={C.ok} />
-              <Cifra label="En riesgo" valor={m.enRiesgo} pie="más tiempo del habitual sin venir" accent={m.enRiesgo ? "#c26b04" : C.texto} />
+              <Cifra label="En riesgo" valor={m.enRiesgo} pie="más tiempo del habitual sin venir" accent={m.enRiesgo ? C.ojo : C.texto} />
               <Cifra label="Visitas (30 d)" valor={m.visitas30} variacion={tendencia(m.visitas30, m.visitas30Previas)} pie="vs. los 30 anteriores" />
               <Cifra label="Altas (30 d)" valor={m.nuevos30} variacion={tendencia(m.nuevos30, m.nuevos30Previos)} pie="pases nuevos" />
               <Cifra label="Premios" valor={m.premios} pie="canjeados en total" />
@@ -162,7 +162,7 @@ export default function PanelCrm({ slug, inicial }) {
                 <div style={{ display: "grid", gap: 10 }}>
                   {ideas.map((o) => (
                     <div key={o.id} style={idea}>
-                      <span style={{ color: accent, display: "inline-flex", marginTop: 2 }}><Icono nombre={o.accion?.tipo === "grupo" ? "clientes" : o.id === "pocos" ? "reloj" : "diana"} tam={18} /></span>
+                      <span style={{ color: legible(accent), display: "inline-flex", marginTop: 2 }}><Icono nombre={o.accion?.tipo === "grupo" ? "clientes" : o.id === "pocos" ? "reloj" : "diana"} tam={18} /></span>
                       <div style={{ flex: 1, minWidth: 200 }}>
                         <div style={{ fontSize: 14.5, fontWeight: 600 }}>{o.texto}</div>
                         {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>{o.detalle}</div>}
@@ -226,7 +226,7 @@ export default function PanelCrm({ slug, inicial }) {
                 <button key={g.key} type="button" disabled={!g.total} onClick={() => setGrupoVisto(g.key === grupoVisto ? null : g.key)}
                   style={tarjetaGrupo(g.key === grupoVisto, accent, g.total)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: accent, display: "inline-flex" }}><Icono nombre={g.icon} tam={18} /></span>
+                    <span style={{ color: legible(accent), display: "inline-flex" }}><Icono nombre={g.icon} tam={18} /></span>
                     <strong style={{ fontSize: 14, fontWeight: 650 }}>{g.label}</strong>
                     <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}>{g.total}</span>
                   </div>
@@ -268,7 +268,7 @@ export default function PanelCrm({ slug, inicial }) {
             )}
             {grupoActivo && (
               <p style={{ ...nota, marginBottom: 14 }}>
-                {grupoActivo.descripcion} ¿Quieres decirles algo? <a href={`/${slug}/avisos`} style={{ color: accent, fontWeight: 600 }}>Avisos</a>.
+                {grupoActivo.descripcion} ¿Quieres decirles algo? <a href={`/${slug}/avisos`} style={{ color: legible(accent), fontWeight: 600 }}>Avisos</a>.
               </p>
             )}
 
@@ -379,12 +379,12 @@ const tabla = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
 const idea = { display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", padding: "12px 14px", border: `1px solid ${C.borde}`, borderRadius: 12, background: C.panelSuave };
 const tarjetaGrupo = (activa, accent, hay) => ({
   ...panel, padding: 14, textAlign: "left", cursor: hay ? "pointer" : "default",
-  borderColor: activa ? accent : C.borde, background: activa ? `${accent}0c` : hay ? "#fff" : C.panelSuave,
+  borderColor: activa ? accent : C.borde, background: activa ? `${accent}0c` : hay ? C.panel : C.panelSuave,
   opacity: hay ? 1 : 0.55, font: "inherit", color: C.texto,
 });
 const filaGrupo = {
   display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, border: `1px solid ${C.borde}`,
-  background: "#fff", cursor: "pointer", font: "inherit", color: C.texto, width: "100%",
+  background: C.panel, cursor: "pointer", font: "inherit", color: C.texto, width: "100%",
 };
 const botonPrimarioEnlace = (accent) => ({
   display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 10, background: accent, color: "#fff",
@@ -402,6 +402,6 @@ const td = { padding: "9px 10px 9px 0", borderBottom: `1px solid ${C.borde}`, ve
 const nota = { fontSize: 13, color: C.suave, background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: 10, padding: "12px 14px", margin: 0 };
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-  background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,
+  background: C.toastFondo, color: C.toastTexto, padding: "10px 18px", borderRadius: 10,
   fontWeight: 500, maxWidth: "90vw", textAlign: "center", boxShadow: "0 6px 20px rgba(16,20,28,.25)", zIndex: 60,
 };

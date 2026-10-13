@@ -3,6 +3,7 @@
 import MarcaTienda from "@/app/MarcaTienda";
 import { useEffect, useState } from "react";
 import LogoutButton from "@/app/LogoutButton";
+import BotonTema from "@/app/BotonTema";
 import { cadenciaTexto } from "@/lib/crm";
 import { C, pagina, panel, h2, titulo, botonPequeno } from "@/app/ui";
 
@@ -41,6 +42,7 @@ export default function AdminCRM() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a href="/admin" style={{ ...botonPequeno, textDecoration: "none" }}>← Tiendas</a>
+            <BotonTema />
             <LogoutButton />
           </div>
         </header>
@@ -48,7 +50,7 @@ export default function AdminCRM() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, margin: "18px 0" }}>
           <Total label="Clientes" valor={t.total} />
           <Total label="Activos" valor={t.activos} color={C.ok} />
-          <Total label="En riesgo" valor={t.enRiesgo} color={t.enRiesgo ? "#c26b04" : C.texto} />
+          <Total label="En riesgo" valor={t.enRiesgo} color={t.enRiesgo ? C.ojo : C.texto} />
           <Total label="Altas (30 d)" valor={t.nuevos30} />
           <Total label="Visitas (30 d)" valor={t.visitas30} />
           <Total label="Instalan el pase" valor={`${t.tasaInstalacion}%`} />
@@ -77,7 +79,7 @@ export default function AdminCRM() {
                     </td>
                     <td style={td}>{s.metricas.total}</td>
                     <td style={{ ...td, color: C.ok, fontWeight: 600 }}>{s.metricas.activos}</td>
-                    <td style={{ ...td, color: s.metricas.enRiesgo ? "#c26b04" : C.suave }}>{s.metricas.enRiesgo}</td>
+                    <td style={{ ...td, color: s.metricas.enRiesgo ? C.ojo : C.suave }}>{s.metricas.enRiesgo}</td>
                     <td style={td}>{s.metricas.nuevos30}</td>
                     <td style={td}>{s.metricas.visitas30}</td>
                     <td style={td}><Barra pct={s.metricas.tasaInstalacion} color={s.accent} /></td>

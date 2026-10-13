@@ -5,13 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import QrScanner from "./QrScanner";
 import QuienAtiende from "./QuienAtiende";
 import LogoutButton from "@/app/LogoutButton";
+import BotonTema from "@/app/BotonTema";
 import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
 import Recorrido, { BotonAyuda } from "@/app/Recorrido";
 import { useInstalar } from "@/app/instalable";
 import { normalizarCodigo } from "@/lib/codigo";
 import { saldoCorto } from "@/lib/cartillas";
-import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso } from "@/app/ui";
+import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso, legible } from "@/app/ui";
 
 // App de CAJA de un negocio (móvil, instalable). Escanea el pase; si el QR no se
 // deja leer, se teclea el código de 3 caracteres que el cliente ve en su pase.
@@ -149,6 +150,7 @@ export default function Caja() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <BotonAyuda />
+            <BotonTema />
             <LogoutButton negocio={negocio} />
           </div>
         </header>
@@ -236,7 +238,7 @@ export default function Caja() {
 function Cuenta({ n, uno, varios, accent, color }) {
   return (
     <span style={{ fontSize: 14, color: color || C.suave }}>
-      <strong style={{ fontSize: 18, fontWeight: 650, color: color || accent || C.texto }}>{n}</strong> {n === 1 ? uno : varios}
+      <strong style={{ fontSize: 18, fontWeight: 650, color: color || (accent ? legible(accent) : C.texto) }}>{n}</strong> {n === 1 ? uno : varios}
     </span>
   );
 }

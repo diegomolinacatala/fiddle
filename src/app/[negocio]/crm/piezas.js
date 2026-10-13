@@ -1,7 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { C, panel } from "@/app/ui";
+import { C, panel, legible } from "@/app/ui";
 import { textoFalta } from "@/lib/observaciones";
 
 // ============================================================================
@@ -24,7 +24,7 @@ export function Cifra({ label, valor, pie, variacion, accent }) {
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-        <span style={{ fontSize: 26, fontWeight: 650, color: accent || C.texto, lineHeight: 1 }}>{valor}</span>
+        <span style={{ fontSize: 26, fontWeight: 650, color: accent ? legible(accent) : C.texto, lineHeight: 1 }}>{valor}</span>
         {variacion !== null && variacion !== undefined && (
           <span style={{ fontSize: 12, fontWeight: 600, color: sube ? C.ok : C.mal }}>
             {sube ? "▲" : "▼"} {Math.abs(variacion)}%
@@ -191,7 +191,7 @@ export function Chip({ estado, estados }) {
       title={e.descripcion}
       style={{
         display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 7,
-        background: `${e.color}18`, color: e.color, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+        background: `${e.color}18`, color: legible(e.color), fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
       }}
     >
       <Icono nombre={e.icon} tam={13} grosor={2.2} /> {e.label}

@@ -7,6 +7,7 @@ import Enviados from "./Enviados";
 import Programados from "./Programados";
 import Solapas from "../Solapas";
 import { pestanasDe, primeraDe } from "./pestanas";
+import { C } from "@/app/ui";
 
 // ============================================================================
 // AVISOS — todo lo que se les dice a los clientes, en un solo sitio
@@ -99,6 +100,6 @@ export default function PanelAvisos({ slug, inicial }) {
 
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-  background: "#1b1e23", color: "#fff", padding: "10px 18px", borderRadius: 10,
+  background: C.toastFondo, color: C.toastTexto, padding: "10px 18px", borderRadius: 10,
   fontWeight: 500, maxWidth: "90vw", textAlign: "center", boxShadow: "0 6px 20px rgba(16,20,28,.25)", zIndex: 60,
 };

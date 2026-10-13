@@ -38,6 +38,6 @@ export default function ClaveNueva({ accesos, onCerrar }) {
   );
 }
 
-const caja = { padding: 14, borderRadius: RADIO.fila, border: "1px solid #bfe5cd", background: "#f1faf4", marginTop: 12 };
-const fila = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", borderTop: "1px solid #d7eee0" };
+const caja = { padding: 14, borderRadius: RADIO.fila, border: `1px solid ${C.okBorde}`, background: C.okFondo, marginTop: 12 };
+const fila = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", borderTop: `1px solid ${C.okBorde}` };
 const mono = { fontFamily: "ui-monospace, Menlo, monospace", fontSize: 18, fontWeight: 700, letterSpacing: 1.5, marginTop: 2 };
