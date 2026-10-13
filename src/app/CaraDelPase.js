@@ -19,13 +19,16 @@ import AbiertoAhora from "@/app/AbiertoAhora";
 // `horario`: si viene, "Abierto hasta las 18:30" bajo el nombre (AbiertoAhora).
 // Solo lo pasa la tarjeta web: el pase de Wallet no puede llevarlo, y en el alta
 // el cliente está en la tienda.
+// `estado`: la línea "● Abierto hasta las 20:00" DIBUJADA en lo alto de la banda,
+// como la lleva el pase de Wallet ({abierta, texto} de estadoParaPase). La pasa
+// la web de fiddle (/home) para enseñar el pase tal cual.
 // ============================================================================
 
-export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", horario = null, children = null }) {
+export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", horario = null, estado = null, children = null }) {
   const t = negocio.tema;
   const e = estadoDe(cliente, negocio);
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = camposDelPase(cliente, negocio);
-  const banda = stripDelPase(negocio, cliente);
+  const banda = stripDelPase(negocio, cliente, { estado });
   const campos = [...secondaryFields, ...auxiliaryFields];
 
   return (

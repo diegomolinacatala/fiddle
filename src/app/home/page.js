@@ -6,7 +6,8 @@ import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { appUrl } from "@/lib/url";
 import Telefono, { Aviso } from "./Telefono";
 import LogoFiddle from "@/app/LogoFiddle";
-import { ejemplo, avisoDeSello, CAFETERIA, MUESTRARIO } from "./demo";
+import { ejemplo, avisoDe, CAFETERIA, MUESTRARIO } from "./demo";
+import { PALETA } from "./paleta";
 import { PLANES, TELEFONO_VISIBLE, CORREO, enlaceWhatsApp, enlaceCorreo, mensajeDePlan } from "./datos";
 import { css } from "./estilo";
 
@@ -39,7 +40,7 @@ export default async function Home() {
       <header className="cabecera">
         <div className="cabecera-dentro">
           <a href="#inicio" className="cabecera-marca" aria-label="fiddle, inicio">
-            <LogoFiddle tam={30} />
+            <LogoFiddle tam={30} color={PALETA.nogal} id="efe-cabecera" />
           </a>
           <nav className="cabecera-nav" aria-label="Secciones">
             <a href="#como-funciona" className="solo-ancho">Cómo funciona</a>
@@ -55,7 +56,7 @@ export default async function Home() {
           <div className="portada-texto">
             <p className="antetitulo">Tarjetas de fidelización para cafeterías</p>
             <h1 className="titular">
-              Sellos que no se pierden<Punto />
+              Clientes que no se pierden<Punto />
             </h1>
             <p className="entradilla">
               Tu tarjeta de sellos, en el Apple Wallet o el Android de tus clientes. La guardan con un
@@ -71,7 +72,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="portada-visual">
-            <Telefono ejemplo={portada} qr={qr} aviso={avisoDeSello(portada)} />
+            <Telefono qr={qr} />
           </div>
         </section>
 
@@ -117,8 +118,8 @@ export default async function Home() {
               <div className="paso-visual paso-avisos" aria-hidden="true">
                 <div className="avisos">
                   {/* Como en la pantalla de bloqueo: el último arriba. */}
-                  <Aviso negocio={portada.negocio} texto={avisoDeSello(portada)} />
-                  <Aviso negocio={antes.negocio} texto={avisoDeSello(antes)} cuando="ayer" className="aviso-viejo" />
+                  <Aviso negocio={portada.negocio} texto={avisoDe(portada)} />
+                  <Aviso negocio={antes.negocio} texto={avisoDe(antes)} cuando="ayer" className="aviso-viejo" />
                 </div>
               </div>
               <span className="paso-numero">3</span>
@@ -128,7 +129,7 @@ export default async function Home() {
           </ol>
         </section>
 
-        <section className="bloque bloque-noche" aria-labelledby="titulo-marca">
+        <section className="bloque oscuro fondo-nogal" aria-labelledby="titulo-marca">
           <div className="marca-dentro">
             <Encabezado id="titulo-marca" titulo="Con tu marca">
               Tu logo, tus colores y tu premio. Lo cambias cuando quieras desde tu panel y la tarjeta se pone
@@ -154,7 +155,7 @@ export default async function Home() {
 
           <div className="planes">
             {PLANES.map((plan) => (
-              <article key={plan.id} className={`plan revela${plan.destacado ? " plan-destacado" : ""}`} aria-labelledby={`plan-${plan.id}`}>
+              <article key={plan.id} className={`plan revela${plan.destacado ? " plan-destacado oscuro" : ""}`} aria-labelledby={`plan-${plan.id}`}>
                 <header className="plan-cabeza">
                   <h3 id={`plan-${plan.id}`}>{plan.nombre}</h3>
                   {plan.destacado && <span className="plan-etiqueta">Todo incluido</span>}
@@ -198,7 +199,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="contacto" className="bloque bloque-noche contacto">
+        <section id="contacto" className="bloque oscuro fondo-carbon">
           <div className="contacto-dentro">
             <div className="contacto-texto revela">
               <div className="iniciales" aria-hidden="true">
@@ -236,9 +237,9 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="pie">
+      <footer className="pie oscuro">
         <div className="pie-dentro">
-          <LogoFiddle tam={26} claro />
+          <LogoFiddle tam={28} color={PALETA.salvia} id="efe-pie" />
           <nav className="pie-nav" aria-label="Pie">
             <a href="#como-funciona">Cómo funciona</a>
             <a href="#precios">Precios</a>
@@ -277,7 +278,7 @@ const PREGUNTAS = [
   ],
 ];
 
-// El punto rosa del final de cada título: el sello del logo.
+// El punto del final de cada título: un sello (topo en claro, salvia en oscuro).
 function Punto() {
   return <span className="punto" aria-hidden="true" />;
 }
@@ -305,6 +306,6 @@ function Flecha() {
 const banda = ({ negocio, cliente }) => comoDataUri(stripDelPase(negocio, cliente).svg);
 
 async function qrDeTexto(texto) {
-  const svg = await QRCode.toString(texto, { type: "svg", margin: 2, errorCorrectionLevel: "M", color: { dark: "#1d1b2e", light: "#ffffff" } });
+  const svg = await QRCode.toString(texto, { type: "svg", margin: 2, errorCorrectionLevel: "M", color: { dark: PALETA.carbon, light: "#ffffff" } });
   return comoDataUri(svg);
 }

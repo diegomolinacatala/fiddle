@@ -535,11 +535,18 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   avanzados en `/admin/<slug>`).
 - **Las tarjetas de ejemplo son de verdad** (`demo.js`): tiendas inventadas con un estilo
   de partida, pintadas con `CaraDelPase`, y el aviso sale de `camposDelPase`. Nunca un
-  kit de marca ni una tienda real.
+  kit de marca ni una tienda real. El móvil de la portada va pasando una por cosa que
+  sabe hacer (`CARRUSEL`; quién se ve lo decide `Carrusel.js`). Una novedad del pase que
+  se quiera enseñar = una entrada ahí. «● Abierto hasta…» lo escribe `estadoParaPase`.
+- **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
+  mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` (salvia,
+  topo, nogal, ébano y carbón, más el papel y los tintes que salen de ellos). Los colores
+  de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa, `docs/marca/fiddle-logo.svg`)
+  sigue en el Perfil de Empresa de Google Wallet hasta que se suba `fiddle-violin-1024.png`.
 - **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
   enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
-- Las imágenes (icono, vista previa de WhatsApp) salen de `scripts/gen-marca-web.mjs` y
-  van en `public/marcas/`, que no pasa por el middleware.
+- Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
+  `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
 
 ## Pantallas en el móvil
 
