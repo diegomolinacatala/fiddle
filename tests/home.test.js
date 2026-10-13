@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, mensajeDePlan } from "@/app/home/datos";
-import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL, MUESTRARIO } from "@/app/home/demo";
+import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan } from "@/app/home/datos";
+import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL } from "@/app/home/demo";
+import { GRUPOS } from "@/lib/crm";
+import { ubicacionesApple } from "@/lib/apple/pase";
 import { PALETA } from "@/app/home/paleta";
 import { svgViolin, svgIconoViolin } from "@/lib/violin";
 import { ESTILOS_GENERALES } from "@/lib/negocios";
@@ -16,14 +18,31 @@ describe("web de fiddle: contacto y precios", () => {
     expect(new URL(enlaceWhatsApp()).searchParams.get("text")).toMatch(/fiddle/);
   });
 
-  it("el correo lleva la dirección y el asunto", () => {
-    expect(enlaceCorreo("Hola & adiós")).toBe(`mailto:${CORREO}?subject=Hola%20%26%20adi%C3%B3s`);
+  it("el correo lleva la dirección, el asunto y el mensaje empezado", () => {
+    expect(enlaceCorreo("Hola & adiós", "Uno")).toBe(`mailto:${CORREO}?subject=Hola%20%26%20adi%C3%B3s&body=Uno`);
+    expect(enlaceCorreo()).toMatch(/^mailto:[^?]+\?subject=.+&body=.+/);
+  });
+
+  it("en el ordenador, Gmail con el correo ya escrito a nuestra dirección", () => {
+    const url = new URL(enlaceGmail("Asunto & más", "Cuerpo"));
+    expect(url.origin).toBe("https://mail.google.com");
+    expect(url.searchParams.get("view")).toBe("cm");
+    expect(url.searchParams.get("to")).toBe(CORREO);
+    expect(url.searchParams.get("su")).toBe("Asunto & más");
+    expect(url.searchParams.get("body")).toBe("Cuerpo");
   });
 
   it("dos planes: Tarjetas a 39 € y Completo a 49 €, el segundo destacado", () => {
     expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["tarjetas", 39], ["completo", 49]]);
     expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["completo"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
+    // Lo que decidieron para cada uno (13-10-2026).
+    expect(PLANES[0].incluye.join(" ")).toMatch(/sin límite/);
+    expect(PLANES[0].incluye.join(" ")).toMatch(/Promociones al momento, a todos/);
+    expect(PLANES[1].incluye[0]).toBe("Todo lo de Tarjetas");
+    for (const cosa of [/estadísticas/, /grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
+      expect(PLANES[1].incluye.join(" ")).toMatch(cosa);
+    }
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
   });
 
@@ -60,7 +79,7 @@ describe("web de fiddle: tarjetas de ejemplo", () => {
   });
 
   it("nunca enseñan un kit de marca ni el nombre de un cliente", () => {
-    for (const t of [CAFETERIA, ...CARRUSEL.map((d) => d.tienda), ...MUESTRARIO]) {
+    for (const t of [CAFETERIA, ...CARRUSEL.map((d) => d.tienda)]) {
       expect(ESTILOS_GENERALES).toContain(t.tema.estilo);
       const e = ejemplo(t, 3);
       expect(e.cliente).not.toHaveProperty("nombre");
@@ -70,6 +89,22 @@ describe("web de fiddle: tarjetas de ejemplo", () => {
 
   it("los colores de la tienda de ejemplo se guardarían (#rrggbb)", () => {
     for (const color of Object.values(PALETA)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("web de fiddle: el panel", () => {
+  it("los grupos que enseña existen, con su icono y su frase", () => {
+    for (const id of ["a_punto", "fieles_frios", "nuevos", "dormidos"]) {
+      expect(GRUPOS[id]?.label).toBeTruthy();
+      expect(GRUPOS[id].icon).toBeTruthy();
+    }
+    expect(GRUPOS.a_punto.idea.replace("{premio}", CAFETERIA.premio)).toBe("Te falta 1 para tu café gratis");
+  });
+
+  it("el aviso al pasar cerca es el que mete el pase", () => {
+    const { negocio } = ejemplo(CAFETERIA, 7);
+    const [u] = ubicacionesApple({ ...negocio, ubicaciones: [{ lat: 39.47, lng: -0.37 }] });
+    expect(u.relevantText).toBe("Estás cerca de Tu cafetería. Enseña tu tarjeta en caja.");
   });
 });
 

@@ -7,19 +7,28 @@
 
 export const WHATSAPP = "34652284200"; // sin «+» ni espacios: es lo que pide wa.me
 export const TELEFONO_VISIBLE = "652 28 42 00";
-export const CORREO = "diegomolinacatala@gmail.com";
+export const CORREO = "esfiddle@gmail.com"; // el de la empresa (13-10-2026)
+
+const ASUNTO = "fiddle para mi cafetería";
+const CUERPO = "Hola, me interesa fiddle para mi cafetería.";
 
 /** Abre WhatsApp (app en el móvil, web en el ordenador) con el mensaje ya escrito. */
-export const enlaceWhatsApp = (texto = "Hola, me interesa fiddle para mi cafetería.") =>
-  `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(texto)}`;
+export const enlaceWhatsApp = (texto = CUERPO) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(texto)}`;
 
-/** Abre el correo con el asunto puesto. */
-export const enlaceCorreo = (asunto = "fiddle para mi cafetería") =>
-  `mailto:${CORREO}?subject=${encodeURIComponent(asunto)}`;
+/** Abre la app de correo del teléfono (o la que tenga el ordenador) con el correo empezado. */
+export const enlaceCorreo = (asunto = ASUNTO, cuerpo = CUERPO) =>
+  `mailto:${CORREO}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
-// Lo que lleva cada plan. «Completo» suma a «Tarjetas»: no repite su lista.
-// Las frases dicen lo que la app hace hoy (avisos, clientes, resumen): nada de
-// promesas que la tienda no vaya a encontrar al entrar.
+/**
+ * Lo mismo en Gmail web. En un ordenador sin app de correo configurada, un
+ * mailto: no hace nada al pulsarlo; Gmail abre el correo ya escrito.
+ */
+export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
+  `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CORREO)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+
+// Lo que lleva cada plan (decidido el 13-10-2026). «Completo» suma a «Tarjetas»:
+// no repite su lista. Las frases dicen lo que la app hace hoy; nada de promesas
+// que la tienda no vaya a encontrar al entrar.
 export const PLANES = [
   {
     id: "tarjetas",
@@ -27,11 +36,11 @@ export const PLANES = [
     precio: 39,
     lema: "Para empezar a sellar.",
     incluye: [
-      "Tu tarjeta en Apple Wallet y en Android",
+      "Tarjetas sin límite, en Apple Wallet y Android",
       "Con tu logo, tus colores y tu premio",
       "La caja en el móvil de la tienda",
       "Tu QR para el mostrador",
-      "Premios para hoy o guardados para otro día",
+      "Promociones al momento, a todos tus clientes a la vez",
     ],
   },
   {
@@ -42,10 +51,12 @@ export const PLANES = [
     destacado: true,
     incluye: [
       "Todo lo de Tarjetas",
-      "Avisos en sus móviles, a todos o a un grupo",
-      "Avisos programados y automáticos",
-      "Tus clientes: quién viene, cada cuánto y quién falta",
-      "Tus horas y días fuertes, en números",
+      "Las estadísticas de tus clientes",
+      "Tus clientes por grupos, y avisos a cada grupo",
+      "Avisos automáticos y programados",
+      "«Abierto hasta…» en la tarjeta",
+      "Aviso al pasar cerca de tu tienda",
+      "Tu equipo en la caja, cada uno con su PIN",
     ],
   },
 ];

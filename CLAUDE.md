@@ -530,9 +530,18 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (39 € Tarjetas, 49 € Completo, desde el 13-10-2026). Lo que dice cada plan es lo que
-  la app hace hoy; la app NO limita nada por plan (Completo = encender los avisos
-  avanzados en `/admin/<slug>`).
+  (13-10-2026): Tarjetas, 39 € (tarjetas sin límite y promociones al momento a todos);
+  Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
+  hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
+  app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados
+  en `/admin/<slug>`; lo demás lo ve cualquier tienda).
+- **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
+  con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
+  Al lado, «Copiar».
+- **«Sabes quién vuelve»** (`home/Panel.js`) enseña el panel del dueño con los nombres y
+  frases de la app y números de ejemplo. Los grupos y el aviso de ubicación se importan
+  (`GRUPOS`, `ubicacionesApple`); las etiquetas de las cifras y la frase de «Lo que dicen
+  los números» están copiadas del Resumen: si cambian allí, se cambian aquí.
 - **Las tarjetas de ejemplo son de verdad** (`demo.js`): tiendas inventadas con un estilo
   de partida, pintadas con `CaraDelPase`, y el aviso sale de `camposDelPase`. Nunca un
   kit de marca ni una tienda real. El móvil de la portada va pasando una por cosa que
