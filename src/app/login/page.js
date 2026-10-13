@@ -4,11 +4,13 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { destinoSeguro } from "@/lib/acceso";
 import { C, paginaCentrada, panel, campo, etiqueta, aviso } from "@/app/ui";
+import LogoFiddle from "@/app/LogoFiddle";
 
 // PRIMERA PANTALLA de la app: usuario + contraseña, para todos los negocios.
 //   delicanteria (manager) · delicanteria-caja (caja)
 // El rol lo decide el usuario. Si el servidor tiene activo el modo pruebas,
 // debajo se listan los accesos de ejemplo y se rellenan al tocarlos.
+// Se llega desde «Entrar» de la web (/home), y abajo hay un enlace de vuelta.
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -65,9 +67,11 @@ function LoginForm() {
     <main style={paginaCentrada}>
       <div style={{ width: "min(400px, 100%)" }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <h1 style={{ fontSize: "1.6rem", margin: "0 0 2px", letterSpacing: "-0.01em" }}>Sellos</h1>
+          <h1 style={{ margin: "0 0 10px", fontSize: "inherit" }}>
+            <LogoFiddle tam={36} />
+          </h1>
           <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>
-            Entra con el usuario de tu negocio.
+            Entra con el usuario de tu tienda o el de la caja.
           </p>
         </div>
 
@@ -123,6 +127,10 @@ function LoginForm() {
             </p>
           </div>
         )}
+
+        <p style={{ textAlign: "center", fontSize: 13, color: C.suave, margin: "18px 0 0" }}>
+          ¿Aún no trabajas con nosotros? <a href="/home" style={{ color: C.texto, fontWeight: 600 }}>Conoce fiddle</a>
+        </p>
       </div>
     </main>
   );

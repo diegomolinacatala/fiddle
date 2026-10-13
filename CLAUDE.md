@@ -524,6 +524,23 @@ Falta decidir: **dominio propio** (sin él los correos de recuperación no llega
 el **PIN por defecto** (la propuesta es "solo para premios") y si se entra con
 **Google/Apple**.
 
+## La web (/home)
+
+Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, precios y
+contacto (`app/home/`). Estática: no lee la base ni la sesión.
+
+- **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
+  (39 € Tarjetas, 49 € Completo, desde el 13-10-2026). Lo que dice cada plan es lo que
+  la app hace hoy; la app NO limita nada por plan (Completo = encender los avisos
+  avanzados en `/admin/<slug>`).
+- **Las tarjetas de ejemplo son de verdad** (`demo.js`): tiendas inventadas con un estilo
+  de partida, pintadas con `CaraDelPase`, y el aviso sale de `camposDelPase`. Nunca un
+  kit de marca ni una tienda real.
+- **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
+  enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
+- Las imágenes (icono, vista previa de WhatsApp) salen de `scripts/gen-marca-web.mjs` y
+  van en `public/marcas/`, que no pasa por el middleware.
+
 ## Pantallas en el móvil
 
 - **Los contenedores de página van a `min(Npx, 100%)`, nunca a `vw`**: `96vw` más el margen

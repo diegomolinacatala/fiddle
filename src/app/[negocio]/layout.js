@@ -12,7 +12,7 @@ import { CAPTURAR_INSTALAR } from "@/app/temprano";
 export async function generateMetadata({ params }) {
   const { negocio } = await params;
   const n = await leerNegocio(negocio);
-  if (!n) return { title: "Sellos" };
+  if (!n) return { title: "fiddle" };
   return {
     title: n.nombre,
     manifest: `/api/manifest?b=${negocio}`,
