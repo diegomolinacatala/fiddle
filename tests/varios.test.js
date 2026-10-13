@@ -78,6 +78,7 @@ describe("negocios y url", () => {
     expect(esSlug("admin")).toBe(false);        // reservado: es la ruta del admin
     expect(esSlug("plataforma")).toBe(false);   // reservado: sesión del admin
     expect(esSlug("marcas")).toBe(false);       // reservado: botones oficiales de Wallet
+    expect(esSlug("home")).toBe(false);         // reservado: la web de fiddle
     expect(esSlug("Nube")).toBe(false);         // mayúsculas no
     expect(esSlug("a")).toBe(false);            // demasiado corto
     expect(esSlug(null)).toBe(false);
