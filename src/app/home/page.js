@@ -42,7 +42,7 @@ export default async function Home() {
       <header className="cabecera">
         <div className="cabecera-dentro">
           <a href="#inicio" className="cabecera-marca" aria-label="fiddle, inicio">
-            <LogoFiddle tam={30} color={PALETA.nogal} id="efe-cabecera" />
+            <LogoFiddle tam={30} color={PALETA.verde} id="efe-cabecera" />
           </a>
           <nav className="cabecera-nav" aria-label="Secciones">
             <a href="#como-funciona" className="solo-ancho">Cómo funciona</a>
@@ -140,7 +140,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="panel" className="bloque oscuro fondo-nogal" aria-labelledby="titulo-panel">
+        <section id="panel" className="bloque oscuro fondo-verde" aria-labelledby="titulo-panel">
           <div className="panel-dentro">
             <Encabezado id="titulo-panel" titulo="Sabes quién vuelve">
               Desde tu panel ves quién viene, cada cuánto y quién se te está escapando. Y desde ahí mismo
@@ -205,7 +205,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section id="contacto" className="bloque oscuro fondo-carbon">
+        <section id="contacto" className="bloque oscuro fondo-espresso">
           <div className="contacto-dentro">
             <div className="contacto-texto revela">
               <div className="iniciales" aria-hidden="true">
@@ -244,7 +244,7 @@ export default async function Home() {
 
       <footer className="pie oscuro">
         <div className="pie-dentro">
-          <LogoFiddle tam={28} color={PALETA.salvia} id="efe-pie" />
+          <LogoFiddle tam={28} color={PALETA.avena} id="efe-pie" />
           <nav className="pie-nav" aria-label="Pie">
             <a href="#como-funciona">Cómo funciona</a>
             <a href="#panel">El panel</a>
@@ -284,7 +284,7 @@ const PREGUNTAS = [
   ],
 ];
 
-// El punto del final de cada título: un sello (topo en claro, salvia en oscuro).
+// El punto del final de cada título: un sello (camel en claro, avena en oscuro).
 function Punto() {
   return <span className="punto" aria-hidden="true" />;
 }
@@ -312,6 +312,6 @@ function Flecha() {
 const banda = ({ negocio, cliente }) => comoDataUri(stripDelPase(negocio, cliente).svg);
 
 async function qrDeTexto(texto) {
-  const svg = await QRCode.toString(texto, { type: "svg", margin: 2, errorCorrectionLevel: "M", color: { dark: PALETA.carbon, light: "#ffffff" } });
+  const svg = await QRCode.toString(texto, { type: "svg", margin: 2, errorCorrectionLevel: "M", color: { dark: PALETA.espresso, light: "#ffffff" } });
   return comoDataUri(svg);
 }

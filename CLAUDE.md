@@ -548,8 +548,10 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   sabe hacer (`CARRUSEL`; quién se ve lo decide `Carrusel.js`). Una novedad del pase que
   se quiera enseñar = una entrada ahí. «● Abierto hasta…» lo escribe `estadoParaPase`.
 - **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
-  mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` (salvia,
-  topo, nogal, ébano y carbón, más el papel y los tintes que salen de ellos). Los colores
+  mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` («Verde y
+  espresso» desde el 13-10-2026: verde botella para la marca y camel, avena, visón y espresso,
+  más el papel y los tintes que salen de ellos). El verde y el espresso se distinguen siempre:
+  son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
   de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa, `docs/marca/fiddle-logo.svg`)
   sigue en el Perfil de Empresa de Google Wallet hasta que se suba `fiddle-violin-1024.png`.
 - **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login

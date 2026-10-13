@@ -49,8 +49,8 @@ export const CAFETERIA = {
   slug: "tu-cafeteria",
   nombre: "Tu cafetería",
   premio: "café gratis",
-  // topoOscuro y no topo: también pinta las etiquetas pequeñas del pase («PREMIO»).
-  tema: { estilo: "coffee", cardBg: P.crema, ink: P.nogal, accent: P.topoOscuro },
+  // camelOscuro y no camel: también pinta las etiquetas pequeñas del pase («PREMIO»).
+  tema: { estilo: "coffee", cardBg: P.crema, ink: P.verde, accent: P.camelOscuro },
 };
 
 // El móvil de la portada: una tarjeta por cosa que sabe hacer. Todas de «Tu
@@ -62,7 +62,7 @@ export const CARRUSEL = [
   {
     id: "doble",
     titulo: "Dos cartillas en una",
-    tienda: tuya("doble", { doble: "filas", cardBg: P.salviaClara, ink: P.carbon, accent: P.ebano }, {
+    tienda: tuya("doble", { doble: "filas", cardBg: P.verdeClaro, ink: P.espresso, accent: P.vison }, {
       cartillas: [
         { nombre: "Cafés", marca: "taza", meta: 8, premio: "café gratis" },
         { nombre: "Bollería", marca: "croissant", meta: 6, premio: "croissant gratis" },
@@ -71,12 +71,12 @@ export const CARRUSEL = [
     sellos: 5,
     sellos2: 2,
   },
-  { id: "forma", titulo: "Elige la forma", tienda: tuya("forma", { forma: "rombo", banda: "rayas", cardBg: P.crema, ink: P.nogal, accent: P.nogal }), sellos: 5 },
-  { id: "planta", titulo: "Una planta que crece", tienda: tuya("planta", { modo: "planta", cardBg: P.papel, ink: P.carbon, accent: P.ebano }), sellos: 5 },
+  { id: "forma", titulo: "Elige la forma", tienda: tuya("forma", { forma: "rombo", banda: "rayas", cardBg: P.crema, ink: P.verde, accent: P.verde }), sellos: 5 },
+  { id: "planta", titulo: "Una planta que crece", tienda: tuya("planta", { modo: "planta", cardBg: P.papel, ink: P.espresso, accent: P.vison }), sellos: 5 },
   {
     id: "cerrado",
     titulo: "Y cuándo vuelves a abrir",
-    tienda: tuya("cerrado", { forma: "hexagono", banda: "clara", cardBg: P.carbon, ink: P.papel, accent: P.ebano, detalle: P.salvia }),
+    tienda: tuya("cerrado", { forma: "hexagono", banda: "clara", cardBg: P.espresso, ink: P.papel, accent: P.vison, detalle: P.avena }),
     sellos: 4,
     estado: "cerrado",
   },

@@ -26,11 +26,11 @@ import { PALETA as P } from "../src/app/home/paleta.js";
 const require = createRequire(import.meta.url);
 const ruta = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 
-// Icono: el violín de nogal sobre la salvia (5,7:1), con esquinas para la pestaña.
-const pestana = svgIconoViolin({ color: P.nogal, fondo: P.salvia, radio: 230 });
+// Icono: el violín verde sobre la avena (6,4:1), con esquinas para la pestaña.
+const pestana = svgIconoViolin({ color: P.verde, fondo: P.avena, radio: 230 });
 writeFileSync(ruta("../public/marcas/fiddle.svg"), `${pestana}\n`);
 // El iPhone y Google redondean ellos: aquí, cuadrado entero.
-const cuadrado = svgIconoViolin({ color: P.nogal, fondo: P.salvia });
+const cuadrado = svgIconoViolin({ color: P.verde, fondo: P.avena });
 await sharp(Buffer.from(cuadrado)).resize(180, 180).png().toFile(ruta("../public/marcas/fiddle-180.png"));
 writeFileSync(ruta("../docs/marca/fiddle-violin.svg"), `${cuadrado}\n`);
 await sharp(Buffer.from(cuadrado)).resize(1024, 1024).png().toFile(ruta("../docs/marca/fiddle-violin-1024.png"));
@@ -52,15 +52,15 @@ const W = 1200;
 const H = 630;
 const BASE = 410;
 const titular = texto(seminegrita, "Clientes que no se pierden", { cx: W / 2 - 10, y: BASE, tam: 80, color: P.papel, tracking: -0.04 });
-const punto = `<circle cx="${titular.x + titular.ancho + 10}" cy="${BASE - 8.5}" r="8.5" fill="${P.salvia}"/>`;
+const punto = `<circle cx="${titular.x + titular.ancho + 10}" cy="${BASE - 8.5}" r="8.5" fill="${P.avena}"/>`;
 const sub = texto(media, "Tarjetas de fidelización en Apple Wallet y Android", { cx: W / 2, y: BASE + 70, tam: 30, color: P.papel, opacidad: 0.72, tracking: -0.01 });
 const { x, y, ancho, alto } = VIOLIN.encuadre;
 const altoViolin = 168;
 const anchoViolin = (altoViolin * ancho) / alto;
 
 const og = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <rect width="${W}" height="${H}" fill="${P.carbon}"/>
-  <svg x="${(W - anchoViolin) / 2}" y="104" width="${anchoViolin}" height="${altoViolin}" viewBox="${x} ${y} ${ancho} ${alto}">${svgViolin({ color: P.salvia })}</svg>
+  <rect width="${W}" height="${H}" fill="${P.verde}"/>
+  <svg x="${(W - anchoViolin) / 2}" y="104" width="${anchoViolin}" height="${altoViolin}" viewBox="${x} ${y} ${ancho} ${alto}">${svgViolin({ color: P.avena })}</svg>
   ${titular.svg}${punto}${sub.svg}
 </svg>`;
 await sharp(Buffer.from(og)).png({ compressionLevel: 9 }).toFile(ruta("../public/marcas/fiddle-og.png"));

@@ -7,7 +7,7 @@ import { PALETA } from "./paleta";
 // único que deja la CSP (font-src 'self').
 const geist = Geist({ subsets: ["latin"], display: "swap", variable: "--fuente-web" });
 
-const VERSION_IMAGENES = "violin";
+const VERSION_IMAGENES = "verde";
 
 const DESCRIPCION =
   "Tarjetas de fidelización para cafeterías en Apple Wallet y Android. Tus clientes la guardan con un escaneo y tú sumas sellos desde el móvil de la tienda.";
