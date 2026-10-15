@@ -43,10 +43,20 @@ describe("lo que dicen los números", () => {
     expect(tranquilo.texto).toBe("Lo más tranquilo: los mediodías de martes y miércoles.");
   });
 
-  it("con pocas visitas no se inventa patrones", () => {
+  it("con pocas visitas no se inventa patrones (lo que falta lo dice la rejilla)", () => {
     const poco = Array.from({ length: 7 }, () => new Array(24).fill(0));
     poco[0][9] = 3;
-    expect(observaciones({ rejilla: poco, horario }).map((o) => o.id)).toEqual(["pocos"]);
+    expect(observaciones({ rejilla: poco, horario })).toEqual([]);
+  });
+
+  it("si pocos tienen la tarjeta en el móvil, lo dice sin botón: se arregla en caja", () => {
+    const obs = observaciones({ rejilla: rejilla(), horario, metricas: { total: 40, instalados: 18, tasaInstalacion: 45 } });
+    const o = obs.find((x) => x.id === "instalan");
+    expect(o.texto).toBe("Solo 18 de tus 40 clientes tienen la tarjeta en el móvil.");
+    expect(o.accion).toBeUndefined();
+    // Con pocos clientes, o con la mayoría, nada.
+    expect(observaciones({ rejilla: rejilla(), horario, metricas: { total: 6, instalados: 1, tasaInstalacion: 17 } }).some((x) => x.id === "instalan")).toBe(false);
+    expect(observaciones({ rejilla: rejilla(), horario, metricas: { total: 40, instalados: 30, tasaInstalacion: 75 } }).some((x) => x.id === "instalan")).toBe(false);
   });
 
   it("los grupos y la tendencia llevan a escribirles", () => {
@@ -128,10 +138,9 @@ describe("¿hay con qué? (suficiencia)", () => {
     expect(suficiencia({ eventos: eventosSinMiercoles, horario: conFestivo, ahora: AHORA }).faltan).toEqual([2]);
   });
 
-  it("sin datos suficientes, ni patrones ni tendencia: solo lo que falta", () => {
+  it("sin datos suficientes, ni patrones ni tendencia", () => {
     const s = suficiencia({ eventos: semana("2026-10-05", 10), horario, ahora: Date.parse("2026-10-10T12:00:00Z") });
     const obs = observaciones({ rejilla: rejilla(), horario, suficiencia: s, metricas: { visitas30: 50, visitas30Previas: 20 } });
-    expect(obs.map((o) => o.id)).toEqual(["pocos"]);
-    expect(obs[0].detalle).toMatch(/^Hace falta/);
+    expect(obs).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import { listClientes, listEventosDeNegocio, listCampanas, serialesRegistrados, getNegocio } from "./store";
-import { perfilDe, metricas, conteoGrupos, cohortes, puenteActivos, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
+import { perfilDe, metricas, conteoGrupos, curvaDeVuelta, puenteActivos, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
 
 /**
@@ -54,9 +54,9 @@ export async function datosCrm(slug) {
     },
     metricas: metricas(perfiles, eventos, clientes, Date.now(), { historialDesde }),
     grupos: conteoGrupos(perfiles),
-    // Las dos reconstruyen el pasado con el historial: solo hasta donde llega entero.
+    // Las dos miran el pasado con el historial: solo hasta donde llega entero.
     puente: puenteActivos(conRegistro, perfiles, eventos, negocio, { historialDesde }),
-    cohortes: cohortes(conRegistro, perfiles, eventos, { historialDesde, zona: negocio.horario?.zona }),
+    vuelta: curvaDeVuelta(conRegistro, eventos, { historialDesde }),
     cartillas: repartoCartillas(clientes, perfiles, negocio),
     estados: LISTA_ESTADOS,
     catalogoGrupos: LISTA_GRUPOS,

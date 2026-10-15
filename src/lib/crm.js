@@ -19,7 +19,7 @@
 //            misma persona muchas veces, y las dos cosas merecen un aviso.
 // ============================================================================
 
-import { fechaLocal, sumarDias, abreEl, diaDeFecha, ZONA_POR_DEFECTO } from "./horario";
+import { fechaLocal, sumarDias, abreEl, diaDeFecha, relojLocal, ZONA_POR_DEFECTO } from "./horario";
 import { cartillasDe, totalGuardados } from "./cartillas";
 
 const HORA = 60 * 60 * 1000;
@@ -54,15 +54,13 @@ export const UMBRALES = {
   // Con menos que esto en el periodo anterior, un porcentaje engaña (de 2 a 4
   // visitas sería «+100 %»): la flecha da la diferencia en unidades.
   tendenciaMin: 20,
-  // «Vuelven pronto»: de los que estrenaron la tarjeta, cuántos repiten en estos
-  // días. Con menos estrenos que `vueltaMinBase`, el porcentaje aún no dice nada.
-  vueltaDias: 14,
+  // «Cuánto tardan en volver» (curvaDeVuelta): hasta cuántos días después de
+  // estrenarla se mira, y con menos clientes que `vueltaMinBase` seguidos esos
+  // días, la curva se corta: un porcentaje de tres personas no dice nada.
+  vueltaCurvaDias: 28,
   vueltaMinBase: 5,
   // El puente de activos: cuántos había hace estos días y cuántos hay hoy.
   puenteDias: 30,
-  // Con más semanas de historia que esto, las cohortes van por mes de alta: diez
-  // filas de semana ya son un triángulo que no se lee de un vistazo.
-  cohorteSemanas: 10,
 };
 
 const dias = (desde, hasta) => (desde && hasta ? Math.max(0, (hasta - desde) / DIA) : null);
@@ -120,20 +118,26 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
   const diasSinVenir = dias(ultima || alta, ahora);
   const retraso = cadencia && cadencia > 0 && diasSinVenir !== null ? diasSinVenir / cadencia : null;
 
-  const meta = negocio?.meta ?? 0;
   const esCupon = negocio?.tipo === "descuento";
-  const faltan = esCupon ? 0 : Math.max(0, meta - (cliente.sellos || 0));
-  // Las dos cartillas si las hay: lo que la tienda debe sale de las dos.
-  const llenas = esCupon ? 0 : cartillasDe(cliente, negocio).filter((c) => c.meta > 0 && c.completa).length;
+  // Las DOS cartillas si las hay, en todo: lo que la tienda debe, quién está
+  // cerca del premio y quién lo tiene listo. Antes «Cerca del premio» y «Premio
+  // pendiente» solo miraban la primera (en La Delicantería, las cookies y no los
+  // cafés) y no cuadraban ni con «Premios por dar» ni con el aviso automático.
+  const cartillas = esCupon ? [] : cartillasDe(cliente, negocio).filter((c) => c.meta > 0);
+  const llenas = cartillas.filter((c) => c.completa).length;
   const guardados = esCupon ? 0 : totalGuardados(cliente);
+  // La cartilla a medias a la que menos le falta (la misma que el aviso «a punto»,
+  // lib/automatizaciones.js). Con todas llenas, no le falta nada: 0.
+  const cercana = cartillas.filter((c) => !c.completa).reduce((m, c) => (!m || c.faltan < m.faltan ? c : m), null);
 
   const perfil = {
     serial: cliente.serial,
     visitas,
     premios: cliente.premios || 0,
     sellos: cliente.sellos || 0,
-    faltan,
-    completa: !esCupon && meta > 0 && faltan === 0,
+    faltan: cercana ? cercana.faltan : 0,
+    // Alguna cartilla llena y sin canjear.
+    completa: llenas > 0,
     // Premios que la tienda ya debe: los guardados y las cartillas llenas sin canjear.
     porDar: guardados + llenas,
     // ¿Llegó alguna vez al premio? Canjear y guardar vacían la cartilla: hay que
@@ -160,15 +164,47 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
 }
 
 // ------------------------------------------------------ la escalera (excluyentes)
+// `label` y `descripcion` hablan de UN cliente (la etiqueta de la lista, la
+// ficha); `plural` y `quienes`, de un montón (el Resumen). «A su ritmo» y no
+// «Activo»: «Activos» arriba eran los que siguen viniendo (con los nuevos) y en
+// el reparto salía otra cifra con el mismo nombre.
+//
+// Los colores van con los de la app en claro y en oscuro (el mismo hex en los
+// dos), comprobados con el validador de dataviz: ninguno se confunde con el de
+// al lado, ni con daltonismo, en el orden del Resumen (a su ritmo, nuevo, en
+// riesgo, inactivo, perdido). «Sin uso» es gris a propósito: no es un estado
+// de la escalera, es que aún no ha empezado.
 export const ESTADOS = {
-  fantasma: { label: "Sin uso", icon: "cartera", color: "#8b929e", descripcion: "Tiene la tarjeta pero no ha registrado ninguna visita." },
-  nuevo:    { label: "Nuevo",    icon: "clientes", color: "#2563eb", descripcion: "Alta en los últimos 30 días, con menos de 3 visitas." },
-  activo:   { label: "Activo",   icon: "check", color: "#136f3a", descripcion: "Visita con su frecuencia habitual." },
-  riesgo:   { label: "En riesgo", icon: "alerta", color: "#c26b04", descripcion: "Lleva más tiempo del habitual sin venir." },
-  dormido:  { label: "Inactivo", icon: "reloj", color: "#6b7280", descripcion: "Más de 60 días sin visitas." },
-  perdido:  { label: "Perdido",  icon: "cerrar", color: "#b42318", descripcion: "Más de 120 días sin visitas." },
+  fantasma: {
+    label: "Sin uso", plural: "Sin uso", icon: "cartera", color: "#9aa1ad",
+    descripcion: "Tiene la tarjeta, pero nunca la ha usado en caja.", quienes: "Tienen la tarjeta y nunca la han usado en caja",
+  },
+  nuevo: {
+    label: "Nuevo", plural: "Nuevos", icon: "clientes", color: "#3478d4",
+    descripcion: "Sacó la tarjeta hace menos de 30 días y lleva menos de 3 visitas.", quienes: "Menos de 30 días con la tarjeta y menos de 3 visitas",
+  },
+  activo: {
+    label: "A su ritmo", plural: "A su ritmo", icon: "check", color: "#18943a",
+    descripcion: "Vuelve cuando suele.", quienes: "Vuelven cuando suelen",
+  },
+  riesgo: {
+    label: "En riesgo", plural: "En riesgo", icon: "alerta", color: "#c47f00",
+    descripcion: "Tarda en volver más de lo que suele.", quienes: "Tardan en volver más de lo que suelen",
+  },
+  dormido: {
+    label: "Inactivo", plural: "Inactivos", icon: "reloj", color: "#8a63d2",
+    descripcion: "Más de 60 días sin venir.", quienes: "Más de 60 días sin venir",
+  },
+  perdido: {
+    label: "Perdido", plural: "Perdidos", icon: "cerrar", color: "#d23f3a",
+    descripcion: "Más de 120 días sin venir.", quienes: "Más de 120 días sin venir",
+  },
   // Fuera de la escalera: no sale en el reparto ni en las cifras, solo en la lista.
-  descartada: { label: "Sin guardar", icon: "fantasma", color: "#a3a9b3", descripcion: "Sacó la tarjeta, pero ni la guardó en el teléfono ni la usó en caja. No cuenta como cliente." },
+  descartada: {
+    label: "Sin guardar", plural: "Sin guardar", icon: "fantasma", color: "#a3a9b3",
+    descripcion: "Sacó la tarjeta, pero ni la guardó en el teléfono ni la usó en caja. No cuenta como cliente.",
+    quienes: "Sacaron la tarjeta y ni la guardaron ni la usaron",
+  },
 };
 
 export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, ...v }));
@@ -195,8 +231,8 @@ export function estadoDe(p) {
 /**
  * Quién cuenta como cliente que sigue viniendo: el que viene a su ritmo y el
  * recién llegado (aún no se le puede pedir ritmo, pero está viniendo). UNA sola
- * definición para la cifra de «Activos», las cohortes y la cartilla: antes la
- * cifra dejaba fuera a los nuevos y la tabla de cohortes no, y en la misma
+ * definición para la cifra de «Siguen viniendo», el puente y la cartilla: antes
+ * la cifra dejaba fuera a los nuevos y la tabla de cohortes no, y en la misma
  * pantalla salían 10 activos y 27 que «siguen activos».
  */
 export const ESTADOS_ACTIVOS = ["activo", "nuevo"];
@@ -210,16 +246,17 @@ export const GRUPOS = {
   a_punto: {
     label: "Cerca del premio",
     icon: "diana",
-    descripcion: "Les faltan 2 puntos o menos para completar la cartilla.",
+    descripcion: "Les faltan 2 puntos o menos para completar una cartilla.",
     idea: "Te falta 1 para tu {premio}",
-    incluye: (p) => !p.esCupon && p.visitas > 0 && !p.completa && p.faltan <= UMBRALES.aPuntoFaltan,
+    incluye: (p) => !p.esCupon && p.visitas > 0 && p.faltan > 0 && p.faltan <= UMBRALES.aPuntoFaltan,
   },
   premio_listo: {
     label: "Premio pendiente",
     icon: "regalo",
-    descripcion: "Tienen la cartilla completa y no han canjeado el premio.",
+    // Lo mismo que «Premios por dar» y que el aviso «Tiene un premio sin recoger».
+    descripcion: "Tienen un premio por recoger: una cartilla llena o un premio guardado.",
     idea: "Tu {premio} te está esperando",
-    incluye: (p) => p.completa,
+    incluye: (p) => p.porDar > 0,
   },
   fieles_frios: {
     label: "Habituales en riesgo",
@@ -323,7 +360,10 @@ export function mediana(xs) {
  * Las tarjetas descartadas (ni guardadas ni usadas) NO entran en ninguna cifra:
  * quien escaneó y se fue no es un cliente, y contarlo hundía la vuelta, la
  * instalación y el reparto. Se cuentan aparte, en `descartadas` (y en el
- * embudo, que empieza justo ahí).
+ * embudo, que empieza justo ahí: su segundo escalón es `total`).
+ *
+ * `inicio` es la primera tarjeta de la tienda: con menos de 30 días de fiddle,
+ * «los últimos 30 días» son en realidad «desde el día X», y la pantalla lo dice.
  *
  * Los 30 días anteriores solo valen para comparar si existieron enteros: la
  * tienda llevaba ya fiddle (su primera tarjeta) y, para las visitas, el
@@ -361,6 +401,7 @@ export function metricas(todos, eventos, clientesTodos, ahora = Date.now(), { hi
   return {
     total,
     descartadas: fuera.size,
+    inicio: Number.isFinite(primeraAlta) ? primeraAlta : null,
     porEstado,
     // Activo = sigue viniendo (esActivo). No es "vino en los últimos 30 días":
     // quien pasa una vez al trimestre y está en fecha también es un cliente vivo.
@@ -372,16 +413,18 @@ export function metricas(todos, eventos, clientesTodos, ahora = Date.now(), { hi
     visitas30Previas: visitasComparables ? enVentana(visitas, 60, 30) : null,
     premios: perfiles.reduce((a, p) => a + p.premios, 0),
     porDar: perfiles.reduce((a, p) => a + p.porDar, 0),
+    // A cuántas personas se les deben esos premios (el grupo «Premio pendiente»).
+    conPremio: perfiles.filter((p) => p.porDar > 0).length,
     // De los pases emitidos, cuántos llegaron a un Wallet.
     instalados: perfiles.filter((p) => p.instalado).length,
     contactables: perfiles.filter((p) => p.contactable).length,
     tasaInstalacion: pct(perfiles.filter((p) => p.instalado).length, total),
     // ¿Vuelve la gente? Una tarjeta que nadie usa dos veces no está funcionando.
+    // (Para el panel del admin; el Resumen lo dice con el embudo y la curva.)
     repiten: perfiles.filter((p) => p.visitas >= 2).length,
     tasaVuelta: pct(perfiles.filter((p) => p.visitas >= 2).length, total),
+    // El ritmo del cliente típico: la mediana, que uno que viene a diario no arrastra.
     cadenciaHabitual: mediana(cadencias),
-    visitasHabituales: mediana(perfiles.map((p) => p.visitas)),
-    vuelta: vueltaPronto(clientes, eventos, { ahora }),
     embudo: embudo(todos),
   };
 }
@@ -399,70 +442,109 @@ export function cambio(ahora, antes) {
 }
 
 /**
- * ¿Vuelven pronto? De los que estrenaron la tarjeta (su primera visita) hace al
- * menos `dias`, cuántos volvieron dentro de esos `dias`. Es la señal temprana
- * de que la tarjeta funciona, y se puede comparar de un mes a otro: «vuelven
- * una segunda vez» sube sola con el tiempo, esta no.
+ * ¿Cuánto tardan en volver? De los que estrenaron la tarjeta, qué parte ha
+ * vuelto a los 1, 2, 3… días de su primera visita. Es LA cifra de si la
+ * tarjeta hace volver, y sustituye a tres que salían a la vez en el Resumen y
+ * no cuadraban entre sí («Vuelven en 14 días», «Volvieron» del embudo y las
+ * cohortes, cuya semana 1 salía casi siempre al 100 % porque contaba el estreno).
  *
- * Solo cuenta a quien se dio de alta dentro del historial que llega (desde el
- * evento más viejo): de los de antes no se sabe cuándo fue su primera visita.
- * Con menos de `vueltaMinBase` estrenos, `tasa` es null.
- * @returns {{base:number, volvieron:number, tasa:number|null, dias:number}}
+ * El problema de contar «cuántos han vuelto» a secas es que quien la estrenó
+ * ayer aún no ha tenido tiempo, y una tienda que crece parece que no hace
+ * volver a nadie. Por eso es una curva de Kaplan-Meier: cada cliente cuenta
+ * mientras se le ha podido seguir (su edad desde el estreno) y, a partir de
+ * ahí, sale del cálculo sin restar. El punto del día 7 es «de cada 100 que la
+ * estrenan, cuántos han vuelto a la semana», aunque la mitad la estrenara ayer.
+ *
+ * Volver es una visita aparte (soloVisitas: a más de `horasVisita` de la
+ * anterior). Solo cuenta quien se dio de alta dentro del historial que llega:
+ * de los de antes no se sabe cuándo fue su estreno. La curva se corta el día en
+ * que quedan menos de `vueltaMinBase` clientes seguidos tanto tiempo; `listo`
+ * cuando llega a la semana. Si no, `faltanDias`: cuándo llegará con los que ya
+ * hay (null si aún no hay ni `vueltaMinBase` estrenos).
+ * @returns {{listo:boolean, base:number, faltanDias:number|null, puntos:{dia:number, pct:number, seguidos:number}[]}}
  */
-export function vueltaPronto(clientes, eventos, { dias = UMBRALES.vueltaDias, ahora = Date.now() } = {}) {
-  const desde = Math.min(...(eventos || []).map((e) => ms(e.ts)).filter(Boolean));
+export function curvaDeVuelta(clientes, eventos, { ahora = Date.now(), historialDesde = null, dias = UMBRALES.vueltaCurvaDias } = {}) {
+  const desde = historialDesde ?? Math.min(...(eventos || []).map((e) => ms(e.ts)).filter(Boolean));
   const dentro = new Set(clientes.filter((c) => ms(c.creado) >= desde).map((c) => c.serial));
-  const primera = new Map();
-  const segunda = new Map();
-  for (const e of soloVisitas(eventos)) {
-    if (!dentro.has(e.serial)) continue;
-    if (!primera.has(e.serial)) primera.set(e.serial, ms(e.ts));
-    else if (!segunda.has(e.serial)) segunda.set(e.serial, ms(e.ts));
+  // Cada estreno: cuándo volvió (días) o, si no ha vuelto, cuánto se le ha seguido.
+  const casos = [];
+  for (const [serial, visitas] of visitasPorTarjeta(eventos)) {
+    const edad = (ahora - visitas[0]) / DIA;
+    if (!dentro.has(serial) || edad <= 0) continue;
+    casos.push(visitas.length > 1 ? { t: (visitas[1] - visitas[0]) / DIA, volvio: true, edad } : { t: edad, volvio: false, edad });
   }
-  const plazo = dias * DIA;
-  const estrenos = [...primera].filter(([, t]) => t <= ahora - plazo);
-  const volvieron = estrenos.filter(([s, t]) => segunda.has(s) && segunda.get(s) - t <= plazo).length;
+
+  const vueltas = [...new Set(casos.filter((c) => c.volvio).map((c) => c.t))].sort((a, b) => a - b);
+  const puntos = [];
+  let sigue = 1; // la parte que aún no ha vuelto
+  let i = 0;
+  for (let dia = 0; dia <= dias; dia += 1) {
+    const seguidos = casos.filter((c) => c.edad >= dia).length;
+    if (seguidos < UMBRALES.vueltaMinBase) break;
+    for (; i < vueltas.length && vueltas[i] <= dia; i += 1) {
+      const t = vueltas[i];
+      const enJuego = casos.filter((c) => c.t >= t).length;
+      sigue *= 1 - casos.filter((c) => c.volvio && c.t === t).length / enJuego;
+    }
+    puntos.push({ dia, pct: Math.round((1 - sigue) * 100), seguidos });
+  }
+
+  const SEMANA_DIAS = 7;
+  const listo = puntos.length > SEMANA_DIAS;
+  // Cuándo tendrá una semana el quinto estreno más antiguo.
+  const edades = casos.map((c) => c.edad).sort((a, b) => b - a);
+  const quinto = edades[UMBRALES.vueltaMinBase - 1];
   return {
-    base: estrenos.length,
-    volvieron,
-    tasa: estrenos.length >= UMBRALES.vueltaMinBase ? pct(volvieron, estrenos.length) : null,
-    dias,
+    listo,
+    base: casos.length,
+    faltanDias: listo || quinto === undefined ? null : Math.max(1, Math.ceil(SEMANA_DIAS - quinto)),
+    puntos,
   };
 }
 
 /**
- * El camino de la tarjeta: la sacan, la estrenan en caja, vuelven, llenan la
- * cartilla y canjean. Cada paso sale de los del anterior, así que nunca hay más
- * gente en un escalón que en el de arriba (quien llenó la cartilla de golpe con
- * los sellos de papel, en una sola visita, no cuenta como «llenó»: es raro y el
- * embudo pregunta otra cosa, si la tarjeta hace volver).
+ * El camino de la tarjeta: la sacan, se la quedan, la estrenan en caja,
+ * vuelven, llenan una cartilla y canjean. Cada paso sale de los del anterior,
+ * así que nunca hay más gente en un escalón que en el de arriba (quien llenó la
+ * cartilla de golpe con los sellos de papel, en una sola visita, no cuenta como
+ * «llenó»: es raro y el embudo pregunta otra cosa, si la tarjeta hace volver).
  *
  * Empieza en TODAS las tarjetas, descartadas incluidas: la primera caída es
- * justo la de quien escaneó y se fue. Guardar el pase en el teléfono no es un
- * escalón: hay quien la usa sin Wallet, y eso ya lo dice «Instalan el pase».
+ * justo la de quien escaneó y se fue. El segundo escalón, «Se la quedaron»
+ * (guardada en el teléfono o usada en caja), es la cifra de «Clientes»: así las
+ * dos cuadran a la vista. Guardar el pase en el teléfono no es un escalón
+ * propio: hay quien la usa sin Wallet.
+ *
  * En un cupón no hay cartilla que llenar y se usa en la primera visita: el
  * orden es estrenar, usarlo y, después, volver. Con «volver» delante, quien
  * usó el cupón y no volvió se caía del embudo y no cuadraba con la cifra de
  * «Cupones usados».
- * @returns {{key:string, label:string, n:number, paso:number|null}[]} `paso` = % del anterior
+ *
+ * `de` es cómo se dice el escalón como origen del siguiente: «62 % de los que
+ * la estrenaron». Así el porcentaje dice de qué es sin pasar el ratón.
+ * @returns {{key:string, label:string, de:string, n:number, paso:number|null}[]} `paso` = % del anterior
  */
 export function embudo(todos) {
   const esCupon = todos.some((p) => p.esCupon);
-  const sacaron = { key: "sacaron", label: "Sacaron la tarjeta", incluye: () => true };
-  const estrenaron = { key: "estrenaron", label: "La estrenaron en caja", incluye: (p) => p.visitas >= 1 };
-  const volvieron = { key: "volvieron", label: "Volvieron", incluye: (p) => p.visitas >= 2 };
-  const canjearon = { key: "canjearon", label: esCupon ? "Usaron el cupón" : "Canjearon un premio", incluye: (p) => p.premios >= 1 };
+  const sacaron = { key: "sacaron", label: "Sacaron la tarjeta", de: "la sacaron", incluye: () => true };
+  const quedaron = { key: "quedaron", label: "Se la quedaron", de: "se la quedaron", incluye: (p) => !p.descartada };
+  const estrenaron = { key: "estrenaron", label: "La estrenaron en caja", de: "la estrenaron", incluye: (p) => p.visitas >= 1 };
+  const volvieron = { key: "volvieron", label: "Volvieron otra vez", de: "volvieron", incluye: (p) => p.visitas >= 2 };
+  const canjearon = esCupon
+    ? { key: "canjearon", label: "Usaron el cupón", de: "usaron el cupón", incluye: (p) => p.premios >= 1 }
+    : { key: "canjearon", label: "Canjearon un premio", de: "canjearon", incluye: (p) => p.premios >= 1 };
+  const llenaron = { key: "llenaron", label: "Llenaron una cartilla", de: "llenaron una cartilla", incluye: (p) => p.llenoAlgunaVez };
   const pasos = esCupon
-    ? [sacaron, estrenaron, canjearon, volvieron]
-    : [sacaron, estrenaron, volvieron, { key: "llenaron", label: "Llenaron la cartilla", incluye: (p) => p.llenoAlgunaVez }, canjearon];
+    ? [sacaron, quedaron, estrenaron, canjearon, volvieron]
+    : [sacaron, quedaron, estrenaron, volvieron, llenaron, canjearon];
   let quedan = todos;
   let antes = null;
-  return pasos.map(({ key, label, incluye }) => {
+  return pasos.map(({ key, label, de, incluye }) => {
     quedan = quedan.filter(incluye);
     const n = quedan.length;
     const paso = antes === null ? null : pct(n, antes);
     antes = n;
-    return { key, label, n, paso };
+    return { key, label, de, n, paso };
   });
 }
 
@@ -599,13 +681,15 @@ export function puenteActivos(clientes, perfiles, eventos, negocio, { dias = UMB
     // De los que venían entonces, los que siguen: la frase de debajo del gráfico.
     siguen: antes - enfriados,
     // Las barras: los dos totales desde cero y, entre medias, cada cambio flotando
-    // donde lo deja el anterior.
+    // donde lo deja el anterior. Los nombres son los de la pantalla: «Siguen
+    // viniendo» es la cifra de arriba; «Recuperados» y no «Volvieron», que en el
+    // embudo es otra cosa (la segunda visita); «Se alejaron» como en la cartilla.
     pasos: [
-      { key: "antes", label: `Activos hace ${dias} días`, descripcion: `Los que seguían viniendo hace ${dias} días`, n: antes, signo: 0, desde: 0, hasta: antes },
-      { key: "nuevos", label: "Nuevos", descripcion: "Su primera visita fue en estos días y siguen viniendo", n: nuevos, signo: 1, desde: antes, hasta: antes + nuevos },
-      { key: "volvieron", label: "Volvieron", descripcion: `Ya venían antes, hace ${dias} días no y ahora sí`, n: volvieron, signo: 1, desde: antes + nuevos, hasta: tope },
-      { key: "enfriados", label: "Se enfriaron", descripcion: `Venían hace ${dias} días y ahora llevan más tiempo del habitual sin venir`, n: enfriados, signo: -1, desde: hoy, hasta: tope },
-      { key: "hoy", label: "Activos hoy", descripcion: "La cifra de Activos de arriba", n: hoy, signo: 0, desde: 0, hasta: hoy },
+      { key: "antes", label: `Hace ${dias} días`, descripcion: "Seguían viniendo", n: antes, signo: 0, desde: 0, hasta: antes },
+      { key: "nuevos", label: "Nuevos", descripcion: `Empezaron a venir en estos ${dias} días`, n: nuevos, signo: 1, desde: antes, hasta: antes + nuevos },
+      { key: "volvieron", label: "Recuperados", descripcion: "Habían dejado de venir y han vuelto", n: volvieron, signo: 1, desde: antes + nuevos, hasta: tope },
+      { key: "enfriados", label: "Se alejaron", descripcion: "Ya no vienen a su ritmo", n: enfriados, signo: -1, desde: hoy, hasta: tope },
+      { key: "hoy", label: "Hoy", descripcion: "Siguen viniendo", n: hoy, signo: 0, desde: 0, hasta: hoy },
     ],
   };
 }
@@ -616,9 +700,14 @@ export function puenteActivos(clientes, perfiles, eventos, negocio, { dias = UMB
  * TIENDA (`horario.zona`): con el de UTC, lo de pasada la medianoche caía en
  * el día anterior. Con horario, cada día dice si abrió: un cero de un día
  * cerrado no es un día malo.
- * @returns {{dia:string, n:number, cerrado:boolean}[]}
+ *
+ * Con `desde` (la primera tarjeta de la tienda), la serie empieza ese día: una
+ * tienda con dos semanas de fiddle no tiene «dos semanas muertas» antes, que es
+ * lo que parecían los ceros. El último día es hoy, a medias (`hoy`): una barra
+ * corta ahí no es una caída.
+ * @returns {{dia:string, n:number, cerrado:boolean, hoy:boolean}[]}
  */
-export function serieVisitas(eventos, dias = 30, ahora = Date.now(), horario = null) {
+export function serieVisitas(eventos, dias = 30, ahora = Date.now(), horario = null, { desde = null } = {}) {
   const zona = horario?.zona || ZONA_POR_DEFECTO;
   const cuenta = new Map();
   for (const e of soloVisitas(eventos)) {
@@ -628,95 +717,42 @@ export function serieVisitas(eventos, dias = 30, ahora = Date.now(), horario = n
     cuenta.set(dia, (cuenta.get(dia) || 0) + 1);
   }
   const hoy = fechaLocal(ahora, zona);
-  return Array.from({ length: dias }, (_, i) => {
-    const dia = sumarDias(hoy, i - (dias - 1));
-    return { dia, n: cuenta.get(dia) || 0, cerrado: horario ? !abreEl(horario, dia) : false };
-  });
+  const primero = desde ? fechaLocal(desde, zona) : null;
+  return Array.from({ length: dias }, (_, i) => sumarDias(hoy, i - (dias - 1)))
+    .filter((dia) => !primero || dia >= primero)
+    .map((dia) => ({ dia, n: cuenta.get(dia) || 0, cerrado: horario ? !abreEl(horario, dia) : false, hoy: dia === hoy }));
 }
 
 /**
- * Cuándo viene la gente: rejilla día de la semana × hora.
+ * Cuándo viene la gente: rejilla día de la semana × hora, con la hora de la
+ * TIENDA (`horario.zona`), como la serie de días. Antes iba con la del
+ * navegador y, mirada desde otro huso, las dos gráficas no cuadraban.
  *
- * Usa la hora LOCAL de quien mira la pantalla, así que se calcula en el
- * navegador. En el servidor (Vercel, UTC) el café de las 9 saldría a las 7.
- *
- * @returns {number[][]} 7 filas (lunes..domingo) × 24 horas
+ * `media` es lo que viene UN día normal de esos a esa hora: las visitas entre
+ * las veces que ese día de la semana ha abierto (`veces`; un festivo no cuenta).
+ * Con la suma a secas, en una tienda de dos semanas y media el día que había
+ * salido tres veces pesaba un 50 % más que el que había salido dos, y «lo más
+ * tranquilo» salía del calendario, no de la gente. Solo días enteros: hoy aún
+ * no ha acabado. `visitas` es la suma, por si hace falta contar.
+ * @returns {{media:number[][], visitas:number[][], veces:number[]}} 7 filas (lunes..domingo) × 24 horas
  */
-export function rejillaHoraria(eventos) {
-  const rejilla = Array.from({ length: 7 }, () => new Array(24).fill(0));
+export function rejillaHoraria(eventos, { horario = null, ahora = Date.now() } = {}) {
+  const zona = horario?.zona || ZONA_POR_DEFECTO;
+  const hoy = fechaLocal(ahora, zona);
+  const visitas = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  let primera = null;
   for (const e of soloVisitas(eventos)) {
-    const d = new Date(ms(e.ts));
-    rejilla[(d.getDay() + 6) % 7][d.getHours()] += 1; // getDay(): 0 = domingo
+    const { fecha, dia, minutos } = relojLocal(ms(e.ts), zona);
+    if (fecha >= hoy) continue;
+    primera ??= fecha; // soloVisitas va en orden: la primera es la más vieja
+    visitas[dia][Math.floor(minutos / 60)] += 1;
   }
-  return rejilla;
-}
-
-const SEMANA = 7 * DIA;
-
-/**
- * Cohortes a la misma edad: de los que sacaron la tarjeta una semana (o un mes),
- * qué parte vino en su semana 1, 2, 3… desde el alta. Es la pregunta que dice si
- * la tarjeta hace volver, y se compara de una fila a otra porque cada celda mira
- * a todos a la MISMA edad. (Antes era «cuántos siguen activos hoy» por mes de
- * alta, y el mes viejo siempre salía peor solo por ser viejo.)
- *
- * Las semanas son de CADA cliente, desde su alta: la 1 son sus primeros siete
- * días (casi siempre con el estreno en caja dentro). Una celda sale cuando todos
- * los de la fila la han vivido entera; hasta entonces, null. Una fila que aún no
- * ha vivido ninguna (las altas de estos días) no sale.
- *
- * Solo entra quien se dio de alta dentro del historial que llega: de los de
- * antes faltan sus primeras semanas. Las descartadas no son clientes. Con más
- * de `cohorteSemanas` semanas de historia, las filas van por mes. La semana y el
- * mes son los de la tienda (`zona`), con la semana de lunes a domingo.
- * `listo`: alguna fila de al menos `vueltaMinBase` altas ha vivido dos semanas;
- * antes, la segunda columna aún no dice nada.
- * @returns {{unidad:"semana"|"mes", semanas:number, listo:boolean,
- *   filas:{desde:string, altas:number, vividas:number, celdas:({n:number, pct:number}|null)[]}[]}}
- */
-export function cohortes(clientes, perfiles, eventos, { ahora = Date.now(), historialDesde = null, zona = ZONA_POR_DEFECTO } = {}) {
-  const fuera = new Set(perfiles.filter((p) => p.descartada).map((p) => p.serial));
-  const desde = historialDesde ?? Math.min(...(eventos || []).map((e) => ms(e.ts)).filter(Boolean));
-  const dentro = clientes
-    .map((c) => ({ serial: c.serial, alta: ms(c.creado) }))
-    .filter((c) => c.alta && c.alta >= desde && c.alta <= ahora && !fuera.has(c.serial));
-  const historia = dentro.length ? ahora - Math.min(...dentro.map((c) => c.alta)) : 0;
-  const unidad = historia > UMBRALES.cohorteSemanas * SEMANA ? "mes" : "semana";
-  const claveDe = (alta) => {
-    const dia = fechaLocal(alta, zona);
-    return unidad === "mes" ? `${dia.slice(0, 7)}-01` : sumarDias(dia, -diaDeFecha(dia));
-  };
-
-  const grupos = new Map();
-  for (const c of dentro) {
-    const clave = claveDe(c.alta);
-    if (!grupos.has(clave)) grupos.set(clave, []);
-    grupos.get(clave).push(c);
+  const veces = new Array(7).fill(0);
+  for (let f = primera, n = 0; f && f < hoy && n < 400; f = sumarDias(f, 1), n += 1) {
+    if (!horario || abreEl(horario, f)) veces[diaDeFecha(f)] += 1;
   }
-
-  const visitas = visitasPorTarjeta(eventos);
-  const vinoEn = (c, semana) => (visitas.get(c.serial) || [])
-    .some((t) => t >= c.alta + (semana - 1) * SEMANA && t < c.alta + semana * SEMANA);
-  const filas = [...grupos.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([clave, gente]) => {
-      const vividas = Math.floor((ahora - Math.max(...gente.map((c) => c.alta))) / SEMANA);
-      const celdas = Array.from({ length: vividas }, (_, i) => {
-        const n = gente.filter((c) => vinoEn(c, i + 1)).length;
-        return { n, pct: pct(n, gente.length) };
-      });
-      return { desde: clave, altas: gente.length, vividas, celdas };
-    })
-    .filter((f) => f.vividas > 0);
-
-  const semanas = Math.max(0, ...filas.map((f) => f.vividas));
-  return {
-    unidad,
-    semanas,
-    listo: filas.some((f) => f.vividas >= 2 && f.altas >= UMBRALES.vueltaMinBase),
-    // Todas las filas igual de largas: lo que aún no han vivido, null.
-    filas: filas.map((f) => ({ ...f, celdas: Array.from({ length: semanas }, (_, i) => f.celdas[i] ?? null) })),
-  };
+  const media = visitas.map((fila, d) => fila.map((n) => n / Math.max(1, veces[d])));
+  return { media, visitas, veces };
 }
 
 /**
