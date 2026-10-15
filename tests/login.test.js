@@ -36,6 +36,13 @@ describe("POST /api/login (accesos de prueba: contraseña = usuario)", () => {
     expect((await listAuditoria()).find((a) => a.rol === "admin")).toMatchObject({ accion: "login", usuario: "victor", negocio: null });
   });
 
+  it("el alias «nube-manager» entra con el usuario de siempre en el token y en la auditoría", async () => {
+    const r = await entrar("nube-manager", "nube-manager");
+    expect(r.status).toBe(200);
+    expect(await sesionDe(r)).toMatchObject({ negocio: "nube", rol: "manager", usuario: "nube" });
+    expect((await listAuditoria("nube"))[0]).toMatchObject({ accion: "login", usuario: "nube", rol: "manager" });
+  });
+
   it("un fallo no deja fila en la auditoría (va a `intentos`, sin usuario)", async () => {
     expect((await entrar("nube-caja", "mal")).status).toBe(401);
     expect(await listAuditoria("nube")).toEqual([]);

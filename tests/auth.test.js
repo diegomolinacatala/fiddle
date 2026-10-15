@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { createHmac } from "node:crypto";
 import {
   firmarSesion, verificarSesion, renovarSesion, cookieSesion, puedeAcceder, claveDe, varClave, varPin, usuarioDe, usuariosDemo,
-  resolverUsuario, verificarAcceso, secretoSesion, igualSeguro, TTL_SEGUNDOS, slugDeTiendaLibre,
+  resolverUsuario, verificarAcceso, secretoSesion, igualSeguro, TTL_SEGUNDOS, MAX_SESION_MS, slugDeTiendaLibre,
 } from "@/lib/auth";
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -124,6 +124,18 @@ describe("sesión firmada", () => {
     expect(await renovarSesion(null)).toBeNull();
   });
 
+  it("renovar tiene tope: a los 90 días de entrar, aunque la use a diario, caduca y vuelve al login", async () => {
+    const entro = 1_000_000;
+    let sesion = await verificarSesion(await firmarSesion("nube", "manager", entro), entro);
+    // Renovada cada 20 días: la emisión no se mueve.
+    for (let dia = 20; dia <= 80; dia += 20) {
+      sesion = await verificarSesion(await renovarSesion(sesion, entro + dia * DIA), entro + dia * DIA);
+      expect(sesion.iat).toBe(entro);
+    }
+    expect(MAX_SESION_MS).toBe(90 * DIA);
+    expect(await renovarSesion(sesion, entro + 91 * DIA)).toBeNull();
+  });
+
   it("rechaza tokens manipulados, caducados o mal formados", async () => {
     const ahora = Date.now();
     const token = await firmarSesion("nube", "caja", ahora);
@@ -150,6 +162,12 @@ describe("sesión firmada", () => {
     const admin = `plataforma.admin.${exp}`;
     expect(await verificarSesion(`${admin}.${createHmac("sha256", "el-de-vercel").update(admin).digest("hex")}`, ahora)).toMatchObject({ rol: "admin", usuario: "admin" });
     expect(await verificarSesion(`${payload}.${"0".repeat(64)}`, ahora)).toBeNull();
+    // Y desde el 15-11-2026, ni con la firma buena: para entonces todas han caducado.
+    const limite = Date.UTC(2026, 10, 15);
+    const tardio = `nube.caja.${limite + DIA}`;
+    const firmado = `${tardio}.${createHmac("sha256", "el-de-vercel").update(tardio).digest("hex")}`;
+    expect(await verificarSesion(firmado, limite - 1)).toMatchObject({ rol: "caja" });
+    expect(await verificarSesion(firmado, limite)).toBeNull();
   });
 
   it("un token firmado con otro secreto no vale", async () => {

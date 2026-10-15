@@ -39,7 +39,8 @@ Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. La contraseña vive 
 `401` usuario o contraseña incorrectos · `429` demasiados intentos (10 por IP y
 negocio en 15 min, 100 por negocio) · `503` falta `AUTH_SECRET` en producción.
 Sesión de caja: 30 días. Sesión de manager: 30 días y se renueva sola mientras la use
-(el middleware vuelve a poner la cookie cuando le queda menos de la mitad). Admin: 12 h.
+(el middleware vuelve a poner la cookie en las páginas cuando le queda menos de la mitad,
+hasta 90 días desde que entró). Admin: 12 h.
 El token es `negocio.rol.usuario.iat.exp.firma`: dice con quién se entró y cuándo; un
 cambio de contraseña o un «Cerrar todas las sesiones» posterior a `iat` la echa aunque se
 haya renovado. El login que entra queda en `auditoria` (`login`, con el usuario; el admin
@@ -80,8 +81,8 @@ El dueño cambia su propia contraseña (Ajustes → Tu acceso). `nueva` queda co
 (mínimo 10 caracteres, distinta de la actual y de la de la caja). Responde `{ ok, usuario }`
 y vuelve a poner su cookie de sesión; las demás sesiones del manager caen, la caja sigue.
 `401` con `campo: "actual"` si la actual no es (cuenta como fallo de login: mismo límite,
-`429` al pasarse) · `400` con `campo: "nueva"` · `403` la caja o el admin. Queda en `auditoria`
-(`clave`, `manager`).
+`429` al pasarse) · `400` con `campo: "nueva"` · la caja no llega (`401` del middleware) y el
+admin recibe `403`. Queda en `auditoria` (`clave`, `manager`).
 
 ### `DELETE /api/sesiones?b=<negocio>` · manager (o admin)
 Cierra todas las sesiones de la tienda (manager y caja, en todos los dispositivos) sin

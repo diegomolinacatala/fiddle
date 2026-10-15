@@ -32,7 +32,8 @@ const TEXTOS = {
   },
 };
 
-export default function Invitar({ slug, alcance = "alta" }) {
+/** `onCreado(alcance)`: avisa a quien pinte otro bloque de enlace de que el suyo acaba de quedar anulado. */
+export default function Invitar({ slug, alcance = "alta", onCreado = null }) {
   const [inv, setInv] = useState(null); // { url, caduca, alcance, nombre, usuarios }
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
@@ -54,6 +55,7 @@ export default function Invitar({ slug, alcance = "alta" }) {
       if (!r.ok) throw new Error(d.error || "No se pudo crear la invitación");
       setInv(d);
       setCopiado(false);
+      onCreado?.(alcance);
     } catch (e) {
       setError(e.message);
     } finally {

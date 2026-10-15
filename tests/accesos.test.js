@@ -39,6 +39,11 @@ describe("claves", () => {
     // Las de antes de distinguirlas ("scrypt$") siguen comparándose como generadas: nadie se queda fuera.
     const deAntes = await hashClave("micafeteria1");
     expect(await comprobarClave("MICAFETERIA1", deAntes)).toBe(true);
+    // «café» tecleado en un iPhone (NFD) y en un PC (NFC) es la misma contraseña.
+    const nfc = await hashClave("un café por favor", "elegida");
+    expect(await comprobarClave("un café por favor", nfc)).toBe(true);
+    // Un tipo que no existe no se guarda como nada: ni elegida ni generada.
+    await expect(hashClave("lo que sea", "otra")).rejects.toThrow(/Tipo/);
   });
 });
 

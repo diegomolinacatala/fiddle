@@ -60,8 +60,15 @@ export async function sesionVigente(sesion) {
  */
 export async function cerrarSesionesDe(slug, ahora = Date.now()) {
   const sesionesDesde = new Date(ahora).toISOString();
-  await saveNegocio(slug, { sesionesDesde });
-  return sesionesDesde;
+  // La config se guarda entera (leer, mezclar, escribir): si el reloj o el manager
+  // escribían la suya a la vez, la fecha podía perderse sin que nadie lo viera. Se
+  // comprueba lo guardado y, si no está, se vuelve a intentar; si tampoco, se lanza
+  // (mejor un error en pantalla que un «cerradas» que no cerró nada).
+  for (let intento = 0; intento < 2; intento++) {
+    await saveNegocio(slug, { sesionesDesde });
+    if ((await getNegocio(slug, { incluirArchivados: true }))?.sesionesDesde === sesionesDesde) return sesionesDesde;
+  }
+  throw new Error(`No se pudo guardar el cierre de sesiones de ${slug}`);
 }
 
 /** Para las páginas: el valor de la cookie `sesion`, verificado y vigente. */

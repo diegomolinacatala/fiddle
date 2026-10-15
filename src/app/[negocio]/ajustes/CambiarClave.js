@@ -39,11 +39,14 @@ export default function CambiarClave({ slug, usuario, accent, onHecho }) {
         body: JSON.stringify({ actual, nueva }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "No se pudo cambiar");
+      if (!r.ok) {
+        // La actual mal se vuelve a teclear entera; un problema de la nueva deja la actual puesta.
+        if (d.campo === "actual") setActual("");
+        throw new Error(d.error || "No se pudo cambiar");
+      }
       onHecho();
     } catch (err) {
       setError(err.message);
-      if (String(err.message).includes("actual")) setActual("");
     } finally {
       setBusy(false);
     }

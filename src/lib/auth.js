@@ -35,8 +35,11 @@ export const ROLES = ["caja", "manager", "admin"];
 // cada mañana una contraseña generada que no podía cambiar, y así se pierden. La del
 // admin sigue corta: entra con una variable de Vercel y no tiene otro corte.
 export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 24 * 30, admin: 60 * 60 * 12 };
-// Qué sesiones se vuelven a firmar al usarlas cuando les queda menos de la mitad.
+// Qué sesiones se vuelven a firmar al usarlas cuando les queda menos de la mitad, y
+// cuánto puede vivir una desde que se entró aunque se use a diario: pasado eso, al
+// login otra vez (una cookie robada que se usara cada día no viviría para siempre).
 const DESLIZANTES = ["manager"];
+export const MAX_SESION_MS = 90 * 24 * 60 * 60 * 1000;
 
 // ADMIN DE LA PLATAFORMA: no es de ningún negocio, es de todos. Entra en /admin,
 // donde se crean, editan y archivan las tiendas. Su sesión lleva este negocio
@@ -190,7 +193,7 @@ export async function verificarSesion(token, ahora = Date.now()) {
     const secreto = secretoSesion();
     if (!token || !secreto) return null;
     const partes = token.split(".");
-    const sesion = partes.length === 6 ? deSeisPartes(partes) : partes.length === 4 ? deCuatroPartes(partes) : null;
+    const sesion = partes.length === 6 ? deSeisPartes(partes) : partes.length === 4 && ahora < FIN_FORMATO_VIEJO ? deCuatroPartes(partes) : null;
     if (!sesion) return null;
     const { negocio, rol, usuario, iat, exp, firma, payload } = sesion;
     if (!SLUG_RE.test(negocio) || !ROLES.includes(rol) || !usuarioValido(negocio, rol, usuario)) return null;
@@ -208,8 +211,10 @@ const deSeisPartes = ([negocio, rol, usuario, iat, exp, firma]) =>
 // El formato de antes del 15-10-2026 (`negocio.rol.exp.firma`), para no echar a la
 // caja que estaba dentro al desplegar. Sin `iat`, se deduce de la caducidad con la
 // duración de hoy: para la caja (30 días entonces y ahora) es exacto; un manager de
-// entonces (12 h) sale más viejo de lo que era, y a lo sumo vuelve a entrar. QUITAR
-// cuando esas sesiones hayan caducado (a partir del 15-11-2026).
+// entonces (12 h) sale más viejo de lo que era, y a lo sumo vuelve a entrar. Deja de
+// aceptarse solo el 15-11-2026, cuando todas esas sesiones han caducado ya; después
+// de esa fecha, borrar `deCuatroPartes`.
+const FIN_FORMATO_VIEJO = Date.UTC(2026, 10, 15);
 const deCuatroPartes = ([negocio, rol, exp, firma]) =>
   ROLES.includes(rol) && {
     negocio, rol, firma,
@@ -229,6 +234,7 @@ const deCuatroPartes = ([negocio, rol, exp, firma]) =>
 export async function renovarSesion(sesion, ahora = Date.now()) {
   if (!sesion || !DESLIZANTES.includes(sesion.rol)) return null;
   if (sesion.exp - ahora >= (TTL_SEGUNDOS[sesion.rol] * 1000) / 2) return null;
+  if (ahora - sesion.iat >= MAX_SESION_MS) return null; // ya ha vivido bastante: caduca y vuelve a entrar
   return firmarSesion(sesion.negocio, sesion.rol, ahora, { usuario: sesion.usuario, iat: sesion.iat });
 }
 

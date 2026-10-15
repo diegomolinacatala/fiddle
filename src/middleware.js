@@ -13,7 +13,10 @@ import { reglaDeRuta, negocioDeRuta } from "@/lib/acceso";
 // se desliza: mientras use la app no vuelve al login). Aquí y no en la página,
 // porque una página de servidor no puede poner cookies. El token renovado
 // conserva la fecha de emisión: si la contraseña cambió después de entrar, lo
-// echa igual lib/sesionVigente.js, que es quien mira la base.
+// echa igual lib/sesionVigente.js, que es quien mira la base. Solo en las
+// páginas, no en /api: hay handlers que ponen ellos la cookie nueva (cambiar la
+// contraseña, cerrar las sesiones) y la renovada, con la emisión vieja, les pisaría
+// la suya según el orden en que salgan las dos cabeceras.
 // ============================================================================
 
 export async function middleware(req) {
@@ -28,7 +31,7 @@ export async function middleware(req) {
     : puedeAcceder(sesion, regla.slug, regla.rol);
   if (permitido) {
     const res = NextResponse.next();
-    const renovada = await renovarSesion(sesion).catch(() => null);
+    const renovada = pathname.startsWith("/api/") ? null : await renovarSesion(sesion).catch(() => null);
     if (renovada) res.cookies.set(COOKIE, renovada, cookieSesion(sesion.rol));
     return res;
   }

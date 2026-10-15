@@ -36,14 +36,19 @@ export function generarClave() {
 //                                  como si fuera generada y valía también en mayúsculas.
 const GENERADA = "scrypt";
 const ELEGIDA = "scrypt-elegida";
-const PREPARAR = { [GENERADA]: normalizarClave, [ELEGIDA]: (clave) => String(clave ?? "").trim() };
+// Una elegida se compara tal cual, salvo los espacios de los lados y la forma Unicode:
+// «café» escrito en un iPhone y en un PC pueden ser bytes distintos (NFC y NFD) para
+// las mismas letras, y es la misma contraseña.
+const PREPARAR = { [GENERADA]: normalizarClave, [ELEGIDA]: (clave) => String(clave ?? "").trim().normalize("NFC") };
+const ETIQUETA = { generada: GENERADA, elegida: ELEGIDA };
 
 /**
  * Lo único que se guarda. `tipo`: "generada" (de `generarClave`) o "elegida" (la
  * escribió una persona). Se prepara igual que al comprobar, y el hash es de eso.
  */
 export async function hashClave(clave, tipo = "generada") {
-  const etiqueta = tipo === "elegida" ? ELEGIDA : GENERADA;
+  const etiqueta = ETIQUETA[tipo];
+  if (!etiqueta) throw new Error(`Tipo de contraseña no válido: ${tipo}`);
   const sal = randomBytes(16);
   const hash = await scrypt(PREPARAR[etiqueta](clave), sal, LARGO_HASH, PARAMS);
   return `${etiqueta}$${sal.toString("hex")}$${hash.toString("hex")}`;
