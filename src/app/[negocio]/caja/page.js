@@ -11,7 +11,7 @@ import Icono from "@/app/Icono";
 import Recorrido, { BotonAyuda } from "@/app/Recorrido";
 import { useInstalar } from "@/app/instalable";
 import { normalizarCodigo } from "@/lib/codigo";
-import { saldoCorto } from "@/lib/cartillas";
+import { horaDeHoyTexto, zonaDe } from "@/lib/actividad";
 import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso, legible } from "@/app/ui";
 
 // App de CAJA de un negocio (móvil, instalable). Escanea el pase; si el QR no se
@@ -24,7 +24,8 @@ export default function Caja() {
   const { negocio } = useParams();
   const router = useRouter();
   const [n, setN] = useState(null);
-  const [clientes, setClientes] = useState([]);
+  const [hoyEnCaja, setHoyEnCaja] = useState(null); // { total, lista }: quién ha pasado hoy (atendidosHoy)
+  const [, setReloj] = useState(0); // para que «hace 3 min» no se quede quieto
   const [valor, setValor] = useState("");
   const [manual, setManual] = useState(false);
   const [error, setError] = useState(null);
@@ -45,8 +46,8 @@ export default function Caja() {
         return r.json().then(setN);
       })
       .catch(() => {});
-    fetch(`/api/clientes?b=${negocio}`).then((r) => r.json())
-      .then((d) => setClientes(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch(`/api/clientes?b=${negocio}&hoy=1`).then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && Array.isArray(d.lista) && setHoyEnCaja(d)).catch(() => {});
     // ?quien=1 lo manda la ficha (o «Cambiar»): a elegir aunque ya haya alguien.
     const q = new URLSearchParams(window.location.search);
     const destino = q.get("volver");
@@ -54,6 +55,11 @@ export default function Caja() {
     setPerdido(q.get("perdido") === "1");
     cargarQuien(q.get("quien") === "1");
   }, [negocio]);
+
+  useEffect(() => {
+    const t = setInterval(() => setReloj((x) => x + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   function cargarQuien(forzar = false) {
     fetch(`/api/plantilla/quien?b=${negocio}`).then((r) => (r.ok ? r.json() : null))
@@ -103,9 +109,9 @@ export default function Caja() {
 
     const codigo = normalizarCodigo(texto);
     if (codigo) {
-      // La lista cargada cubre lo normal; si no está (tienda con muchos pases),
-      // lo resuelve el servidor, que también busca solo dentro de este negocio.
-      const local = clientes.find((c) => c.codigo === codigo);
+      // Si ha pasado hoy, ya está en la lista; si no, lo resuelve el servidor,
+      // que también busca solo dentro de este negocio.
+      const local = hoyEnCaja?.lista.find((c) => c.codigo === codigo);
       if (local) return router.push(`/w/${local.serial}`);
       const res = await fetch(`/api/clientes?b=${negocio}&codigo=${codigo}`);
       if (!res.ok) return setError(`Ningún pase de ${n?.nombre || "esta tienda"} con el código ${codigo}.`);
@@ -120,13 +126,17 @@ export default function Caja() {
   const accent = n?.tema?.accent || C.texto;
   const atiende = quien?.empleado || null;
   const hoy = quien?.hoy || null;
+  const zona = zonaDe(n);
+  const lista = hoyEnCaja?.lista || [];
   const filaCliente = (c) => (
     <a key={c.serial} href={`/w/${c.serial}`} style={fila}>
       <span style={chipCodigo(accent)}>{c.codigo}</span>
-      <span style={{ fontSize: 14, color: c.nombre ? C.texto : C.suave, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {c.nombre || "sin nombre"}
+      <span style={{ minWidth: 0 }}>
+        <span style={{ ...unaLinea, display: "block", fontSize: 14, color: c.nombre ? C.texto : C.suave }}>{c.nombre || "sin nombre"}</span>
+        {/* Lo último que se le hizo, con el texto de la caja ("Punto Cafés 3/8"). */}
+        <span style={{ ...unaLinea, display: "block", fontSize: 12, color: C.suave, marginTop: 2 }}>{c.mensaje}</span>
       </span>
-      <span style={{ fontSize: 14, color: C.suave, whiteSpace: "nowrap" }}>{resumenCliente(c, n)}</span>
+      <span style={{ fontSize: 13, color: C.suave, whiteSpace: "nowrap" }}>{horaDeHoyTexto(c.ts, zona)}</span>
     </a>
   );
 
@@ -214,12 +224,17 @@ export default function Caja() {
             {/* Lo que señala el recorrido: la etiqueta y las primeras filas, no toda la lista. */}
             <div data-recorrido="clientes">
             <div style={{ fontSize: 12, color: C.tenue, textTransform: "uppercase", letterSpacing: 1, margin: "22px 0 8px" }}>
-              Clientes ({clientes.length})
+              Hoy en la caja{hoyEnCaja?.total ? ` (${hoyEnCaja.total})` : ""}
             </div>
-            {clientes.slice(0, 3).map(filaCliente)}
+            {lista.slice(0, 3).map(filaCliente)}
+            {hoyEnCaja && lista.length === 0 && <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>Aún no ha pasado nadie por la caja hoy.</p>}
             </div>
-            {clientes.slice(3, 15).map(filaCliente)}
-            {clientes.length === 0 && <p style={{ color: C.suave, fontSize: 14 }}>Aún no hay clientes.</p>}
+            {lista.slice(3).map(filaCliente)}
+            {hoyEnCaja?.total > lista.length && (
+              <p style={{ color: C.tenue, fontSize: 13, margin: "10px 0 0" }}>
+                Y {hoyEnCaja.total - lista.length} más antes. Para los demás, escanea o escribe su código.
+              </p>
+            )}
 
             {instalar.puede && !instalar.instalada && (
               <button onClick={instalar.instalar} style={{ ...botonSecundario, width: "100%", marginTop: 22, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -243,7 +258,7 @@ function Cuenta({ n, uno, varios, accent, color }) {
   );
 }
 
-const resumenCliente = (c, n) => (n ? saldoCorto(c, n) : String(c.sellos));
+const unaLinea = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 const cambiar = { border: 0, background: "transparent", color: C.suave, textDecoration: "underline", cursor: "pointer", font: "inherit", fontSize: 13, padding: 0 };
 

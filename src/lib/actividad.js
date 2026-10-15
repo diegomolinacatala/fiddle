@@ -103,6 +103,55 @@ export function clasificar(tipo) {
 const DEL_PERSONAL = new Set(["caja", "manager", "admin"]);
 
 /**
+ * Quién ha pasado hoy por la caja, el último arriba: la lista de debajo del
+ * escáner. Sirve para volver a abrir al que se acaba de ir (el café que faltó
+ * sellar) sin pedirle otra vez el QR. Solo lo que hizo el personal: un alta
+ * desde el QR del mostrador no es alguien atendido. Cada uno sale UNA vez, con
+ * lo último que se le hizo.
+ *
+ * Con el móvil fijo en el mostrador, esta lista la ve quien lo coja: solo el
+ * código, el nombre y lo de hoy, nada más de la ficha.
+ *
+ * @param {{serial:string, tipo:string, mensaje:string, actor?:string, ts:string}[]} eventos
+ * @param {{serial:string, codigo:string, nombre?:string|null}[]} clientes los vigentes de la tienda
+ * @returns {{total:number, lista:{serial:string, codigo:string, nombre:string|null, ts:string, mensaje:string}[]}}
+ */
+export function atendidosHoy(eventos, clientes, { zona, ahora = Date.now(), max = 15 }) {
+  const hoy = fechaLocal(ahora, zona);
+  const ultimo = new Map();
+  for (const e of eventos || []) {
+    const t = Date.parse(e.ts);
+    const clase = clasificar(e.tipo)?.clase;
+    if (!t || !clase || clase === "alta" || !DEL_PERSONAL.has(e.actor) || fechaLocal(t, zona) !== hoy) continue;
+    const previo = ultimo.get(e.serial);
+    if (!previo || e.ts > previo.ts) ultimo.set(e.serial, e);
+  }
+  // Una tarjeta fusionada o borrada ya no está entre los clientes: no sale.
+  const porSerial = new Map((clientes || []).map((c) => [c.serial, c]));
+  const filas = [...ultimo.values()].filter((e) => porSerial.has(e.serial)).sort((a, b) => b.ts.localeCompare(a.ts));
+  return {
+    total: filas.length,
+    lista: filas.slice(0, max).map((e) => {
+      const c = porSerial.get(e.serial);
+      return { serial: c.serial, codigo: c.codigo, nombre: c.nombre ?? null, ts: e.ts, mensaje: e.mensaje };
+    }),
+  };
+}
+
+/**
+ * Cuándo, para esa lista: "ahora", "hace 12 min" y, pasada una hora, "13:42"
+ * (todo es de hoy). En la hora de la tienda.
+ */
+export function horaDeHoyTexto(iso, zona, ahora = Date.now()) {
+  const t = Date.parse(iso || "");
+  if (!t) return "";
+  const minutos = Math.floor((ahora - t) / 60000);
+  if (minutos < 1) return "ahora";
+  if (minutos < 60) return `hace ${minutos} min`;
+  return aHora(relojLocal(t, zona).minutos);
+}
+
+/**
  * Lo que pasó en la caja un día (en la tienda), con las cuentas hechas.
  *
  * @param {{serial:string, tipo:string, mensaje:string, actor?:string, ts:string}[]} eventos

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  actividadDelDia, actividadDelRango, ultimaVezTexto, ultimoSelloTexto, TIPOS_SELLO, diaCompleto,
+  actividadDelDia, actividadDelRango, ultimaVezTexto, ultimoSelloTexto, TIPOS_SELLO, diaCompleto, atendidosHoy, horaDeHoyTexto,
   periodoDe, periodoDeFechas, moverPeriodo, periodoAnterior, comparable, nombrePeriodo, rangoCorto, textoComparacion,
 } from "@/lib/actividad";
 import { csvActividad } from "@/lib/exportar";
@@ -144,6 +144,47 @@ describe("actividadDelRango: varios días de golpe", () => {
   it("un día suelto es lo mismo que actividadDelDia", () => {
     expect(actividadDelRango(eventos, "2026-10-06", "2026-10-06", { zona, horario, cartillas: 2 }).totales)
       .toEqual(actividadDelDia(eventos, "2026-10-06", { zona, horario, cartillas: 2 }).totales);
+  });
+});
+
+describe("atendidosHoy: la lista de debajo del escáner", () => {
+  const ahora = Date.parse("2026-10-15T12:00:00Z"); // 14:00 en Madrid
+  const clientes = [
+    { serial: "a", codigo: "AAA", nombre: "Ana", nota: "secreto" },
+    { serial: "b", codigo: "BBB", nombre: null },
+    { serial: "c", codigo: "CCC", nombre: "Carla" },
+  ];
+  const eventos = [
+    ev("2026-10-15T07:00:00Z", "sellar", "a", "caja", "Punto Cafés 1/8"),
+    ev("2026-10-15T11:50:00Z", "canjear2", "a", "caja", "Premio Cookies"), // lo último de Ana
+    ev("2026-10-15T09:00:00Z", "sellar", "b", "manager", "Punto Cafés 3/8"), // el dueño también atiende
+    ev("2026-10-15T11:55:00Z", "alta", "c", "tap"), // se dio de alta él: no es atendido
+    ev("2026-10-15T11:58:00Z", "instalado", "c", "apple"),
+    ev("2026-10-14T21:30:00Z", "sellar", "c", "caja"), // 23:30 de ayer en Madrid
+    ev("2026-10-15T10:00:00Z", "sellar", "z", "caja"), // una tarjeta que ya no está (fusionada o borrada)
+  ];
+  const r = atendidosHoy(eventos, clientes, { zona, ahora });
+
+  it("cada uno una vez, el último arriba, con lo último que se le hizo", () => {
+    expect(r.total).toBe(2);
+    expect(r.lista.map((c) => c.codigo)).toEqual(["AAA", "BBB"]);
+    expect(r.lista[0]).toEqual({ serial: "a", codigo: "AAA", nombre: "Ana", ts: "2026-10-15T11:50:00Z", mensaje: "Premio Cookies" });
+  });
+
+  it("solo código, nombre y lo de hoy: nada más de la ficha", () => {
+    expect(Object.keys(r.lista[0]).sort()).toEqual(["codigo", "mensaje", "nombre", "serial", "ts"]);
+  });
+
+  it("con tope, pero el total los cuenta a todos", () => {
+    const corto = atendidosHoy(eventos, clientes, { zona, ahora, max: 1 });
+    expect(corto.lista).toHaveLength(1);
+    expect(corto.total).toBe(2);
+  });
+
+  it("la hora: al minuto la primera hora, luego la del reloj de la tienda", () => {
+    expect(horaDeHoyTexto("2026-10-15T11:59:40Z", zona, ahora)).toBe("ahora");
+    expect(horaDeHoyTexto("2026-10-15T11:48:00Z", zona, ahora)).toBe("hace 12 min");
+    expect(horaDeHoyTexto("2026-10-15T07:00:00Z", zona, ahora)).toBe("09:00");
   });
 });
 
