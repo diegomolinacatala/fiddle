@@ -12,7 +12,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 | Ruta | Acceso |
 |------|--------|
 | `/`, `/<negocio>`, `/login`, `/privacidad`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios`, `/api/salud` | público |
-| `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación) |
+| `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación; la página lo guarda en la pestaña y acepta el código pegado) |
 | `/api/tutorial` | cualquier sesión (cada uno ve y marca lo suyo) |
 | `GET /api/tap`, `/p/<serial>`, `/p/<serial>/listo`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
 | `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>`, `GET /api/logo`, `GET /api/fondo` | público (la tarjeta de Android: el serial es la llave) |
@@ -62,11 +62,16 @@ recuperarla sin tocar la caja).
 // solo la suya (alcance manager)
 { "token": "…", "manager": "…" }             { "ok": true, "destino": "/nube/manager" }
 ```
-`410` enlace usado, caducado, anulado por otro más nuevo o inventado · `400` contraseña
-floja (`campo`: `manager` | `caja`; mínimo 10 caracteres, distinta del usuario, entre sí y,
-con alcance `manager`, de la actual de la caja) · `429` más de 20 altas por IP en 10 min.
-Las contraseñas quedan como **elegidas** (se comparan tal cual, [`claves.js`](../src/lib/claves.js)).
-Aceptarla queda en `auditoria` (`invitacion`, `aceptada <alcance>`, como el manager).
+`410` con `codigo`: `incompleto` (no tiene forma de token), `desconocido` (inventado o
+anulado por otro más nuevo), `usada`, `caducada`, `sin_tienda`; cada uno deja un
+`console.warn` sin el token · `400` contraseña floja (`campo`: `manager` | `caja`; mínimo 10
+caracteres, distinta del usuario, entre sí y, con alcance `manager`, de la actual de la caja) ·
+`429` más de 20 altas por IP en 10 min (y, en memoria, más de 60 comprobaciones por IP en 10
+min). Fijarlas gasta el enlace primero (con dos pestañas solo una escribe) y, si guardar falla
+a medias, lo reabre para repetir; si tampoco se puede reabrir, `auditoria` lleva `invitacion` ·
+`sin_reabrir`. Las contraseñas quedan como **elegidas** (se comparan tal cual,
+[`claves.js`](../src/lib/claves.js)). Aceptar queda en `auditoria` (`invitacion` ·
+`aceptada <alcance>`, como el manager de la tienda).
 
 ### `GET /api/tutorial?recorrido=manager|caja` · `POST /api/tutorial` — `{ "recorrido": "caja" }`
 Si el usuario de la sesión ya vio el recorrido de bienvenida (`{ "visto": true }`) y
@@ -281,14 +286,23 @@ devuelve **una vez**. Queda en `auditoria`.
 Cifra los nombres y notas guardados antes de tener `CIFRADO_CLAVE` (`{ cifrados: n }`).
 Repetirlo no hace nada · `409` sin una `CIFRADO_CLAVE` válida.
 
-### `POST /api/admin/invitacion` — `{ "slug": "nube", "alcance": "alta" | "manager" }`
-Enlace nuevo para que el dueño elija sus contraseñas (`alta`, lo de siempre) o solo la
-suya (`manager`: la perdió y no se toca la caja). Anula los anteriores sin usar, del alcance
-que sean. Queda en `auditoria` (`invitacion`, `creada <alcance>`, con el nombre del admin).
+### `GET /api/admin/invitacion?slug=` · `POST /api/admin/invitacion` — `{ "slug": "nube", "alcance": "alta" | "manager" }`
+Cómo está el enlace de la tienda (lo pinta la ficha antes de ofrecer «crear otro») · enlace
+nuevo para que el dueño elija sus contraseñas (`alta`, lo de siempre) o solo la suya
+(`manager`: la perdió y no se toca la caja). Anula los anteriores sin usar, del alcance que
+sean, y queda en `auditoria` (`invitacion` · `creada <alcance>`, con el nombre del admin).
+Nunca devuelven la huella; el token solo sale del POST.
 ```json
-{ "url": "https://…/invitacion#<token>", "caduca": "2026-10-01T…", "alcance": "alta", "dias": 7,
+// GET: pendiente (sin usar ni caducar), el último caducado sin usar, cuándo se usó el último
+{ "pendiente": { "creado": "2026-10-15T…", "caduca": "2026-10-22T…" } | null, "caducada": {…} | null,
+  "ultimaUsada": "2026-10-03T…" | null, "fiable": true, "base": "https://fiddle-zeta.vercel.app" }
+// POST
+{ "url": "https://…/invitacion#<token>", "token": "<token>", "caduca": "2026-10-01T…", "alcance": "alta", "dias": 7, "fiable": true,
   "nombre": "Nube Café", "usuarios": { "manager": "nube", "caja": "nube-caja" } }
 ```
+`fiable: false` = este servidor no guarda los enlaces de verdad (la web de dev: Vercel sin
+base, docs/ENTORNOS.md); la ficha avisa de que no le va a servir al dueño. `token` va también
+en texto en el correo, por si el cliente de correo recorta lo que sigue al `#`.
 
 ## Apple Wallet web service
 

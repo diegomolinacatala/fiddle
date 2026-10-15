@@ -1498,6 +1498,42 @@ export async function getInvitacion(huella) {
 }
 
 /**
+ * Las invitaciones de una tienda, las más nuevas primero, sin la huella: es para
+ * decirle al admin si hay un enlace pendiente, no para usarlo.
+ * @returns {Promise<{caduca:string, creado:string, usada:string|null}[]>}
+ */
+export async function invitacionesDeNegocio(negocio) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("invitaciones").select("caduca, creado, usada").eq("negocio", negocio).order("creado", { ascending: false }),
+      "listar invitaciones",
+    ) || [];
+  }
+  const todas = await enFila(() => leer("invitaciones", {}));
+  return Object.values(todas)
+    .filter((i) => i.negocio === negocio)
+    .map(({ caduca, creado, usada }) => ({ caduca, creado, usada }))
+    .sort((a, b) => b.creado.localeCompare(a.creado));
+}
+
+/**
+ * Lo contrario de gastar: el enlace vuelve a valer. Solo para cuando se gastó y
+ * guardar las contraseñas falló justo después (lib/invitaciones.js): sin esto el
+ * dueño se quedaba con el enlace gastado y sin contraseñas.
+ */
+export async function reabrirInvitacion(huella) {
+  if (hasSupabase()) {
+    sinError(await supa().from("invitaciones").update({ usada: null }).eq("huella", huella), "reabrir invitación");
+    return;
+  }
+  return enFila(async () => {
+    const todas = await leer("invitaciones", {});
+    if (!todas[huella]) return;
+    await escribir("invitaciones", { ...todas, [huella]: { ...todas[huella], usada: null } });
+  });
+}
+
+/**
  * Gasta la invitación. Condicional (solo si seguía sin usar): con dos pestañas
  * a la vez, solo una fija las contraseñas.
  * @returns {Promise<boolean>} true si era la primera vez
