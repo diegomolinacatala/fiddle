@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ClaveNueva from "@/app/ClaveNueva";
+import CambiarClave from "./CambiarClave";
 import Bloque from "../Bloque";
 import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
@@ -12,17 +13,35 @@ import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 // Antes la contraseña de la caja vivía en Tienda, debajo del horario, a la
 // vista cada vez que se entraba a cambiar la tarjeta. Es lo de "se va un
 // empleado": se toca casi nunca y no debe estar en medio. Las mismas filas que
-// en Tienda (Bloque.js).
+// en Tienda (Bloque.js). Aquí también la propia contraseña del dueño (dando la
+// actual) y «Cerrar todas las sesiones», que es lo de la cuenta.
 // ============================================================================
 
 export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = false }) {
   const [claveCaja, setClaveCaja] = useState(null); // contraseña nueva de la caja, se ve una vez
+  const [cambiandoClave, setCambiandoClave] = useState(false); // el formulario de «Cambiar mi contraseña»
   const [msg, setMsg] = useState(null);
   const [origin, setOrigin] = useState("");
   const accent = n.tema.accent;
 
   useEffect(() => setOrigin(window.location.origin), []);
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3000); }
+
+  // Un ordenador ajeno donde se quedó abierta, un móvil perdido: fuera todos, sin
+  // cambiar contraseñas. La sesión de quien lo pide se vuelve a firmar en el servidor.
+  async function cerrarSesiones() {
+    if (!window.confirm(`¿Cerrar la sesión en todos los dispositivos?
+
+También en el móvil de la caja: habrá que volver a entrar en todos con las contraseñas de siempre. Aquí sigues dentro.`)) return;
+    try {
+      const res = await fetch(`/api/sesiones?b=${slug}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) return flash(data.error || "No se pudieron cerrar");
+      flash("Sesiones cerradas en los demás dispositivos");
+    } catch {
+      flash("Sin conexión: no se han cerrado");
+    }
+  }
 
   // Un empleado que se va, un móvil perdido: contraseña nueva y la vieja deja de valer.
   async function cambiarClaveCaja() {
@@ -77,7 +96,23 @@ La actual dejará de valer y los móviles que tengan la caja abierta se quedará
             accent={accent} icono="puerta" titulo="Tu acceso"
             resumen={esAdmin
               ? "Has entrado como administrador de fiddle."
-              : <>Usuario <strong style={{ color: C.texto }}>{usuarios.manager}</strong>. Para cambiar tu contraseña, pídeselo a fiddle.</>}
+              : <>Usuario <strong style={{ color: C.texto }}>{usuarios.manager}</strong>. Si cambias tu contraseña, aquí sigues dentro; en los demás dispositivos habrá que volver a entrar.</>}
+            abierto={cambiandoClave}
+            accion={esAdmin ? null : {
+              texto: cambiandoClave ? "Cerrar" : "Cambiar mi contraseña",
+              icono: cambiandoClave ? "cerrar" : "editar",
+              onClick: () => setCambiandoClave((v) => !v),
+            }}
+          >
+            <CambiarClave
+              slug={slug} usuario={usuarios.manager} accent={accent}
+              onHecho={() => { setCambiandoClave(false); flash("Contraseña cambiada"); }}
+            />
+          </Bloque>
+          <Bloque
+            accent={accent} icono="movil" titulo="Sesiones abiertas"
+            resumen="Si te dejaste la sesión abierta en un ordenador que no es tuyo o se perdió un móvil, ciérralas todas a la vez (la caja también). Las contraseñas no cambian."
+            accion={{ texto: "Cerrar todas las sesiones", icono: "cerrar", onClick: cerrarSesiones }}
           />
         </section>
 

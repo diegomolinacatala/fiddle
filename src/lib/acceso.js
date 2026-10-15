@@ -101,8 +101,11 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
   if (pathname === "/api/clientes") return { tipo: "negocio", slug: b, rol: "caja" };
   if (pathname === "/api/crear") return { tipo: "negocio", slug: b, rol: "manager" };
-  // El manager puede cambiar la contraseña de SU caja (un empleado que se va).
-  if (pathname === "/api/accesos/caja") return { tipo: "negocio", slug: b, rol: "manager" };
+  // El manager puede cambiar la contraseña de SU caja (un empleado que se va), la
+  // suya propia (dando la actual) y cerrar todas las sesiones de su tienda.
+  if (pathname === "/api/accesos/caja" || pathname === "/api/accesos/manager" || pathname === "/api/sesiones") {
+    return { tipo: "negocio", slug: b, rol: "manager" };
+  }
   // CRM y avisos automáticos: quién es quién y qué se le dice. Solo el manager.
   // Las dos que llevan ?b= se comprueban aquí; /api/crm/campana (el negocio va
   // en el cuerpo, como en /api/promo) y /api/crm/cliente/<serial> (sale del
@@ -134,4 +137,41 @@ export function destinoSeguro(next) {
 export function negocioDeRuta(pathname) {
   const m = typeof pathname === "string" && pathname.match(/^\/([a-z0-9-]+)(?:\/|$)/);
   return m && !RESERVADOS.has(m[1]) ? m[1] : null;
+}
+
+// Los usuarios de tienda (`nube`, `nube-caja`) sin pasar por lib/auth.js: esto lo
+// importa /login, que corre en el navegador, y auth.js lleva la lista de admins
+// de la plataforma, que no tiene que salir en el JavaScript público. La forma es
+// la misma que la de `resolverUsuario` (hay un test que lo fija); los admins no
+// son de ninguna tienda y aquí no cuentan.
+const USUARIO_TIENDA = /^([a-z0-9-]+?)(?:-(caja|manager))?$/;
+
+/** @returns {{slug:string, rol:"caja"|"manager"}|null} la tienda y el rol de un usuario de acceso, o null */
+export function tiendaDeUsuario(usuario) {
+  const m = USUARIO_TIENDA.exec(String(usuario ?? "").trim().toLowerCase());
+  if (!m || RESERVADOS.has(m[1])) return null;
+  return { slug: m[1], rol: m[2] === "caja" ? "caja" : "manager" };
+}
+
+/** Usuario de acceso de una tienda y rol: `nube` (manager) · `nube-caja`. Igual que `usuarioDe` en lib/auth.js. */
+export const usuarioDeTienda = (slug, rol) => (rol === "caja" ? `${slug}-caja` : slug);
+
+/**
+ * Qué usuario rellenar en /login. El middleware (y «Salir») mandan `b`, la
+ * tienda, y `next`, a dónde iba. Quien iba a la caja (/<slug>/caja) o a una
+ * ficha (/w/<serial>, donde cae la cámara al leer un QR) es la caja:
+ * `<slug>-caja`. El resto (manager, crm, avisos, plantilla, ajustes), el dueño:
+ * `<slug>`. Sin tienda, nada. Rellenar siempre el del dueño mandaba a la caja a
+ * fallar con su propia contraseña hasta quedar bloqueada (docs/AUDITORIA-ACCESOS.md, A2).
+ * @param {string|null} b
+ * @param {string|null} next
+ * @returns {string}
+ */
+export function usuarioSugerido(b, next) {
+  const tienda = tiendaDeUsuario(b);
+  if (!tienda) return "";
+  if (tienda.rol === "caja") return usuarioDeTienda(tienda.slug, "caja"); // ya venía el de la caja
+  const ruta = (destinoSeguro(next) || "").split(/[?#]/)[0].replace(/\/+$/, "");
+  const deCaja = ruta === `/${tienda.slug}/caja` || ruta.startsWith("/w/");
+  return usuarioDeTienda(tienda.slug, deCaja ? "caja" : "manager");
 }

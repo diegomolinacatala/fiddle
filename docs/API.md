@@ -12,7 +12,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 | Ruta | Acceso |
 |------|--------|
 | `/`, `/<negocio>`, `/login`, `/privacidad`, `/api/login`, `/api/logout`, `/api/manifest`, `/api/negocios`, `/api/salud` | público |
-| `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación) |
+| `/invitacion`, `POST /api/invitacion` | público (vale el token del enlace de invitación; la página lo guarda en la pestaña y acepta el código pegado) |
 | `/api/tutorial` | cualquier sesión (cada uno ve y marca lo suyo) |
 | `GET /api/tap`, `/p/<serial>`, `/p/<serial>/listo`, `GET /api/pase/<serial>` | público (emitir y ver/descargar el propio pase) |
 | `GET /api/tarjeta/<serial>`, `/api/push/<serial>`, `GET /api/google/guardar/<serial>`, `GET /api/imagen/<tipo>`, `GET /api/logo`, `GET /api/fondo` | público (la tarjeta de Android: el serial es la llave) |
@@ -22,7 +22,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `POST /api/logo`, `/api/propios`, `POST\|DELETE /api/fondo` | **manager** de ese negocio |
 | `/<negocio>/crm`, `GET /api/crm`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>`, `POST /api/crm/exportar` | **manager** de ese negocio |
 | `/<negocio>/avisos`, `/api/automatizaciones`, `/api/envios` | **manager** de ese negocio |
-| `/<negocio>/ajustes`, `POST /api/accesos/caja` | **manager** de ese negocio |
+| `/<negocio>/ajustes`, `POST /api/accesos/caja`, `POST /api/accesos/manager`, `DELETE /api/sesiones` | **manager** de ese negocio |
 | `/api/cron/avisos` | sin sesión: lo protege `CRON_SECRET` (cabecera `Authorization: Bearer …`) |
 | `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*`, `GET /api/estado` | **admin de la plataforma** (`victor`, `diego`) |
 
@@ -38,7 +38,13 @@ Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. La contraseña vive 
 `accesos` (hash scrypt); sin fila, vale `CLAVE_<SLUG>_<ROL>` de Vercel ([`accesos.js`](../src/lib/accesos.js)).
 `401` usuario o contraseña incorrectos · `429` demasiados intentos (10 por IP y
 negocio en 15 min, 100 por negocio) · `503` falta `AUTH_SECRET` en producción.
-Sesión de caja: 30 días. Sesión de manager: 12 h.
+Sesión de caja: 30 días. Sesión de manager: 30 días y se renueva sola mientras la use
+(el middleware vuelve a poner la cookie en las páginas cuando le queda menos de la mitad,
+hasta 90 días desde que entró). Admin: 12 h.
+El token es `negocio.rol.usuario.iat.exp.firma`: dice con quién se entró y cuándo; un
+cambio de contraseña o un «Cerrar todas las sesiones» posterior a `iat` la echa aunque se
+haya renovado. El login que entra queda en `auditoria` (`login`, con el usuario; el admin
+con su nombre).
 
 ### `POST /api/logout`
 Borra la cookie. `{ "ok": true }`.
@@ -46,15 +52,26 @@ Borra la cookie. `{ "ok": true }`.
 ### `POST /api/invitacion`
 El dueño de una tienda elige sus contraseñas desde el enlace del correo
 ([`invitaciones.js`](../src/lib/invitaciones.js)). El token va en el cuerpo, nunca en la URL.
+`alcance`: `alta` (las dos contraseñas, la tienda nueva) o `manager` (solo la suya: para
+recuperarla sin tocar la caja).
 ```json
 // ¿vale el enlace?                          // response
-{ "token": "…" }                             { "nombre": "Nube Café", "tema": {…}, "usuarios": { "manager": "nube", "caja": "nube-caja" } }
-// fijar las dos                             // response ok (+ cookie de sesión de manager)
+{ "token": "…" }                             { "nombre": "Nube Café", "tema": {…}, "alcance": "alta", "usuarios": { "manager": "nube", "caja": "nube-caja" } }
+// fijar las dos (alcance alta)              // response ok (+ cookie de sesión de manager)
 { "token": "…", "manager": "…", "caja": "…" } { "ok": true, "destino": "/nube/manager" }
+// solo la suya (alcance manager)
+{ "token": "…", "manager": "…" }             { "ok": true, "destino": "/nube/manager" }
 ```
-`410` enlace usado, caducado, anulado por otro más nuevo o inventado · `400` contraseña
-floja (`campo`: `manager` | `caja`; mínimo 10 caracteres, distinta del usuario y entre sí) ·
-`429` más de 20 altas por IP en 10 min.
+`410` con `codigo`: `incompleto` (no tiene forma de token), `desconocido` (inventado o
+anulado por otro más nuevo), `usada`, `caducada`, `sin_tienda`; cada uno deja un
+`console.warn` sin el token · `400` contraseña floja (`campo`: `manager` | `caja`; mínimo 10
+caracteres, distinta del usuario, entre sí y, con alcance `manager`, de la actual de la caja) ·
+`429` más de 20 altas por IP en 10 min (y, en memoria, más de 60 comprobaciones por IP en 10
+min). Fijarlas gasta el enlace primero (con dos pestañas solo una escribe) y, si guardar falla
+a medias, lo reabre para repetir; si tampoco se puede reabrir, `auditoria` lleva `invitacion` ·
+`sin_reabrir`. Las contraseñas quedan como **elegidas** (se comparan tal cual,
+[`claves.js`](../src/lib/claves.js)). Aceptar queda en `auditoria` (`invitacion` ·
+`aceptada <alcance>`, como el manager de la tienda).
 
 ### `GET /api/tutorial?recorrido=manager|caja` · `POST /api/tutorial` — `{ "recorrido": "caja" }`
 Si el usuario de la sesión ya vio el recorrido de bienvenida (`{ "visto": true }`) y
@@ -63,6 +80,20 @@ apuntarlo. Va por usuario (`nube`, `nube-caja`); los admins comparten `admin`.
 ### `POST /api/accesos/caja?b=<negocio>` · manager
 Contraseña nueva para la caja (Ajustes; un empleado que se va). Se devuelve **una vez**
 y saca a quien estuviera dentro con la vieja.
+
+### `POST /api/accesos/manager?b=<negocio>` — `{ actual, nueva }` · solo el manager
+El dueño cambia su propia contraseña (Ajustes → Tu acceso). `nueva` queda como elegida
+(mínimo 10 caracteres, distinta de la actual y de la de la caja). Responde `{ ok, usuario }`
+y vuelve a poner su cookie de sesión; las demás sesiones del manager caen, la caja sigue.
+`401` con `campo: "actual"` si la actual no es (cuenta como fallo de login: mismo límite,
+`429` al pasarse) · `400` con `campo: "nueva"` · la caja no llega (`401` del middleware) y el
+admin recibe `403`. Queda en `auditoria` (`clave`, `manager`).
+
+### `DELETE /api/sesiones?b=<negocio>` · manager (o admin)
+Cierra todas las sesiones de la tienda (manager y caja, en todos los dispositivos) sin
+cambiar contraseñas: guarda `sesionesDesde` en la tienda y
+[`sesionVigente`](../src/lib/sesionVigente.js) rechaza las firmadas antes. Al manager que lo
+pide le vuelve a poner su cookie. `{ ok, desde }`. Queda en `auditoria` (`sesiones`, `cerradas`).
 
 ## Emitir
 
@@ -247,19 +278,31 @@ devuelve · `borrar` la elimina para siempre **con sus clientes y su historial**
 `&confirmar=<slug>` exacto.
 
 ### `GET /api/admin/accesos?slug=` · `POST /api/admin/accesos` — `{ slug, rol }`
-Cómo entra cada usuario de la tienda (sin contraseñas) · genera una nueva para
-`manager` o `caja` y la devuelve **una vez**. Queda en `auditoria`.
+Cómo entra cada usuario de la tienda (sin contraseñas: `desde`, `elegida` si la puso una
+persona, `respaldo` si hay variable) · genera una nueva para `manager` o `caja` y la
+devuelve **una vez**. Queda en `auditoria`.
 
 ### `POST /api/admin/cifrar`
 Cifra los nombres y notas guardados antes de tener `CIFRADO_CLAVE` (`{ cifrados: n }`).
 Repetirlo no hace nada · `409` sin una `CIFRADO_CLAVE` válida.
 
-### `POST /api/admin/invitacion` — `{ "slug": "nube" }`
-Enlace nuevo para que el dueño elija sus contraseñas. Anula los anteriores sin usar.
+### `GET /api/admin/invitacion?slug=` · `POST /api/admin/invitacion` — `{ "slug": "nube", "alcance": "alta" | "manager" }`
+Cómo está el enlace de la tienda (lo pinta la ficha antes de ofrecer «crear otro») · enlace
+nuevo para que el dueño elija sus contraseñas (`alta`, lo de siempre) o solo la suya
+(`manager`: la perdió y no se toca la caja). Anula los anteriores sin usar, del alcance que
+sean, y queda en `auditoria` (`invitacion` · `creada <alcance>`, con el nombre del admin).
+Nunca devuelven la huella; el token solo sale del POST.
 ```json
-{ "url": "https://…/invitacion#<token>", "caduca": "2026-10-01T…", "dias": 7,
+// GET: pendiente (sin usar ni caducar), el último caducado sin usar, cuándo se usó el último
+{ "pendiente": { "creado": "2026-10-15T…", "caduca": "2026-10-22T…" } | null, "caducada": {…} | null,
+  "ultimaUsada": "2026-10-03T…" | null, "fiable": true, "base": "https://fiddle-zeta.vercel.app" }
+// POST
+{ "url": "https://…/invitacion#<token>", "token": "<token>", "caduca": "2026-10-01T…", "alcance": "alta", "dias": 7, "fiable": true,
   "nombre": "Nube Café", "usuarios": { "manager": "nube", "caja": "nube-caja" } }
 ```
+`fiable: false` = este servidor no guarda los enlaces de verdad (la web de dev: Vercel sin
+base, docs/ENTORNOS.md); la ficha avisa de que no le va a servir al dueño. `token` va también
+en texto en el correo, por si el cliente de correo recorta lo que sigue al `#`.
 
 ## Apple Wallet web service
 
@@ -287,11 +330,19 @@ Todo el panel en una petición.
 ```json
 {
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
-  "metricas": { "total": 33, "activos": 11, "enRiesgo": 10, "porEstado": { "activo": 11, … },
-                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
-                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79, "cadenciaMedia": 7.1 },
+  "metricas": { "total": 33, "activos": 14, "enRiesgo": 10, "porEstado": { "activo": 11, "nuevo": 3, … },
+                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31, "porDar": 4,
+                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79,
+                "cadenciaHabitual": 6, "visitasHabituales": 4,
+                "vuelta": { "base": 20, "volvieron": 12, "tasa": 60, "dias": 14 },
+                "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "n": 37, "paso": null }, … ] },
   "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
-  "cohortes": [ { "mes": "2026-08", "altas": 5, "repiten": 3, "vivos": 2, "retencion": 40 } ],
+  "puente":   { "dias": 30, "listo": true, "antes": 41, "nuevos": 24, "volvieron": 2, "enfriados": 13, "hoy": 54, "siguen": 28,
+                "pasos": [ { "key": "antes", "label": "Activos hace 30 días", "n": 41, "signo": 0, "desde": 0, "hasta": 41 }, … ] },
+  "cohortes": { "unidad": "semana", "semanas": 3, "listo": true,
+                "filas": [ { "desde": "2026-09-28", "altas": 12, "vividas": 2, "celdas": [ { "n": 10, "pct": 83 }, { "n": 6, "pct": 50 }, null ] } ] },
+  "cartillas": [ { "indice": 0, "nombre": "Sellos", "meta": 8, "filas": [ { "sellos": 1, "siguen": 4, "alejan": 2 }, … ],
+                   "enCero": 6, "alejanMediana": 2 } ],
   "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
   "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
   "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Sello 5/8", "actor": "caja", "ts": "…" } ]
@@ -300,6 +351,13 @@ Todo el panel en una petición.
 Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen de
 la hora local —a qué hora viene la gente— se hacen **en el navegador**: el
 servidor vive en UTC y sacaría el café de las 9 a las 7.
+
+`puente` y `cohortes` reconstruyen el pasado con esos eventos. Sin historial que cubra
+hace 30 días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`;
+con una tienda que aún no tenía clientes entonces, `"motivo": "joven"` y `faltanDias`.
+En `cohortes`, cada celda es la parte de la fila que vino en esa semana desde su alta;
+`null`, una semana que aún no han vivido todos. Con más de 10 semanas de historia,
+`"unidad": "mes"` (las columnas siguen siendo semanas).
 
 ### `POST /api/crm/campana` · manager
 Manda un mensaje a un GRUPO. El negocio va en el cuerpo (como en `/api/promo`).

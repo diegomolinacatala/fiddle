@@ -1,9 +1,14 @@
 // ============================================================================
 // SESIÓN / AUTENTICACIÓN (caja + manager, por negocio)
 // ----------------------------------------------------------------------------
-// Token firmado con HMAC-SHA256. Formato: `negocio.rol.exp.firma`.
-// Usa Web Crypto (globalThis.crypto.subtle), así que el MISMO módulo corre en:
-//   - middleware (Edge runtime)  -> verifica en cada petición
+// Token firmado con HMAC-SHA256. Formato: `negocio.rol.usuario.iat.exp.firma`:
+// quién es (el usuario con el que entró: `nube-caja`, `victor`), cuándo se firmó
+// (`iat`) y hasta cuándo vale (`exp`). El `iat` es lo que compara
+// lib/sesionVigente.js con un cambio de contraseña o un «cerrar todas las
+// sesiones»: por eso al RENOVAR una sesión (renovarSesion) se alarga `exp` y se
+// conserva `iat`, y la sesión sigue cayendo si la contraseña cambió después de
+// entrar. Usa Web Crypto (globalThis.crypto.subtle), así que el MISMO módulo corre en:
+//   - middleware (Edge runtime)  -> verifica en cada petición y renueva
 //   - route handlers (Node)      -> /api/login firma el token
 //
 // Roles: "manager" (todo su negocio) y "caja" (solo escanear y actuar). Una
@@ -25,11 +30,16 @@ const enc = new TextEncoder();
 
 export const COOKIE = "sesion";
 export const ROLES = ["caja", "manager", "admin"];
-// La caja vive en un móvil de la tienda: sesión larga. El manager y el admin, cortas.
-// OJO: el token solo guarda la caducidad, y lib/sesionVigente.js saca de aquí cuándo
-// se firmó. Alargar uno hace que las sesiones vivas parezcan más viejas (y una
-// contraseña cambiada hace poco las echaría); acortarlo, más nuevas.
-export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 12, admin: 60 * 60 * 12 };
+// La caja vive en un móvil de la tienda: sesión larga. La del manager también, y se
+// RENUEVA sola mientras la use (DESLIZANTES): con 12 h sin renovar, el dueño tecleaba
+// cada mañana una contraseña generada que no podía cambiar, y así se pierden. La del
+// admin sigue corta: entra con una variable de Vercel y no tiene otro corte.
+export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 24 * 30, admin: 60 * 60 * 12 };
+// Qué sesiones se vuelven a firmar al usarlas cuando les queda menos de la mitad, y
+// cuánto puede vivir una desde que se entró aunque se use a diario: pasado eso, al
+// login otra vez (una cookie robada que se usara cada día no viviría para siempre).
+const DESLIZANTES = ["manager"];
+export const MAX_SESION_MS = 90 * 24 * 60 * 60 * 1000;
 
 // ADMIN DE LA PLATAFORMA: no es de ningún negocio, es de todos. Entra en /admin,
 // donde se crean, editan y archivan las tiendas. Su sesión lleva este negocio
@@ -152,37 +162,90 @@ export function igualSeguro(a, b) {
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
-/** Firma una sesión. Lanza si no hay secreto (producción sin AUTH_SECRET). */
-export async function firmarSesion(slug, rol, ahora = Date.now()) {
+// El admin de antes de llevar el nombre en el token, y las sesiones de admin que firma
+// un test sin decir cuál: la auditoría las apunta como "admin" a secas.
+const ADMIN_SIN_NOMBRE = "admin";
+const usuarioValido = (slug, rol, usuario) =>
+  rol === "admin" ? ADMINS.includes(usuario) || usuario === ADMIN_SIN_NOMBRE : usuario === usuarioDe(slug, rol);
+
+/**
+ * Firma una sesión. Lanza si no hay secreto (producción sin AUTH_SECRET).
+ * `usuario`: con quién entró (el admin, `victor` o `diego`; una tienda, el suyo, que
+ * sale solo del slug y el rol). `iat`: solo al renovar, para conservar la original.
+ */
+export async function firmarSesion(slug, rol, ahora = Date.now(), { usuario, iat = ahora } = {}) {
   const secreto = secretoSesion();
   if (!secreto) throw new Error("Falta AUTH_SECRET en producción");
   if (!SLUG_RE.test(slug) || !ROLES.includes(rol)) throw new Error("Sesión inválida");
+  const quien = usuario ?? (rol === "admin" ? ADMIN_SIN_NOMBRE : usuarioDe(slug, rol));
+  if (!usuarioValido(slug, rol, quien) || !Number.isFinite(iat) || iat > ahora) throw new Error("Sesión inválida");
   const exp = ahora + TTL_SEGUNDOS[rol] * 1000;
-  const payload = `${slug}.${rol}.${exp}`;
+  const payload = `${slug}.${rol}.${quien}.${iat}.${exp}`;
   return `${payload}.${await hmacHex(secreto, payload)}`;
 }
 
 /**
  * Verifica el token: firma válida + no caducado + rol conocido.
- * Devuelve { negocio, rol, exp } o null. Nunca lanza: cualquier fallo => null.
+ * Devuelve { negocio, rol, usuario, iat, exp } o null. Nunca lanza: cualquier fallo => null.
  */
 export async function verificarSesion(token, ahora = Date.now()) {
   try {
     const secreto = secretoSesion();
     if (!token || !secreto) return null;
     const partes = token.split(".");
-    if (partes.length !== 4) return null;
-    const [negocio, rol, exp, firma] = partes;
-    if (!SLUG_RE.test(negocio) || !ROLES.includes(rol)) return null;
-    const expMs = Number(exp);
-    if (!Number.isFinite(expMs) || expMs < ahora) return null;
-    const esperada = await hmacHex(secreto, `${negocio}.${rol}.${exp}`);
-    if (!igualSeguro(firma, esperada)) return null;
-    return { negocio, rol, exp: expMs };
+    const sesion = partes.length === 6 ? deSeisPartes(partes) : partes.length === 4 && ahora < FIN_FORMATO_VIEJO ? deCuatroPartes(partes) : null;
+    if (!sesion) return null;
+    const { negocio, rol, usuario, iat, exp, firma, payload } = sesion;
+    if (!SLUG_RE.test(negocio) || !ROLES.includes(rol) || !usuarioValido(negocio, rol, usuario)) return null;
+    if (!Number.isFinite(iat) || !Number.isFinite(exp) || iat > exp || exp < ahora) return null;
+    if (!igualSeguro(firma, await hmacHex(secreto, payload))) return null;
+    return { negocio, rol, usuario, iat, exp };
   } catch {
     return null;
   }
 }
+
+const deSeisPartes = ([negocio, rol, usuario, iat, exp, firma]) =>
+  ({ negocio, rol, usuario, iat: Number(iat), exp: Number(exp), firma, payload: `${negocio}.${rol}.${usuario}.${iat}.${exp}` });
+
+// El formato de antes del 15-10-2026 (`negocio.rol.exp.firma`), para no echar a la
+// caja que estaba dentro al desplegar. Sin `iat`, se deduce de la caducidad con la
+// duración de hoy: para la caja (30 días entonces y ahora) es exacto; un manager de
+// entonces (12 h) sale más viejo de lo que era, y a lo sumo vuelve a entrar. Deja de
+// aceptarse solo el 15-11-2026, cuando todas esas sesiones han caducado ya; después
+// de esa fecha, borrar `deCuatroPartes`.
+const FIN_FORMATO_VIEJO = Date.UTC(2026, 10, 15);
+const deCuatroPartes = ([negocio, rol, exp, firma]) =>
+  ROLES.includes(rol) && {
+    negocio, rol, firma,
+    usuario: rol === "admin" ? ADMIN_SIN_NOMBRE : usuarioDe(negocio, rol),
+    iat: Number(exp) - TTL_SEGUNDOS[rol] * 1000,
+    exp: Number(exp),
+    payload: `${negocio}.${rol}.${exp}`,
+  };
+
+/**
+ * La sesión renovada (un token nuevo con la MISMA fecha de emisión y la caducidad
+ * entera por delante) si es de las que se deslizan y le queda menos de la mitad;
+ * si no, null. Lo llama el middleware en cada petición: así el dueño no vuelve al
+ * login mientras use la app, y un cambio de contraseña posterior a `iat` la sigue
+ * echando (lib/sesionVigente.js).
+ */
+export async function renovarSesion(sesion, ahora = Date.now()) {
+  if (!sesion || !DESLIZANTES.includes(sesion.rol)) return null;
+  if (sesion.exp - ahora >= (TTL_SEGUNDOS[sesion.rol] * 1000) / 2) return null;
+  if (ahora - sesion.iat >= MAX_SESION_MS) return null; // ya ha vivido bastante: caduca y vuelve a entrar
+  return firmarSesion(sesion.negocio, sesion.rol, ahora, { usuario: sesion.usuario, iat: sesion.iat });
+}
+
+/** Las opciones de la cookie de sesión, las mismas donde quiera que se ponga. */
+export const cookieSesion = (rol) => ({
+  httpOnly: true,
+  sameSite: "lax",
+  secure: esProduccion(),
+  path: "/",
+  maxAge: TTL_SEGUNDOS[rol],
+});
 
 /**
  * Firma un texto cualquiera con el mismo secreto que las sesiones:

@@ -38,8 +38,9 @@ gh pr create --base main --head dev --title "Lo que sube a producción"
 
 Sin `SUPABASE_URL`, el store guarda en ficheros (`DATA_DIR`). En Vercel eso es `/tmp`, y
 con `DATOS_DE_PRUEBA=1` lo que falta arranca con La Delicantería inventada: unos 30
-clientes y tres semanas de caja, con un sello fuera de horario, una corrección y siete
-sellos de golpe.
+clientes de las últimas tres semanas, con un sello fuera de horario, una corrección y siete
+sellos de golpe, y otros 30 de hace uno o dos meses (unos siguen, otros se enfrían, alguno
+vuelve) para que Clientes → Resumen enseñe el puente de activos y las cohortes.
 
 - **Lo que se toca en dev no dura**: vive mientras la función de Vercel siga despierta.
   Tras un rato sin uso o un despliegue nuevo, vuelve a los datos de partida. Sirve para
@@ -51,6 +52,10 @@ sellos de golpe.
   otra que no lo tiene (la cookie lleva la huella del hash), y la caja lo pedía sin parar.
   Para ver el «elige tu PIN», quitárselo a alguien desde Plantilla → Equipo; el que elija vive
   en una sola función, así que puede volver a pedirlo al rato (en producción no pasa).
+- **Las invitaciones de dev no sirven**: el enlace vive en el `/tmp` de UNA función y la
+  siguiente petición (la del dueño al abrirlo) puede caer en otra. La ficha del admin lo avisa
+  (`fiable: false` en `GET /api/admin/invitacion`, `enlacesFiables` en `lib/invitaciones.js`):
+  un enlace para un dueño de verdad se crea desde producción.
 - En local, lo mismo con `preview_start como-dev` (`.claude/launch.json`).
 
 ## Lo que NUNCA se le da a dev

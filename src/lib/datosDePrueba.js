@@ -7,6 +7,9 @@
 // tres semanas de caja dentro de su horario, con lo raro que hay que poder ver
 // (un sello con la tienda cerrada, una corrección, siete sellos de golpe) y una
 // plantilla inventada que lleva dos semanas apuntando quién da cada sello.
+// Detrás, otros tantos de hace uno o dos meses (ANTES), con lo que el Resumen
+// necesita para no salir vacío: quien sigue, quien se enfría, quien vuelve tras
+// una pausa, quien vino una vez y quien la sacó y la estrena tarde o nunca.
 //
 // Se genera al vuelo y con una semilla fija: el mismo despliegue da los mismos
 // clientes, y las fechas van respecto a HOY para que siempre parezca reciente.
@@ -31,6 +34,16 @@ const NOMBRES = [
   "Elena", "Raúl", "Nuria", "Iván", "Paula", null, null, "Andrea", "Óscar", "Irene",
   "Toni", null, "Clara", "Marc", "Alba", "Sergio", null, "Laura", "Dani", "Bea",
 ];
+
+// Los de hace uno o dos meses (alta de hace ANTES_DIAS[0] a ANTES_DIAS[1] días).
+// Sin pasar de diez semanas: así el Resumen enseña las cohortes por semana, que es
+// lo que ve una tienda en sus primeros meses (lib/crm.js, `cohorteSemanas`).
+const NOMBRES_ANTES = [
+  "Rosa", "Manu", "Teresa", "Álvaro", "Inés", null, "Jaime", "Patricia", "Rubén", "Noelia",
+  "Adrián", null, "Lorena", "Gonzalo", "Silvia", "Miguel", null, "Eva", "Fernando", "Cristina",
+  "Samuel", "Julia", null, "Héctor", "Marina", "Alberto", "Rocío", "Pedro", "Celia", "Nacho",
+];
+const ANTES_DIAS = [32, 66];
 
 // La plantilla inventada (lib/plantilla.js) y cómo se reparte la caja. Lleva
 // DIAS_PLANTILLA días en marcha: lo anterior va sin nombre, como pasará de
@@ -125,10 +138,10 @@ export function generar(ahora = Date.now()) {
     ev(c, i ? "restar2" : "restar", `Corrección → ${tienda.cartillas[i].nombre} ${c[clave]}/${metas[i]}`, ts, { empleado: quien });
   };
 
-  NOMBRES.forEach((nombre, n) => {
+  // El alta se sortea justo tras el serial: en ese orden, los de siempre salen igual.
+  const nuevoCliente = (nombre, sortearAlta) => {
     const serial = serialDe(r);
-    const altaHace = 1 + Math.floor(r() * 21);
-    const fechaAlta = sumarDias(hoy, -altaHace);
+    const altaHace = sortearAlta();
     const c = {
       serial, negocio: SLUG, auth_token: serialDe(r).replace(/-/g, ""), nombre,
       sellos: 0, sellos2: 0, premios: 0, guardados: 0, guardados2: 0,
@@ -137,9 +150,12 @@ export function generar(ahora = Date.now()) {
     };
     usados.add(c.codigo);
     clientes[serial] = c;
-    // Cada uno con su ritmo: de casi a diario a una vez por semana.
-    const cada = [1, 2, 3, 5, 7][n % 5];
-    for (let d = altaHace; d >= 0; d -= cada) {
+    return [c, altaHace];
+  };
+  // Viene cada `cada` días, de hace `desde` a hace `hasta`, dentro del horario. El
+  // pase sale en su primera visita si es la del día del alta (`altaHace`).
+  const venir = (c, { desde, hasta = 0, cada, altaHace }) => {
+    for (let d = desde; d >= hasta; d -= cada) {
       const fecha = sumarDias(hoy, -d);
       const tramos = tramosDe(horario, fecha);
       if (!tramos.length) continue;
@@ -153,8 +169,18 @@ export function generar(ahora = Date.now()) {
       if (r() < 0.75) sellar(c, 1, ts);
       if (r() < 0.55) sellar(c, 0, new Date(ts.getTime() + 15_000));
     }
-    if (!c.creado) c.creado = en(fechaAlta, 9 * 60).toISOString();
+  };
+  // Sin visita el día del alta, el pase salió por la mañana (y sin evento, como siempre).
+  const cerrarAlta = (c, altaHace) => {
+    if (!c.creado) c.creado = en(sumarDias(hoy, -altaHace), 9 * 60).toISOString();
     if (r() < 0.6) c.instalado = c.creado;
+  };
+
+  NOMBRES.forEach((nombre, n) => {
+    const [c, altaHace] = nuevoCliente(nombre, () => 1 + Math.floor(r() * 21));
+    // Cada uno con su ritmo: de casi a diario a una vez por semana.
+    venir(c, { desde: altaHace, cada: [1, 2, 3, 5, 7][n % 5], altaHace });
+    cerrarAlta(c, altaHace);
   });
 
   // Lo raro, para que Actividad y Plantilla tengan algo que enseñar.
@@ -180,6 +206,32 @@ export function generar(ahora = Date.now()) {
     vecesJorge += 1;
   }
 
+  // Los de hace uno o dos meses, cada uno con su historia. Van al final para que lo
+  // de arriba (los recientes, lo raro) salga igual que antes de que existieran.
+  NOMBRES_ANTES.forEach((nombre, n) => {
+    const [c, altaHace] = nuevoCliente(nombre, () => ANTES_DIAS[0] + Math.floor(r() * (ANTES_DIAS[1] - ANTES_DIAS[0] + 1)));
+    const cada = [2, 3, 5, 7][n % 4];
+    switch (n % 6) {
+      case 0: // sigue a su ritmo
+      case 5:
+        venir(c, { desde: altaHace, cada, altaHace });
+        break;
+      case 1: // venía y lleva unas semanas sin aparecer: se enfría
+        venir(c, { desde: altaHace, hasta: 15 + (n % 14), cada, altaHace });
+        break;
+      case 2: // dos o tres visitas, un mes largo fuera y ha vuelto estos días
+        venir(c, { desde: altaHace, hasta: altaHace - 14, cada: 7, altaHace });
+        venir(c, { desde: 9, cada: 5, altaHace });
+        break;
+      case 3: // vino el día del alta y no volvió
+        venir(c, { desde: altaHace, hasta: altaHace, cada: 1, altaHace });
+        break;
+      default: // la sacó y no la usó; la mitad la estrena estos días
+        if (n % 2) venir(c, { desde: 6, cada: 4, altaHace });
+    }
+    cerrarAlta(c, altaHace);
+  });
+
   // El resumen de visitas, como lo habría ido llevando registrarVisita.
   for (const v of soloVisitas(eventos)) clientes[v.serial].visitas += 1;
   for (const e of eventos) {
@@ -194,7 +246,7 @@ export function generar(ahora = Date.now()) {
   const alta = (dias) => new Date(inicioDelDia(sumarDias(hoy, -dias), zona)).toISOString();
   const negocios = {
     [SLUG]: {
-      slug: SLUG, nombre: tienda.nombre, tipo: tienda.tipo, creado: alta(60),
+      slug: SLUG, nombre: tienda.nombre, tipo: tienda.tipo, creado: alta(ANTES_DIAS[1] + 2),
       config: {
         cartillas: tienda.cartillas,
         plantilla: [

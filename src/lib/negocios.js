@@ -552,6 +552,9 @@ export function componerNegocio(slug, guardado) {
     // Lo que la tienda ha subido para su tarjeta: logos, iconos y fotos de banda
     // (lib/propios.js). Solo lo ve ella, en «Tuyos» del editor.
     propios: normalizarPropios(c.propios),
+    // Desde cuándo valen las sesiones de la tienda (lib/sesionVigente.js): las
+    // firmadas antes se cerraron desde Ajustes. null: nunca se cerraron.
+    sesionesDesde: typeof c.sesionesDesde === "string" ? c.sesionesDesde : null,
   };
 }
 

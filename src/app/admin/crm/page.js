@@ -84,7 +84,7 @@ export default function AdminCRM() {
                     <td style={td}>{s.metricas.visitas30}</td>
                     <td style={td}><Barra pct={s.metricas.tasaInstalacion} color={s.accent} /></td>
                     <td style={td}><Barra pct={s.metricas.tasaVuelta} color={s.accent} /></td>
-                    <td style={{ ...td, color: C.suave }}>{cadenciaTexto(s.metricas.cadenciaMedia)}</td>
+                    <td style={{ ...td, color: C.suave }}>{cadenciaTexto(s.metricas.cadenciaHabitual)}</td>
                     <td style={td}>
                       <a href={`/${s.slug}/crm`} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap" }}>Ver</a>
                     </td>

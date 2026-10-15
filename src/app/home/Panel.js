@@ -18,8 +18,8 @@ import { ejemplo, CAFETERIA } from "./demo";
 
 const CIFRAS = [
   { label: "Clientes", valor: "248", pie: "212 con la tarjeta en el teléfono" },
-  { label: "Activos", valor: "131", pie: "con su frecuencia habitual" },
-  { label: "En riesgo", valor: "22", pie: "más tiempo del habitual sin venir" },
+  { label: "Activos", valor: "131", pie: "104 a su ritmo, 27 nuevos" },
+  { label: "Vuelven en 14 días", valor: "58%", pie: "71 de 122 que la estrenaron" },
 ];
 
 // 30 días de visitas: más el fin de semana, cerrado el domingo, algo de subida.
@@ -50,7 +50,7 @@ export default function Panel() {
   const [cerca] = ubicacionesApple({ ...tienda.negocio, ubicaciones: [{ lat: 39.4699, lng: -0.3763 }] });
 
   return (
-    <div className="panel">
+    <div id="panel-piezas" className="panel">
       <article className="panel-pieza panel-ancha revela">
         <div className="panel-texto">
           <h3>Tus clientes, en números</h3>
@@ -72,7 +72,7 @@ export default function Panel() {
               <i key={i} style={{ height: `${Math.max(4, (v / MAXIMO) * 100)}%` }} className={i === VISITAS.length - 1 ? "hoy" : v ? "" : "cerrado"} />
             ))}
           </div>
-          <p className="panel-linea">Vuelven una segunda vez: <strong>64%</strong></p>
+          <p className="panel-linea">Ritmo habitual: <strong>cada 6 días</strong></p>
         </div>
       </article>
 

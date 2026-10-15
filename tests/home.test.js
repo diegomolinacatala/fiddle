@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan } from "@/app/home/datos";
-import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL } from "@/app/home/demo";
+import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL, CINTAS, DISENOS } from "@/app/home/demo";
 import { GRUPOS } from "@/lib/crm";
 import { ubicacionesApple } from "@/lib/apple/pase";
 import { PALETA } from "@/app/home/paleta";
 import { svgViolin, svgIconoViolin } from "@/lib/violin";
 import { ESTILOS_GENERALES } from "@/lib/negocios";
-import { stripDelPase } from "@/lib/apple/dibujo";
+import { stripDelPase, esColorClaro, colorDelPase } from "@/lib/apple/dibujo";
+import { pedir, entrar, INICIO, paradaMasCercana } from "@/app/home/posicion";
 
 describe("web de fiddle: contacto y precios", () => {
   it("WhatsApp abre el chat con el mensaje escrito, sin «+» ni espacios en el número", () => {
@@ -78,8 +79,33 @@ describe("web de fiddle: tarjetas de ejemplo", () => {
     }
   });
 
+  it("el catálogo: cada diseño una vez, y el móvil y las cintas salen de él", () => {
+    const ids = DISENOS.map((d) => d.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const d of [...CARRUSEL, ...CINTAS.flat()]) expect(DISENOS).toContain(d);
+    // La última del móvil dice cuándo vuelves a abrir: su título empieza por «Y».
+    expect(CARRUSEL.at(-1).titulo).toMatch(/^Y /);
+    // Ninguna cinta repite un diseño, ni dentro ni de una a la otra.
+    const enCintas = CINTAS.flat().map((d) => d.id);
+    expect(new Set(enCintas).size).toBe(enCintas.length);
+    // La primera, justo bajo el móvil, enseña lo que el móvil no.
+    for (const d of CINTAS[0]) expect(CARRUSEL).not.toContain(d);
+  });
+
+  it("los colores de cada diseño se guardarían y se leen en el pase", () => {
+    for (const d of DISENOS) {
+      const { tema } = ejemploDe(d).negocio;
+      for (const k of ["cardBg", "ink", "accent", "detalle"]) if (tema[k] !== undefined) expect(tema[k], `${d.id}.${k}`).toMatch(/^#[0-9a-f]{6}$/);
+      // accent también pinta los botones de la caja, con texto blanco: nunca claro.
+      expect(esColorClaro(tema.accent), `${d.id}: accent claro`).toBe(false);
+      // Las etiquetas («PREMIO») van en el color del pase: no puede ser el del fondo.
+      expect(contraste(colorDelPase(tema), tema.cardBg), `${d.id}: etiquetas`).toBeGreaterThanOrEqual(3);
+      expect(contraste(tema.ink, tema.cardBg), `${d.id}: texto`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("nunca enseñan un kit de marca ni el nombre de un cliente", () => {
-    for (const t of [CAFETERIA, ...CARRUSEL.map((d) => d.tienda)]) {
+    for (const t of [CAFETERIA, ...DISENOS.map((d) => d.tienda)]) {
       expect(ESTILOS_GENERALES).toContain(t.tema.estilo);
       const e = ejemplo(t, 3);
       expect(e.cliente).not.toHaveProperty("nombre");
@@ -121,5 +147,64 @@ describe("el violín de fiddle", () => {
     const svg = svgIconoViolin({ color: "#402c0f", fondo: "#a5a789", radio: 230 });
     expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 1024 1024"/);
     expect(svg).toContain('fill="#a5a789"');
+  });
+});
+
+// Contraste WCAG entre dos #rrggbb.
+function contraste(a, b) {
+  const luz = (hex) => {
+    const [r, g, bl] = hex.slice(1).match(/../g).map((x) => {
+      const c = parseInt(x, 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [claro, oscuro] = [luz(a), luz(b)].sort((x, y) => y - x);
+  return (claro + 0.05) / (oscuro + 0.05);
+}
+
+describe("web de fiddle: el móvil que pasa tarjetas", () => {
+  it("hacia delante entra por la derecha y da la vuelta al final", () => {
+    let p = pedir(INICIO, (a) => a + 1, 1, 3);
+    expect(p).toMatchObject({ actual: 1, anterior: 0, sentido: 1, objetivo: null, movido: true });
+    p = pedir(pedir(p, (a) => a + 1, 1, 3), (a) => a + 1, 1, 3);
+    expect(p.actual).toBe(0);
+  });
+
+  it("al ir hacia atrás, primero se dan la vuelta las que esperan y luego entra", () => {
+    const delante = pedir(INICIO, 2, 1, 4);
+    const vuelta = pedir(delante, (a) => a - 1, -1, 4);
+    // Primer tiempo: la misma de antes, otro sentido y la que se iba, fuera ya.
+    expect(vuelta).toMatchObject({ actual: 2, anterior: null, sentido: -1, objetivo: 1 });
+    // Segundo tiempo (el fotograma siguiente): entra la que esperaba.
+    expect(entrar(vuelta)).toMatchObject({ actual: 1, anterior: 2, sentido: -1, objetivo: null });
+    // Si ya entró, el segundo tiempo no hace nada.
+    expect(entrar(entrar(vuelta))).toEqual(entrar(vuelta));
+  });
+
+  it("pedir la que ya se ve no cambia nada; el primer aviso espera a que se mueva", () => {
+    expect(pedir(INICIO, 0, 1, 5)).toBe(INICIO);
+    expect(pedir(INICIO, 5, 1, 5)).toBe(INICIO);
+    expect(INICIO.movido).toBe(false);
+    expect(pedir(INICIO, -1, -1, 5)).toMatchObject({ actual: 0, objetivo: 4 });
+  });
+});
+
+describe("web de fiddle: las filas que se deslizan en el móvil", () => {
+  const paradas = [0, 300, 600, 900];
+  it("marca la parada más cercana", () => {
+    expect(paradaMasCercana({ paradas, desplazado: 0, maximo: 800 })).toBe(0);
+    expect(paradaMasCercana({ paradas, desplazado: 140, maximo: 800 })).toBe(0);
+    expect(paradaMasCercana({ paradas, desplazado: 170, maximo: 800 })).toBe(1);
+    expect(paradaMasCercana({ paradas, desplazado: 610, maximo: 800 })).toBe(2);
+  });
+
+  it("al final del todo, la última aunque no llegue a alinearse", () => {
+    expect(paradaMasCercana({ paradas, desplazado: 798, maximo: 800 })).toBe(3);
+  });
+
+  it("si no hay nada que deslizar, la primera", () => {
+    expect(paradaMasCercana({ paradas, desplazado: 0, maximo: 0 })).toBe(0);
+    expect(paradaMasCercana({ paradas: [], desplazado: 0, maximo: 100 })).toBe(0);
   });
 });

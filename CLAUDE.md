@@ -367,6 +367,24 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
   rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
   son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **«Activo» es UNO: `esActivo`** (a su ritmo o recién llegado). Lo usan la cifra de
+  Activos, las cohortes y la cartilla; antes la cifra dejaba fuera a los nuevos y la
+  tabla no, y en la misma pantalla salían 10 y 27. Ritmo y visitas por cliente van con
+  la MEDIANA: un habitual diario arrastra la media.
+- **Las flechas no mienten con poco** (`cambio`): sin un mes anterior ENTERO (dos meses
+  de tienda y el historial cubriéndolos) no hay flecha; con menos de `tendenciaMin`
+  detrás, la diferencia en unidades («+6»), nunca «+100 %» de 2 a 4.
+- **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale
+  del anterior), «Vuelven en 14 días» (`vueltaPronto`, solo quien se dio de alta dentro
+  del historial que llega), los premios por dar (`porDar`: guardados y cartillas llenas,
+  de las dos) y dónde se queda la cartilla (`repartoCartillas`).
+- **El pasado se reconstruye, no se guarda**: el puente de activos (`puenteActivos`: hace
+  30 días + nuevos + volvieron − se enfriaron = Activos de hoy) pasa a cada cliente por
+  `perfilDe` con su fila de entonces (visitas de hoy menos las posteriores, la última de
+  antes). Pide historial hasta 30 + `dormidoDias` atrás; si el tope de eventos no llega,
+  no sale. Las cohortes miden a todos a la MISMA edad (semana 1, 2, 3… desde el alta de
+  cada uno; una celda sale cuando la ha vivido toda la fila), nunca «cuántos siguen hoy»
+  por mes de alta: el mes viejo salía peor solo por ser viejo.
 - **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
   cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
   (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
@@ -476,15 +494,24 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 
 - **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan al crear la tienda
   en `/admin`, se enseñan UNA vez y se cambian desde la ficha de la tienda en `/admin`
-  o, la de la caja, desde el manager. La única vez que las elige alguien es la
-  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja, cada una
-  escrita dos veces. Mínimo 10 caracteres y sin reglas de mayúsculas o números a propósito:
-  se aconseja una frase («un café por favor»), que es más larga y más fácil de recordar.
+  o, la de la caja, desde el manager. Las elige una persona en la **invitación**
+  (`lib/invitaciones.js`: el dueño pone la suya y la de la caja, cada una escrita dos veces)
+  y en **Ajustes → Tu acceso → «Cambiar mi contraseña»** (la actual y la nueva dos veces,
+  `POST /api/accesos/manager`, con el límite de intentos del login). Mínimo 10 caracteres
+  y sin reglas de mayúsculas o números a propósito: se aconseja una frase («un café por
+  favor»), que es más larga y más fácil de recordar.
 - **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
   detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
-  desde el correo del admin: no hay proveedor de correo.
-- `hashClave` normaliza igual que `comprobarClave`. Si se toca una, la otra también: una
-  elegida con forma de generada ("cafe12345678") dejaría de entrar.
+  desde el correo del admin: no hay proveedor de correo. Tiene **alcance**
+  (`invitaciones.alcance`): `alta` fija las dos; `manager` solo la del dueño, para cuando
+  la pierde, y NO toca la caja (el admin lo crea desde Accesos). Es el mismo enlace y la
+  misma pantalla: cuando la recuperación la haga Supabase Auth por correo (Cuentas), se
+  convierte en eso, no se duplica.
+- **El hash dice si la contraseña es generada o elegida** (`lib/claves.js`): `scrypt$…`
+  (generada, o de antes de distinguirlas) se compara sin mayúsculas, espacios ni guiones,
+  que se dicta en el mostrador; `scrypt-elegida$…` se compara tal cual. `hashClave(clave,
+  tipo)` prepara igual que `comprobarClave`: si se toca una, la otra también. Nunca
+  guardar una elegida como generada: «micafeteria1» valdría también en mayúsculas.
 - Si un usuario tiene contraseña en la base, **solo vale esa**. Sin fila, vale la
   variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
   también se cae a la variable: una caja sin poder entrar es peor.
@@ -493,10 +520,18 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   ni se "arreglan" desde el código. Una variable cambiada en Vercel **no vale hasta
   el siguiente despliegue** (Deployments → Redeploy).
 - **Cambiar una contraseña saca a quien ya estaba dentro** (la caja perdida, el empleado
-  que se va): `lib/sesionVigente.js` rechaza la sesión firmada antes de
-  `accesos.actualizado`, y también la de una tienda archivada o borrada. Lo miran
-  `exigirNegocio` y las páginas del personal (`sesionDeCookie`), no el middleware (Edge,
-  solo la firma). Página o API nueva del personal = por ahí, nunca `verificarSesion` a pelo.
+  que se va): `lib/sesionVigente.js` rechaza la sesión emitida (`iat` del token) antes de
+  `accesos.actualizado` o de `negocio.sesionesDesde` (Ajustes → «Cerrar todas las
+  sesiones», `DELETE /api/sesiones`: manager y caja fuera sin cambiar contraseñas), y
+  también la de una tienda archivada o borrada. Lo miran `exigirNegocio` y las páginas del
+  personal (`sesionDeCookie`), no el middleware (Edge, solo la firma). Página o API nueva
+  del personal = por ahí, nunca `verificarSesion` a pelo. Quien cambia su contraseña o
+  cierra las sesiones recibe su cookie firmada de nuevo en esa misma respuesta.
+- **La sesión del manager dura 30 días y se desliza**: el middleware la vuelve a firmar
+  cuando le queda menos de la mitad (`renovarSesion`), conservando el `iat`. Por eso la
+  vigencia se compara con `iat` y nunca con la caducidad: una renovada sigue cayendo si la
+  contraseña cambió después de entrar. El token es `negocio.rol.usuario.iat.exp.firma`;
+  el de antes (4 partes) se acepta hasta el 15-11-2026 (`deCuatroPartes` en `auth.js`).
 - **Lo de `/api/admin/*` comprueba el admin también dentro** (`exigirAdmin`), aunque el
   middleware ya lo haga: si una ruta se le escapa, no queda abierta.
 - **Una tienda no puede llamarse como un usuario** (`slugDeTiendaLibre`): `pan-caja` haría
@@ -510,6 +545,22 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
+- **`/login` rellena el usuario según de dónde se viene** (`usuarioSugerido` en
+  `lib/acceso.js`): la caja si `next` era `/<slug>/caja` o `/w/…`, el dueño si no; y dos
+  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Hasta que
+  haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
+  `app/home/datos.js`). Lo que se aprendió con La Delicantería (15-10-2026) está en
+  [docs/AUDITORIA-ACCESOS.md](docs/AUDITORIA-ACCESOS.md).
+- **La página `/invitacion` NO quita el token de la barra**: lo guarda en la pestaña
+  (`sessionStorage`), lo vuelve a leer si cambia el hash y, sin token, deja pegar el código
+  del correo (`lib/tokenInvitacion.js`, sin imports del servidor; el correo lleva el token
+  también en texto). Cada 410 de `/api/invitacion` lleva `codigo` y deja un `console.warn`
+  sin el token. `aceptarInvitacion` gasta el enlace PRIMERO (es el cerrojo: con dos pestañas
+  solo una escribe) y, si guardar las contraseñas falla a medias, lo reabre
+  (`reabrirInvitacion`) para que el dueño repita. Crear y aceptar quedan en `auditoria`.
+  `/login` no importa `lib/auth.js` (lleva los admins): lo suyo está en `lib/acceso.js`. La ficha del admin enseña si hay un enlace pendiente
+  (`GET /api/admin/invitacion`) antes de ofrecer otro, y en la web de dev avisa de que no va
+  a servir (`enlacesFiables`).
 
 ## Cuentas: lo decidido (01-10-2026, sin empezar)
 
@@ -561,9 +612,19 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   los números» están copiadas del Resumen: si cambian allí, se cambian aquí.
 - **Las tarjetas de ejemplo son de verdad** (`demo.js`): tiendas inventadas con un estilo
   de partida, pintadas con `CaraDelPase`, y el aviso sale de `camposDelPase`. Nunca un
-  kit de marca ni una tienda real. El móvil de la portada va pasando una por cosa que
-  sabe hacer (`CARRUSEL`; quién se ve lo decide `Carrusel.js`). Una novedad del pase que
-  se quiera enseñar = una entrada ahí. «● Abierto hasta…» lo escribe `estadoParaPase`.
+  kit de marca ni una tienda real. Salen de UN catálogo (`DISENOS`, 14-10-2026): cada una
+  con su paleta (NO la de fiddle: se enseña la variedad) y todas «Tu cafetería», nunca un
+  nombre inventado que parezca un cliente. El móvil de la portada pasa una cada 2,2 s
+  (`CARRUSEL`; quién se ve lo decide `Carrusel.js`) y las dos cintas de tarjetitas que
+  separan secciones (`CINTAS`, `Cinta.js`) no repiten diseño entre sí. Una novedad del
+  pase que se quiera enseñar = una entrada en `DISENOS`. «● Abierto hasta…» lo escribe
+  `estadoParaPase`. Un test fija el contraste de cada una.
+- **En el móvil es otra página** (`estiloMovil.js`, `CONSULTA_MOVIL`: hasta 759 px y el
+  móvil en horizontal): menú desplegable (`Menu.js`), pasos, panel y precios en filas que
+  se deslizan con pestañas o puntos (`Indicador.js`) y WhatsApp siempre abajo
+  (`BarraMovil.js`). Lo que se diga en /home se mira a 320, 375 y 430 px y en horizontal.
+- **Los precios entran por tiempo, no con el scroll** (`Aparece.js`): con la entrada de
+  `.revela` (opacidad atada al scroll) la tarjeta clara se quedaba sucia a medio bajar.
 - **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
   mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` («Verde y
   espresso» desde el 13-10-2026: verde botella para la marca y camel, avena, visón y espresso,

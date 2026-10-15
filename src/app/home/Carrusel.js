@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { INICIO, pedir, entrar } from "./posicion";
 
 // ============================================================================
 // EL MÓVIL QUE VA PASANDO TARJETAS (portada de /home)
@@ -9,22 +10,24 @@ import { useEffect, useRef, useState } from "react";
 // las funciones del pase): aquí solo se decide cuál se ve.
 // - Pasa sola cada PASO ms, siempre hacia delante (la que sale se va por la
 //   izquierda y la siguiente entra por la derecha, también al volver a la 1).
+//   Deprisa a propósito: con 3,6 s parecía una foto y nadie veía que cambiaba.
 // - Se para con el ratón encima, con el foco de teclado dentro, fuera de
 //   pantalla, con la pestaña oculta y con el botón de pausa (más de 5 s
 //   moviéndose sin poder pararlo no vale, WCAG 2.2.2). Darle a «seguir» manda
 //   sobre el ratón y el foco: si no, el botón diría que va y seguiría quieto.
 //   Un toque o un clic en un punto no la para (no es foco de teclado).
 //   Con «reducir movimiento», ni pasa sola ni anima.
-// - Se cambia con los puntos, con las flechas del teclado o deslizando el dedo.
+// - Se cambia con los puntos, con las flechas de los lados (muy suaves: el móvil
+//   manda), con las flechas del teclado o deslizando el dedo.
 // Sin JavaScript se ve la primera, que es una tarjeta completa.
 // ============================================================================
 
-const PASO = 3600;
+const PASO = 2200;
 const DESLIZ = 40; // px de dedo para que cuente como deslizar
 
 export default function Carrusel({ titulos, tarjetas, avisos, children }) {
   const n = tarjetas.length;
-  const [pos, setPos] = useState({ actual: 0, anterior: null });
+  const [pos, setPos] = useState(INICIO);
   const [pausa, setPausa] = useState(false);
   const [raton, setRaton] = useState(false);
   const [foco, setFoco] = useState(false);
@@ -33,11 +36,23 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
   const raiz = useRef(null);
   const dedo = useRef(null);
 
-  const ir = (i) =>
-    setPos((p) => {
-      const j = ((i % n) + n) % n;
-      return j === p.actual ? p : { actual: j, anterior: p.actual };
+  // Todo se calcula sobre el estado de ese momento (setPos con función): el
+  // temporizador y un toque pueden llegar en el mismo instante.
+  const cambiar = (destino, sentido) => setPos((p) => pedir(p, destino, sentido, n));
+  const siguiente = () => cambiar((a) => a + 1, 1);
+  const anterior = () => cambiar((a) => a - 1, -1);
+
+  useEffect(() => {
+    if (pos.objetivo === null) return undefined;
+    let segundo;
+    const primero = requestAnimationFrame(() => {
+      segundo = requestAnimationFrame(() => setPos(entrar));
     });
+    return () => {
+      cancelAnimationFrame(primero);
+      cancelAnimationFrame(segundo);
+    };
+  }, [pos.objetivo]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -66,7 +81,7 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
   // Un temporizador por tarjeta: tocar un punto vuelve a contar desde cero.
   useEffect(() => {
     if (!corre) return undefined;
-    const t = setTimeout(() => ir(pos.actual + 1), PASO);
+    const t = setTimeout(siguiente, PASO);
     return () => clearTimeout(t);
   }, [corre, pos.actual]);
 
@@ -79,8 +94,8 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
   };
 
   const teclas = (e) => {
-    if (e.key === "ArrowRight") ir(pos.actual + 1);
-    else if (e.key === "ArrowLeft") ir(pos.actual - 1);
+    if (e.key === "ArrowRight") siguiente();
+    else if (e.key === "ArrowLeft") anterior();
   };
 
   return (
@@ -107,14 +122,14 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
           if (dedo.current == null) return;
           const dx = e.clientX - dedo.current;
           dedo.current = null;
-          if (Math.abs(dx) > DESLIZ) ir(pos.actual + (dx < 0 ? 1 : -1));
+          if (Math.abs(dx) > DESLIZ) (dx < 0 ? siguiente : anterior)();
         }}
         onPointerCancel={() => { dedo.current = null; }}
       >
         <div className="movil-isla" aria-hidden="true" />
         <div className="movil-pantalla">
           {children}
-          <div className="movil-tarjetas">
+          <div className={`movil-tarjetas${pos.sentido < 0 ? " atras" : ""}`}>
             {tarjetas.map((t, i) => (
               <div
                 key={titulos[i]}
@@ -131,8 +146,17 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
         </div>
       </div>
 
+      {/* Fuera del cuerpo: el cuerpo captura el puntero para deslizar y se
+          quedaría el clic. */}
+      <button type="button" className="movil-flecha movil-flecha-antes" aria-label="Tarjeta anterior" onClick={anterior}>
+        <Chevron />
+      </button>
+      <button type="button" className="movil-flecha movil-flecha-despues" aria-label="Tarjeta siguiente" onClick={siguiente}>
+        <Chevron />
+      </button>
+
       {/* key: cada tarjeta nueva vuelve a montar su aviso, y llega como uno de verdad. */}
-      <div key={pos.actual} className={`movil-aviso${pos.anterior === null ? " primera" : ""}`}>{avisos[pos.actual]}</div>
+      <div key={pos.actual} className={`movil-aviso${pos.movido ? "" : " primera"}`}>{avisos[pos.actual]}</div>
 
       <figcaption className="movil-pie">
         <span className="movil-titulo" aria-live={corre ? "off" : "polite"}>{titulos[pos.actual]}</span>
@@ -144,7 +168,7 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
               className="movil-punto"
               aria-label={`Ver tarjeta ${i + 1}: ${t}`}
               aria-current={i === pos.actual ? "true" : undefined}
-              onClick={() => ir(i)}
+              onClick={() => cambiar(i, i < pos.actual ? -1 : 1)}
             >
               <i />
             </button>
@@ -166,6 +190,12 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
     </figure>
   );
 }
+
+const Chevron = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 5l7 7-7 7" />
+  </svg>
+);
 
 const Parar = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">

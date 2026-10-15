@@ -4,6 +4,9 @@ import { perfilDe, metricas } from "@/lib/crm";
 import { errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
+
+// Dos meses: lo justo para comparar estos 30 días con los anteriores.
+const VENTANA = { dias: 60, limite: 5000 };
 export const dynamic = "force-dynamic";
 
 // Las mismas cuentas del CRM, pero de TODAS las tiendas a la vez. Para poder
@@ -20,7 +23,7 @@ export async function GET(request) {
     const tiendas = await Promise.all(negocios.map(async (n) => {
       const [clientes, eventos, registrados] = await Promise.all([
         listClientes(n.slug),
-        listEventosDeNegocio(n.slug, { dias: 60 }),
+        listEventosDeNegocio(n.slug, VENTANA),
         serialesRegistrados(n.slug),
       ]);
       const perfiles = clientes.map((c) =>
@@ -32,7 +35,10 @@ export async function GET(request) {
         tema: n.tema,
         accent: n.tema.accent,
         tipo: n.tipo,
-        metricas: metricas(perfiles, eventos, clientes),
+        // Con el tope lleno, el mes anterior no está entero: sin flecha (ver metricas).
+        metricas: metricas(perfiles, eventos, clientes, Date.now(), {
+          historialDesde: eventos.length >= VENTANA.limite ? Date.parse(eventos.at(-1).ts) : Date.now() - VENTANA.dias * 864e5,
+        }),
       };
     }));
 
