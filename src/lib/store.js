@@ -181,6 +181,8 @@ function fusionarConfig(actual, patch) {
     caja: patch.caja ?? actual.caja,
     // Quién atiende la caja (lib/plantilla.js): la lista entera cada vez.
     plantilla: patch.plantilla ?? actual.plantilla,
+    // Plantilla encendida para esta tienda: solo lo cambia el admin.
+    plantillaActiva: patch.plantillaActiva ?? actual.plantillaActiva,
     // Teléfono, web e Instagram del reverso (lib/contacto.js). null lo quita.
     contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).

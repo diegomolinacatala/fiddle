@@ -2,6 +2,7 @@ import PwaRegister from "@/app/pwa-register";
 import { negocioDePeticion, sesionDePeticion } from "./negocioDePeticion";
 import { puedeAcceder } from "@/lib/auth";
 import MarcoGestion from "./MarcoGestion";
+import { conPlantilla } from "@/lib/plantilla";
 
 const leerNegocio = (slug) => negocioDePeticion(slug).catch(() => null);
 import { rutaIcono } from "@/lib/rutasImagen";
@@ -32,7 +33,7 @@ export default async function NegocioLayout({ children, params }) {
   const [n, sesion] = await Promise.all([leerNegocio(slug), sesionDePeticion().catch(() => null)]);
   // La cabecera del dueño, solo a quien puede entrar: al resto la página le manda al login.
   const cabecera = n && puedeAcceder(sesion, slug, "manager")
-    ? { nombre: n.nombre, tema: n.tema, avisosAvanzados: n.avisosAvanzados === true }
+    ? { nombre: n.nombre, tema: n.tema, avisosAvanzados: n.avisosAvanzados === true, plantillaActiva: conPlantilla(n) }
     : null;
   return (
     <>

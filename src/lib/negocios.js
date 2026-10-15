@@ -535,6 +535,10 @@ export function componerNegocio(slug, guardado) {
     // mete gente en una tienda (la plantilla inventada de dev va en la fila de
     // lib/datosDePrueba.js).
     plantilla: normalizarPlantilla(c.plantilla),
+    // Apagada salvo que el admin la encienda (lib/plantilla.js, `conPlantilla`):
+    // pedir quién atiende y un PIN es para tiendas donde cada uno usa su móvil.
+    // Apagada no se borra nada: la lista y sus PIN vuelven tal cual al encenderla.
+    plantillaActiva: c.plantillaActiva === true,
     // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
     contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,

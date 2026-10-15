@@ -44,6 +44,8 @@ describe("datos de prueba de dev", () => {
     const { negocios, eventos } = generar(ahora);
     const { plantilla } = negocios.delicanteria.config;
     expect(plantilla.map((e) => e.nombre)).toEqual(["Sebas", "Andreina", "Marta", "Jorge", "Lucía"]);
+    // De partida viene apagada; en dev, encendida para poder verla.
+    expect(negocios.delicanteria.config.plantillaActiva).toBe(true);
     expect(negocios.delicanteria.config.cartillas).toEqual(SEMILLAS.delicanteria.cartillas);
     const caja = eventos.filter((e) => e.actor === "caja");
     const hace15 = new Date(ahora - 15 * 864e5).toISOString();

@@ -11,7 +11,7 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 |-------|------|-------|
 | `slug` | text PK | `delicanteria` (su semilla vive en `negocios.js`) |
 | `nombre`, `tipo` | text | copia informativa del preset |
-| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, archivadoEn, cartillas, cartillasAparcadas, horario, automatizaciones, pausaAvisos, limiteAvisosDia, avisosActivos, avisosAvanzados, enviosProgramados, estadoPase, caja, contacto, legal, propios, pedirNombre, plantilla }` |
+| `config` | jsonb | `{ meta, premio, acciones, promo, ubicaciones, tema, brief, notas, archivado, archivadoEn, cartillas, cartillasAparcadas, horario, automatizaciones, pausaAvisos, limiteAvisosDia, avisosActivos, avisosAvanzados, enviosProgramados, estadoPase, caja, contacto, legal, propios, pedirNombre, plantilla, plantillaActiva }` |
 
 `tema` (colores, emoji y las piezas del dibujo: `marca` · `texto` · `forma` ·
 `banda` · `modo`, ver [`dibujo.js`](../src/lib/apple/dibujo.js)), `brief` (texto libre para Claude), `notas`
@@ -19,8 +19,9 @@ Esquema: [`supabase/schema.sql`](../supabase/schema.sql) (idempotente, con RLS).
 `archivado` los edita **/admin**. `horario` (`{ zona, semana[7], cerrados[] }`),
 `automatizaciones` (las reglas de los avisos automáticos) y `pausaAvisos` los edita el
 manager; sin ellos en la fila, valen los de la semilla o los de partida (ver
-[AVISOS.md](AVISOS.md)). `avisosAvanzados` (automáticos y programados) y `legal` (los
-datos de la tienda para su `/privacidad`) solo los cambia el admin; `caja` es cómo se le
+[AVISOS.md](AVISOS.md)). `avisosAvanzados` (automáticos y programados), `plantillaActiva`
+(si la caja pregunta quién atiende y sale la pestaña Plantilla; sin la clave, apagada) y `legal`
+(los datos de la tienda para su `/privacidad`) solo los cambia el admin; `caja` es cómo se le
 enseña la caja ([`caja.js`](../src/lib/caja.js)) y `propios` lo que la tienda subió para
 su tarjeta ([`propios.js`](../src/lib/propios.js)); `plantilla` es quién atiende la caja
 (`[{ id, nombre, alta, baja, pin }]`, [`plantilla.js`](../src/lib/plantilla.js)): la lleva el

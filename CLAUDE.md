@@ -47,7 +47,7 @@ comprobar siempre que de verdad desplegó.
   pantalla "por si acaso". El dueño tiene cuatro pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
   a la lista y baja lo que se ve), **Avisos** (enviar a todos o a un grupo, ahora o a una hora)
-  y **Plantilla** (quién atiende la caja y qué hace cada uno). Y aparte,
+  y **Plantilla** (quién atiende la caja y qué hace cada uno; solo si el admin la enciende). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -200,6 +200,17 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
 Ver [`src/lib/plantilla.js`](src/lib/plantilla.js). La cuenta de la caja sigue siendo UNA por
 tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 
+- **Apagada salvo que el admin la encienda** (`plantillaActiva`, interruptor en `/admin/<slug>`,
+  desde el 15-10-2026): es para tiendas donde cada empleado sella desde su móvil; con un móvil
+  fijo en el mostrador (La Delicantería) solo estorba. Apagada es apagada del todo: sin pestaña
+  (su ruta manda a Tienda), `/api/plantilla` da 403 y la caja, la ficha `/w/…` y `/api/accion`
+  trabajan como sin gente dada de alta: ni preguntan quién atiende ni piden PIN, y el sello
+  sale sin nombre aunque el móvil traiga la cookie de antes. Todo lo de quién atiende va con
+  `plantillaDeCaja(negocio)`, nunca con `negocio.plantilla` a pelo; la lista entera solo para
+  poner NOMBRE a lo que ya pasó (Actividad, la hoja). Apagarla no borra nada: la lista, los PIN
+  y el `empleado` de cada movimiento vuelven tal cual al encenderla. El manager no puede
+  encenderla (`patchNegocio` no la deja pasar). En la web de dev viene encendida (la fila de
+  `datosDePrueba.js`), para enseñar la plantilla inventada.
 - **La lista vive en `config.plantilla`** (`{id, nombre, alta, baja}`), la lleva el manager en
   la pestaña **Plantilla** → Equipo. Solo nombre o apodo: ni PIN ni turnos. **Dar de baja no
   borra nada** (sus movimientos siguen con su nombre); el id no cambia nunca. Tope de 30 de
@@ -563,7 +574,8 @@ cueste lo que cueste (es lo que hacen Square, Loopy o Boomerangme):
   compartida; el manager ve sus cajas y desconecta la que quiera.
 - **PIN personal por empleado** (4-6 cifras) en la caja. **Ya está** (11-10-2026, pestaña
   Plantilla, `lib/quien.js`): se pide al identificarse en cada móvil y cada dos horas sin
-  usar la caja. Queda por decidir si alguna tienda lo quiere solo para dar premios.
+  usar la caja. Desde el 15-10-2026 la tienda lo tiene solo si el admin le enciende la
+  plantilla (`plantillaActiva`). Queda por decidir si alguna tienda lo quiere solo para dar premios.
 - **Sesiones guardadas en el servidor**: cambiar la contraseña o quitar a alguien cierra
   sus sesiones (hoy no pasa).
 - **Registro de actividad**: quién dio cada sello y cada premio, desde qué caja, y quién
@@ -585,7 +597,7 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados
-  en `/admin/<slug>`; lo demás lo ve cualquier tienda).
+  y la plantilla en `/admin/<slug>`; lo demás lo ve cualquier tienda).
 - **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
   con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
   Al lado, «Copiar».

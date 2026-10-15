@@ -31,6 +31,13 @@ export const dynamic = "force-dynamic";
 //                               vaciar (borrar todas sus tarjetas; la tienda sigue)
 // ============================================================================
 
+// Lo que el admin enciende o apaga para una tienda (app/admin/InterruptorTienda.js).
+// Ninguno sale en el pase: se guardan solos, sin mover ningún teléfono, y
+// apagarlos no borra nada.
+//   avisosAvanzados  automáticos y programados (lib/motorAvisos.js): las reglas se quedan
+//   plantillaActiva  quién atiende la caja y su PIN (lib/plantilla.js): la lista se queda
+const INTERRUPTORES = ["avisosAvanzados", "plantillaActiva"];
+
 // Cuántos clientes tiene cada negocio: el admin necesita saberlo antes de borrar.
 async function conClientes(negocios) {
   return Promise.all(
@@ -104,11 +111,11 @@ export async function PUT(request) {
       return NextResponse.json(guardado);
     }
 
-    // Automáticos y programados encendidos o no (lib/motorAvisos.js): tampoco salen
-    // en el pase. Apagarlos no borra las reglas.
-    if (typeof body.avisosAvanzados === "boolean" && Object.keys(body).every((k) => k === "slug" || k === "avisosAvanzados")) {
-      const guardado = await saveNegocio(slug, { avisosAvanzados: body.avisosAvanzados });
-      await auditar(sesion, slug, "config", `avisosAvanzados=${body.avisosAvanzados}`);
+    // Un interruptor del admin, solo: tampoco sale en el pase.
+    const interruptor = INTERRUPTORES.find((k) => typeof body[k] === "boolean");
+    if (interruptor && Object.keys(body).every((k) => k === "slug" || k === interruptor)) {
+      const guardado = await saveNegocio(slug, { [interruptor]: body[interruptor] });
+      await auditar(sesion, slug, "config", `${interruptor}=${body[interruptor]}`);
       return NextResponse.json(guardado);
     }
 

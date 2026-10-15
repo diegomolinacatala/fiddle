@@ -10,7 +10,8 @@ import { titulo, solapa } from "@/app/ui";
 //   Tienda     cómo es la tarjeta, qué hace la caja, cuándo abre, el QR
 //   Clientes   quién viene (y la exportación, junto a la lista que exporta)
 //   Avisos     qué se les dice: a mano (a todos o a un grupo) y automático
-//   Plantilla  quién atiende la caja y qué hace cada uno
+//   Plantilla  quién atiende la caja y qué hace cada uno (solo si el admin la
+//              encendió para la tienda: `plantillaActiva`, lib/plantilla.js)
 // Y Ajustes, aparte y al final: lo de la cuenta (contraseñas), que se toca casi nunca.
 const SECCIONES = [
   ["manager", "Tienda", "puerta"],
@@ -26,6 +27,7 @@ const AJUSTES = ["ajustes", "Ajustes", "ajustes"];
 // `ayuda`: la pantalla tiene recorrido de bienvenida y sale el (?) para repetirlo.
 export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }) {
   const accent = negocio.tema.accent;
+  const secciones = negocio.plantillaActiva ? SECCIONES : SECCIONES.filter(([ruta]) => ruta !== "plantilla");
   return (
     // Sin `minmax(0, 1fr)` la columna crece con el nombre entero de la tienda (no
     // llega a cortarse con «…») y a 320 px toda la página se salía 16 px.
@@ -42,7 +44,7 @@ export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }
         </div>
       </div>
       <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {[...SECCIONES, AJUSTES].map(([ruta, texto, icono]) => (
+        {[...secciones, AJUSTES].map(([ruta, texto, icono]) => (
           <Link key={ruta} href={`/${slug}/${ruta}`} aria-current={ruta === activa ? "page" : undefined}
             style={{ ...solapa(ruta === activa, accent), ...(ruta === "ajustes" ? { marginLeft: "auto" } : {}) }}
             data-recorrido={`pestana-${ruta === "crm" ? "clientes" : ruta}`}>

@@ -249,6 +249,10 @@ export function generar(ahora = Date.now()) {
       slug: SLUG, nombre: tienda.nombre, tipo: tienda.tipo, creado: alta(ANTES_DIAS[1] + 2),
       config: {
         cartillas: tienda.cartillas,
+        // Encendida aquí, aunque de partida venga apagada: la plantilla inventada es
+        // para ver la pestaña. Apagarla desde el admin de dev no dura (cada función
+        // de Vercel tiene su /tmp): para verla apagada, en local.
+        plantillaActiva: true,
         plantilla: [
           { id: QUIEN.sebas, nombre: "Sebas", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
           { id: QUIEN.andreina, nombre: "Andreina", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },

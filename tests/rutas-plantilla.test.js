@@ -7,7 +7,9 @@ import { NextRequest } from "next/server";
 // ============================================================================
 // LA PLANTILLA POR LAS RUTAS: el manager lleva la lista, cada empleado se
 // identifica con su PIN en su móvil (cookie firmada, lib/quien.js) y cada
-// sello sale con su nombre (lib/plantilla.js).
+// sello sale con su nombre (lib/plantilla.js). Todo eso, solo si el admin la
+// ha encendido para la tienda (`plantillaActiva`); apagada, la caja sella sin
+// preguntar y no se borra nada.
 // ============================================================================
 
 vi.mock("@/lib/wallet", async (original) => ({
@@ -24,6 +26,9 @@ const quien = await import("@/app/api/plantilla/quien/route.js");
 const accion = await import("@/app/api/accion/route.js");
 const salir = await import("@/app/api/logout/route.js");
 const ficha = await import("@/app/api/cliente/[serial]/route.js");
+const adminNegocios = await import("@/app/api/admin/negocios/route.js");
+const negocioRuta = await import("@/app/api/negocio/route.js");
+const { datosCrm } = await import("@/lib/crmDatos");
 
 let dir;
 let cliente;
@@ -33,6 +38,8 @@ beforeEach(async () => {
   vi.stubEnv("SUPABASE_URL", "");
   vi.stubEnv("APPLE_PASS_TYPE_ID", "");
   cliente = await store.crearCliente({ serial: "8a1f6c2e-0000-4000-8000-000000000002", negocio: "nube", authToken: "t".repeat(32) });
+  // Viene apagada de partida: estas pruebas son de una tienda que la tiene.
+  await store.saveNegocio("nube", { plantillaActiva: true });
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -238,5 +245,76 @@ describe("quién atiende, desde la caja", () => {
     expect(r.data.eventos[0]).toMatchObject({ tipo: "sellar", actor: "caja" });
     expect(r.data.eventos[0]).not.toHaveProperty("empleado");
     expect(r.data.negocio).not.toHaveProperty("plantilla");
+  });
+});
+
+describe("encendida o apagada, por tienda (la decide el admin)", () => {
+  const admin = ["plataforma", "admin"];
+  const interruptor = async (plantillaActiva, como = admin) =>
+    leer(await adminNegocios.PUT(await pedir("/api/admin/negocios", { metodo: "PUT", cuerpo: { slug: "nube", plantillaActiva }, como })));
+
+  it("viene apagada en las tiendas que nunca la tocaron, y la tienda no se la enciende sola", async () => {
+    expect((await store.getNegocio("delicanteria")).plantillaActiva).toBe(false);
+    expect((await store.getNegocio("fade")).plantillaActiva).toBe(false);
+    const r = await negocioRuta.PUT(await pedir("/api/negocio?b=fade", { metodo: "PUT", cuerpo: { plantillaActiva: true }, como: ["fade", "manager"] }));
+    expect(r.status).toBeLessThan(500);
+    expect((await store.getNegocio("fade")).plantillaActiva).toBe(false);
+  });
+
+  it("el admin la apaga y la enciende; queda apuntado; el manager no puede", async () => {
+    let r = await interruptor(false);
+    expect(r.status).toBe(200);
+    expect(r.data.plantillaActiva).toBe(false);
+    expect((await store.getNegocio("nube")).plantillaActiva).toBe(false);
+    expect((await store.listAuditoria("nube")).some((a) => a.detalle === "plantillaActiva=false")).toBe(true);
+
+    r = await interruptor(true, manager);
+    expect(r.status).toBe(403);
+    expect((await store.getNegocio("nube")).plantillaActiva).toBe(false);
+
+    r = await interruptor(true);
+    expect(r.data.plantillaActiva).toBe(true);
+  });
+
+  it("apagada: la caja ni pregunta ni pide PIN, sella sin nombre, y lo de antes sigue con el suyo", async () => {
+    const hash = await hashClave("2468");
+    await store.saveNegocio("nube", { plantilla: [{ id: "sebas001", nombre: "Sebas", alta: null, baja: null, pin: hash, largoPin: 4 }] });
+    const dentro = await identificar({ id: "sebas001", pin: "2468" });
+    const cookies = { quien: dentro.cookies.find((c) => c.name === "quien").value, quien_ultimo: "nube.sebas001" };
+    expect((await leer(await sellar({ como: caja, cookies }))).status).toBe(200);
+
+    await interruptor(false);
+
+    // Ni elegir, ni la lista, ni quién era el último: la caja sale directa al escáner.
+    let r = await estado({ cookies });
+    expect(r.data).toEqual({ elegir: false, empleado: null, ultimo: null, plantilla: [], hoy: null });
+    expect(r.cookies).toEqual([]);
+
+    // Sin cookie no hay 428, y con la de antes el sello tampoco lleva nombre (ni la renueva).
+    let a = await leer(await sellar({ como: caja }));
+    expect(a.status).toBe(200);
+    a = await leer(await sellar({ como: caja, cookies }));
+    expect(a.status).toBe(200);
+    expect(a.cookies.find((c) => c.name === "quien")).toBeUndefined();
+    const deQuien = async () => (await store.listEventos(cliente.serial)).map((e) => e.empleado ?? "sin nombre").sort();
+    expect(await deQuien()).toEqual(["sebas001", "sin nombre", "sin nombre"]);
+
+    // Identificarse tampoco: la caja no tiene a quién elegir.
+    expect((await identificar({ id: "sebas001", pin: "2468" })).status).toBe(403);
+
+    // La lista no se ve ni se toca desde el manager, pero sigue entera.
+    for (const [m, metodo, cuerpo] of [[lista.GET, "GET"], [lista.POST, "POST", { nombre: "Ana" }], [lista.PUT, "PUT", { id: "sebas001", activo: false }]]) {
+      expect((await m(await pedir("/api/plantilla?b=nube", { metodo, cuerpo, como: manager }))).status, metodo).toBe(403);
+    }
+    expect((await store.getNegocio("nube")).plantilla).toEqual([expect.objectContaining({ id: "sebas001", pin: hash, baja: null })]);
+    // Y Actividad sigue poniendo nombre a lo que ya pasó.
+    expect((await datosCrm("nube")).negocio.plantilla).toEqual([expect.objectContaining({ id: "sebas001", nombre: "Sebas" })]);
+
+    // Al volver a encenderla, todo como estaba: la misma cookie vale y el sello lleva su nombre.
+    await interruptor(true);
+    expect((await estado({ cookies })).data).toMatchObject({ elegir: false, empleado: { id: "sebas001" } });
+    expect((await leer(await sellar({ como: caja, cookies }))).status).toBe(200);
+    expect(await deQuien()).toEqual(["sebas001", "sebas001", "sin nombre", "sin nombre"]);
+    expect((await leer(await sellar({ como: caja }))).status).toBe(428);
   });
 });
