@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { listEventosDeNegocio, saveNegocio } from "@/lib/store";
 import { zonaDe } from "@/lib/actividad";
 import { hashClave } from "@/lib/claves";
-import { empleadosActivos, empleadoDe, empleadoPublico, hayQueElegir, resumenDeHoy, pinValido, ponerPin, PIN_MIN, PIN_MAX } from "@/lib/plantilla";
+import {
+  empleadosActivos, empleadoDe, empleadoPublico, hayQueElegir, resumenDeHoy, pinValido, ponerPin, conPlantilla, plantillaDeCaja, PIN_MIN, PIN_MAX,
+} from "@/lib/plantilla";
 import { quienDeRequest, ultimoDeRequest, ponerCookiesQuien, pinCorrecto } from "@/lib/quien";
 import { pinBloqueado, anotarFalloPin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno, exigirTienda } from "@/lib/http";
@@ -21,7 +23,9 @@ export const dynamic = "force-dynamic";
 //   POST ?b=<slug>  { id, pin }       -> comprueba el PIN y deja la cookie firmada
 //        ?b=<slug>  { id, nuevoPin }  -> la primera vez (sin PIN aún): lo guarda (hash) y deja la cookie
 //        400 PIN mal formado o ya tenía · 401 PIN incorrecto · 429 demasiados fallos (15 min)
-// El dueño no se identifica: su cuenta ya dice quién es.
+//        403 la tienda tiene la plantilla apagada (`plantillaActiva`, lo enciende el admin)
+// El dueño no se identifica: su cuenta ya dice quién es. Con la plantilla apagada,
+// nadie: el GET responde como una tienda sin gente dada de alta.
 
 // `largoPin`: cuántas cifras tiene, para que la caja entre sola al teclear la última.
 const solo = (e) => (e ? { id: e.id, nombre: e.nombre, tienePin: Boolean(e.pin), largoPin: e.pin ? e.largoPin ?? null : null } : null);
@@ -30,7 +34,7 @@ export async function GET(request) {
   try {
     const { respuesta, slug, sesion, negocio } = await exigirTienda(request, "caja");
     if (respuesta) return respuesta;
-    const { plantilla } = negocio;
+    const plantilla = plantillaDeCaja(negocio);
     const esCaja = sesion.rol === "caja";
     const empleado = esCaja ? await quienDeRequest(request, slug, plantilla) : null;
     const ultimo = esCaja ? ultimoDeRequest(request, slug, plantilla) : null;
@@ -59,6 +63,7 @@ export async function POST(request) {
   try {
     const { respuesta, slug, sesion, negocio } = await exigirTienda(request, "caja");
     if (respuesta) return respuesta;
+    if (!conPlantilla(negocio)) return jsonError("Esta tienda no pide quién atiende la caja", 403);
     const body = (await request.json().catch(() => null)) ?? {};
     const e = typeof body.id === "string" ? empleadoDe(negocio.plantilla, body.id) : null;
     if (!e || e.baja) return jsonError("Esa persona no está en la plantilla", 400);

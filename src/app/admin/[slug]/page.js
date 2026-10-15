@@ -9,6 +9,7 @@ import BotonTema from "@/app/BotonTema";
 import Accesos from "@/app/admin/Accesos";
 import DatosLegales from "@/app/admin/DatosLegales";
 import AvisosAvanzados from "@/app/admin/AvisosAvanzados";
+import PlantillaTienda from "@/app/admin/PlantillaTienda";
 import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, estilosDelKit, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import { kitDe } from "@/lib/kits";
 import Selector from "@/app/admin/Selector";
@@ -147,6 +148,7 @@ export default function AdminNegocio() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
           <DatosLegales slug={n.slug} legal={n.legal} accent={AZUL} flash={flash} onGuardado={(legal) => set("legal", legal)} />
           <AvisosAvanzados slug={n.slug} on={n.avisosAvanzados === true} accent={AZUL} flash={flash} onCambio={(v) => set("avisosAvanzados", v)} />
+          <PlantillaTienda slug={n.slug} on={n.plantillaActiva === true} accent={AZUL} flash={flash} onCambio={(v) => set("plantillaActiva", v)} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>

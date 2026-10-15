@@ -20,7 +20,7 @@ import { pagina } from "@/app/ui";
 const SECCIONES = ["manager", "crm", "avisos", "plantilla", "ajustes"];
 const Contexto = createContext(null);
 
-/** {nombre, tema, avisosAvanzados, actualizar} dentro de una pantalla del dueño; null fuera. */
+/** {nombre, tema, avisosAvanzados, plantillaActiva, actualizar} dentro de una pantalla del dueño; null fuera. */
 export const useGestion = () => useContext(Contexto);
 
 export default function MarcoGestion({ slug, negocio, children }) {

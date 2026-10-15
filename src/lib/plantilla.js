@@ -210,6 +210,24 @@ export function empleadoDeValor(valor, slug, plantilla) {
 /** ¿Hay que elegir quién atiende? Solo la cuenta de caja, y solo con gente dada de alta. */
 export const hayQueElegir = (sesion, plantilla) => sesion?.rol === "caja" && empleadosActivos(plantilla).length > 0;
 
+// ------------------------------------------------- encendida o no, por tienda
+// La plantilla la enciende el admin para cada tienda (`plantillaActiva`, como
+// `avisosAvanzados`), y viene APAGADA: con un solo móvil fijo en el mostrador,
+// saber quién atiende no aporta nada y el PIN solo estorba. Apagada, la caja
+// trabaja como sin gente dada de alta: ni pregunta quién atiende, ni pide PIN,
+// ni reconoce la cookie de antes. Nada se borra: la lista, los PIN y el nombre
+// de cada movimiento siguen ahí y vuelven tal cual al encenderla.
+
+/** ¿Tiene esta tienda la plantilla encendida? */
+export const conPlantilla = (negocio) => negocio?.plantillaActiva === true;
+
+/**
+ * La gente que la caja ofrece y reconoce: nadie si la tienda la tiene apagada.
+ * Todo lo de quién atiende (hayQueElegir, la cookie) va con esta. Para poner
+ * NOMBRE a lo que ya pasó (Actividad, la hoja), `negocio.plantilla` entera.
+ */
+export const plantillaDeCaja = (negocio) => (conPlantilla(negocio) ? negocio.plantilla : []);
+
 // -------------------------------------------------- quién hizo cada movimiento
 
 export const DUENO = "dueno";

@@ -92,6 +92,7 @@ const DEL_ADMIN = [
   ["admin/invitacion", "POST", () => "/api/admin/invitacion", () => ({ slug: "nube" })],
   ["admin/negocios", "GET", () => "/api/admin/negocios"],
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", legal: { nif: "B1" } })],
+  ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plantillaActiva: true })],
   ["admin/negocios", "DELETE", () => "/api/admin/negocios?slug=nube&modo=archivar"],
   ["estado", "GET", () => "/api/estado"],
 ];

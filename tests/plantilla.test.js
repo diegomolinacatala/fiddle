@@ -4,6 +4,7 @@ import { firmarTexto, verificarTexto } from "@/lib/auth";
 import {
   normalizarPlantilla, nombreDeEmpleado, nuevoEmpleado, cambiarEmpleado, empleadosActivos, empleadoDe,
   valorQuien, quienDePayload, empleadoDeValor, huellaDePin, pinValido, ponerPin, plantillaPublica, hayQueElegir,
+  conPlantilla, plantillaDeCaja,
   autorDe, quienTexto, ventanaDe, cuentasDePlantilla, serieDiaria, observacionesPlantilla, resumenDeHoy, colorDe,
   movimientosDePlantilla,
 } from "@/lib/plantilla";
@@ -173,6 +174,16 @@ describe("la cookie de quién atiende y el PIN", () => {
     expect(hayQueElegir({ rol: "caja" }, [plantilla[2]])).toBe(false);
     expect(hayQueElegir({ rol: "caja" }, [])).toBe(false);
     expect(hayQueElegir(null, plantilla)).toBe(false);
+  });
+
+  it("con la plantilla apagada en la tienda, la caja no tiene a nadie que ofrecer", () => {
+    expect(conPlantilla({ plantillaActiva: true, plantilla })).toBe(true);
+    for (const apagada of [{ plantillaActiva: false, plantilla }, { plantilla }, null]) {
+      expect(conPlantilla(apagada)).toBe(false);
+      expect(plantillaDeCaja(apagada)).toEqual([]);
+      expect(hayQueElegir({ rol: "caja" }, plantillaDeCaja(apagada))).toBe(false);
+    }
+    expect(plantillaDeCaja({ plantillaActiva: true, plantilla })).toBe(plantilla);
   });
 });
 

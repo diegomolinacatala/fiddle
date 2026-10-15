@@ -161,6 +161,7 @@ Respuesta: `{ ok, cliente, aviso }`.
 `409` otra caja modificó al cliente a la vez (`ok: false`, se devuelve el estado actual; repetir) ·
 `428` la tienda tiene plantilla y en este móvil nadie ha dicho hoy quién atiende (`{ ok: false, elegir: true }`:
 la caja manda a elegir, ver `/api/plantilla/quien`). El evento se guarda con `empleado` = quien atendía.
+Con la plantilla apagada en la tienda (`plantillaActiva`), nunca hay `428` y `empleado` es `null`.
 Si el aviso al Wallet falla, la acción **no** falla (el estado ya está guardado):
 `aviso.error` lo indica y el pase se pondrá al día en la próxima sincronización.
 
@@ -191,6 +192,8 @@ deja la cookie. Con `pin`, lo comprueba. Deja dos cookies httpOnly: `quien` (fir
 caja, con la huella del PIN) y `quien_ultimo` (90 días). `400` no está dado de alta, PIN mal formado
 (4 a 6 cifras, no todas iguales) o ya tenía PIN; `401` PIN incorrecto; `429` cinco fallos en 15 minutos.
 El manager no se identifica: para él `elegir` es siempre `false` y sus sellos quedan como `actor: "manager"`.
+Con la plantilla apagada en la tienda, el GET responde como sin gente dada de alta (`elegir: false`,
+`plantilla: []`) y el POST da `403`.
 
 ## Manager
 
@@ -201,6 +204,7 @@ La lista de la plantilla: alta, renombrar, baja (`activo: false`), vuelta y quit
 personas. Dar de baja no borra nada: deja de salir en la caja y sus movimientos siguen con su
 nombre. Queda en la auditoría (`plantilla`, con el id). Las cuentas y el registro no tienen API: la
 página los calcula con los eventos ([`plantillaDatos.js`](../src/lib/plantillaDatos.js)).
+`403` en los tres si la tienda tiene la plantilla apagada (la enciende el admin).
 
 ### `GET /api/negocio?b=<negocio>` · `PUT /api/negocio?b=<negocio>`
 ```json
@@ -271,6 +275,8 @@ Con `{ slug, nombre?, meta?, premio?, brief?, tema? }` edita la tienda y avisa a
 Con `{ slug, nota: { clave, texto } }` guarda un comentario sobre un campo del pase
 (`texto` vacío lo borra). Las claves son las de la vista previa: `apple.premio`,
 `apple.banda`, `google.puntos`…
+Con `{ slug, avisosAvanzados }` o `{ slug, plantillaActiva }` (un booleano y nada más)
+enciende o apaga eso para la tienda, sin avisar a ningún pase; queda en la auditoría.
 
 ### `DELETE /api/admin/negocios?slug=<slug>&modo=<modo>`
 `archivar` (por defecto) la esconde de todas partes sin borrar nada · `desarchivar` la
