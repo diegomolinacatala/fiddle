@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // POST /api/crm/exportar  body: { b, cuantos, que } -> apunta que se bajó la lista
-// de clientes, la actividad de un día (`que` = "actividad-aaaa-mm-dd") o el registro
+// de clientes, la actividad de un día o de varios (`que` = "actividad-aaaa-mm-dd" o
+// "actividad-<desde>-<hasta>") o el registro
 // de la plantilla (`que` = "plantilla-registro") (docs/RGPD.md, 6.8). El CSV se arma en
 // el navegador con lo que ya tiene la pantalla; esto solo deja constancia de quién,
 // cuándo y cuántos.
