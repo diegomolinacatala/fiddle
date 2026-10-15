@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icono from "@/app/Icono";
-import { C, campo, botonPequeno, botonPrimario } from "@/app/ui";
+import { C, campo, botonPequeno, botonPrimario, aviso } from "@/app/ui";
 
 // ============================================================================
 // INVITAR AL DUEÑO POR CORREO (ficha de la tienda en /admin)
@@ -11,20 +11,35 @@ import { C, campo, botonPequeno, botonPrimario } from "@/app/ui";
 // mensaje ya escrito (mailto): lo envías tú, desde tu cuenta. Sin proveedor de
 // correo que contratar ni dominio que verificar, y el dueño recibe el mensaje
 // de alguien a quien conoce. El correo del dueño no se guarda en ningún sitio.
+//
+// Antes de ofrecer «crear», pregunta al servidor cómo está el enlace de la
+// tienda (GET /api/admin/invitacion): si hay uno pendiente lo dice, con su
+// fecha, y crear otro avisa de que el pendiente deja de valer. Este botón está
+// en dos sitios (la ficha y el panel de «tienda creada») y lo pueden pulsar dos
+// admins: sin esto, uno mataba el enlace que el otro ya había mandado sin
+// enterarse (docs/AUDITORIA-ACCESOS.md, A3).
 // ============================================================================
 
 const AZUL = "#2563eb";
 const fecha = (iso) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
 export default function Invitar({ slug }) {
-  const [inv, setInv] = useState(null); // { url, caduca, nombre, usuarios }
+  const [estado, setEstado] = useState(null); // { pendiente, caducada, ultimaUsada, fiable, base }
+  const [inv, setInv] = useState(null); // { url, token, caduca, nombre, usuarios }
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
+  const cargar = () => fetch(`/api/admin/invitacion?slug=${encodeURIComponent(slug)}`)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No se pudo leer el estado del enlace"))))
+    .then(setEstado)
+    .catch((e) => setError(e.message));
+  useEffect(() => { setInv(null); cargar(); }, [slug]);
+
   async function crear() {
-    if (inv && !window.confirm("¿Crear un enlace nuevo? El anterior dejará de valer.")) return;
+    const hayPendiente = inv || estado?.pendiente;
+    if (hayPendiente && !window.confirm("¿Crear otro enlace? El pendiente dejará de valer: si el dueño ya lo tiene, le fallará.")) return;
     setBusy(true);
     setError(null);
     try {
@@ -37,6 +52,7 @@ export default function Invitar({ slug }) {
       if (!r.ok) throw new Error(d.error || "No se pudo crear la invitación");
       setInv(d);
       setCopiado(false);
+      cargar();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -53,12 +69,24 @@ export default function Invitar({ slug }) {
     }
   }
 
+  const fiable = (inv ?? estado)?.fiable !== false;
+
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.borde}` }}>
+      {!fiable && (
+        <div role="alert" style={{ ...aviso(false), marginBottom: 12 }}>
+          Esto es la web de pruebas, sin base de datos: el enlace que se cree aquí no le va a servir
+          al dueño (vive en una sola función de Vercel y caduca al momento). Créalo desde producción.
+        </div>
+      )}
+
       {!inv && (
         <>
+          {estado && <Situacion estado={estado} />}
           <button type="button" onClick={crear} disabled={busy} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Icono nombre="correo" tam={16} /> {busy ? "Creando…" : "Invitar al dueño por correo"}
+            <Icono nombre="correo" tam={16} />
+            {" "}
+            {busy ? "Creando…" : estado?.pendiente ? "Crear otro (el pendiente dejará de valer)" : "Invitar al dueño por correo"}
           </button>
           <p style={nota}>
             Le llega un enlace para elegir su contraseña y la de la caja. Caduca en 7 días y sirve una vez;
@@ -72,6 +100,8 @@ export default function Invitar({ slug }) {
           <strong style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
             <Icono nombre="correo" tam={16} /> Invitación lista
           </strong>
+          {/* El enlace entero, a la vista: que se vea a qué web apunta (APP_URL) antes de mandarlo. */}
+          <code style={enlace}>{inv.url}</code>
           <label style={{ display: "block", fontSize: 12, color: C.suave, margin: "10px 0 4px" }} htmlFor="email-dueno">
             Correo del dueño (opcional, no se guarda)
           </label>
@@ -91,7 +121,10 @@ export default function Invitar({ slug }) {
             <button type="button" onClick={copiar} style={botonPequeno}>{copiado ? "Copiado" : "Copiar enlace"}</button>
             <button type="button" onClick={crear} disabled={busy} style={botonPequeno}>Otro enlace</button>
           </div>
-          <p style={nota}>Vale hasta el {fecha(inv.caduca)}. Si lo pierde, crea otro: el anterior deja de funcionar.</p>
+          <p style={nota}>
+            Vale hasta el {fecha(inv.caduca)}. No se vuelve a ver: si el dueño lo pierde, crea otro (el anterior
+            deja de funcionar). Que lo cree una sola persona, una sola vez.
+          </p>
         </div>
       )}
 
@@ -100,8 +133,25 @@ export default function Invitar({ slug }) {
   );
 }
 
-// El correo, ya escrito. Corto: lo importante es el enlace y qué va a pasar.
-function mailto(email, { url, caduca, nombre, usuarios }) {
+// Cómo está el enlace de esta tienda, antes de tocar nada.
+function Situacion({ estado }) {
+  const { pendiente, caducada, ultimaUsada } = estado;
+  const frases = [];
+  if (pendiente) frases.push(`Hay un enlace pendiente, creado el ${fecha(pendiente.creado)}: vale hasta el ${fecha(pendiente.caduca)}.`);
+  else if (caducada) frases.push(`El último enlace, del ${fecha(caducada.creado)}, caducó el ${fecha(caducada.caduca)} sin usarse.`);
+  if (ultimaUsada) frases.push(`El dueño usó su enlace el ${fecha(ultimaUsada)}: ya eligió sus contraseñas.`);
+  if (!frases.length) return null;
+  return (
+    <p style={{ ...nota, margin: "0 0 10px", color: pendiente ? C.texto : C.suave }}>
+      {frases.join(" ")}
+    </p>
+  );
+}
+
+// El correo, ya escrito. Corto: lo importante es el enlace y qué va a pasar. El
+// código va también suelto, debajo: algún correo recorta lo que va tras `#`, y
+// la página lo acepta pegado (lib/tokenInvitacion.js).
+function mailto(email, { url, token, caduca, nombre, usuarios }) {
   const asunto = `Tu acceso a las tarjetas de ${nombre}`;
   const cuerpo = [
     "Hola:",
@@ -110,8 +160,10 @@ function mailto(email, { url, caduca, nombre, usuarios }) {
     "",
     url,
     "",
+    `Si al abrirlo te pide el código, es este: ${token}`,
+    "",
     `Tu usuario será «${usuarios.manager}» y el de la caja «${usuarios.caja}».`,
-    `El enlace sirve una vez y caduca el ${fecha(caduca)}.`,
+    `El enlace sirve una vez y caduca el ${fecha(caduca)}. Puedes recargar la página o volver más tarde: no se pierde.`,
     "",
     "Un saludo",
   ].join("\n");
@@ -119,3 +171,7 @@ function mailto(email, { url, caduca, nombre, usuarios }) {
 }
 
 const nota = { fontSize: 12, color: C.tenue, margin: "8px 0 0", lineHeight: 1.45 };
+const enlace = {
+  display: "block", marginTop: 8, padding: "8px 10px", borderRadius: 10, background: C.panelSuave,
+  border: `1px solid ${C.borde}`, fontSize: 12, wordBreak: "break-all", lineHeight: 1.4,
+};

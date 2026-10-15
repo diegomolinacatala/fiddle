@@ -151,7 +151,7 @@ export default function Caja() {
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <BotonAyuda />
             <BotonTema />
-            <LogoutButton negocio={negocio} />
+            <LogoutButton negocio={negocio} rol="caja" />
           </div>
         </header>
 

@@ -51,6 +51,10 @@ sellos de golpe.
   otra que no lo tiene (la cookie lleva la huella del hash), y la caja lo pedía sin parar.
   Para ver el «elige tu PIN», quitárselo a alguien desde Plantilla → Equipo; el que elija vive
   en una sola función, así que puede volver a pedirlo al rato (en producción no pasa).
+- **Las invitaciones de dev no sirven**: el enlace vive en el `/tmp` de UNA función y la
+  siguiente petición (la del dueño al abrirlo) puede caer en otra. La ficha del admin lo avisa
+  (`fiable: false` en `GET /api/admin/invitacion`, `enlacesFiables` en `lib/invitaciones.js`):
+  un enlace para un dueño de verdad se crea desde producción.
 - En local, lo mismo con `preview_start como-dev` (`.claude/launch.json`).
 
 ## Lo que NUNCA se le da a dev

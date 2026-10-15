@@ -1,4 +1,5 @@
 import { RESERVADOS } from "./negocios";
+import { resolverUsuario, usuarioDe } from "./auth";
 
 // ============================================================================
 // REGLAS DE ACCESO POR RUTA (función pura, la usa el middleware)
@@ -134,4 +135,24 @@ export function destinoSeguro(next) {
 export function negocioDeRuta(pathname) {
   const m = typeof pathname === "string" && pathname.match(/^\/([a-z0-9-]+)(?:\/|$)/);
   return m && !RESERVADOS.has(m[1]) ? m[1] : null;
+}
+
+/**
+ * Qué usuario rellenar en /login. El middleware (y «Salir») mandan `b`, la
+ * tienda, y `next`, a dónde iba. Quien iba a la caja (/<slug>/caja) o a una
+ * ficha (/w/<serial>, donde cae la cámara al leer un QR) es la caja:
+ * `<slug>-caja`. El resto (manager, crm, avisos, plantilla, ajustes), el dueño:
+ * `<slug>`. Sin tienda, nada. Rellenar siempre el del dueño mandaba a la caja a
+ * fallar con su propia contraseña hasta quedar bloqueada (docs/AUDITORIA-ACCESOS.md, A2).
+ * @param {string|null} b
+ * @param {string|null} next
+ * @returns {string}
+ */
+export function usuarioSugerido(b, next) {
+  const quien = resolverUsuario(b);
+  if (!quien || RESERVADOS.has(quien.negocio)) return quien?.rol === "admin" ? quien.usuario : "";
+  if (quien.rol === "caja") return quien.usuario; // ya venía el de la caja
+  const ruta = (destinoSeguro(next) || "").split(/[?#]/)[0].replace(/\/+$/, "");
+  const deCaja = ruta === `/${quien.negocio}/caja` || ruta.startsWith("/w/");
+  return deCaja ? usuarioDe(quien.negocio, "caja") : quien.usuario;
 }

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { nuevaInvitacion, leerInvitacion, aceptarInvitacion, DIAS_VALIDA } from "@/lib/invitaciones";
+import { nuevaInvitacion, leerInvitacion, aceptarInvitacion, estadoInvitacion, DIAS_VALIDA } from "@/lib/invitaciones";
+import { tokenDeTexto, tokenAlAbrir, LARGO_TOKEN } from "@/lib/tokenInvitacion";
 import { comprobarAcceso, nuevaClave } from "@/lib/accesos";
 import { problemaClaveElegida } from "@/lib/claves";
 import { borrarNegocio, marcarTutorial, tutorialesVistos } from "@/lib/store";
@@ -28,12 +29,38 @@ describe("invitación a una tienda", () => {
   });
 
   it("el enlace lleva el token tras # y en la base solo queda su huella", async () => {
-    const { url, caduca } = await nuevaInvitacion("nube");
+    const { url, token, caduca } = await nuevaInvitacion("nube");
     expect(url).toMatch(/^https:\/\/sellos\.app\/invitacion#[A-Za-z0-9_-]{43}$/);
+    expect(url).toBe(`https://sellos.app/invitacion#${token}`); // el token suelto va en el correo, debajo del enlace
     expect(Date.parse(caduca) - Date.now()).toBeGreaterThan((DIAS_VALIDA - 1) * 86400000);
     const guardado = readFileSync(path.join(dir, "invitaciones.json"), "utf8");
     expect(guardado).not.toContain(tokenDe(url));
     expect(await leerInvitacion(tokenDe(url))).toMatchObject({ ok: true, usuarios: { manager: "nube", caja: "nube-caja" } });
+  });
+
+  it("cada rechazo lleva un código, para que la página sepa qué aconsejar", async () => {
+    expect(await leerInvitacion("")).toMatchObject({ ok: false, codigo: "incompleto" });
+    expect(await leerInvitacion("x".repeat(43))).toMatchObject({ ok: false, codigo: "desconocido" });
+    const token = tokenDe((await nuevaInvitacion("nube")).url);
+    expect(await leerInvitacion(token, Date.now() + (DIAS_VALIDA + 1) * 86400000)).toMatchObject({ ok: false, codigo: "caducada" });
+    await aceptarInvitacion(token, CLAVES);
+    expect(await leerInvitacion(token)).toMatchObject({ ok: false, codigo: "usada" });
+    expect(await aceptarInvitacion(token, CLAVES)).toMatchObject({ ok: false, codigo: "usada" });
+  });
+
+  it("el estado para la ficha del admin: pendiente, caducada y cuándo se usó, sin el token", async () => {
+    expect(await estadoInvitacion("nube")).toEqual({ pendiente: null, caducada: null, ultimaUsada: null });
+    const { token, caduca } = await nuevaInvitacion("nube");
+    const estado = await estadoInvitacion("nube");
+    expect(estado).toEqual({ pendiente: { creado: expect.any(String), caduca }, caducada: null, ultimaUsada: null });
+    expect(JSON.stringify(estado)).not.toContain(token);
+    // Pasado el plazo, el mismo enlace cuenta como caducado sin usar.
+    expect(await estadoInvitacion("nube", Date.now() + (DIAS_VALIDA + 1) * 86400000)).toMatchObject({ pendiente: null, caducada: { caduca } });
+
+    await aceptarInvitacion(token, CLAVES);
+    expect(await estadoInvitacion("nube")).toMatchObject({ pendiente: null, caducada: null, ultimaUsada: expect.any(String) });
+    // La de otra tienda no se mezcla.
+    expect(await estadoInvitacion("fade")).toEqual({ pendiente: null, caducada: null, ultimaUsada: null });
   });
 
   it("fija las dos contraseñas, las de antes dejan de valer y el enlace no sirve dos veces", async () => {
@@ -96,6 +123,40 @@ describe("invitación a una tienda", () => {
     expect(reglaDeRuta("/invitacion", new URLSearchParams())).toEqual({ tipo: "publica" });
     expect(reglaDeRuta("/api/invitacion", new URLSearchParams(), "POST")).toEqual({ tipo: "publica" });
     expect(reglaDeRuta("/api/admin/invitacion", new URLSearchParams(), "POST")).toEqual({ tipo: "admin" });
+  });
+});
+
+// Lo que entiende la página por token (lib/tokenInvitacion.js): el hash tal cual,
+// el enlace entero, el código suelto o el correo pegado con todo.
+describe("el token visto desde el navegador", () => {
+  const token = "A".repeat(20) + "b-c_" + "9".repeat(19);
+
+  it("lo saca del hash, del enlace o de un texto con más cosas alrededor", () => {
+    expect(token).toHaveLength(LARGO_TOKEN);
+    expect(tokenDeTexto(`#${token}`)).toBe(token);
+    expect(tokenDeTexto(token)).toBe(token);
+    expect(tokenDeTexto(`  ${token}\n`)).toBe(token);
+    expect(tokenDeTexto(`https://sellos.app/invitacion#${token}`)).toBe(token);
+    expect(tokenDeTexto(`Abre este enlace:\n\nhttps://sellos.app/invitacion#${token}\n\nSi te pide el código, es este: ${token}.\nUn saludo`)).toBe(token);
+    // Un correo que recortó el enlace pero dejó el código suelto.
+    expect(tokenDeTexto(`https://sellos.app/invitacion\n\nSi te pide el código, es este: ${token}`)).toBe(token);
+  });
+
+  it("no inventa uno donde no lo hay", () => {
+    expect(tokenDeTexto("")).toBeNull();
+    expect(tokenDeTexto(null)).toBeNull();
+    expect(tokenDeTexto("#")).toBeNull();
+    expect(tokenDeTexto(token.slice(1))).toBeNull(); // 42: le falta uno
+    expect(tokenDeTexto(`${token}x`)).toBeNull(); // 44: pegado a otra cosa
+    expect(tokenDeTexto("https://sellos.app/invitacion")).toBeNull();
+  });
+
+  it("al abrir: el hash manda; si no hay, lo que guardó la pestaña", () => {
+    const otro = "z".repeat(43);
+    expect(tokenAlAbrir(`#${token}`, otro)).toBe(token);
+    expect(tokenAlAbrir("", otro)).toBe(otro);
+    expect(tokenAlAbrir("#", null)).toBeNull();
+    expect(tokenAlAbrir("", "basura")).toBeNull();
   });
 });
 

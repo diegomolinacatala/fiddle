@@ -1490,6 +1490,25 @@ export async function getInvitacion(huella) {
 }
 
 /**
+ * Las invitaciones de una tienda, las más nuevas primero, sin la huella: es para
+ * decirle al admin si hay un enlace pendiente, no para usarlo.
+ * @returns {Promise<{caduca:string, creado:string, usada:string|null}[]>}
+ */
+export async function invitacionesDeNegocio(negocio) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("invitaciones").select("caduca, creado, usada").eq("negocio", negocio).order("creado", { ascending: false }),
+      "listar invitaciones",
+    ) || [];
+  }
+  const todas = await enFila(() => leer("invitaciones", {}));
+  return Object.values(todas)
+    .filter((i) => i.negocio === negocio)
+    .map(({ caduca, creado, usada }) => ({ caduca, creado, usada }))
+    .sort((a, b) => b.creado.localeCompare(a.creado));
+}
+
+/**
  * Gasta la invitación. Condicional (solo si seguía sin usar): con dos pestañas
  * a la vez, solo una fija las contraseñas.
  * @returns {Promise<boolean>} true si era la primera vez

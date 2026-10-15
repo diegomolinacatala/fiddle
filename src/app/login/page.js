@@ -2,8 +2,10 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { destinoSeguro } from "@/lib/acceso";
-import { C, paginaCentrada, panel, campo, etiqueta, aviso } from "@/app/ui";
+import { destinoSeguro, usuarioSugerido } from "@/lib/acceso";
+import { resolverUsuario, usuarioDe } from "@/lib/auth";
+import { CORREO, TELEFONO_VISIBLE, enlaceWhatsApp, enlaceCorreo } from "@/app/home/datos";
+import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, solapa } from "@/app/ui";
 import LogoFiddle from "@/app/LogoFiddle";
 
 // PRIMERA PANTALLA de la app: usuario + contraseña, para todos los negocios.
@@ -11,16 +13,28 @@ import LogoFiddle from "@/app/LogoFiddle";
 // El rol lo decide el usuario. Si el servidor tiene activo el modo pruebas,
 // debajo se listan los accesos de ejemplo y se rellenan al tocarlos.
 // Se llega desde «Entrar» de la web (/home), y abajo hay un enlace de vuelta.
+//
+// Con `?b=<tienda>&next=<ruta>` (el middleware o «Salir») el usuario sale ya
+// puesto: el de la caja si se venía de la caja, el del dueño si no
+// (usuarioSugerido en lib/acceso.js), y dos botones para cambiarlo sin teclear.
+// Hoy no hay forma de recuperar una contraseña sin fiddle: por eso «¿No puedes
+// entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
+const MENSAJE_AYUDA = "Hola, no puedo entrar en fiddle.";
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = destinoSeguro(params.get("next"));
+  const tienda = resolverUsuario(params.get("b"));
+  const slug = tienda && tienda.rol !== "admin" ? tienda.negocio : null;
 
-  const [usuario, setUsuario] = useState(params.get("b") || "");
+  const [usuario, setUsuario] = useState(() => usuarioSugerido(params.get("b"), params.get("next")));
   const [clave, setClave] = useState("");
-  const [error, setError] = useState(null);
+  const [ver, setVer] = useState(false);
+  const [error, setError] = useState(null); // { texto, status }
   const [busy, setBusy] = useState(false);
   const [accesos, setAccesos] = useState([]);
+  const [ayuda, setAyuda] = useState(false);
 
   useEffect(() => {
     fetch("/api/login")
@@ -41,15 +55,17 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "No se pudo entrar");
-        setClave("");
+        setError({ texto: data.error || "No se pudo entrar", status: res.status });
+        // Bloqueado: la contraseña no se ha mirado, que no la vuelva a teclear a ciegas.
+        if (res.status === 429) setAyuda(true);
+        else setClave("");
         return;
       }
       // El servidor decide a dónde: `next` solo si es de esta tienda (ver /api/login).
       router.push(data.destino);
       router.refresh();
     } catch (err) {
-      setError(String(err?.message || err));
+      setError({ texto: String(err?.message || err), status: 0 });
     } finally {
       setBusy(false);
     }
@@ -62,6 +78,7 @@ function LoginForm() {
   }
 
   const listo = usuario && clave && !busy;
+  const soy = (rol) => { setUsuario(usuarioDe(slug, rol)); setError(null); };
 
   return (
     <main style={paginaCentrada}>
@@ -76,7 +93,17 @@ function LoginForm() {
         </div>
 
         <form onSubmit={entrar} style={{ ...panel, display: "flex", flexDirection: "column" }}>
-          <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="usuario">Usuario</label>
+          {slug && (
+            <div role="group" aria-label="Quién entra" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[["caja", "Soy la caja"], ["manager", "Soy el dueño"]].map(([rol, texto]) => (
+                <button key={rol} type="button" onClick={() => soy(rol)} style={solapa(usuario === usuarioDe(slug, rol))}>
+                  {texto}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <label style={{ ...etiqueta, marginTop: slug ? 14 : 0 }} htmlFor="usuario">Usuario</label>
           <input
             id="usuario"
             value={usuario}
@@ -85,26 +112,58 @@ function LoginForm() {
             autoCapitalize="none"
             autoCorrect="off"
             placeholder="delicanteria"
-            autoFocus
+            autoFocus={!usuario}
             style={campo}
           />
 
           <label style={etiqueta} htmlFor="clave">Contraseña</label>
-          <input
-            id="clave"
-            value={clave}
-            onChange={(e) => setClave(e.target.value)}
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••"
-            style={campo}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              id="clave"
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+              type={ver ? "text" : "password"}
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="••••••"
+              autoFocus={Boolean(usuario)}
+              style={{ ...campo, minWidth: 0 }}
+            />
+            {/* Doce caracteres con guiones en un teclado de móvil: mejor poder mirarlos. */}
+            <button type="button" onClick={() => setVer((v) => !v)} style={{ ...botonSecundario, flexShrink: 0 }} aria-pressed={ver}>
+              {ver ? "Ocultar" : "Ver"}
+            </button>
+          </div>
 
           <button type="submit" disabled={!listo} style={{ ...entrarBtn, opacity: listo ? 1 : 0.45, cursor: listo ? "pointer" : "default" }}>
             {busy ? "Entrando…" : "Entrar"}
           </button>
 
-          {error && <div role="alert" style={{ ...aviso(false), marginTop: 14 }}>{error}</div>}
+          {error && <div role="alert" style={{ ...aviso(false), marginTop: 14 }}>{error.texto}</div>}
+
+          <button type="button" onClick={() => setAyuda((v) => !v)} aria-expanded={ayuda} style={enlaceAyuda}>
+            ¿No puedes entrar?
+          </button>
+          {ayuda && (
+            <div style={{ ...panel, padding: 14, background: C.panelSuave, marginTop: 8 }}>
+              <p style={{ fontSize: 13, color: C.suave, margin: "0 0 8px", lineHeight: 1.5 }}>
+                {error?.status === 429
+                  ? "Hasta que pasen los 15 minutos no se comprueba ninguna contraseña, aunque sea la buena. "
+                  : null}
+                Si no recuerdas la contraseña o el enlace que te mandamos no funciona, escríbenos y te damos
+                una nueva. Dinos el nombre de la tienda y si es la del dueño o la de la caja.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a href={enlaceWhatsApp(MENSAJE_AYUDA)} target="_blank" rel="noopener noreferrer" style={{ ...botonSecundario, textDecoration: "none", fontSize: 13 }}>
+                  WhatsApp {TELEFONO_VISIBLE}
+                </a>
+                <a href={enlaceCorreo("No puedo entrar en fiddle", MENSAJE_AYUDA)} style={{ ...botonSecundario, textDecoration: "none", fontSize: 13 }}>
+                  {CORREO}
+                </a>
+              </div>
+            </div>
+          )}
         </form>
 
         {accesos.length > 0 && (
@@ -153,6 +212,21 @@ const entrarBtn = {
   color: C.toastTexto,
   fontWeight: 600,
   fontSize: 15,
+};
+
+// Un enlace con alto de dedo, alineado a la izquierda como el texto del formulario.
+const enlaceAyuda = {
+  marginTop: 14,
+  padding: "6px 0",
+  border: 0,
+  background: "none",
+  color: C.suave,
+  fontSize: 13,
+  fontWeight: 600,
+  textAlign: "left",
+  cursor: "pointer",
+  textDecoration: "underline",
+  textUnderlineOffset: 3,
 };
 
 const fila = {

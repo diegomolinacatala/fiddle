@@ -52,7 +52,8 @@ export async function POST(request) {
     const ip = ipDe(request);
     try {
       if (await loginBloqueado(quien.negocio, ip)) {
-        return jsonError("Demasiados intentos. Espera 15 minutos.", 429);
+        // Que quede claro que la contraseña NO se ha mirado: con la buena también sale esto.
+        return jsonError("Demasiados intentos seguidos: la contraseña no se ha comprobado. Espera 15 minutos antes de volver a probar.", 429);
       }
     } catch (e) {
       console.error("[login] no se pudo consultar el límite de intentos:", e);
