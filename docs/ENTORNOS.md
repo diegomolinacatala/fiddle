@@ -40,7 +40,7 @@ Sin `SUPABASE_URL`, el store guarda en ficheros (`DATA_DIR`). En Vercel eso es `
 con `DATOS_DE_PRUEBA=1` lo que falta arranca con La Delicantería inventada: unos 30
 clientes de las últimas tres semanas, con un sello fuera de horario, una corrección y siete
 sellos de golpe, y otros 30 de hace uno o dos meses (unos siguen, otros se enfrían, alguno
-vuelve) para que Clientes → Resumen enseñe el puente de activos y las cohortes.
+vuelve) para que Clientes → Resumen enseñe el puente de activos y la curva de vuelta.
 
 - **Lo que se toca en dev no dura**: vive mientras la función de Vercel siga despierta.
   Tras un rato sin uso o un despliegue nuevo, vuelve a los datos de partida. Sirve para

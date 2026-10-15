@@ -234,8 +234,8 @@ export function estadoDe(p) {
  * Quién cuenta como cliente que sigue viniendo: el que viene a su ritmo y el
  * recién llegado (aún no se le puede pedir ritmo, pero está viniendo). UNA sola
  * definición para la cifra de «Siguen viniendo», el puente y la cartilla: antes
- * la cifra dejaba fuera a los nuevos y la tabla de cohortes no, y en la misma
- * pantalla salían 10 activos y 27 que «siguen activos».
+ * la cifra dejaba fuera a los nuevos y la tabla de cohortes (ya no está) no, y
+ * en la misma pantalla salían 10 activos y 27 que «siguen activos».
  */
 export const ESTADOS_ACTIVOS = ["activo", "nuevo"];
 export const esActivo = (p) => ESTADOS_ACTIVOS.includes(p?.estado);
