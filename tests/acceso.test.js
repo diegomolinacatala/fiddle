@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda } from "@/lib/acceso";
+import {
+  reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda, leerRecordados, recordarUsuario,
+  MAX_RECORDADOS,
+} from "@/lib/acceso";
 import { resolverUsuario, usuarioDe } from "@/lib/auth";
 
 const regla = (ruta, method = "GET") => {
@@ -155,5 +158,36 @@ describe("usuarioSugerido", () => {
     expect(tiendaDeUsuario("victor")).toEqual({ slug: "victor", rol: "manager" }); // aquí no hay admins: es un slug más
     expect(usuarioDeTienda("nube", "caja")).toBe(usuarioDe("nube", "caja"));
     expect(usuarioDeTienda("nube", "manager")).toBe(usuarioDe("nube", "manager"));
+  });
+});
+
+describe("los usuarios que recuerda el móvil en /login", () => {
+  it("el último delante, sin repetir y con tope", () => {
+    let lista = [];
+    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "caja" });
+    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "manager" });
+    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "caja" });
+    expect(lista).toEqual([{ u: "delicanteria-caja", t: "delicanteria" }, { u: "delicanteria", t: "delicanteria" }]);
+    for (const n of ["a", "b", "c", "d"]) lista = recordarUsuario(lista, { negocio: n, rol: "manager" });
+    expect(lista).toHaveLength(MAX_RECORDADOS);
+    expect(lista[0].u).toBe("d");
+  });
+
+  it("un admin no se recuerda: en el móvil de la caja no se queda propuesto para el siguiente", () => {
+    const lista = [{ u: "nube-caja", t: "nube" }];
+    expect(recordarUsuario(lista, { negocio: "plataforma", rol: "admin" })).toBe(lista);
+  });
+
+  it("lo guardado se lee con desconfianza: lo que no tenga forma de usuario se tira", () => {
+    expect(leerRecordados(null)).toEqual([]);
+    expect(leerRecordados("no es json")).toEqual([]);
+    expect(leerRecordados('{"u":"x"}')).toEqual([]);
+    expect(leerRecordados(JSON.stringify([
+      { u: "nube-caja", t: "nube", clave: "esto no se guarda nunca" },
+      { u: "<script>", t: "nube" },
+      { u: "victor", t: null },
+      { u: "nube", t: "../x" },
+      { u: "fade", t: "fade" },
+    ]))).toEqual([{ u: "nube-caja", t: "nube" }, { u: "fade", t: "fade" }]);
   });
 });

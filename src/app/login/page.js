@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 // Nada de lib/auth.js aquí: lleva la lista de admins y esto va al navegador.
-import { destinoSeguro, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda } from "@/lib/acceso";
+import {
+  destinoSeguro, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda, CLAVE_RECORDADOS, leerRecordados, recordarUsuario,
+} from "@/lib/acceso";
 import { CORREO, TELEFONO_VISIBLE, enlaceWhatsApp, enlaceCorreo } from "@/app/home/datos";
 import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, solapa } from "@/app/ui";
 import LogoFiddle from "@/app/LogoFiddle";
@@ -17,6 +19,10 @@ import LogoFiddle from "@/app/LogoFiddle";
 // Con `?b=<tienda>&next=<ruta>` (el middleware o «Salir») el usuario sale ya
 // puesto: el de la caja si se venía de la caja, el del dueño si no
 // (usuarioSugerido en lib/acceso.js), y dos botones para cambiarlo sin teclear.
+// Sin `?b=` (se abre /login a secas), el móvil propone el último usuario de
+// tienda con el que se entró en él y su tienda da los dos botones; uno de otra
+// tienda sale como un botón más con su nombre (leerRecordados). Nunca la
+// contraseña ni los admins, y abajo se pueden olvidar.
 // Hoy no hay forma de recuperar una contraseña sin fiddle: por eso «¿No puedes
 // entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
 const MENSAJE_AYUDA = "Hola, no puedo entrar en fiddle.";
@@ -25,15 +31,33 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = destinoSeguro(params.get("next"));
-  const slug = tiendaDeUsuario(params.get("b"))?.slug ?? null;
+  const slugDeB = tiendaDeUsuario(params.get("b"))?.slug ?? null;
+  const [recordados, setRecordados] = useState([]);
+  // Sin ?b=, la tienda del último que entró en este móvil.
+  const slug = slugDeB ?? recordados.find((r) => r.t)?.t ?? null;
+  const otros = recordados.filter((r) => r.t !== slug);
 
   const [usuario, setUsuario] = useState(() => usuarioSugerido(params.get("b"), params.get("next")));
+  const claveRef = useRef(null);
   const [clave, setClave] = useState("");
   const [ver, setVer] = useState(false);
   const [error, setError] = useState(null); // { texto, status }
   const [busy, setBusy] = useState(false);
   const [accesos, setAccesos] = useState([]);
   const [ayuda, setAyuda] = useState(false);
+
+  useEffect(() => {
+    let lista = [];
+    try { lista = leerRecordados(localStorage.getItem(CLAVE_RECORDADOS)); } catch {}
+    setRecordados(lista);
+    // Con ?b= manda de dónde se viene (usuarioSugerido); sin él, el último de este móvil.
+    if (lista.length && !usuario) {
+      setUsuario(lista[0].u);
+      claveRef.current?.focus();
+    }
+    // Solo al abrir: luego manda lo que se toque.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetch("/api/login")
@@ -60,6 +84,9 @@ function LoginForm() {
         else setClave("");
         return;
       }
+      try {
+        localStorage.setItem(CLAVE_RECORDADOS, JSON.stringify(recordarUsuario(recordados, { negocio: data.negocio, rol: data.rol })));
+      } catch {}
       // El servidor decide a dónde: `next` solo si es de esta tienda (ver /api/login).
       router.push(data.destino);
       router.refresh();
@@ -77,7 +104,13 @@ function LoginForm() {
   }
 
   const listo = usuario && clave && !busy;
-  const soy = (rol) => { setUsuario(usuarioDeTienda(slug, rol)); setError(null); };
+  const elegir = (u) => { setUsuario(u); setError(null); claveRef.current?.focus(); };
+
+  function olvidar() {
+    try { localStorage.removeItem(CLAVE_RECORDADOS); } catch {}
+    if (!slugDeB && recordados.some((r) => r.u === usuario)) setUsuario("");
+    setRecordados([]);
+  }
 
   return (
     <main style={paginaCentrada}>
@@ -92,17 +125,20 @@ function LoginForm() {
         </div>
 
         <form onSubmit={entrar} style={{ ...panel, display: "flex", flexDirection: "column" }}>
-          {slug && (
+          {(slug || otros.length > 0) && (
             <div role="group" aria-label="Quién entra" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {[["caja", "Soy la caja"], ["manager", "Soy el dueño"]].map(([rol, texto]) => (
-                <button key={rol} type="button" onClick={() => soy(rol)} style={solapa(usuario === usuarioDeTienda(slug, rol))}>
+              {slug && [["caja", "Soy la caja"], ["manager", "Soy el dueño"]].map(([rol, texto]) => (
+                <button key={rol} type="button" onClick={() => elegir(usuarioDeTienda(slug, rol))} style={solapa(usuario === usuarioDeTienda(slug, rol))}>
                   {texto}
                 </button>
+              ))}
+              {otros.map((r) => (
+                <button key={r.u} type="button" onClick={() => elegir(r.u)} style={solapa(usuario === r.u)}>{r.u}</button>
               ))}
             </div>
           )}
 
-          <label style={{ ...etiqueta, marginTop: slug ? 14 : 0 }} htmlFor="usuario">Usuario</label>
+          <label style={{ ...etiqueta, marginTop: slug || otros.length ? 14 : 0 }} htmlFor="usuario">Usuario</label>
           <input
             id="usuario"
             value={usuario}
@@ -119,6 +155,7 @@ function LoginForm() {
           <div style={{ display: "flex", gap: 8 }}>
             <input
               id="clave"
+              ref={claveRef}
               value={clave}
               onChange={(e) => setClave(e.target.value)}
               type={ver ? "text" : "password"}
@@ -164,6 +201,13 @@ function LoginForm() {
             </div>
           )}
         </form>
+
+        {recordados.length > 0 && (
+          <p style={{ textAlign: "center", fontSize: 12, color: C.tenue, margin: "12px 0 0", lineHeight: 1.5 }}>
+            Este móvil recuerda {recordados.length === 1 ? "el usuario" : "los usuarios"} con que se entró, nunca la contraseña.{" "}
+            <button type="button" onClick={olvidar} style={{ ...enlaceAyuda, margin: 0, padding: 0, fontSize: 12, color: C.suave }}>Olvidar</button>
+          </p>
+        )}
 
         {accesos.length > 0 && (
           <div style={{ ...panel, marginTop: 14, padding: 16, background: C.panelSuave }}>

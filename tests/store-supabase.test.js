@@ -46,6 +46,19 @@ describe("store con Supabase", () => {
     expect(upsert[1]).toMatchObject({ slug: "fade", nombre: "Fade Room", tipo: "sellos", config: { premio: "barba", meta: 6 } });
   });
 
+  it("listClientesDeSeriales pide solo esos seriales, de esa tienda y vigentes", async () => {
+    encolar("clientes", { data: [{ serial: "a", negocio: "nube", codigo: "AAA" }], error: null });
+    expect((await store.listClientesDeSeriales("nube", ["a", "b", "a"])).map((c) => c.serial)).toEqual(["a"]);
+    const cadena = llamadas[0].cadena;
+    expect(cadena).toContainEqual(["eq", "negocio", "nube"]);
+    expect(cadena).toContainEqual(["in", "serial", ["a", "b"]]);
+    expect(cadena).toContainEqual(["is", "fusionado_en", null]);
+    expect(cadena).toContainEqual(["is", "borrado_en", null]);
+    // Sin seriales, ni siquiera pregunta.
+    expect(await store.listClientesDeSeriales("nube", [])).toEqual([]);
+    expect(llamadas).toHaveLength(1);
+  });
+
   it("los errores de Supabase se lanzan con contexto", async () => {
     encolar("clientes", { data: null, error: { message: "boom" } });
     await expect(store.getCliente("s1")).rejects.toThrow("Supabase leer cliente: boom");

@@ -614,6 +614,28 @@ export async function listClientes(negocio, { limite } = {}) {
   return limite ? lista.slice(0, limite) : lista;
 }
 
+/**
+ * Solo las tarjetas vigentes de esos seriales, de esa tienda: para cuando ya se
+ * sabe a quién se busca (los que han pasado hoy por la caja) y leer la tienda
+ * entera sería descifrar cientos de nombres para quedarse con quince. Pocos
+ * seriales cada vez: van en la URL de la consulta.
+ * @param {string} negocio
+ * @param {string[]} seriales
+ */
+export async function listClientesDeSeriales(negocio, seriales) {
+  const lista = [...new Set(seriales || [])].filter((s) => typeof s === "string" && s);
+  if (!lista.length) return [];
+  if (hasSupabase()) {
+    const q = supa().from("clientes").select(CAMPOS_CLIENTE).eq("negocio", negocio).in("serial", lista)
+      .is("fusionado_en", null).is("borrado_en", null);
+    return (sinError(await q, "clientes por serial") || []).map(normalizarCliente);
+  }
+  const all = await enFila(() => leer("clientes", {}));
+  return lista.map((s) => all[s])
+    .filter((c) => c && c.negocio === negocio && !c.fusionado_en && !c.borrado_en)
+    .map(normalizarCliente);
+}
+
 // ============================ EVENTOS ============================
 // El historial. `negocio` va desnormalizado porque el CRM pregunta siempre por
 // tienda ("toda la actividad de nube"), y sin esa columna habría que leer antes

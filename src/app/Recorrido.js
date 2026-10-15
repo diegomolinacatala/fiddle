@@ -38,7 +38,7 @@ export const RECORRIDOS = {
   caja: [
     { ancla: "escanear", titulo: "Escanea la tarjeta", texto: "El cliente enseña su tarjeta en el móvil y apuntas al QR. Se abre su ficha con los botones para sumar puntos." },
     { ancla: "codigo", titulo: "Si el QR no se lee", texto: "Debajo del QR hay un código de 3 letras. Escríbelo aquí y abre la misma ficha." },
-    { ancla: "clientes", titulo: "Los últimos clientes", texto: "Toca uno para abrir su ficha sin escanear." },
+    { ancla: "clientes", titulo: "Hoy en la caja", texto: "Los que han pasado hoy, el último arriba. Toca uno para volver a abrir su ficha sin escanear." },
     { ancla: "hoy", titulo: "Lo tuyo de hoy", texto: "Los puntos, clientes y premios que llevas hoy. Solo lo tuyo: cada punto se apunta a quien atiende." },
     { ancla: "cambiar-quien", titulo: "El relevo", texto: "Si coges el móvil de otra persona, toca «Cambiar» y elige tu nombre. Se pregunta solo una vez al día en cada móvil." },
     { ancla: "ayuda", titulo: "¿Otra vez?", texto: "Este botón vuelve a enseñar el recorrido cuando quieras." },
