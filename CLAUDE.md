@@ -189,7 +189,15 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   en las cuentas. Otro toque lo confirma al momento; al salir de la página o pasar a
   segundo plano se manda con `sendBeacon` (o `fetch keepalive`). Lo que se acepta a cambio:
   si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
-  «deshacer» en `/api/accion`: habría que borrar eventos.
+  «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
+  en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
+- **Sin tocarla, la ficha vuelve al escáner** (`volverSinTocar`, Editar vista de caja,
+  apagado de partida; lo pidió La Delicantería, con un móvil fijo en el mostrador): a los
+  `SEGUNDOS_SIN_TOCAR` (30, fijos) sin toques, scroll ni teclado va a `/<slug>/caja`, con
+  una barra arriba los últimos 5 s (`lib/sinTocar.js`, `VueltaSinTocar`). Antes de irse,
+  lo pendiente sale por la fila con `vaciar` y se espera la respuesta, nunca con
+  `sendBeacon` (desde el panel del ordenador no llega). Si alguien toca mientras, o algo
+  no se guardó, se queda.
 - **La ficha dice cuándo fue el último sello** («Último sello hace 12 min»,
   `ultimoSelloTexto`), discreto, bajo las visitas: zanja el «no me has sellado» sin
   depender del historial (que la tienda puede apagar). Solo el cuándo (la cuenta la enseña

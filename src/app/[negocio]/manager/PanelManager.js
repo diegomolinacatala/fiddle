@@ -310,9 +310,16 @@ function resumenCaja(n) {
         a.includes("canjear") && (caja.guardarPremios ? "da o guarda premios" : "da premios"),
         caja.sumarDos && "botón +2",
       ];
-  partes.push(a.includes("confirmar") && "confirma visitas", caja.volverAlEscaner && "vuelve sola al escáner");
+  partes.push(a.includes("confirmar") && "confirma visitas", vueltaAlEscaner(caja));
   const lista = partes.filter(Boolean);
   return lista.length ? `${lista[0].charAt(0).toUpperCase()}${lista.join(" · ").slice(1)}.` : "No tiene ningún botón activado.";
+}
+
+/** Las dos maneras de volver sola al escáner, en un trozo y sin repetir «vuelve». */
+function vueltaAlEscaner(caja) {
+  if (caja.volverAlEscaner && caja.volverSinTocar) return "vuelve sola al escáner al sumar o si nadie la toca";
+  if (caja.volverAlEscaner) return "vuelve sola al escáner";
+  return caja.volverSinTocar && "vuelve al escáner si nadie la toca";
 }
 
 const grid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 20, marginTop: 20, alignItems: "start" };

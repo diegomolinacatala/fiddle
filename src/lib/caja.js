@@ -16,6 +16,7 @@
 import { ACCIONES } from "./acciones";
 import { cartillasDe } from "./cartillas";
 import { singular } from "./acciones";
+import { SEGUNDOS_SIN_TOCAR } from "./sinTocar";
 
 export const OPCIONES_CAJA = {
   sumarDos: {
@@ -31,6 +32,12 @@ export const OPCIONES_CAJA = {
   volverAlEscaner: {
     label: "Volver al escáner al sumar",
     descripcion: "Tras sumar, a los 3 segundos vuelve a la cámara para el siguiente (se puede cancelar).",
+    def: false,
+  },
+  // Para el móvil fijo del mostrador (lib/sinTocar.js).
+  volverSinTocar: {
+    label: "Volver al escáner si nadie la toca",
+    descripcion: `A los ${SEGUNDOS_SIN_TOCAR} segundos sin tocar la ficha, vuelve sola a la cámara. Para un móvil fijo en el mostrador: así nadie suma al cliente anterior.`,
     def: false,
   },
   historial: {
