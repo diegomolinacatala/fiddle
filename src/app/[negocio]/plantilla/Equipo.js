@@ -51,7 +51,7 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
         <h2 style={h2}>Quién atiende la caja</h2>
         <p style={parrafo}>
           Añade a cada persona con su nombre o apodo. Desde ese momento, la primera vez que alguien abra la caja cada día
-          en su móvil se le preguntará quién es, y cada sello quedará apuntado a quien lo dio. Tú, desde tu cuenta, no eliges: sales como «Dueño».
+          en su móvil se le preguntará quién es, y cada punto quedará apuntado a quien lo dio. Tú, desde tu cuenta, no eliges: sales como «Dueño».
         </p>
         <form onSubmit={alta} style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
           <input
@@ -91,7 +91,7 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
                     <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>
                       {p.alta ? `Desde el ${fechaCorta(p.alta, zona)}. ` : ""}
                       {f?.movimientos
-                        ? `${f.sellos} ${f.sellos === 1 ? "sello" : "sellos"} y ${f.clientes} ${f.clientes === 1 ? "cliente" : "clientes"} en ${f.dias} ${f.dias === 1 ? "día" : "días"} de estos ${dias}.`
+                        ? `${f.sellos} ${f.sellos === 1 ? "punto" : "puntos"} y ${f.clientes} ${f.clientes === 1 ? "cliente" : "clientes"} en ${f.dias} ${f.dias === 1 ? "día" : "días"} de estos ${dias}.`
                         : `Sin movimientos en estos ${dias} días.`}
                       {" "}
                       {p.tienePin ? "Con PIN." : <span style={{ color: C.tenue }}>Sin PIN todavía: lo elige la primera vez en la caja.</span>}

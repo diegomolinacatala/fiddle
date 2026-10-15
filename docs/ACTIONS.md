@@ -69,8 +69,8 @@ Rutas, `/api/accion` y la base no se tocan.
 
 | Clave | Botón | Qué hace |
 |-------|-------|----------|
-| `sellar` | Añadir sello | +1 sello (hasta la meta). Es la fila de cada cartilla en la caja (`+2` si la tienda lo quiere) |
-| `restar` | Quitar sello | −1 sello (corrección): el "−" pequeño dentro de la fila |
+| `sellar` | Añadir punto | +1 punto (hasta la meta). Es la fila de cada cartilla en la caja (`+2` si la tienda lo quiere) |
+| `restar` | Quitar punto | −1 punto (corrección): el "−" pequeño dentro de la fila |
 | `canjear` | Dárselo ahora | sellos: exige cartilla llena, entrega premio y reinicia · descuento: usa el cupón una vez (el pase queda anulado) |
 | `guardar` | Guardarlo para otro día | cartilla llena → vuelve a cero y el premio queda en `guardados`. Va con `canjear` (`vaCon`), sin interruptor propio |
 | `usarGuardado` | Usar un premio guardado | `guardados − 1`, `premios + 1`; los sellos no se tocan. Va con `canjear` |

@@ -81,7 +81,7 @@ iPhone → POST /api/wallet/v1/devices/<id>/registrations/<passType>/<serial>
 caja escanea QR → /w/<serial> (sesión de caja de ESE negocio)
   → POST /api/accion → acciones.js (lógica pura) → saveCliente (marca `actualizado`)
   → notificarCliente(antes, después) → APNs push vacío a los push tokens del serial
-                                      → web push "Sello 5 de 8…" a sus navegadores
+                                      → web push "Llevas 5 de 8…" a sus navegadores
                                       → PUT del objeto de Google (con aviso)
   → iPhone: GET …/registrations/<passType>?passesUpdatedSince=<tag>  → [serial]
             GET /api/wallet/v1/passes/<passType>/<serial>          → pase nuevo

@@ -243,7 +243,7 @@ export default function Invitacion() {
         {paso === 2 && (
           <form onSubmit={terminar} style={panel}>
             <p style={texto}>
-              La usará el <strong style={{ color: C.texto }}>móvil de la caja</strong> para sellar. Solo sirve para eso:
+              La usará el <strong style={{ color: C.texto }}>móvil de la caja</strong> para sumar puntos. Solo sirve para eso:
               quien la sepa no ve tus clientes ni cambia la tarjeta. Apúntala: la vas a escribir allí.
             </p>
             <label style={etiqueta}>Usuario de la caja</label>

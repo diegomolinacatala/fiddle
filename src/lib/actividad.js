@@ -54,7 +54,7 @@ export function ultimoSelloTexto(evento, zona, ahora = Date.now()) {
   if (!t) return null;
   const minutos = Math.floor((ahora - t) / 60000);
   const cuando = minutos < 1 ? "hace un momento" : minutos < 60 ? `hace ${minutos} min` : ultimaVezTexto(evento.ts, zona, ahora);
-  return `Último sello ${cuando}`;
+  return `Último punto ${cuando}`;
 }
 
 /** Una fecha de calendario ("2026-10-08") en corto: "jue, 8 oct". No depende de la zona: ya es la de la tienda. */

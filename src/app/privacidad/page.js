@@ -39,7 +39,7 @@ export default async function Privacidad({ searchParams }) {
           <p style={{ marginTop: 0 }}>
             La tarjeta de fidelización de {tienda} funciona con <strong>fiddle</strong>. Aquí
             explicamos qué datos se guardan, para qué y qué puedes hacer con ellos. En resumen:
-            guardamos lo mínimo para contar tus sellos y avisarte, <strong>no pedimos email ni
+            guardamos lo mínimo para contar tus puntos y avisarte, <strong>no pedimos email ni
             teléfono</strong>, no hay publicidad de terceros y no vendemos datos a nadie.
           </p>
           <p style={{ marginBottom: 0 }}>
@@ -68,7 +68,7 @@ export default async function Privacidad({ searchParams }) {
           <h2 style={h2}>Qué datos guardamos</h2>
           <ul style={lista}>
             <li><strong>Tu tarjeta:</strong> un identificador aleatorio y un código corto de 3 caracteres.</li>
-            <li><strong>Tu saldo e historial:</strong> sellos, premios, visitas y sus fechas.</li>
+            <li><strong>Tu saldo e historial:</strong> puntos, premios, visitas y sus fechas.</li>
             <li>
               <strong>Tu nombre</strong>, si lo das al sacar la tarjeta o se lo dices a la tienda, para
               que te reconozcan en caja. No sale en tu tarjeta. Se guarda cifrado.
@@ -90,7 +90,7 @@ export default async function Privacidad({ searchParams }) {
           <h2 style={h2}>Para qué, y con qué base</h2>
           <ul style={lista}>
             <li>
-              <strong>Llevar tu tarjeta</strong>: sumar sellos, darte premios, guardar los que no gastes
+              <strong>Llevar tu tarjeta</strong>: sumar puntos, darte premios, guardar los que no gastes
               y avisarte de ellos. Es lo que pides al sacarla (art. 6.1.b del RGPD).
             </li>
             <li>
@@ -103,7 +103,7 @@ export default async function Privacidad({ searchParams }) {
               <strong>Promos de la tienda</strong>: sus ofertas y avisos sobre sus propios productos, a
               quien ya es cliente (art. 21.2 de la LSSI). Vienen de partida y{" "}
               <strong>puedes dejarlas cuando quieras</strong>, gratis, desde tu tarjeta o en la tienda;
-              los avisos de tus sellos y premios te siguen llegando.
+              los avisos de tus puntos y premios te siguen llegando.
             </li>
           </ul>
           <p style={{ marginBottom: 0 }}>

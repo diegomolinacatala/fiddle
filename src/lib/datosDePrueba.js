@@ -117,7 +117,7 @@ export function generar(ahora = Date.now()) {
     const clave = i ? "sellos2" : "sellos";
     const nombre = tienda.cartillas[i].nombre;
     c[clave] += 1;
-    ev(c, i ? "sellar2" : "sellar", `Sello ${nombre} ${c[clave]}/${metas[i]}`, ts, { empleado: quien });
+    ev(c, i ? "sellar2" : "sellar", `Punto ${nombre} ${c[clave]}/${metas[i]}`, ts, { empleado: quien });
     if (c[clave] >= metas[i]) {
       const t = new Date(ts.getTime() + 20_000);
       if (r() < 0.7) {

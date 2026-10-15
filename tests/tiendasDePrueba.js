@@ -20,7 +20,7 @@ export const TIENDAS_DE_PRUEBA = {
     meta: 8,
     premio: "café gratis",
     acciones: ["sellar", "canjear", "restar"],
-    tema: { ...temaDeEstilo("coffee"), atras: "Un sello por café. Al 8º invita la casa. De lunes a viernes." },
+    tema: { ...temaDeEstilo("coffee"), atras: "Un punto por café. Al 8º invita la casa. De lunes a viernes." },
   },
   fade: {
     slug: "fade",

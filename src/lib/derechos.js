@@ -91,7 +91,7 @@ export async function datosDeCliente(cliente, negocio) {
       saldo: esCupon
         ? { cupon: (cliente.premios || 0) > 0 ? "usado" : "sin usar" }
         : {
-            cartillas: negocio ? cartillasDe(cliente, negocio).map((c) => ({ cartilla: c.nombre, sellos: c.sellos, de: c.meta, guardados: c.guardados })) : [],
+            cartillas: negocio ? cartillasDe(cliente, negocio).map((c) => ({ cartilla: c.nombre, puntos: c.sellos, de: c.meta, guardados: c.guardados })) : [],
             premiosGuardados: totalGuardados(cliente),
             premiosCanjeados: cliente.premios || 0,
           },

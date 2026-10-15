@@ -1,9 +1,12 @@
 import { C, hojaDeColores } from "./ui";
 import { TEMA_TEMPRANO } from "./temprano";
+import { ICONOS_WEB, appleWebApp } from "@/lib/marcaFiddle";
 
 export const metadata = {
   title: "fiddle",
   description: "Tarjetas de fidelización en Apple Wallet y Android",
+  icons: ICONOS_WEB,
+  appleWebApp: appleWebApp(),
 };
 
 export const viewport = { width: "device-width", initialScale: 1 };

@@ -89,7 +89,7 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
     : paso === "crear" ? `${elegido.nombre}, elige tu PIN`
     : ultimo && elegido.id === ultimo.id ? `¿Sigues siendo ${elegido.nombre}?`
     : `${elegido.nombre}, tu PIN`;
-  const explicacion = paso === "lista" ? "Cada sello se apunta a tu nombre. Con tu PIN, nadie sella por ti."
+  const explicacion = paso === "lista" ? "Cada punto se apunta a tu nombre. Con tu PIN, nadie suma por ti."
     : paso === "crear" ? `De ${PIN_MIN} a ${PIN_MAX} cifras. Lo pedirá cuando este móvil lleve ${HORAS_PIN} horas sin usar la caja; si lo olvidas, el manager te lo quita y eliges otro.`
     : `${largo ? "Con la última cifra entras. " : ""}Se pide cuando este móvil lleva ${HORAS_PIN} horas sin usar la caja, o al cambiar de persona.`;
 

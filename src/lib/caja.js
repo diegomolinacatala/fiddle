@@ -21,7 +21,7 @@ import { SEGUNDOS_SIN_TOCAR } from "./sinTocar";
 export const OPCIONES_CAJA = {
   sumarDos: {
     label: "Botón «+2»",
-    descripcion: "Para quien se lleva dos de golpe: suma dos sellos con un toque.",
+    descripcion: "Para quien se lleva dos de golpe: suma dos puntos con un toque.",
     def: false,
   },
   guardarPremios: {
@@ -42,7 +42,7 @@ export const OPCIONES_CAJA = {
   },
   historial: {
     label: "Ver su actividad reciente",
-    descripcion: "Los últimos sellos y canjes de ese cliente, debajo de los botones.",
+    descripcion: "Los últimos puntos y canjes de ese cliente, debajo de los botones.",
     def: true,
   },
   nombre: {
@@ -75,7 +75,7 @@ export function filasDeCaja(negocio) {
   const filas = [];
   if (negocio.tipo !== "descuento" && puede(negocio, "sellar")) {
     for (const c of cartillasDe({}, negocio)) {
-      const palabra = negocio.cartillas ? singular(c.nombre) : "sello";
+      const palabra = negocio.cartillas ? singular(c.nombre) : "punto";
       filas.push({
         tipo: "cartilla",
         key: claveDe("sellar", c.indice),

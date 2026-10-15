@@ -83,7 +83,7 @@ function FilaCartilla({ f, accent, ejecutar, alto, grande }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
       {f.restar && (
-        <button type="button" onClick={() => ejecutar(f.restar)} aria-label={`Quitar uno (${f.label.replace(/^Añadir /, "")})`} title="Quitar uno: corrige un sello de más"
+        <button type="button" onClick={() => ejecutar(f.restar)} aria-label={`Quitar uno (${f.label.replace(/^Añadir /, "")})`} title="Quitar uno: corrige un punto de más"
           style={{ ...menos(accent), minHeight: alto, width: grande ? 60 : 52 }}>
           <Icono nombre="menos" tam={grande ? 24 : 20} grosor={2.4} />
         </button>
@@ -134,7 +134,7 @@ function Premio({ p, accent, ejecutar }) {
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             {boton(p.acciones.dar, "Dárselo ahora", "La cartilla vuelve a empezar", true)}
-            {p.acciones.guardar && boton(p.acciones.guardar, "Guardarlo para otro día", "Queda en su tarjeta y sigue sumando sellos", false)}
+            {p.acciones.guardar && boton(p.acciones.guardar, "Guardarlo para otro día", "Queda en su tarjeta y sigue sumando puntos", false)}
           </div>
         </>
       )}
@@ -152,7 +152,7 @@ function Premio({ p, accent, ejecutar }) {
           {boton(
             p.acciones.usar,
             "Usar un premio guardado",
-            p.guardados > 1 ? `Le quedarán ${p.guardados - 1}` : "Sus sellos no se tocan",
+            p.guardados > 1 ? `Le quedarán ${p.guardados - 1}` : "Sus puntos no se tocan",
             !p.completa,
           )}
         </div>

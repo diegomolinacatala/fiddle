@@ -54,7 +54,7 @@ export default async function Page({ params }) {
   if (!puedeAcceder(sesion, cliente.negocio, "caja")) {
     return (
       <main style={pagina}>
-        <Aviso titulo="Esta tarjeta es de otra tienda" texto="Solo la caja de su tienda puede sumarle sellos.">
+        <Aviso titulo="Esta tarjeta es de otra tienda" texto="Solo la caja de su tienda puede sumarle puntos.">
           <a href={`/login?b=${cliente.negocio}&next=/w/${serial}`} style={{ fontSize: 14 }}>Entrar con la caja de esa tienda</a>
         </Aviso>
       </main>

@@ -115,7 +115,7 @@ export async function unificarTarjeta(deps, { dispositivo, negocio, serial }) {
     const campos = fusionar(viejo, nuevo, n);
     if (!(await deps.fusionarClientes(viejo, nuevo, campos))) return { fusionada: null };
     await apuntar();
-    await deps.addEvento(serial, "fusion", "Volvió a añadir su tarjeta: se recuperaron sus sellos", { negocio, actor: "apple" });
+    await deps.addEvento(serial, "fusion", "Volvió a añadir su tarjeta: se recuperaron sus puntos", { negocio, actor: "apple" });
 
     // Los dos pases cambian: el nuevo se llena con los sellos de siempre y el
     // viejo, si sigue en algún iPhone, se anula.

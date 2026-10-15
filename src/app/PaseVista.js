@@ -222,7 +222,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
       </div>
 
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <Anotable clave="apple.banda" etiqueta="Banda (los sellos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
+        <Anotable clave="apple.banda" etiqueta="Banda (los puntos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
           <img src={comoDataUri(strip.svg)} alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`} style={{ display: "block", width: "100%", height: "auto" }} />
         </Anotable>
         {primaryFields.length > 0 && (
@@ -416,7 +416,7 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
 
       {/* La banda, entre las dos curvas: Google la mete por detrás de las esquinas. */}
       <div style={{ margin: "-26px 0" }}>
-        <Anotable clave="google.banda" etiqueta="Banda (los sellos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
+        <Anotable clave="google.banda" etiqueta="Banda (los puntos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
           <img src={comoDataUri(svgBandaOpaca(banda.svg, negocio.tema.cardBg))} alt={objeto.heroImage.contentDescription.defaultValue.value}
             style={{ display: "block", width: "100%", height: "auto", paddingTop: 26, paddingBottom: 26, background: negocio.tema.cardBg, boxSizing: "content-box" }} />
         </Anotable>

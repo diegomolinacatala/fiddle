@@ -115,7 +115,7 @@ export default function PanelCrm({ slug, inicial }) {
         {pestana === "grupos" && (
           <div style={{ display: "grid", gap: 16 }}>
             <p style={{ ...nota }}>
-              Cada cliente puede estar en varios grupos a la vez: quien está a un sello del premio también puede llevar
+              Cada cliente puede estar en varios grupos a la vez: quien está a un punto del premio también puede llevar
               semanas sin venir. Toca uno para ver quién hay y escribirles.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 12 }}>

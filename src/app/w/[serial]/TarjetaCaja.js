@@ -166,7 +166,7 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       return;
     }
     setCliente(actual);
-    const msg = hechas > 1 ? `${hechas} sellos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje;
+    const msg = hechas > 1 ? `${hechas} puntos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje;
     navigator.vibrate?.(50);
     if (hechas === 1 && tieneDeshacer(key)) {
       // `id` distingue un premio en espera del siguiente: la barra del aviso vuelve a empezar.

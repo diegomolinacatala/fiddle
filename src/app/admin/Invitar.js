@@ -181,7 +181,7 @@ function mailto(email, { url, token, caduca, alcance, nombre, usuarios }) {
     "",
     soloManager
       ? `Abre este enlace y elige tu nueva contraseña para entrar en las tarjetas de fidelización de ${nombre}.`
-      : `Ya está lista la tarjeta de fidelización de ${nombre}. Para entrar, abre este enlace y elige dos contraseñas: la tuya (para ver clientes, lanzar promos y cambiar la tarjeta) y la del móvil de la caja (solo para sellar).`,
+      : `Ya está lista la tarjeta de fidelización de ${nombre}. Para entrar, abre este enlace y elige dos contraseñas: la tuya (para ver clientes, lanzar promos y cambiar la tarjeta) y la del móvil de la caja (solo para sumar puntos).`,
     "",
     url,
     "",

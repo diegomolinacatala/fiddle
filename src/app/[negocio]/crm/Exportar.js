@@ -30,7 +30,7 @@ export default function Exportar({ cuantos, queContiene, accent, onDescargar, ti
           </p>
           {explicacion || (<>
             <p style={parrafo}>
-              {queContiene}. Una fila por cliente: código, nombre, estado, visitas, sellos, premios, fechas y notas.
+              {queContiene}. Una fila por cliente: código, nombre, estado, visitas, puntos, premios, fechas y notas.
               Se abre con <strong>Excel</strong>, Numbers o Google Sheets.
             </p>
             <p style={parrafo}>

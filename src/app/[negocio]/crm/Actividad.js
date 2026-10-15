@@ -94,7 +94,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
 
         <h2 style={{ ...h2, margin: "18px 0 4px" }}>{nombre}</h2>
         <p style={{ fontSize: 13, color: C.suave, margin: "0 0 14px" }}>
-          Cada sello debería ser una compra: compara estas cifras con los tickets del día. Si no cuadran, abajo está
+          Cada punto debería ser una compra: compara estas cifras con los tickets del día. Si no cuadran, abajo está
           cada movimiento con su hora para encontrar cuál.
         </p>
 
@@ -106,7 +106,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
             {cartillas.map((k, i) => (
               <Cifra
-                key={k.clave} label={dos ? `Sellos · ${k.nombre}` : "Sellos dados"} valor={t.porCartilla[i].sellos} accent={accent}
+                key={k.clave} label={dos ? `Puntos · ${k.nombre}` : "Puntos dados"} valor={t.porCartilla[i].sellos} accent={accent}
                 pie={t.porCartilla[i].quitados ? `y ${t.porCartilla[i].quitados} quitado${t.porCartilla[i].quitados === 1 ? "" : "s"} al corregir` : "en la caja"}
               />
             ))}
@@ -133,7 +133,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
             <table style={tabla}>
               <thead>
                 <tr>
-                  {["Hora", ...(cartillas.length ? cartillas.map((k) => (dos ? k.nombre : "Sellos")) : []), "Quitados", n.tipo === "descuento" ? "Cupones" : "Premios"]
+                  {["Hora", ...(cartillas.length ? cartillas.map((k) => (dos ? k.nombre : "Puntos")) : []), "Quitados", n.tipo === "descuento" ? "Cupones" : "Premios"]
                     .map((x, i) => <th key={i} style={th}>{x}</th>)}
                 </tr>
               </thead>
@@ -170,7 +170,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
                       <td style={td}><span style={chipCodigo(accent)}>{c?.codigo || "—"}</span></td>
                       <td style={td}>{c ? c.nombre || <span style={{ color: C.tenue }}>sin nombre</span> : <span style={{ color: C.tenue }}>ya no está</span>}</td>
                       <td style={{ ...td, color: f.clase === "correccion" ? C.mal : C.texto }}>
-                        {/* El texto de la caja ya dice qué y de qué cartilla ("Sello Cafés 3/8"). */}
+                        {/* El texto de la caja ya dice qué y de qué cartilla ("Punto Cafés 3/8"). */}
                         {f.clase === "alta" ? QUE.alta : f.mensaje}
                         {f.fueraDeHorario && (
                           <span style={{ marginLeft: 8, color: C.ojoTexto, fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "-2px" }}>

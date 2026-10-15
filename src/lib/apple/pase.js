@@ -139,7 +139,7 @@ export function camposDelPase(cliente, negocio) {
     return {
       headerFields: [],
       primaryFields: [],
-      secondaryFields: [{ key: "premio", label: "TARJETA ANTIGUA", value: "Tus sellos están en tu tarjeta nueva", changeMessage: "%@" }],
+      secondaryFields: [{ key: "premio", label: "TARJETA ANTIGUA", value: "Tus puntos están en tu tarjeta nueva", changeMessage: "%@" }],
       auxiliaryFields: [],
       backFields: [{ key: "como", label: "Puedes borrarla", value: "Esta tarjeta se ha pasado a la nueva que añadiste. No pierdes nada al borrarla." }],
     };

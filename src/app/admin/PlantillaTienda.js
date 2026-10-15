@@ -24,7 +24,7 @@ export default function PlantillaTienda(props) {
         texto: "Sin pestaña, y la caja ni pregunta quién atiende ni pide PIN. La lista y sus PIN se guardan tal cual.",
         aviso: "Plantilla apagada",
       }}
-      nota="Para tiendas donde cada empleado sella desde su móvil. Con un móvil fijo en la caja, mejor apagada."
+      nota="Para tiendas donde cada empleado suma puntos desde su móvil. Con un móvil fijo en la caja, mejor apagada."
     />
   );
 }

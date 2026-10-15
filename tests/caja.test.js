@@ -20,7 +20,7 @@ describe("la vista de la caja", () => {
 
   it("una fila por cartilla, que suma, con el − dentro si se puede quitar", () => {
     expect(filasDeCaja(una)).toEqual([
-      { tipo: "cartilla", key: "sellar", restar: "restar", dos: false, label: "Añadir sello", icon: "mas", cartilla: 0 },
+      { tipo: "cartilla", key: "sellar", restar: "restar", dos: false, label: "Añadir punto", icon: "mas", cartilla: 0 },
     ]);
     const filas = filasDeCaja({ ...dos, caja: { sumarDos: true } });
     expect(filas.map((f) => [f.key, f.restar, f.label, f.dos])).toEqual([

@@ -170,7 +170,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
               primero data-recorrido="cartilla" accent={accent} icono="cartera" titulo="Tu tarjeta"
               resumen={esCupon
                 ? `Cupón · ${n.premio}`
-                : (n.cartillas || [{ meta: n.meta, premio: n.premio }]).map((c) => `${c.meta} sellos · ${c.premio}`).join(" — ")}
+                : (n.cartillas || [{ meta: n.meta, premio: n.premio }]).map((c) => `${c.meta} puntos · ${c.premio}`).join(" — ")}
               accion={{ texto: "Editar tarjeta", icono: "editar", onClick: () => setEditando(true) }}
             />
             {/* La caja: qué puede hacer y cómo se ve, en su editor con vista previa. */}
@@ -306,7 +306,7 @@ function resumenCaja(n) {
   const partes = n.tipo === "descuento"
     ? [a.includes("canjear") && "aplica el descuento"]
     : [
-        a.includes("sellar") && (a.includes("restar") ? "suma y quita sellos" : "suma sellos"),
+        a.includes("sellar") && (a.includes("restar") ? "suma y quita puntos" : "suma puntos"),
         a.includes("canjear") && (caja.guardarPremios ? "da o guarda premios" : "da premios"),
         caja.sumarDos && "botón +2",
       ];

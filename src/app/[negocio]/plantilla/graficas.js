@@ -47,7 +47,7 @@ export function SerieApilada({ serie, claves, colorDe, nombreDe, alto = 120 }) {
             y -= h;
             return (
               <rect key={k} x={i * ancho + ancho * 0.15} y={y} width={ancho * 0.7} height={h} fill={colorDe(k)} opacity={0.9}>
-                <title>{`${dia(d.dia)}: ${nombreDe(k)}, ${n} ${n === 1 ? "sello" : "sellos"}`}</title>
+                <title>{`${dia(d.dia)}: ${nombreDe(k)}, ${n} ${n === 1 ? "punto" : "puntos"}`}</title>
               </rect>
             );
           });
