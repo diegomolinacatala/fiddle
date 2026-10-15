@@ -46,8 +46,6 @@ export default function Caja() {
         return r.json().then(setN);
       })
       .catch(() => {});
-    fetch(`/api/clientes?b=${negocio}&hoy=1`).then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && Array.isArray(d.lista) && setHoyEnCaja(d)).catch(() => {});
     // ?quien=1 lo manda la ficha (o «Cambiar»): a elegir aunque ya haya alguien.
     const q = new URLSearchParams(window.location.search);
     const destino = q.get("volver");
@@ -56,10 +54,28 @@ export default function Caja() {
     cargarQuien(q.get("quien") === "1");
   }, [negocio]);
 
+  // «Hoy en la caja»: al abrir, al volver a la pantalla y al cambiar el día (el móvil
+  // fijo del mostrador pasa la noche aquí: la de ayer no puede seguir diciendo «hoy»).
   useEffect(() => {
-    const t = setInterval(() => setReloj((x) => x + 1), 30_000);
-    return () => clearInterval(t);
-  }, []);
+    if (!negocio) return;
+    let dia = null;
+    const cargar = () => {
+      dia = new Date().toDateString();
+      fetch(`/api/clientes?b=${negocio}&hoy=1`).then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && Array.isArray(d.lista) && setHoyEnCaja(d)).catch(() => {});
+    };
+    const alVolver = () => document.visibilityState === "visible" && cargar();
+    cargar();
+    const t = setInterval(() => {
+      setReloj((x) => x + 1);
+      if (new Date().toDateString() !== dia) cargar();
+    }, 30_000);
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [negocio]);
 
   function cargarQuien(forzar = false) {
     fetch(`/api/plantilla/quien?b=${negocio}`).then((r) => (r.ok ? r.json() : null))

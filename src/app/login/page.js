@@ -19,10 +19,10 @@ import LogoFiddle from "@/app/LogoFiddle";
 // Con `?b=<tienda>&next=<ruta>` (el middleware o «Salir») el usuario sale ya
 // puesto: el de la caja si se venía de la caja, el del dueño si no
 // (usuarioSugerido en lib/acceso.js), y dos botones para cambiarlo sin teclear.
-// Sin `?b=` (se abre /login a secas), el móvil propone el último usuario con el
-// que se entró en él y su tienda da los dos botones; otro recordado (un admin,
-// otra tienda) sale como un botón más con su nombre (leerRecordados). Nunca la
-// contraseña, y abajo se pueden olvidar.
+// Sin `?b=` (se abre /login a secas), el móvil propone el último usuario de
+// tienda con el que se entró en él y su tienda da los dos botones; uno de otra
+// tienda sale como un botón más con su nombre (leerRecordados). Nunca la
+// contraseña ni los admins, y abajo se pueden olvidar.
 // Hoy no hay forma de recuperar una contraseña sin fiddle: por eso «¿No puedes
 // entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
 const MENSAJE_AYUDA = "Hola, no puedo entrar en fiddle.";
@@ -85,7 +85,7 @@ function LoginForm() {
         return;
       }
       try {
-        localStorage.setItem(CLAVE_RECORDADOS, JSON.stringify(recordarUsuario(recordados, { usuario, negocio: data.negocio, rol: data.rol })));
+        localStorage.setItem(CLAVE_RECORDADOS, JSON.stringify(recordarUsuario(recordados, { negocio: data.negocio, rol: data.rol })));
       } catch {}
       // El servidor decide a dónde: `next` solo si es de esta tienda (ver /api/login).
       router.push(data.destino);

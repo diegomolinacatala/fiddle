@@ -113,10 +113,31 @@ const DEL_PERSONAL = new Set(["caja", "manager", "admin"]);
  * código, el nombre y lo de hoy, nada más de la ficha.
  *
  * @param {{serial:string, tipo:string, mensaje:string, actor?:string, ts:string}[]} eventos
- * @param {{serial:string, codigo:string, nombre?:string|null}[]} clientes los vigentes de la tienda
+ * @param {{serial:string, codigo:string, nombre?:string|null}[]} clientes las tarjetas de los
+ *   `revisados` primeros de ultimosDeHoy (de todos, sin `revisados`)
  * @returns {{total:number, lista:{serial:string, codigo:string, nombre:string|null, ts:string, mensaje:string}[]}}
  */
-export function atendidosHoy(eventos, clientes, { zona, ahora = Date.now(), max = 15 }) {
+export function atendidosHoy(eventos, clientes, { zona, ahora = Date.now(), max = 15, revisados = Infinity }) {
+  const ultimos = ultimosDeHoy(eventos, { zona, ahora });
+  // Una tarjeta fusionada o borrada ya no está entre los clientes: no sale, ni cuenta
+  // (de las que se buscaron; de las demás no se sabe y se cuentan).
+  const porSerial = new Map((clientes || []).map((c) => [c.serial, c]));
+  const idas = ultimos.slice(0, revisados).filter((e) => !porSerial.has(e.serial)).length;
+  return {
+    total: ultimos.length - idas,
+    lista: ultimos.filter((e) => porSerial.has(e.serial)).slice(0, max).map((e) => {
+      const c = porSerial.get(e.serial);
+      return { serial: c.serial, codigo: c.codigo, nombre: c.nombre ?? null, ts: e.ts, mensaje: e.mensaje };
+    }),
+  };
+}
+
+/**
+ * El último movimiento de hoy de cada uno que atendió el personal, el más
+ * reciente primero. Con esto se sabe qué tarjetas leer (listClientesDeSeriales)
+ * antes de leerlas.
+ */
+export function ultimosDeHoy(eventos, { zona, ahora = Date.now() }) {
   const hoy = fechaLocal(ahora, zona);
   const ultimo = new Map();
   for (const e of eventos || []) {
@@ -126,16 +147,7 @@ export function atendidosHoy(eventos, clientes, { zona, ahora = Date.now(), max 
     const previo = ultimo.get(e.serial);
     if (!previo || e.ts > previo.ts) ultimo.set(e.serial, e);
   }
-  // Una tarjeta fusionada o borrada ya no está entre los clientes: no sale.
-  const porSerial = new Map((clientes || []).map((c) => [c.serial, c]));
-  const filas = [...ultimo.values()].filter((e) => porSerial.has(e.serial)).sort((a, b) => b.ts.localeCompare(a.ts));
-  return {
-    total: filas.length,
-    lista: filas.slice(0, max).map((e) => {
-      const c = porSerial.get(e.serial);
-      return { serial: c.serial, codigo: c.codigo, nombre: c.nombre ?? null, ts: e.ts, mensaje: e.mensaje };
-    }),
-  };
+  return [...ultimo.values()].sort((a, b) => b.ts.localeCompare(a.ts));
 }
 
 /**
@@ -357,11 +369,14 @@ export function nombrePeriodo(p, hoy) {
   return `Del ${ini} al ${fechaLarga(p.hasta, { day: "numeric", month: "long" })}`;
 }
 
-/** Contra qué van las flechas, dicho una vez encima de las cifras. */
-export function textoComparacion(p, hoy) {
-  const mismos = enCurso(p, hoy);
+/**
+ * Contra qué van las flechas, dicho una vez encima de las cifras. `anterior` es
+ * el de periodoAnterior: a final de mes puede ser el mes pasado entero.
+ */
+export function textoComparacion(p, anterior, hoy) {
+  const mismos = enCurso(p, hoy) && anterior.hastaMinutos !== null;
   if (p.modo === "semana") return mismos ? "los mismos días de la semana pasada" : "la semana anterior";
-  if (p.modo === "mes") return mismos ? "los mismos días del mes pasado" : "el mes anterior";
+  if (p.modo === "mes") return mismos ? "los mismos días del mes pasado" : enCurso(p, hoy) ? "el mes pasado entero" : "el mes anterior";
   if (p.modo === "dia") return "el día anterior";
   const largo = diasEntre(p.desde, p.hasta) + 1;
   return `los ${largo} días de antes`;

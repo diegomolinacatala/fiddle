@@ -72,6 +72,14 @@ describe("clientes", () => {
     expect(store.clientePublico(c)).not.toHaveProperty("auth_token");
   });
 
+  it("listClientesDeSeriales: solo esos y solo de esa tienda", async () => {
+    await nuevo("a", "nube");
+    await nuevo("b", "nube");
+    await nuevo("c", "fade");
+    expect((await store.listClientesDeSeriales("nube", ["a", "c", "zz"])).map((c) => c.serial)).toEqual(["a"]);
+    expect(await store.listClientesDeSeriales("nube", [])).toEqual([]);
+  });
+
   it("lista por negocio y toca solo los de ese negocio", async () => {
     await nuevo("a", "nube");
     await nuevo("b", "fade");

@@ -164,17 +164,18 @@ describe("usuarioSugerido", () => {
 describe("los usuarios que recuerda el móvil en /login", () => {
   it("el último delante, sin repetir y con tope", () => {
     let lista = [];
-    lista = recordarUsuario(lista, { usuario: "delicanteria-caja", negocio: "delicanteria", rol: "caja" });
-    lista = recordarUsuario(lista, { usuario: " Delicanteria ", negocio: "delicanteria", rol: "manager" });
-    lista = recordarUsuario(lista, { usuario: "delicanteria-caja", negocio: "delicanteria", rol: "caja" });
+    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "caja" });
+    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "manager" });
+    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "caja" });
     expect(lista).toEqual([{ u: "delicanteria-caja", t: "delicanteria" }, { u: "delicanteria", t: "delicanteria" }]);
-    for (const u of ["a", "b", "c", "d"]) lista = recordarUsuario(lista, { usuario: u, negocio: u, rol: "manager" });
+    for (const n of ["a", "b", "c", "d"]) lista = recordarUsuario(lista, { negocio: n, rol: "manager" });
     expect(lista).toHaveLength(MAX_RECORDADOS);
     expect(lista[0].u).toBe("d");
   });
 
-  it("un admin no es de ninguna tienda: así no salen «Soy la caja» de victor-caja", () => {
-    expect(recordarUsuario([], { usuario: "victor", negocio: "plataforma", rol: "admin" })).toEqual([{ u: "victor", t: null }]);
+  it("un admin no se recuerda: en el móvil de la caja no se queda propuesto para el siguiente", () => {
+    const lista = [{ u: "nube-caja", t: "nube" }];
+    expect(recordarUsuario(lista, { negocio: "plataforma", rol: "admin" })).toBe(lista);
   });
 
   it("lo guardado se lee con desconfianza: lo que no tenga forma de usuario se tira", () => {
@@ -186,6 +187,7 @@ describe("los usuarios que recuerda el móvil en /login", () => {
       { u: "<script>", t: "nube" },
       { u: "victor", t: null },
       { u: "nube", t: "../x" },
-    ]))).toEqual([{ u: "nube-caja", t: "nube" }, { u: "victor", t: null }]);
+      { u: "fade", t: "fade" },
+    ]))).toEqual([{ u: "nube-caja", t: "nube" }, { u: "fade", t: "fade" }]);
   });
 });

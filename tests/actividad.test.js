@@ -235,8 +235,12 @@ describe("el periodo que se mira", () => {
     expect(nombrePeriodo(periodoDeFechas("2026-09-28", "2026-10-04"), hoy)).toBe("Del 28 de septiembre al 4 de octubre");
     expect(rangoCorto("2026-10-12", "2026-10-18")).toBe("12 – 18 oct");
     expect(rangoCorto("2026-09-28", "2026-10-04")).toBe("28 sept – 4 oct");
-    expect(textoComparacion(periodoDe("semana", hoy), hoy)).toBe("los mismos días de la semana pasada");
-    expect(textoComparacion(periodoDe("mes", "2026-09-10"), hoy)).toBe("el mes anterior");
+    const texto = (p, h = hoy) => textoComparacion(p, periodoAnterior(p, h, 600), h);
+    expect(texto(periodoDe("semana", hoy))).toBe("los mismos días de la semana pasada");
+    expect(texto(periodoDe("mes", "2026-09-10"))).toBe("el mes anterior");
+    expect(texto(periodoDe("mes", hoy))).toBe("los mismos días del mes pasado");
+    // El 31 de octubre ya no hay «mismos días» en septiembre: se dice que es entero.
+    expect(texto(periodoDe("mes", "2026-10-31"), "2026-10-31")).toBe("el mes pasado entero");
   });
 });
 

@@ -90,6 +90,10 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
   const cerrada = unDia && act.porDia[0]?.cerrado;
   const textoFechas = unDia ? hasta.split("-").reverse().join("/") : rangoCorto(periodo.desde, hasta);
 
+  // Una fecha tecleada a mano (el calendario ya no deja) se queda dentro de lo que hay:
+  // un «0001-01-01» sería un rango de 740.000 días.
+  const acotar = (f) => (f > hoy ? hoy : primero && f < primero ? primero : f);
+
   const anteriorP = moverPeriodo(periodo, -1);
   const siguiente = moverPeriodo(periodo, 1);
   const puedeAtras = !primero || anteriorP.hasta >= primero;
@@ -120,13 +124,13 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input
                 type="date" value={periodo.desde} min={primero || undefined} max={hoy} aria-label="Desde"
-                onChange={(e) => e.target.value && setPeriodo(periodoDeFechas(e.target.value, periodo.hasta))}
+                onChange={(e) => e.target.value && setPeriodo(periodoDeFechas(acotar(e.target.value), periodo.hasta))}
                 style={fechaCampo}
               />
               <span style={{ color: C.tenue }}>a</span>
               <input
                 type="date" value={periodo.hasta} min={primero || undefined} max={hoy} aria-label="Hasta"
-                onChange={(e) => e.target.value && setPeriodo(periodoDeFechas(periodo.desde, e.target.value > hoy ? hoy : e.target.value))}
+                onChange={(e) => e.target.value && setPeriodo(periodoDeFechas(periodo.desde, acotar(e.target.value)))}
                 style={fechaCampo}
               />
             </div>
@@ -136,7 +140,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
               {periodo.modo === "dia" ? (
                 <input
                   type="date" value={periodo.desde} max={hoy} min={primero || undefined} aria-label="Día"
-                  onChange={(e) => e.target.value && setPeriodo(periodoDe("dia", e.target.value > hoy ? hoy : e.target.value))}
+                  onChange={(e) => e.target.value && setPeriodo(periodoDe("dia", acotar(e.target.value)))}
                   style={fechaCampo}
                 />
               ) : (
@@ -174,7 +178,7 @@ export default function Actividad({ d, n, slug, accent, onVerFicha }) {
           {unDia
             ? "Cada punto debería ser una compra: compara estas cifras con los tickets del día. Si no cuadran, abajo está cada movimiento con su hora para encontrar cuál."
             : "Cada punto debería ser una compra: compara estas cifras con los tickets de esos días. Si uno no cuadra, tócalo abajo para ver sus movimientos."}
-          {antes && <> Las flechas, frente a {textoComparacion(periodo, hoy)}.</>}
+          {antes && <> Las flechas, frente a {textoComparacion(periodo, anterior, hoy)}.</>}
         </p>
 
         {!completo ? (

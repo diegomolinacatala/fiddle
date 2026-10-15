@@ -180,14 +180,15 @@ export function usuarioSugerido(b, next) {
 // LOS USUARIOS QUE RECUERDA ESTE MÓVIL
 // /login guarda en el propio navegador (localStorage) con qué usuarios se entró,
 // el último primero, para no teclearlos: el móvil fijo de la caja sale ya con el
-// suyo. NUNCA la contraseña. Cada uno lleva su tienda (`t`) tal como la dijo el
-// servidor al entrar, null para un admin: de un nombre suelto no se puede saber
-// (aquí no está la lista de admins, ver arriba).
+// suyo. NUNCA la contraseña. Solo usuarios de tienda, con su tienda (`t`) tal como
+// la dijo el servidor al entrar: un admin que entre en el móvil de la caja no se
+// queda propuesto para el siguiente que lo coja.
 // ----------------------------------------------------------------------------
 
 export const CLAVE_RECORDADOS = "fiddle-usuarios";
 export const MAX_RECORDADOS = 3;
-const USUARIO_VALIDO = /^[a-z0-9-]{1,60}$/;
+// Con `typeof`: una RegExp convierte null en "null", que tiene forma de usuario.
+const esUsuario = (x) => typeof x === "string" && /^[a-z0-9-]{1,60}$/.test(x);
 
 /** Lo guardado, ya limpio: lo que no tenga forma de usuario se descarta. */
 export function leerRecordados(texto) {
@@ -195,19 +196,19 @@ export function leerRecordados(texto) {
   try { lista = JSON.parse(texto || "[]"); } catch { return []; }
   if (!Array.isArray(lista)) return [];
   return lista
-    .filter((r) => r && USUARIO_VALIDO.test(r.u) && (r.t === null || USUARIO_VALIDO.test(r.t)))
+    .filter((r) => r && esUsuario(r.u) && esUsuario(r.t))
     .map((r) => ({ u: r.u, t: r.t }))
     .slice(0, MAX_RECORDADOS);
 }
 
 /**
- * La lista con este usuario delante, sin repetir y con tope.
- * @param {{u:string, t:string|null}[]} lista
- * @param {{usuario:string, negocio:string, rol:string}} entrada lo que devolvió /api/login
+ * La lista con este usuario delante, sin repetir y con tope. El usuario sale de la
+ * tienda y el rol (`nube-caja`), no de lo tecleado: `Nube ` es `nube`.
+ * @param {{u:string, t:string}[]} lista
+ * @param {{negocio:string, rol:string}} entrada lo que devolvió /api/login
  */
-export function recordarUsuario(lista, { usuario, negocio, rol }) {
-  const u = String(usuario ?? "").trim().toLowerCase();
-  if (!USUARIO_VALIDO.test(u)) return lista;
-  const nuevo = { u, t: rol === "admin" ? null : negocio };
-  return [nuevo, ...lista.filter((r) => r.u !== u)].slice(0, MAX_RECORDADOS);
+export function recordarUsuario(lista, { negocio, rol }) {
+  if ((rol !== "caja" && rol !== "manager") || !esUsuario(negocio)) return lista;
+  const u = usuarioDeTienda(negocio, rol);
+  return [{ u, t: negocio }, ...lista.filter((r) => r.u !== u)].slice(0, MAX_RECORDADOS);
 }
