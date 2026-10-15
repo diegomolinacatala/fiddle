@@ -3,7 +3,7 @@ import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
   metricas, cambio, serieVisitas, rejillaHoraria, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
-  esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos,
+  esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos, resumenSerie, horarioDeRejilla,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -321,6 +321,16 @@ describe("el camino de la tarjeta", () => {
     expect(curvaDeVuelta(pocos.clientes, pocos.eventos, HISTORIAL)).toMatchObject({ listo: false, faltanDias: null });
   });
 
+  it("la cola se corta cuando quedan pocos seguidos: uno solo no la lleva al 100 %", () => {
+    // 20 estrenos: 15 de ayer y 5 de hace 12 días (4 vuelven a los 2). A los 8 días
+    // solo se sigue a esos 5, la cuarta parte: menos del 40 %, la curva no llega.
+    const { clientes, eventos } = juntar(estrenos("j", 15, 1), estrenos("v", 4, 12, 2), estrenos("n", 1, 12, 9));
+    const v = curvaDeVuelta(clientes, eventos, HISTORIAL);
+    expect(v.puntos.at(-1).dia).toBe(1);
+    expect(v.listo).toBe(false);
+    expect(v.faltanDias).toBe(6); // cuando los de ayer (el 8.º más antiguo) lleven una semana
+  });
+
   it("no cuenta a quien se dio de alta antes del historial que llega", () => {
     const viejo = cli({ serial: "viejo", alta: 300 });
     const { clientes, eventos } = juntar(estrenos("a", 5, 20, 3));
@@ -392,7 +402,9 @@ describe("el camino de la tarjeta", () => {
     expect(r.filas[0]).toEqual({ sellos: 1, siguen: 0, alejan: 1 });
     expect(r.filas[1]).toEqual({ sellos: 2, siguen: 1, alejan: 1 });
     expect(r.enCero).toBe(1);
+    expect(r.conPuntos).toBe(3);
     expect(r.alejanMediana).toBeNull(); // dos que se alejan: pocos para decir nada
+    expect(r.mitad).toBeNull();         // tres con puntos: tampoco
     expect(repartoCartillas(clientes, perfiles, CUPON)).toEqual([]);
   });
 });
@@ -451,6 +463,29 @@ describe("series y rejilla", () => {
     expect(r.media[4][10]).toBe(6);
     // Un festivo no es un lunes visto.
     expect(rejillaHoraria(eventos, { horario: { ...madrid, cerrados: ["2026-09-14"] }, ahora }).veces[0]).toBe(2);
+  });
+
+  it("la media de la serie es la de los días que abrió, sin hoy ni los cerrados", () => {
+    const serie = [
+      { dia: "2026-09-18", n: 10, cerrado: false, hoy: false },
+      { dia: "2026-09-19", n: 0, cerrado: true, hoy: false },   // cerrado: no baja la media
+      { dia: "2026-09-20", n: 20, cerrado: false, hoy: false },
+      { dia: "2026-09-21", n: 2, cerrado: false, hoy: true },    // a medias
+    ];
+    expect(resumenSerie(serie)).toEqual({ media: 15, mejor: serie[2], dias: 2 });
+    expect(resumenSerie([serie[3]])).toEqual({ media: null, mejor: null, dias: 0 });
+  });
+
+  it("la rejilla enseña las horas que abre y sabe cuáles están cerradas", () => {
+    // De lunes a viernes de 8 a 14 y de 17 a 20:30; el sábado de 9 a 14; el domingo cierra.
+    const partido = [{ abre: "08:00", cierra: "14:00" }, { abre: "17:00", cierra: "20:30" }];
+    const h = horarioDeRejilla({ zona: "Europe/Madrid", semana: [...Array(5).fill(partido), [{ abre: "09:00", cierra: "14:00" }], null] });
+    expect(h.horas).toEqual([8, 21]);
+    expect(h.cerrados).toEqual([6]);
+    expect(h.abierta[0][15]).toBe(false); // el descanso
+    expect(h.abierta[0][20]).toBe(true);  // de 20 a 20:30 abre
+    expect(h.abierta[5][17]).toBe(false); // el sábado por la tarde
+    expect(horarioDeRejilla(null)).toEqual({ horas: null, cerrados: [], abierta: null });
   });
 
   it("hoy no entra en la rejilla: aún no ha acabado", () => {

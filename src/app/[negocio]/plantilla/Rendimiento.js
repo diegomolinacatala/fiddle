@@ -218,7 +218,7 @@ function Detalle({ f, color, zona }) {
       </div>
       <div>
         <h3 style={h3}>Sus horas</h3>
-        <Rejilla rejilla={f.rejilla} accent={color} />
+        <Rejilla rejilla={f.rejilla} accent={color} unidad={["movimiento", "movimientos"]} />
         {f.primeraVez && (
           <p style={pie}>
             Primer movimiento del periodo: {fechaHoraTexto(f.primeraVez, zona)}. Último: {fechaHoraTexto(f.ultimaVez, zona)}.

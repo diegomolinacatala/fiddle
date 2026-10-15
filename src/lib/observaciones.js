@@ -227,8 +227,10 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
   // Sin datos para hablar de horas no se dice nada aquí: lo que falta ya lo
   // enseña la rejilla de «A qué horas viene la gente» (antes salía dos veces).
 
-  // LA TENDENCIA del mes, solo si el cambio es grande y hay con qué comparar:
-  // con un mes y poco de historia, "los 30 anteriores" son unos días sueltos.
+  // LA BAJADA del mes, solo si es grande y hay con qué comparar: con un mes y
+  // poco de historia, "los 30 anteriores" son unos días sueltos. La subida no
+  // se dice aquí: ya la enseña la flecha de la cifra de visitas, y aquí va lo
+  // que pide hacer algo.
   const antes = metricas.visitas30Previas || 0;
   const ahora = metricas.visitas30 || 0;
   if (antes >= UMBRALES.tendenciaMin && (!s || s.diasDeHistoria >= DIAS_TENDENCIA)) {
@@ -238,8 +240,6 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
         id: "baja", texto: `Estos 30 días han venido un ${-cambio}% menos que los 30 anteriores.`,
         accion: { tipo: "grupo", grupo: "riesgo", label: "Escribir a los que se están alejando" },
       });
-    } else if (cambio >= 20) {
-      out.push({ id: "sube", texto: `Estos 30 días han venido un ${cambio}% más que los 30 anteriores.` });
     }
   }
 

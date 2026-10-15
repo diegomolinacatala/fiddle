@@ -19,7 +19,7 @@
 //            misma persona muchas veces, y las dos cosas merecen un aviso.
 // ============================================================================
 
-import { fechaLocal, sumarDias, abreEl, diaDeFecha, relojLocal, ZONA_POR_DEFECTO } from "./horario";
+import { fechaLocal, sumarDias, abreEl, diaDeFecha, relojLocal, tramosDe, ZONA_POR_DEFECTO } from "./horario";
 import { cartillasDe, totalGuardados } from "./cartillas";
 
 const HORA = 60 * 60 * 1000;
@@ -55,10 +55,12 @@ export const UMBRALES = {
   // visitas sería «+100 %»): la flecha da la diferencia en unidades.
   tendenciaMin: 20,
   // «Cuánto tardan en volver» (curvaDeVuelta): hasta cuántos días después de
-  // estrenarla se mira, y con menos clientes que `vueltaMinBase` seguidos esos
-  // días, la curva se corta: un porcentaje de tres personas no dice nada.
+  // estrenarla se mira, y la curva se corta cuando quedan menos clientes
+  // seguidos que `vueltaMinBase` o que esta parte de todos: en la cola, con
+  // seis personas, una que vuelve la llevaba del 78 % al 100 %.
   vueltaCurvaDias: 28,
   vueltaMinBase: 5,
+  vueltaSeguidos: 0.4,
   // El puente de activos: cuántos había hace estos días y cuántos hay hoy.
   puenteDias: 30,
 };
@@ -458,9 +460,10 @@ export function cambio(ahora, antes) {
  * Volver es una visita aparte (soloVisitas: a más de `horasVisita` de la
  * anterior). Solo cuenta quien se dio de alta dentro del historial que llega:
  * de los de antes no se sabe cuándo fue su estreno. La curva se corta el día en
- * que quedan menos de `vueltaMinBase` clientes seguidos tanto tiempo; `listo`
- * cuando llega a la semana. Si no, `faltanDias`: cuándo llegará con los que ya
- * hay (null si aún no hay ni `vueltaMinBase` estrenos).
+ * que quedan pocos seguidos tanto tiempo (menos de `vueltaMinBase` o de la
+ * parte `vueltaSeguidos` de todos): la cola de una curva así salta con una
+ * sola persona. `listo` cuando llega a la semana. Si no, `faltanDias`: cuándo
+ * llegará con los que ya hay (null si aún no hay estrenos bastantes).
  * @returns {{listo:boolean, base:number, faltanDias:number|null, puntos:{dia:number, pct:number, seguidos:number}[]}}
  */
 export function curvaDeVuelta(clientes, eventos, { ahora = Date.now(), historialDesde = null, dias = UMBRALES.vueltaCurvaDias } = {}) {
@@ -474,13 +477,14 @@ export function curvaDeVuelta(clientes, eventos, { ahora = Date.now(), historial
     casos.push(visitas.length > 1 ? { t: (visitas[1] - visitas[0]) / DIA, volvio: true, edad } : { t: edad, volvio: false, edad });
   }
 
+  const minimo = Math.max(UMBRALES.vueltaMinBase, Math.ceil(casos.length * UMBRALES.vueltaSeguidos));
   const vueltas = [...new Set(casos.filter((c) => c.volvio).map((c) => c.t))].sort((a, b) => a - b);
   const puntos = [];
   let sigue = 1; // la parte que aún no ha vuelto
   let i = 0;
   for (let dia = 0; dia <= dias; dia += 1) {
     const seguidos = casos.filter((c) => c.edad >= dia).length;
-    if (seguidos < UMBRALES.vueltaMinBase) break;
+    if (seguidos < minimo) break;
     for (; i < vueltas.length && vueltas[i] <= dia; i += 1) {
       const t = vueltas[i];
       const enJuego = casos.filter((c) => c.t >= t).length;
@@ -491,13 +495,13 @@ export function curvaDeVuelta(clientes, eventos, { ahora = Date.now(), historial
 
   const SEMANA_DIAS = 7;
   const listo = puntos.length > SEMANA_DIAS;
-  // Cuándo tendrá una semana el quinto estreno más antiguo.
+  // Cuándo tendrán una semana los que hacen falta (el `minimo`-ésimo estreno más antiguo).
   const edades = casos.map((c) => c.edad).sort((a, b) => b - a);
-  const quinto = edades[UMBRALES.vueltaMinBase - 1];
+  const ultimoQueCuenta = edades[minimo - 1];
   return {
     listo,
     base: casos.length,
-    faltanDias: listo || quinto === undefined ? null : Math.max(1, Math.ceil(SEMANA_DIAS - quinto)),
+    faltanDias: listo || ultimoQueCuenta === undefined ? null : Math.max(1, Math.ceil(SEMANA_DIAS - ultimoQueCuenta)),
     puntos,
   };
 }
@@ -554,7 +558,8 @@ export function embudo(todos) {
  * Si los que se alejan se amontonan en los primeros sellos, la meta queda lejos.
  * Los que están a cero (empiezan o acaban de canjear) van aparte, en `enCero`:
  * no dicen dónde se para nadie. Sin cartillas (cupón), lista vacía.
- * @returns {{indice:number, nombre:string, meta:number, premio:string, filas:{sellos:number, siguen:number, alejan:number}[], enCero:number, alejanMediana:number|null}[]}
+ * @returns {{indice:number, nombre:string, meta:number, premio:string, filas:{sellos:number, siguen:number, alejan:number}[],
+ *   enCero:number, conPuntos:number, mitad:number|null, alejanMediana:number|null}[]}
  */
 export function repartoCartillas(clientes, perfiles, negocio) {
   if (negocio?.tipo === "descuento") return [];
@@ -568,19 +573,24 @@ export function repartoCartillas(clientes, perfiles, negocio) {
     const { indice } = cartilla;
     const filas = Array.from({ length: cartilla.meta }, (_, i) => ({ sellos: i + 1, siguen: 0, alejan: 0 }));
     const alejados = [];
+    const todos = [];
     let enCero = 0;
     for (const c of conVisitas) {
       const { sellos } = cartillasDe(c, negocio)[indice];
       if (!sellos) { enCero += 1; continue; }
       const sigue = esActivo(porSerial.get(c.serial));
       filas[sellos - 1][sigue ? "siguen" : "alejan"] += 1;
+      todos.push(sellos);
       if (!sigue) alejados.push(sellos);
     }
+    const mitadDe = (xs) => (xs.length >= UMBRALES.vueltaMinBase ? Math.ceil(mediana(xs)) : null);
     return {
       // `indice` hace de clave: dos cartillas pueden llamarse igual.
       indice, nombre: cartilla.nombre, meta: cartilla.meta, premio: cartilla.premio, filas, enCero,
-      // «La mitad de los que se alejan se quedó con N sellos o menos»: con pocos, nada.
-      alejanMediana: alejados.length >= UMBRALES.vueltaMinBase ? Math.ceil(mediana(alejados)) : null,
+      conPuntos: todos.length,
+      // «La mitad lleva N puntos o menos» y lo mismo de los que se alejan: con pocos, nada.
+      mitad: mitadDe(todos),
+      alejanMediana: mitadDe(alejados),
     };
   });
 }
@@ -753,6 +763,40 @@ export function rejillaHoraria(eventos, { horario = null, ahora = Date.now() } =
   }
   const media = visitas.map((fila, d) => fila.map((n) => n / Math.max(1, veces[d])));
   return { media, visitas, veces };
+}
+
+/**
+ * Lo que se dice de la serie de días: la media de los días que abrió (enteros:
+ * hoy no cuenta, y un día cerrado sin nadie no baja la media) y el mejor.
+ * @returns {{media:number|null, mejor:{dia:string, n:number}|null, dias:number}}
+ */
+export function resumenSerie(serie) {
+  const abiertos = serie.filter((d) => !d.hoy && !(d.cerrado && !d.n));
+  if (!abiertos.length) return { media: null, mejor: null, dias: 0 };
+  const mejor = abiertos.reduce((m, d) => (d.n > m.n ? d : m));
+  return { media: abiertos.reduce((a, d) => a + d.n, 0) / abiertos.length, mejor: mejor.n ? mejor : null, dias: abiertos.length };
+}
+
+/**
+ * Qué enseña la rejilla: de la primera hora que abre a la última que cierra en
+ * la semana ([desde, hasta), en horas enteras), los días que nunca abre y, hora
+ * a hora, si ese día está abierta (`abierta[dia][hora]`): una casilla vacía de
+ * una hora abierta es que no vino nadie; la de una hora cerrada no dice nada, y
+ * no deben parecerse. Sin horario, null y ninguno: salen las horas con visitas.
+ * @returns {{horas:[number, number]|null, cerrados:number[], abierta:boolean[][]|null}}
+ */
+export function horarioDeRejilla(horario) {
+  if (!horario) return { horas: null, cerrados: [], abierta: null };
+  // Una semana cualquiera (el 1 de enero de 2024 fue lunes), sin festivos: solo importa el día.
+  const semana = Array.from({ length: 7 }, (_, d) => tramosDe({ ...horario, cerrados: [] }, sumarDias("2024-01-01", d)));
+  const tramos = semana.flat();
+  return {
+    horas: tramos.length
+      ? [Math.floor(Math.min(...tramos.map((t) => t.abre)) / 60), Math.ceil(Math.max(...tramos.map((t) => t.cierra)) / 60)]
+      : null,
+    cerrados: semana.flatMap((t, d) => (t.length ? [] : [d])),
+    abierta: semana.map((t) => Array.from({ length: 24 }, (_, h) => t.some((x) => x.abre < (h + 1) * 60 && x.cierra > h * 60))),
+  };
 }
 
 /**
