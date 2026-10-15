@@ -554,7 +554,7 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
     if (!f) continue;
     const franjas = BLOQUES.filter((b) => porBloque.has(b.id)).map((b) => {
       const lista = listaDias(porBloque.get(b.id));
-      return `las ${b.plural} ${lista.startsWith("de ") ? lista : `de ${lista}`}`;
+      return `${b.articulo} ${b.plural} ${lista.startsWith("de ") ? lista : `de ${lista}`}`;
     });
     out.push({
       id: `solo-${clave}`, clave, tono: "dato",

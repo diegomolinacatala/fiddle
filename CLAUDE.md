@@ -350,6 +350,17 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
   rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
   son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **«Activo» es UNO: `esActivo`** (a su ritmo o recién llegado). Lo usan la cifra de
+  Activos, las cohortes y la cartilla; antes la cifra dejaba fuera a los nuevos y la
+  tabla no, y en la misma pantalla salían 10 y 27. Ritmo y visitas por cliente van con
+  la MEDIANA: un habitual diario arrastra la media.
+- **Las flechas no mienten con poco** (`cambio`): sin un mes anterior ENTERO (dos meses
+  de tienda y el historial cubriéndolos) no hay flecha; con menos de `tendenciaMin`
+  detrás, la diferencia en unidades («+6»), nunca «+100 %» de 2 a 4.
+- **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale
+  del anterior), «Vuelven en 14 días» (`vueltaPronto`, solo quien se dio de alta dentro
+  del historial que llega), los premios por dar (`porDar`: guardados y cartillas llenas,
+  de las dos) y dónde se queda la cartilla (`repartoCartillas`).
 - **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
   cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
   (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a

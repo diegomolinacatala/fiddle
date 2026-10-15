@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
-  metricas, tendencia, serieVisitas, rejillaHoraria, cohortes, efectoCampana,
+  metricas, cambio, serieVisitas, rejillaHoraria, cohortes, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
+  esActivo, mediana, vueltaPronto, embudo, repartoCartillas,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -218,10 +219,128 @@ describe("métricas", () => {
     expect(m.porEstado.descartada).toBeUndefined();
   });
 
-  it("la tendencia aguanta el mes sin nada detrás", () => {
-    expect(tendencia(10, 5)).toBe(100);
-    expect(tendencia(5, 10)).toBe(-50);
-    expect(tendencia(5, 0)).toBeNull();
+  it("«Activos» son los que siguen viniendo: a su ritmo y los recién llegados", () => {
+    // `a` es nuevo, `b` y `e` van a su ritmo, `c` se enfrió.
+    expect(m.activos).toBe(3);
+    expect(m.activos).toBe(m.porEstado.activo + m.porEstado.nuevo);
+    expect(perfiles.filter((p) => !p.descartada && esActivo(p)).map((p) => p.serial)).toEqual(["a", "b", "e"]);
+  });
+
+  it("ritmo y visitas por cliente con la mediana, no con la media", () => {
+    expect(mediana([1, 2, 30])).toBe(2);
+    expect(mediana([1, 2, 3, 30])).toBe(2.5);
+    expect(mediana([])).toBeNull();
+    expect(m.visitasHabituales).toBe(4.5); // 1, 3, 6 y 20
+  });
+
+  it("sin dos meses de tienda no hay mes anterior con el que comparar", () => {
+    // La primera tarjeta es de hace 200 días: sí se compara.
+    expect(m.visitas30Previas).toBe(1); // el canje de hace 45 días
+    expect(m.nuevos30Previos).toBe(1);  // `e`, de hace 40
+    const jovenes = [cli({ serial: "j", alta: 40, visitas: 3, ultima: 2 })];
+    const mj = metricas(jovenes.map((c) => perfilDe(c, NUBE, AHORA)), eventos, jovenes, AHORA);
+    expect(mj.visitas30Previas).toBeNull();
+    expect(mj.nuevos30Previos).toBeNull();
+    // Y si el historial que llega empieza hace un mes (el tope), las visitas tampoco.
+    const mt = metricas(perfiles, eventos, clientes, AHORA, { historialDesde: AHORA - 30 * DIA });
+    expect(mt.visitas30Previas).toBeNull();
+    expect(mt.nuevos30Previos).toBe(1);
+  });
+
+  it("la flecha da % solo con base suficiente; si no, unidades", () => {
+    expect(cambio(30, 20)).toEqual({ pct: 50 });
+    expect(cambio(10, 40)).toEqual({ pct: -75 });
+    expect(cambio(4, 2)).toEqual({ unidades: 2 }); // nada de «+100 %»
+    expect(cambio(3, 0)).toEqual({ unidades: 3 });
+    expect(cambio(5, null)).toBeNull();
+  });
+});
+
+describe("el camino de la tarjeta", () => {
+  const ev = (serial, dias, tipo = "sellar") => ({ serial, tipo, ts: haceDias(dias) });
+
+  it("vueltaPronto: de los que estrenaron hace más de 14 días, cuántos volvieron en 14", () => {
+    const clientes = ["a", "b", "c", "d", "e", "f", "g"].map((serial) => cli({ serial, alta: 50 }));
+    const eventos = [
+      ev("z", 60),                 // el historial empieza aquí
+      ev("a", 40), ev("a", 35),    // volvió a los 5 días
+      ev("b", 40), ev("b", 20),    // volvió, pero a los 20: no cuenta
+      ev("c", 30), ev("c", 29.5),  // a las 12 horas: otra visita
+      ev("d", 30),                 // no volvió
+      ev("e", 25), ev("e", 25.01), // dos sellos de golpe: una visita, no volvió
+      ev("f", 20), ev("f", 10),
+      ev("g", 5), ev("g", 2),      // estrenó hace 5 días: aún no se le puede medir
+    ];
+    expect(vueltaPronto(clientes, eventos, { ahora: AHORA })).toEqual({ base: 6, volvieron: 3, tasa: 50, dias: 14 });
+  });
+
+  it("vueltaPronto no cuenta a quien se dio de alta antes del historial que llega", () => {
+    const clientes = [cli({ serial: "viejo", alta: 300 }), cli({ serial: "a", alta: 40 })];
+    const v = vueltaPronto(clientes, [ev("viejo", 40), ev("viejo", 38), ev("a", 40)], { ahora: AHORA });
+    expect(v.base).toBe(1);
+    expect(v.tasa).toBeNull(); // menos estrenos que vueltaMinBase
+  });
+
+  it("el embudo baja escalón a escalón y empieza en todas las tarjetas", () => {
+    const clientes = [
+      cli({ serial: "d", alta: 10, visitas: 0, instalado: false }),                   // descartada
+      cli({ serial: "f", alta: 10, visitas: 0 }),                                     // sin uso
+      cli({ serial: "u", alta: 10, visitas: 1, ultima: 10 }),                         // una visita
+      cli({ serial: "r", alta: 30, visitas: 4, ultima: 1 }),                          // volvió
+      cli({ serial: "g", alta: 60, visitas: 9, ultima: 1, sellos: 0, guardados: 1 }), // la llenó y lo guardó
+      cli({ serial: "p", alta: 90, visitas: 12, ultima: 2, premios: 1 }),             // canjeó
+      cli({ serial: "x", alta: 5, visitas: 1, ultima: 5, sellos: 8 }),                // llena de golpe, sin volver
+    ];
+    const e = embudo(clientes.map((c) => perfilDe(c, NUBE, AHORA)));
+    expect(e.map((x) => [x.key, x.n])).toEqual([
+      ["sacaron", 7], ["estrenaron", 5], ["volvieron", 3], ["llenaron", 2], ["canjearon", 1],
+    ]);
+    expect(e[0].paso).toBeNull();
+    expect(e[2].paso).toBe(60);
+  });
+
+  it("en un cupón no hay cartilla: se estrena, se usa y luego se vuelve", () => {
+    // Tres usan el cupón en su primera visita y no vuelven; uno vuelve.
+    const clientes = [
+      ...["a", "b", "c"].map((serial) => cli({ serial, alta: 10, visitas: 1, ultima: 10, premios: 1 })),
+      cli({ serial: "d", alta: 30, visitas: 3, ultima: 2, premios: 1 }),
+    ];
+    const perfiles = clientes.map((c) => perfilDe(c, CUPON, AHORA));
+    const e = embudo(perfiles);
+    expect(e.map((x) => [x.key, x.n])).toEqual([["sacaron", 4], ["estrenaron", 4], ["canjearon", 4], ["volvieron", 1]]);
+    expect(e[2].label).toBe("Usaron el cupón");
+    // Cuadra con la cifra de «Cupones usados».
+    expect(metricas(perfiles, [], clientes, AHORA).premios).toBe(e[2].n);
+  });
+
+  it("premios por dar: los guardados y las cartillas llenas, de las dos cartillas", () => {
+    const DOS = { ...NUBE, cartillas: [{ nombre: "Cafés", meta: 8, premio: "Café" }, { nombre: "Cookies", meta: 5, premio: "Cookie" }] };
+    const p = perfilDe(cli({ sellos: 8, sellos2: 5, guardados: 1, guardados2: 2 }), DOS, AHORA);
+    expect(p.porDar).toBe(5);
+    expect(perfilDe(cli({ sellos: 3 }), NUBE, AHORA).porDar).toBe(0);
+    expect(perfilDe(cli({ premios: 1 }), CUPON, AHORA).porDar).toBe(0);
+    const m = metricas([p, perfilDe(cli({ serial: "s2", sellos: 8 }), DOS, AHORA)], [], [], AHORA);
+    expect(m.porDar).toBe(6);
+  });
+
+  it("repartoCartillas cuenta dónde está cada uno, separando a los que se alejan", () => {
+    const clientes = [
+      cli({ serial: "a", alta: 90, visitas: 6, ultima: 1, sellos: 2 }),  // sigue viniendo
+      cli({ serial: "b", alta: 90, visitas: 6, ultima: 80, sellos: 2 }), // se aleja
+      cli({ serial: "c", alta: 90, visitas: 6, ultima: 80, sellos: 1 }),
+      cli({ serial: "d", alta: 90, visitas: 3, ultima: 1, sellos: 0 }),  // a cero
+      cli({ serial: "e", alta: 10, visitas: 0, sellos: 0 }),             // sin visitas: fuera
+    ];
+    const perfiles = clientes.map((c) => perfilDe(c, NUBE, AHORA));
+    const [r] = repartoCartillas(clientes, perfiles, NUBE);
+    expect(r.indice).toBe(0);
+    expect(r.meta).toBe(8);
+    expect(r.filas).toHaveLength(8);
+    expect(r.filas[0]).toEqual({ sellos: 1, siguen: 0, alejan: 1 });
+    expect(r.filas[1]).toEqual({ sellos: 2, siguen: 1, alejan: 1 });
+    expect(r.enCero).toBe(1);
+    expect(r.alejanMediana).toBeNull(); // dos que se alejan: pocos para decir nada
+    expect(repartoCartillas(clientes, perfiles, CUPON)).toEqual([]);
   });
 });
 
@@ -231,6 +350,18 @@ describe("series y rejilla", () => {
     expect(s).toHaveLength(7);
     expect(s.reduce((a, d) => a + d.n, 0)).toBe(1);
     expect(s.at(-1).dia).toBe(new Date(AHORA).toISOString().slice(0, 10));
+  });
+
+  it("la serie cuenta el día de la tienda y marca los que cerró", () => {
+    // Las 00:30 del 21 en Madrid son las 22:30 UTC del 20: es visita del 21.
+    const horario = { zona: "Europe/Madrid", semana: [null, ...Array(6).fill([{ abre: "08:00", cierra: "20:00" }])] };
+    const s = serieVisitas([{ serial: "a", tipo: "sellar", ts: "2026-09-20T22:30:00.000Z" }], 7, AHORA, horario);
+    expect(s.find((d) => d.dia === "2026-09-21").n).toBe(1);
+    expect(s.find((d) => d.dia === "2026-09-20").n).toBe(0);
+    // El 21-09-2026 es lunes, y los lunes cierra.
+    expect(s.find((d) => d.dia === "2026-09-21").cerrado).toBe(true);
+    expect(s.find((d) => d.dia === "2026-09-20").cerrado).toBe(false);
+    expect(serieVisitas([], 3, AHORA).every((d) => d.cerrado === false)).toBe(true);
   });
 
   it("la rejilla es 7 × 24 y solo cuenta visitas", () => {

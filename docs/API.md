@@ -330,11 +330,16 @@ Todo el panel en una petición.
 ```json
 {
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
-  "metricas": { "total": 33, "activos": 11, "enRiesgo": 10, "porEstado": { "activo": 11, … },
-                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
-                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79, "cadenciaMedia": 7.1 },
+  "metricas": { "total": 33, "activos": 14, "enRiesgo": 10, "porEstado": { "activo": 11, "nuevo": 3, … },
+                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31, "porDar": 4,
+                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79,
+                "cadenciaHabitual": 6, "visitasHabituales": 4,
+                "vuelta": { "base": 20, "volvieron": 12, "tasa": 60, "dias": 14 },
+                "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "n": 37, "paso": null }, … ] },
   "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
   "cohortes": [ { "mes": "2026-08", "altas": 5, "repiten": 3, "vivos": 2, "retencion": 40 } ],
+  "cartillas": [ { "indice": 0, "nombre": "Sellos", "meta": 8, "filas": [ { "sellos": 1, "siguen": 4, "alejan": 2 }, … ],
+                   "enCero": 6, "alejanMediana": 2 } ],
   "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
   "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
   "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Sello 5/8", "actor": "caja", "ts": "…" } ]

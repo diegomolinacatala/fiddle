@@ -15,41 +15,57 @@ import { textoFalta } from "@/lib/observaciones";
 // mismo, y la pantalla y la API nunca pueden discrepar.
 // ============================================================================
 
-/** Cifra grande con su etiqueta y, si la hay, la variación contra el mes anterior. */
-export function Cifra({ label, valor, pie, variacion, accent }) {
-  const sube = variacion > 0;
+/**
+ * Cifra grande con su etiqueta y, si lo hay, el cambio contra el mes anterior
+ * (`cambio()` de lib/crm.js): en % con base suficiente, en unidades si no.
+ */
+export function Cifra({ label, valor, pie, cambio, accent, titulo }) {
   return (
-    <div style={{ ...panel, padding: "14px 16px", minWidth: 0 }}>
+    <div title={titulo} style={{ ...panel, padding: "14px 16px", minWidth: 0 }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 }}>
         {label}
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
         <span style={{ fontSize: 26, fontWeight: 650, color: accent ? legible(accent) : C.texto, lineHeight: 1 }}>{valor}</span>
-        {variacion !== null && variacion !== undefined && (
-          <span style={{ fontSize: 12, fontWeight: 600, color: sube ? C.ok : C.mal }}>
-            {sube ? "▲" : "▼"} {Math.abs(variacion)}%
-          </span>
-        )}
+        {cambio && <Cambio {...cambio} />}
       </div>
       {pie && <div style={{ fontSize: 12, color: C.suave, marginTop: 5 }}>{pie}</div>}
     </div>
   );
 }
 
+function Cambio({ pct, unidades }) {
+  const n = pct ?? unidades;
+  if (!n) return <span style={{ fontSize: 12, fontWeight: 600, color: C.tenue }}>igual</span>;
+  const sube = n > 0;
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, color: sube ? C.ok : C.mal }}>
+      {pct !== undefined ? `${sube ? "▲" : "▼"} ${Math.abs(n)}%` : `${sube ? "+" : "−"}${Math.abs(n)}`}
+    </span>
+  );
+}
+
 /**
  * Visitas por día. Barras simples; el eje no lleva números porque la altura ya
  * se compara sola y lo que importa es la forma: si sube, si cae, si hay un día
- * muerto. El detalle exacto va en el `title` de cada barra.
+ * muerto. El detalle exacto va en el `title` de cada barra. Un día que la
+ * tienda cerró (`cerrado`, del horario) lleva una raya gris en la base: un cero
+ * de un domingo cerrado no es un domingo malo.
  */
 export function Barras({ serie, accent, alto = 110 }) {
   const max = Math.max(1, ...serie.map((d) => d.n));
   const ancho = 100 / Math.max(serie.length, 1);
   const dia = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  const hayCerrados = serie.some((d) => d.cerrado && !d.n);
 
   return (
     <div>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: alto, display: "block" }}>
-        {serie.map((d, i) => (
+        {serie.map((d, i) => (d.cerrado && !d.n ? (
+          <rect key={d.dia} x={i * ancho + ancho * 0.15} y={38.6} width={ancho * 0.7} height={1.4} style={{ fill: C.bordeFuerte }}>
+            <title>{`${dia(d.dia)}: cerrado`}</title>
+          </rect>
+        ) : (
           <rect
             key={d.dia}
             x={i * ancho + ancho * 0.15}
@@ -62,16 +78,112 @@ export function Barras({ serie, accent, alto = 110 }) {
           >
             <title>{`${dia(d.dia)}: ${d.n} visita${d.n === 1 ? "" : "s"}`}</title>
           </rect>
-        ))}
+        )))}
       </svg>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.tenue, marginTop: 4 }}>
         <span>{serie.length ? dia(serie[0].dia) : ""}</span>
         <span>máx. {max}/día</span>
         <span>{serie.length ? dia(serie.at(-1).dia) : ""}</span>
       </div>
+      {hayCerrados && <Leyenda colores={[[C.bordeFuerte, "Cerrado"]]} />}
     </div>
   );
 }
+
+/** Cuadraditos de color con su nombre, debajo de un gráfico. */
+function Leyenda({ colores }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", marginTop: 8, fontSize: 12, color: C.suave }}>
+      {colores.map(([color, texto]) => (
+        <span key={texto} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 9, height: 9, borderRadius: 3, background: color, display: "inline-block" }} />
+          {texto}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * El camino de la tarjeta (`embudo()` de lib/crm.js): una barra por escalón,
+ * medida contra el primero, y qué parte del escalón de arriba llega. El nombre
+ * va encima de la barra, no al lado: en el móvil, al lado, la barra no medía nada.
+ */
+export function Embudo({ pasos, accent }) {
+  const primero = pasos[0]?.n || 0;
+  if (!primero) return <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Todavía no se ha sacado ninguna tarjeta.</p>;
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {pasos.map((p, i) => (
+        <div key={p.key} title={i ? `${p.n} de los ${pasos[i - 1].n} del paso anterior (${p.paso}%)` : `${p.n} tarjetas en total`}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, fontSize: 13 }}>
+            <span style={{ color: C.suave }}>{p.label}</span>
+            <span style={{ whiteSpace: "nowrap" }}>
+              <strong style={{ fontWeight: 650 }}>{p.n}</strong>
+              {p.paso !== null && <span style={{ color: C.tenue, fontSize: 12 }}> {p.paso}%</span>}
+            </span>
+          </div>
+          <div style={{ height: 10, background: C.borde, borderRadius: 4, overflow: "hidden", marginTop: 4 }}>
+            <div style={{ width: `${(p.n / primero) * 100}%`, minWidth: p.n ? 3 : 0, height: "100%", background: accent, opacity: 0.85 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Dónde se queda una cartilla (`repartoCartillas()` de lib/crm.js): una columna
+ * por número de sellos; abajo, en naranja, los que se están alejando; encima, en
+ * verde, los que siguen viniendo (los colores del reparto por estado).
+ */
+export function Cartilla({ c, conNombre }) {
+  const max = Math.max(1, ...c.filas.map((f) => f.siguen + f.alejan));
+  const hay = c.filas.some((f) => f.siguen + f.alejan);
+  // Como mucho unas ocho etiquetas, y ninguna pegada a «llena».
+  const salto = Math.ceil(c.meta / 8);
+  const etiqueta = (s) => (s === c.meta ? "llena" : salto > 1 && (s % salto || s > c.meta - salto) ? "" : s);
+  return (
+    <div style={{ minWidth: 0 }}>
+      {conNombre && <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{c.nombre}</div>}
+      {!hay ? (
+        <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Aún nadie tiene sellos en esta cartilla.</p>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 100 }}>
+            {c.filas.map((f) => (
+              <div key={f.sellos}
+                title={`${f.sellos === c.meta ? "Llena" : `${f.sellos} sello${f.sellos === 1 ? "" : "s"}`}: ${f.siguen} siguen viniendo, ${f.alejan} se están alejando`}
+                style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                <div style={{ height: `${(f.siguen / max) * 100}%`, background: C.ok, borderRadius: f.alejan ? "3px 3px 0 0" : 3 }} />
+                <div style={{ height: `${(f.alejan / max) * 100}%`, background: C.ojo, borderRadius: f.siguen ? "0 0 3px 3px" : 3 }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 3, marginTop: 4, fontSize: 11, color: C.tenue }}>
+            {c.filas.map((f) => (
+              <span key={f.sellos} style={{ flex: 1, minWidth: 0, textAlign: "center", whiteSpace: "nowrap" }}>
+                {etiqueta(f.sellos)}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+      {c.alejanMediana !== null && (
+        <p style={{ fontSize: 13, margin: "10px 0 0" }}>
+          La mitad de los que se están alejando se quedó en {c.alejanMediana} sello{c.alejanMediana === 1 ? "" : "s"} o menos, de {c.meta}.
+        </p>
+      )}
+      {c.enCero > 0 && (
+        <p style={{ fontSize: 12, color: C.tenue, margin: "6px 0 0" }}>
+          Aparte, {c.enCero} con la cartilla a cero: empiezan o acaban de canjear.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export const LeyendaCartilla = () => <Leyenda colores={[[C.ok, "Siguen viniendo"], [C.ojo, "Se están alejando"]]} />;
 
 const DIAS = ["L", "M", "X", "J", "V", "S", "D"];
 

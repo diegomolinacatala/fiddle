@@ -2,11 +2,12 @@
 
 import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
-import { serieVisitas, rejillaHoraria, tendencia, cadenciaTexto, GRUPOS } from "@/lib/crm";
+import { cadenciaTexto, GRUPOS } from "@/lib/crm";
 import { ultimaVezTexto, fechaHoraTexto, zonaDe } from "@/lib/actividad";
-import { observaciones, enlaceDeAccion, suficiencia } from "@/lib/observaciones";
+import { enlaceDeAccion } from "@/lib/observaciones";
 import { csvClientes } from "@/lib/exportar";
-import { Cifra, Barras, Rejilla, Reparto, Chip, FaltanDatos } from "./piezas";
+import { Chip } from "./piezas";
+import Resumen from "./Resumen";
 import Ficha from "./Ficha";
 import Exportar, { bajarCsv } from "./Exportar";
 import Actividad from "./Actividad";
@@ -25,8 +26,9 @@ const DESCARTADAS = "descartadas";
 // CRM DE UNA TIENDA
 // ----------------------------------------------------------------------------
 // Una pestaña por pregunta:
-//   RESUMEN   ¿cómo va la tienda? cifras, reparto de clientes, cuándo vienen y
-//             lo que dicen los números (lib/observaciones.js), con su botón
+//   RESUMEN   ¿cómo va la tienda? cifras, el camino de la tarjeta (de sacarla a
+//             canjear) y dónde se queda la cartilla, reparto de clientes,
+//             cuándo vienen y lo que dicen los números (lib/observaciones.js)
 //   GRUPOS    los grupos del CRM en tarjetas: quién hay en cada uno y, con un
 //             toque, escribirles (lleva a Avisos con el grupo ya elegido)
 //   CLIENTES  ¿quién es este? la tabla, la búsqueda, la ficha de cada uno y la
@@ -72,11 +74,6 @@ export default function PanelCrm({ slug, inicial }) {
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3500); }
 
-  // Estas dos dependen de la hora del navegador, que es la de la tienda.
-  const serie = useMemo(() => (d ? serieVisitas(d.eventos, 30) : []), [d]);
-  const rejilla = useMemo(() => (d ? rejillaHoraria(d.eventos) : []), [d]);
-  const hay = useMemo(() => suficiencia({ eventos: d.eventos, horario: d.negocio.horario }), [d]);
-  const ideas = useMemo(() => (d ? observaciones({ rejilla, horario: d.negocio.horario, metricas: d.metricas, grupos: d.grupos, suficiencia: hay }) : []), [d, rejilla, hay]);
   const [grupoVisto, setGrupoVisto] = useState(null);
 
   const lista = useMemo(() => {
@@ -93,7 +90,6 @@ export default function PanelCrm({ slug, inicial }) {
   const accent = n.tema.accent;
   const zona = zonaDe(n);
   const grupoActivo = grupos.find((g) => g.key === grupo);
-  const enLaEscalera = estados.filter((e) => e.key !== "descartada");
 
   // La hoja se arma AQUÍ, con la lista que se ve: lo que hay en pantalla es lo que baja.
   function descargar() {
@@ -112,106 +108,7 @@ export default function PanelCrm({ slug, inicial }) {
 
         {/* ------------------------------------------------------ resumen */}
         {pestana === "resumen" && (
-          <div style={{ display: "grid", gap: 18 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-              <Cifra label="Clientes" valor={m.total} pie={`${m.instalados} con la tarjeta en el teléfono`} accent={accent} />
-              <Cifra label="Activos" valor={m.activos} pie="con su frecuencia habitual" accent={C.ok} />
-              <Cifra label="En riesgo" valor={m.enRiesgo} pie="más tiempo del habitual sin venir" accent={m.enRiesgo ? C.ojo : C.texto} />
-              <Cifra label="Visitas (30 d)" valor={m.visitas30} variacion={tendencia(m.visitas30, m.visitas30Previas)} pie="vs. los 30 anteriores" />
-              <Cifra label="Altas (30 d)" valor={m.nuevos30} variacion={tendencia(m.nuevos30, m.nuevos30Previos)} pie="pases nuevos" />
-              <Cifra label="Premios" valor={m.premios} pie="canjeados en total" />
-            </div>
-
-            <section style={panel}>
-              <h2 style={h2}>Estado de los clientes</h2>
-              <Reparto porEstado={m.porEstado} estados={enLaEscalera} total={m.total} />
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 18, fontSize: 13, color: C.suave }}>
-                <span>Vuelven una segunda vez: <strong style={{ color: C.texto }}>{m.tasaVuelta}%</strong></span>
-                <span>Instalan el pase: <strong style={{ color: C.texto }}>{m.tasaInstalacion}%</strong></span>
-                <span>Ritmo medio: <strong style={{ color: C.texto }}>{cadenciaTexto(m.cadenciaMedia)}</strong></span>
-                <span>Visitas por cliente: <strong style={{ color: C.texto }}>{(m.visitasPorCliente ?? 0).toFixed(1)}</strong></span>
-              </div>
-              {m.total > 0 && m.tasaInstalacion < 60 && (
-                <p style={{ ...nota, marginTop: 14 }}>
-                  Solo el {m.tasaInstalacion}% ha añadido la tarjeta al teléfono; al resto no le llegan los avisos.
-                </p>
-              )}
-              {m.descartadas > 0 && (
-                <p style={{ fontSize: 12.5, color: C.tenue, margin: "14px 0 0" }}>
-                  Aparte, {m.descartadas} tarjeta{m.descartadas === 1 ? "" : "s"} que nadie guardó en el teléfono ni usó en caja: no
-                  cuenta{m.descartadas === 1 ? "" : "n"} como cliente{m.descartadas === 1 ? "" : "s"}.{" "}
-                  <button type="button" onClick={() => { setGrupo(DESCARTADAS); setPestana("clientes"); }} style={enlaceSuave}>Verlas</button>
-                </p>
-              )}
-            </section>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 18 }}>
-              <section style={panel}>
-                <h2 style={h2}>Visitas de los últimos 30 días</h2>
-                <Barras serie={serie} accent={accent} />
-              </section>
-              <section style={panel}>
-                <h2 style={h2}>A qué horas viene la gente</h2>
-                {hay.suficiente ? <Rejilla rejilla={rejilla} accent={accent} /> : <FaltanDatos s={hay} accent={accent} />}
-              </section>
-            </div>
-
-            {ideas.length > 0 && (
-              <section style={panel}>
-                <h2 style={h2}>Lo que dicen los números</h2>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {ideas.map((o) => (
-                    <div key={o.id} style={idea}>
-                      <span style={{ color: legible(accent), display: "inline-flex", marginTop: 2 }}><Icono nombre={o.accion?.tipo === "grupo" ? "clientes" : o.id === "pocos" ? "reloj" : "diana"} tam={18} /></span>
-                      <div style={{ flex: 1, minWidth: 200 }}>
-                        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{o.texto}</div>
-                        {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>{o.detalle}</div>}
-                      </div>
-                      {o.accion && (
-                        <a href={enlaceDeAccion(slug, o.accion, o.texto)} style={{ ...botonPequeno, textDecoration: "none", whiteSpace: "nowrap", alignSelf: "center" }}>
-                          {o.accion.label}
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {hay.suficiente && (
-                  <p style={{ fontSize: 12, color: C.tenue, margin: "12px 0 0" }}>
-                    Salen de las visitas de los últimos meses y del horario de la tienda. Son orientativas: mira la rejilla de arriba.
-                  </p>
-                )}
-              </section>
-            )}
-
-            {d.cohortes.length > 1 && (
-              <section style={panel}>
-                <h2 style={h2}>Por mes de alta</h2>
-                <div style={{ overflowX: "auto" }}>
-                <table style={tabla}>
-                  <thead>
-                    <tr>{["Mes", "Altas", "Repitieron", "Siguen activos", ""].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {d.cohortes.map((c) => (
-                      <tr key={c.mes}>
-                        <td style={td}>{new Date(`${c.mes}-15`).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</td>
-                        <td style={td}>{c.altas}</td>
-                        <td style={td}>{c.repiten}</td>
-                        <td style={td}>{c.vivos}</td>
-                        <td style={{ ...td, width: "35%" }}>
-                          <div style={{ height: 8, background: C.borde, borderRadius: 4, overflow: "hidden" }}>
-                            <div style={{ width: `${c.retencion}%`, height: "100%", background: accent }} />
-                          </div>
-                          <span style={{ fontSize: 11, color: C.tenue }}>{c.retencion}%</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              </section>
-            )}
-          </div>
+          <Resumen d={d} slug={slug} accent={accent} onVerDescartadas={() => { setGrupo(DESCARTADAS); setPestana("clientes"); }} />
         )}
 
         {/* ------------------------------------------------------- grupos */}
@@ -376,7 +273,6 @@ function DetalleGrupo({ g, d, n, slug, accent, onVerFicha, onVerLista }) {
 }
 
 const tabla = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
-const idea = { display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", padding: "12px 14px", border: `1px solid ${C.borde}`, borderRadius: 12, background: C.panelSuave };
 const tarjetaGrupo = (activa, accent, hay) => ({
   ...panel, padding: 14, textAlign: "left", cursor: hay ? "pointer" : "default",
   borderColor: activa ? accent : C.borde, background: activa ? `${accent}0c` : hay ? C.panel : C.panelSuave,

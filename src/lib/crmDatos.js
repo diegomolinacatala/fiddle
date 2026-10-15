@@ -1,5 +1,5 @@
 import { listClientes, listEventosDeNegocio, listCampanas, serialesRegistrados, getNegocio } from "./store";
-import { perfilDe, metricas, conteoGrupos, cohortes, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
+import { perfilDe, metricas, conteoGrupos, cohortes, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
 
 /**
@@ -33,6 +33,12 @@ export async function datosCrm(slug) {
     desinstalado: registrados.has(c.serial) ? null : c.desinstalado,
   }));
   const perfiles = conRegistro.map((c) => perfilDe(c, negocio));
+  // Desde cuándo está TODO el historial. Si se llenó el tope, el día más viejo
+  // llega a medias: la Actividad no cuadra caja con él (lib/actividad.js) y las
+  // cifras no comparan con un mes que no está entero (metricas).
+  const historialCompletoDesde = eventos.length >= VENTANA.limite
+    ? eventos.at(-1).ts
+    : new Date(Date.now() - VENTANA.dias * 864e5).toISOString();
 
   return {
     negocio: {
@@ -45,9 +51,10 @@ export async function datosCrm(slug) {
       // Para poner nombre a quién hizo cada movimiento en Actividad (lib/plantilla.js). Sin hashes de PIN.
       plantilla: plantillaPublica(negocio.plantilla),
     },
-    metricas: metricas(perfiles, eventos, clientes),
+    metricas: metricas(perfiles, eventos, clientes, Date.now(), { historialDesde: Date.parse(historialCompletoDesde) }),
     grupos: conteoGrupos(perfiles),
     cohortes: cohortes(clientes, perfiles),
+    cartillas: repartoCartillas(clientes, perfiles, negocio),
     estados: LISTA_ESTADOS,
     catalogoGrupos: LISTA_GRUPOS,
     // Ficha por cliente: lo guardado + lo calculado, ya cruzado.
@@ -64,10 +71,6 @@ export async function datosCrm(slug) {
       ...efectoCampana(c, eventos),
     })),
     eventos,
-    // Desde cuándo está TODO el historial. Si se llenó el tope, el día más viejo
-    // llega a medias y la Actividad no debe cuadrar caja con él (lib/actividad.js).
-    historialCompletoDesde: eventos.length >= VENTANA.limite
-      ? eventos.at(-1).ts
-      : new Date(Date.now() - VENTANA.dias * 864e5).toISOString(),
+    historialCompletoDesde,
   };
 }
