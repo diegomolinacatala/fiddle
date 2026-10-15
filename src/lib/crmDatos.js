@@ -1,5 +1,5 @@
 import { listClientes, listEventosDeNegocio, listCampanas, serialesRegistrados, getNegocio } from "./store";
-import { perfilDe, metricas, conteoGrupos, cohortes, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
+import { perfilDe, metricas, conteoGrupos, cohortes, puenteActivos, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
 
 /**
@@ -39,6 +39,7 @@ export async function datosCrm(slug) {
   const historialCompletoDesde = eventos.length >= VENTANA.limite
     ? eventos.at(-1).ts
     : new Date(Date.now() - VENTANA.dias * 864e5).toISOString();
+  const historialDesde = Date.parse(historialCompletoDesde);
 
   return {
     negocio: {
@@ -51,9 +52,11 @@ export async function datosCrm(slug) {
       // Para poner nombre a quién hizo cada movimiento en Actividad (lib/plantilla.js). Sin hashes de PIN.
       plantilla: plantillaPublica(negocio.plantilla),
     },
-    metricas: metricas(perfiles, eventos, clientes, Date.now(), { historialDesde: Date.parse(historialCompletoDesde) }),
+    metricas: metricas(perfiles, eventos, clientes, Date.now(), { historialDesde }),
     grupos: conteoGrupos(perfiles),
-    cohortes: cohortes(clientes, perfiles),
+    // Las dos reconstruyen el pasado con el historial: solo hasta donde llega entero.
+    puente: puenteActivos(conRegistro, perfiles, eventos, negocio, { historialDesde }),
+    cohortes: cohortes(conRegistro, perfiles, eventos, { historialDesde, zona: negocio.horario?.zona }),
     cartillas: repartoCartillas(clientes, perfiles, negocio),
     estados: LISTA_ESTADOS,
     catalogoGrupos: LISTA_GRUPOS,

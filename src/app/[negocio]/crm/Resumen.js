@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 import Icono from "@/app/Icono";
-import { serieVisitas, rejillaHoraria, cambio, cadenciaTexto } from "@/lib/crm";
+import { serieVisitas, rejillaHoraria, cambio, cadenciaTexto, UMBRALES } from "@/lib/crm";
 import { observaciones, enlaceDeAccion, suficiencia } from "@/lib/observaciones";
-import { Cifra, Barras, Rejilla, Reparto, FaltanDatos, Embudo, Cartilla, LeyendaCartilla } from "./piezas";
+import { Cifra, Barras, Rejilla, Reparto, FaltanDatos, Embudo, Cartilla, LeyendaCartilla, AunNo, Puente, Triangulo } from "./piezas";
 import { C, panel, h2, botonPequeno, legible } from "@/app/ui";
 
 // ============================================================================
@@ -14,9 +14,11 @@ import { C, panel, h2, botonPequeno, legible } from "@/app/ui";
 //   ¿cuántos y cómo?       las cifras de cabecera
 //   ¿funciona la tarjeta?  el camino de la tarjeta (de sacarla a canjear) y
 //                          dónde se queda la cartilla
-//   ¿quién se va?          el reparto por estado
+//   ¿quién se va?          el reparto por estado y de dónde salen los activos
+//                          de hoy (el puente desde hace 30 días)
 //   ¿cuándo vienen?        los 30 días y la rejilla horaria
 //   ¿y ahora qué?          lo que dicen los números, con su botón a Avisos
+//   ¿se quedan?            las altas de cada semana, mirada a la misma edad
 // Las cuentas son de lib/crm.js; aquí solo se enseñan. Las etiquetas de las
 // cifras las copia la web (home/Panel.js): si cambian aquí, también allí.
 // ============================================================================
@@ -27,6 +29,10 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
   const { negocio: n, metricas: m } = d;
   const esCupon = n.tipo === "descuento";
   const enLaEscalera = d.estados.filter((e) => e.key !== "descartada");
+  // Si el historial no llega a hace 30 días (el tope de eventos), el puente no
+  // sale: no es algo que el dueño pueda esperar. Si es que la tienda es nueva,
+  // sí, y dice cuánto falta.
+  const conPuente = m.total > 0 && (d.puente?.listo || d.puente?.motivo === "joven");
 
   // La serie va por días de la tienda (su zona y su horario: los cerrados se
   // marcan); la rejilla, con la hora del navegador, que es la de la tienda.
@@ -61,31 +67,34 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
         )}
       </div>
 
-      <section style={panel}>
-        <h2 style={h2}>Estado de los clientes</h2>
-        <Reparto porEstado={m.porEstado} estados={enLaEscalera} total={m.total} />
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 18, fontSize: 13, color: C.suave }}>
-          <span>Instalan el pase: <strong style={{ color: C.texto }}>{m.tasaInstalacion}%</strong></span>
-          <span title="El de la mitad de los clientes: uno que viene a diario no lo arrastra">
-            Ritmo habitual: <strong style={{ color: C.texto }}>{cadenciaTexto(m.cadenciaHabitual)}</strong>
-          </span>
-          <span title="La mitad de los clientes lleva estas visitas o más">
-            Visitas por cliente: <strong style={{ color: C.texto }}>{numero(m.visitasHabituales)}</strong>
-          </span>
-        </div>
-        {m.total > 0 && m.tasaInstalacion < 60 && (
-          <p style={{ ...nota, marginTop: 14 }}>
-            Solo el {m.tasaInstalacion}% ha añadido la tarjeta al teléfono; al resto no le llegan los avisos.
-          </p>
-        )}
-        {m.descartadas > 0 && (
-          <p style={{ fontSize: 12.5, color: C.tenue, margin: "14px 0 0" }}>
-            Aparte, {m.descartadas} tarjeta{m.descartadas === 1 ? "" : "s"} que nadie guardó en el teléfono ni usó en caja: no
-            cuenta{m.descartadas === 1 ? "" : "n"} como cliente{m.descartadas === 1 ? "" : "s"}.{" "}
-            <button type="button" onClick={onVerDescartadas} style={enlaceSuave}>Verlas</button>
-          </p>
-        )}
-      </section>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 18 }}>
+        <section style={panel}>
+          <h2 style={h2}>Estado de los clientes</h2>
+          <Reparto porEstado={m.porEstado} estados={enLaEscalera} total={m.total} />
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 18, fontSize: 13, color: C.suave }}>
+            <span>Instalan el pase: <strong style={{ color: C.texto }}>{m.tasaInstalacion}%</strong></span>
+            <span title="El de la mitad de los clientes: uno que viene a diario no lo arrastra">
+              Ritmo habitual: <strong style={{ color: C.texto }}>{cadenciaTexto(m.cadenciaHabitual)}</strong>
+            </span>
+            <span title="La mitad de los clientes lleva estas visitas o más">
+              Visitas por cliente: <strong style={{ color: C.texto }}>{numero(m.visitasHabituales)}</strong>
+            </span>
+          </div>
+          {m.total > 0 && m.tasaInstalacion < 60 && (
+            <p style={{ ...nota, marginTop: 14 }}>
+              Solo el {m.tasaInstalacion}% ha añadido la tarjeta al teléfono; al resto no le llegan los avisos.
+            </p>
+          )}
+          {m.descartadas > 0 && (
+            <p style={{ fontSize: 12.5, color: C.tenue, margin: "14px 0 0" }}>
+              Aparte, {m.descartadas} tarjeta{m.descartadas === 1 ? "" : "s"} que nadie guardó en el teléfono ni usó en caja: no
+              cuenta{m.descartadas === 1 ? "" : "n"} como cliente{m.descartadas === 1 ? "" : "s"}.{" "}
+              <button type="button" onClick={onVerDescartadas} style={enlaceSuave}>Verlas</button>
+            </p>
+          )}
+        </section>
+        {conPuente && <PuenteActivos p={d.puente} accent={accent} />}
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 18 }}>
         <section style={panel}>
@@ -100,7 +109,7 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
 
       {ideas.length > 0 && <LoQueDicen ideas={ideas} slug={slug} accent={accent} suficiente={hay.suficiente} />}
 
-      {d.cohortes.length > 1 && <Cohortes cohortes={d.cohortes} accent={accent} />}
+      {m.total > 0 && d.cohortes && <Cohortes co={d.cohortes} accent={accent} />}
     </div>
   );
 }
@@ -186,33 +195,52 @@ function LoQueDicen({ ideas, slug, accent, suficiente }) {
   );
 }
 
-function Cohortes({ cohortes, accent }) {
+function PuenteActivos({ p, accent }) {
   return (
     <section style={panel}>
-      <h2 style={h2}>Por mes de alta</h2>
-      <div style={{ overflowX: "auto" }}>
-        <table style={tabla}>
-          <thead>
-            <tr>{["Mes", "Altas", "Repitieron", "Siguen activos", ""].map((t) => <th key={t} style={th}>{t}</th>)}</tr>
-          </thead>
-          <tbody>
-            {cohortes.map((c) => (
-              <tr key={c.mes}>
-                <td style={td}>{new Date(`${c.mes}-15`).toLocaleDateString("es-ES", { month: "long", year: "numeric" })}</td>
-                <td style={td}>{c.altas}</td>
-                <td style={td}>{c.repiten}</td>
-                <td style={td}>{c.vivos}</td>
-                <td style={{ ...td, width: "35%" }}>
-                  <div style={{ height: 8, background: C.borde, borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: `${c.retencion}%`, height: "100%", background: accent }} />
-                  </div>
-                  <span style={{ fontSize: 11, color: C.tenue }}>{c.retencion}%</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <h2 style={h2}>Clientes activos, de hace {p.dias} días a hoy</h2>
+      {p.listo ? (
+        <>
+          <Puente p={p} accent={accent} />
+          {p.antes > 0 && (
+            <p style={{ fontSize: 13.5, margin: "14px 0 0" }}>
+              De los {p.antes} que venían hace {p.dias} días, sigue{p.siguen === 1 ? "" : "n"} viniendo {p.siguen}.
+            </p>
+          )}
+        </>
+      ) : (
+        <AunNo>
+          Sale cuando la tienda tenga clientes de hace {p.dias} días: falta{p.faltanDias === 1 ? "" : "n"} {p.faltanDias} día{p.faltanDias === 1 ? "" : "s"}.
+        </AunNo>
+      )}
+    </section>
+  );
+}
+
+/**
+ * El triángulo de las cohortes, en vez de «por mes de alta»: aquella tabla medía
+ * el estado de hoy y el mes viejo salía siempre peor solo por ser viejo.
+ */
+function Cohortes({ co, accent }) {
+  const fila = co.unidad === "mes" ? "ese mes" : "la semana que empieza ese lunes";
+  return (
+    <section style={panel}>
+      <h2 style={h2}>Semana a semana desde el alta</h2>
+      {co.listo ? (
+        <>
+          <p style={{ fontSize: 13, color: C.suave, margin: "0 0 12px" }}>
+            Cada fila, los que sacaron la tarjeta {fila}; cada casilla, el % de ellos que vino en su semana 1, 2, 3…
+          </p>
+          <Triangulo co={co} accent={accent} />
+          <p style={{ fontSize: 12, color: C.tenue, margin: "10px 0 0" }}>
+            Una semana sale cuando la han vivido entera todos los de la fila. Las altas de estos días entran al cumplir su primera semana.
+          </p>
+        </>
+      ) : (
+        <AunNo>
+          Sale cuando {UMBRALES.vueltaMinBase} clientes que sacaron la tarjeta la misma semana lleven dos semanas con ella.
+        </AunNo>
+      )}
     </section>
   );
 }
@@ -220,9 +248,3 @@ function Cohortes({ cohortes, accent }) {
 const idea = { display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", padding: "12px 14px", border: `1px solid ${C.borde}`, borderRadius: 12, background: C.panelSuave };
 const nota = { fontSize: 13, color: C.suave, background: C.panelSuave, border: `1px solid ${C.borde}`, borderRadius: 10, padding: "12px 14px", margin: 0 };
 const enlaceSuave = { background: "none", border: 0, padding: 0, font: "inherit", color: C.suave, textDecoration: "underline", cursor: "pointer" };
-const tabla = { width: "100%", borderCollapse: "collapse", fontSize: 14 };
-const th = {
-  textAlign: "left", fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase",
-  letterSpacing: 0.6, padding: "0 10px 8px 0", borderBottom: `1px solid ${C.borde}`, whiteSpace: "nowrap",
-};
-const td = { padding: "9px 10px 9px 0", borderBottom: `1px solid ${C.borde}`, verticalAlign: "middle", whiteSpace: "nowrap" };

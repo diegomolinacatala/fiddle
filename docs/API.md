@@ -337,7 +337,10 @@ Todo el panel en una petición.
                 "vuelta": { "base": 20, "volvieron": 12, "tasa": 60, "dias": 14 },
                 "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "n": 37, "paso": null }, … ] },
   "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
-  "cohortes": [ { "mes": "2026-08", "altas": 5, "repiten": 3, "vivos": 2, "retencion": 40 } ],
+  "puente":   { "dias": 30, "listo": true, "antes": 41, "nuevos": 24, "volvieron": 2, "enfriados": 13, "hoy": 54, "siguen": 28,
+                "pasos": [ { "key": "antes", "label": "Activos hace 30 días", "n": 41, "signo": 0, "desde": 0, "hasta": 41 }, … ] },
+  "cohortes": { "unidad": "semana", "semanas": 3, "listo": true,
+                "filas": [ { "desde": "2026-09-28", "altas": 12, "vividas": 2, "celdas": [ { "n": 10, "pct": 83 }, { "n": 6, "pct": 50 }, null ] } ] },
   "cartillas": [ { "indice": 0, "nombre": "Sellos", "meta": 8, "filas": [ { "sellos": 1, "siguen": 4, "alejan": 2 }, … ],
                    "enCero": 6, "alejanMediana": 2 } ],
   "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
@@ -348,6 +351,13 @@ Todo el panel en una petición.
 Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen de
 la hora local —a qué hora viene la gente— se hacen **en el navegador**: el
 servidor vive en UTC y sacaría el café de las 9 a las 7.
+
+`puente` y `cohortes` reconstruyen el pasado con esos eventos. Sin historial que cubra
+hace 30 días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`;
+con una tienda que aún no tenía clientes entonces, `"motivo": "joven"` y `faltanDias`.
+En `cohortes`, cada celda es la parte de la fila que vino en esa semana desde su alta;
+`null`, una semana que aún no han vivido todos. Con más de 10 semanas de historia,
+`"unidad": "mes"` (las columnas siguen siendo semanas).
 
 ### `POST /api/crm/campana` · manager
 Manda un mensaje a un GRUPO. El negocio va en el cuerpo (como en `/api/promo`).

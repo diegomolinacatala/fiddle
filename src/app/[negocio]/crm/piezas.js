@@ -1,7 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { C, panel, legible } from "@/app/ui";
+import { C, panel, legible, tinte } from "@/app/ui";
 import { textoFalta } from "@/lib/observaciones";
 
 // ============================================================================
@@ -184,6 +184,110 @@ export function Cartilla({ c, conNombre }) {
 }
 
 export const LeyendaCartilla = () => <Leyenda colores={[[C.ok, "Siguen viniendo"], [C.ojo, "Se están alejando"]]} />;
+
+/** En vez de un gráfico que aún no dice nada: qué le falta. */
+export function AunNo({ children }) {
+  return (
+    <div>
+      <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>Aún no hay datos suficientes</p>
+      <p style={{ fontSize: 13, color: C.suave, margin: 0 }}>{children}</p>
+    </div>
+  );
+}
+
+/**
+ * De dónde salen los activos de hoy (`puenteActivos()` de lib/crm.js): los dos
+ * totales desde cero, en el color de la tienda, y entre medias cada cambio
+ * flotando donde lo deja el anterior: en verde lo que suma, en naranja lo que
+ * resta (los colores de la cartilla). En horizontal y con el nombre encima, como
+ * el camino de la tarjeta: cinco columnas con su nombre debajo no caben en un móvil.
+ */
+export function Puente({ p, accent }) {
+  const max = Math.max(1, ...p.pasos.map((x) => x.hasta));
+  const color = (x) => (x.signo > 0 ? C.ok : x.signo < 0 ? C.ojo : accent);
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {p.pasos.map((x) => (
+        <div key={x.key} title={x.descripcion}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, fontSize: 13 }}>
+            <span style={{ color: x.signo ? C.suave : C.texto, fontWeight: x.signo ? 400 : 600 }}>{x.label}</span>
+            <strong style={{ fontWeight: 650, whiteSpace: "nowrap" }}>{x.signo > 0 ? "+" : x.signo < 0 ? "−" : ""}{x.n}</strong>
+          </div>
+          <div style={{ position: "relative", height: 10, background: C.panelSuave, borderRadius: 4, marginTop: 4 }}>
+            <div style={{
+              position: "absolute", top: 0, bottom: 0, borderRadius: 4,
+              left: `${(x.desde / max) * 100}%`, width: `${((x.hasta - x.desde) / max) * 100}%`, minWidth: x.n ? 3 : 0,
+              background: color(x), opacity: x.signo ? 1 : 0.85,
+            }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// El brillo de un #rrggbb (0 a 255), con los pesos de tintaClara (app/ui.js).
+const brillo = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(String(hex).slice(i, i + 2), 16));
+  return [r, g, b].some(Number.isNaN) ? 80 : 0.299 * r + 0.587 * g + 0.114 * b;
+};
+
+/**
+ * Cohortes a la misma edad (`cohortes()` de lib/crm.js): una fila por semana (o
+ * mes) de alta y una columna por semana desde el alta, con la cifra dentro y el
+ * color de la tienda más intenso cuanto más vinieron. Lo que aún no ha vivido
+ * toda la fila va vacío: la escalera de la derecha es el tiempo, no clientes
+ * que se fueron.
+ *
+ * La cifra va en blanco solo cuando el fondo es oscuro de día; de noche el fondo
+ * siempre lo es y el texto de la app ya es claro.
+ */
+export function Triangulo({ co, accent }) {
+  const fuerza = (pct) => 8 + 0.92 * pct; // % del color: un 0 se ve, pero apenas
+  const oscuro = (pct) => (fuerza(pct) / 100) * brillo(accent) + (1 - fuerza(pct) / 100) * 255 < 120;
+  const esteAno = new Date().getFullYear();
+  const nombre = (iso) => {
+    const d = new Date(`${iso}T12:00:00`);
+    if (co.unidad === "semana") return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+    return d.toLocaleDateString("es-ES", d.getFullYear() === esteAno ? { month: "long" } : { month: "short", year: "numeric" });
+  };
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ borderCollapse: "separate", borderSpacing: 3, fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={cabecera} />
+            <th colSpan={co.semanas} style={{ ...cabecera, textAlign: "left", paddingLeft: 2 }}>Semana desde el alta</th>
+          </tr>
+          <tr>
+            <th style={cabecera} />
+            {Array.from({ length: co.semanas }, (_, i) => <th key={i} style={cabecera}>{i + 1}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {co.filas.map((f) => (
+            <tr key={f.desde}>
+              <td style={{ paddingRight: 8, whiteSpace: "nowrap", verticalAlign: "middle" }}>
+                <div style={{ fontWeight: 600, fontSize: 12.5, textTransform: co.unidad === "mes" ? "capitalize" : "none" }}>{nombre(f.desde)}</div>
+                <div style={{ fontSize: 11, color: C.tenue }}>{f.altas} alta{f.altas === 1 ? "" : "s"}</div>
+              </td>
+              {f.celdas.map((c, i) => (c ? (
+                <td key={i} title={`Semana ${i + 1}: vinieron ${c.n} de ${f.altas}`} style={{
+                  ...celda, background: tinte(accent, fuerza(c.pct)), color: oscuro(c.pct) ? "#fff" : C.texto,
+                }}>
+                  {c.pct}
+                </td>
+              ) : <td key={i} style={celda} />))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const cabecera = { fontSize: 11, fontWeight: 600, color: C.tenue, textAlign: "center", padding: "0 0 2px", whiteSpace: "nowrap" };
+const celda = { minWidth: 34, height: 30, borderRadius: 5, textAlign: "center", verticalAlign: "middle", fontWeight: 600, fontVariantNumeric: "tabular-nums" };
 
 const DIAS = ["L", "M", "X", "J", "V", "S", "D"];
 

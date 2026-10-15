@@ -19,7 +19,7 @@
 //            misma persona muchas veces, y las dos cosas merecen un aviso.
 // ============================================================================
 
-import { fechaLocal, sumarDias, abreEl, ZONA_POR_DEFECTO } from "./horario";
+import { fechaLocal, sumarDias, abreEl, diaDeFecha, ZONA_POR_DEFECTO } from "./horario";
 import { cartillasDe, totalGuardados } from "./cartillas";
 
 const HORA = 60 * 60 * 1000;
@@ -58,6 +58,11 @@ export const UMBRALES = {
   // días. Con menos estrenos que `vueltaMinBase`, el porcentaje aún no dice nada.
   vueltaDias: 14,
   vueltaMinBase: 5,
+  // El puente de activos: cuántos había hace estos días y cuántos hay hoy.
+  puenteDias: 30,
+  // Con más semanas de historia que esto, las cohortes van por mes de alta: diez
+  // filas de semana ya son un triángulo que no se lee de un vistazo.
+  cohorteSemanas: 10,
 };
 
 const dias = (desde, hasta) => (desde && hasta ? Math.max(0, (hasta - desde) / DIA) : null);
@@ -498,6 +503,113 @@ export function repartoCartillas(clientes, perfiles, negocio) {
   });
 }
 
+/** Cuándo empezó cada visita de cada tarjeta (soloVisitas), en ms y en orden. */
+function visitasPorTarjeta(eventos) {
+  const por = new Map();
+  for (const e of soloVisitas(eventos)) {
+    if (!por.has(e.serial)) por.set(e.serial, []);
+    por.get(e.serial).push(ms(e.ts));
+  }
+  return por;
+}
+
+/**
+ * La fila de un cliente tal y como estaba en `fecha`, para pasarla por perfilDe:
+ * sus visitas de entonces son las de hoy menos las que hizo después, y su última
+ * visita, la última de antes. Null si aún no tenía la tarjeta.
+ *
+ * Si hizo visitas después pero la última de antes queda fuera del historial, se
+ * sabe que fue antes de `historialDesde`: se pone esa fecha, que ya lo deja
+ * inactivo (por eso puenteActivos pide historial de sobra, `dormidoDias`).
+ * Quien se dio de alta dentro del historial y no tiene visitas de antes, no
+ * las tenía: un contador de los de antes (que sumaba cada sello) no se las inventa.
+ */
+function clienteEnFecha(c, visitas, fecha, historialDesde) {
+  const alta = ms(c.creado);
+  if (!alta || alta > fecha) return null;
+  const despues = visitas.filter((t) => t > fecha).length;
+  const previa = visitas.filter((t) => t <= fecha).at(-1);
+  const cuantas = previa === undefined && alta >= historialDesde ? 0 : Math.max(0, (c.visitas || 0) - despues);
+  const guardada = ms(c.ultima_visita);
+  // Sin visitas después, la guardada sigue valiendo; con ellas, la última de antes.
+  const ultima = !cuantas ? null
+    : !despues && guardada ? Math.min(guardada, fecha)
+      : previa ?? historialDesde;
+  const instalado = ms(c.instalado);
+  return {
+    ...c,
+    visitas: cuantas,
+    ultima_visita: ultima ? new Date(ultima).toISOString() : null,
+    instalado: instalado && instalado <= fecha ? c.instalado : null,
+  };
+}
+
+/**
+ * De dónde salen los activos de hoy: los que había hace `dias`, más los nuevos
+ * (su primera visita fue en estos días), más los que volvieron (venían antes,
+ * hace `dias` ya no, y hoy sí), menos los que se enfriaron (activos entonces y
+ * hoy no). «Activo» es esActivo, el de la cifra de arriba, y hace `dias` se
+ * mide igual: perfilDe con la fila de cada uno como estaba entonces
+ * (clienteEnFecha). Así `hoy` es justo la cifra de «Activos».
+ *
+ * Para reconstruir el pasado hace falta el historial: las visitas posteriores
+ * a la fecha y, para saber si alguien estaba ya inactivo, `dormidoDias` más
+ * atrás. Si el que llega no lo cubre (el tope de eventos), no sale
+ * (`motivo: "historial"`). Si la tienda no tenía aún clientes hace `dias`,
+ * tampoco: un puente desde cero es la cifra de altas (`motivo: "joven"`).
+ *
+ * @param {object[]} clientes filas crudas, con `instalado` ya cruzado con los registros
+ * @param {object[]} perfiles los de hoy (perfilDe), en el mismo orden o no
+ * @returns {{dias:number, listo:false, motivo:"joven"|"historial", faltanDias?:number}
+ *   | {dias:number, listo:true, antes:number, nuevos:number, volvieron:number, enfriados:number, hoy:number, siguen:number,
+ *      pasos:{key:string, label:string, descripcion:string, n:number, signo:number, desde:number, hasta:number}[]}}
+ */
+export function puenteActivos(clientes, perfiles, eventos, negocio, { dias = UMBRALES.puenteDias, ahora = Date.now(), historialDesde = null } = {}) {
+  const fecha = ahora - dias * DIA;
+  const primera = Math.min(...clientes.map((c) => ms(c.creado)).filter(Boolean));
+  if (!(primera <= fecha)) {
+    const faltanDias = Number.isFinite(primera) ? Math.ceil((primera - fecha) / DIA) : dias;
+    return { dias, listo: false, motivo: "joven", faltanDias };
+  }
+  if (historialDesde === null || historialDesde > fecha - UMBRALES.dormidoDias * DIA) {
+    return { dias, listo: false, motivo: "historial" };
+  }
+
+  const visitas = visitasPorTarjeta(eventos);
+  const activoHoy = new Map(perfiles.map((p) => [p.serial, esActivo(p)]));
+  let antes = 0, nuevos = 0, volvieron = 0, enfriados = 0;
+  for (const c of clientes) {
+    const hoySi = activoHoy.get(c.serial) ?? false;
+    const fila = clienteEnFecha(c, visitas.get(c.serial) || [], fecha, historialDesde);
+    const entonces = fila ? perfilDe(fila, negocio, fecha) : null;
+    const entoncesSi = esActivo(entonces);
+    if (entoncesSi) antes += 1;
+    if (entoncesSi && !hoySi) enfriados += 1;
+    // Quien tenía la tarjeta sin estrenar también es nuevo: no vuelve, empieza.
+    if (!entoncesSi && hoySi) {
+      if (entonces?.visitas) volvieron += 1;
+      else nuevos += 1;
+    }
+  }
+
+  const tope = antes + nuevos + volvieron;
+  const hoy = tope - enfriados;
+  return {
+    dias, listo: true, antes, nuevos, volvieron, enfriados, hoy,
+    // De los que venían entonces, los que siguen: la frase de debajo del gráfico.
+    siguen: antes - enfriados,
+    // Las barras: los dos totales desde cero y, entre medias, cada cambio flotando
+    // donde lo deja el anterior.
+    pasos: [
+      { key: "antes", label: `Activos hace ${dias} días`, descripcion: `Los que seguían viniendo hace ${dias} días`, n: antes, signo: 0, desde: 0, hasta: antes },
+      { key: "nuevos", label: "Nuevos", descripcion: "Su primera visita fue en estos días y siguen viniendo", n: nuevos, signo: 1, desde: antes, hasta: antes + nuevos },
+      { key: "volvieron", label: "Volvieron", descripcion: `Ya venían antes, hace ${dias} días no y ahora sí`, n: volvieron, signo: 1, desde: antes + nuevos, hasta: tope },
+      { key: "enfriados", label: "Se enfriaron", descripcion: `Venían hace ${dias} días y ahora llevan más tiempo del habitual sin venir`, n: enfriados, signo: -1, desde: hoy, hasta: tope },
+      { key: "hoy", label: "Activos hoy", descripcion: "La cifra de Activos de arriba", n: hoy, signo: 0, desde: 0, hasta: hoy },
+    ],
+  };
+}
+
 /**
  * Visitas por día, de hace `dias` hasta hoy, sin huecos (los días sin nada van
  * a cero: si no, el gráfico miente sobre las rachas malas). El día es el de la
@@ -539,40 +651,72 @@ export function rejillaHoraria(eventos) {
   return rejilla;
 }
 
+const SEMANA = 7 * DIA;
+
 /**
- * Cohortes por mes de alta: de los que entraron en marzo, ¿cuántos siguen vivos?
- * Es la pregunta que dice si la tarjeta sirve para algo, no cuántas se reparten.
- * @returns {{mes:string, altas:number, vivos:number, repiten:number, retencion:number}[]}
+ * Cohortes a la misma edad: de los que sacaron la tarjeta una semana (o un mes),
+ * qué parte vino en su semana 1, 2, 3… desde el alta. Es la pregunta que dice si
+ * la tarjeta hace volver, y se compara de una fila a otra porque cada celda mira
+ * a todos a la MISMA edad. (Antes era «cuántos siguen activos hoy» por mes de
+ * alta, y el mes viejo siempre salía peor solo por ser viejo.)
+ *
+ * Las semanas son de CADA cliente, desde su alta: la 1 son sus primeros siete
+ * días (casi siempre con el estreno en caja dentro). Una celda sale cuando todos
+ * los de la fila la han vivido entera; hasta entonces, null. Una fila que aún no
+ * ha vivido ninguna (las altas de estos días) no sale.
+ *
+ * Solo entra quien se dio de alta dentro del historial que llega: de los de
+ * antes faltan sus primeras semanas. Las descartadas no son clientes. Con más
+ * de `cohorteSemanas` semanas de historia, las filas van por mes. La semana y el
+ * mes son los de la tienda (`zona`), con la semana de lunes a domingo.
+ * `listo`: alguna fila de al menos `vueltaMinBase` altas ha vivido dos semanas;
+ * antes, la segunda columna aún no dice nada.
+ * @returns {{unidad:"semana"|"mes", semanas:number, listo:boolean,
+ *   filas:{desde:string, altas:number, vividas:number, celdas:({n:number, pct:number}|null)[]}[]}}
  */
-export function cohortes(clientes, perfiles, meses = 6, ahora = Date.now()) {
-  const porSerial = new Map(perfiles.map((p) => [p.serial, p]));
-  const clave = (t) => new Date(t).toISOString().slice(0, 7);
-  const desde = clave(ahora - meses * 31 * DIA);
+export function cohortes(clientes, perfiles, eventos, { ahora = Date.now(), historialDesde = null, zona = ZONA_POR_DEFECTO } = {}) {
+  const fuera = new Set(perfiles.filter((p) => p.descartada).map((p) => p.serial));
+  const desde = historialDesde ?? Math.min(...(eventos || []).map((e) => ms(e.ts)).filter(Boolean));
+  const dentro = clientes
+    .map((c) => ({ serial: c.serial, alta: ms(c.creado) }))
+    .filter((c) => c.alta && c.alta >= desde && c.alta <= ahora && !fuera.has(c.serial));
+  const historia = dentro.length ? ahora - Math.min(...dentro.map((c) => c.alta)) : 0;
+  const unidad = historia > UMBRALES.cohorteSemanas * SEMANA ? "mes" : "semana";
+  const claveDe = (alta) => {
+    const dia = fechaLocal(alta, zona);
+    return unidad === "mes" ? `${dia.slice(0, 7)}-01` : sumarDias(dia, -diaDeFecha(dia));
+  };
 
   const grupos = new Map();
-  for (const c of clientes) {
-    const t = ms(c.creado);
-    if (!t) continue;
-    const mes = clave(t);
-    if (mes < desde) continue;
-    if (!grupos.has(mes)) grupos.set(mes, []);
-    grupos.get(mes).push(porSerial.get(c.serial));
+  for (const c of dentro) {
+    const clave = claveDe(c.alta);
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(c);
   }
 
-  return [...grupos.entries()]
+  const visitas = visitasPorTarjeta(eventos);
+  const vinoEn = (c, semana) => (visitas.get(c.serial) || [])
+    .some((t) => t >= c.alta + (semana - 1) * SEMANA && t < c.alta + semana * SEMANA);
+  const filas = [...grupos.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .filter(([, ps]) => ps.some((p) => p && !p.descartada))
-    .map(([mes, ps]) => {
-      const dentro = ps.filter((p) => p && !p.descartada);
-      const vivos = dentro.filter(esActivo).length;
-      return {
-        mes,
-        altas: dentro.length,
-        vivos,
-        repiten: dentro.filter((p) => p.visitas >= 2).length,
-        retencion: pct(vivos, dentro.length),
-      };
-    });
+    .map(([clave, gente]) => {
+      const vividas = Math.floor((ahora - Math.max(...gente.map((c) => c.alta))) / SEMANA);
+      const celdas = Array.from({ length: vividas }, (_, i) => {
+        const n = gente.filter((c) => vinoEn(c, i + 1)).length;
+        return { n, pct: pct(n, gente.length) };
+      });
+      return { desde: clave, altas: gente.length, vividas, celdas };
+    })
+    .filter((f) => f.vividas > 0);
+
+  const semanas = Math.max(0, ...filas.map((f) => f.vividas));
+  return {
+    unidad,
+    semanas,
+    listo: filas.some((f) => f.vividas >= 2 && f.altas >= UMBRALES.vueltaMinBase),
+    // Todas las filas igual de largas: lo que aún no han vivido, null.
+    filas: filas.map((f) => ({ ...f, celdas: Array.from({ length: semanas }, (_, i) => f.celdas[i] ?? null) })),
+  };
 }
 
 /**

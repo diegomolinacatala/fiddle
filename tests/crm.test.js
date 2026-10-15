@@ -3,7 +3,7 @@ import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
   metricas, cambio, serieVisitas, rejillaHoraria, cohortes, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
-  esActivo, mediana, vueltaPronto, embudo, repartoCartillas,
+  esActivo, mediana, vueltaPronto, embudo, repartoCartillas, puenteActivos,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -380,20 +380,118 @@ describe("series y rejilla", () => {
   });
 });
 
-describe("cohortes y campañas", () => {
-  it("agrupa por mes de alta y mide cuántos siguen vivos", () => {
-    const clientes = [
-      cli({ serial: "a", alta: 10, visitas: 4, ultima: 1 }),
-      cli({ serial: "b", alta: 12, visitas: 1, ultima: 12 }),
-      cli({ serial: "c", alta: 100, visitas: 2, ultima: 95 }),
-    ];
-    const perfiles = clientes.map((c) => perfilDe(c, NUBE, AHORA));
-    const co = cohortes(clientes, perfiles, 6, AHORA);
-    expect(co.length).toBeGreaterThanOrEqual(2);
-    const ultima = co.at(-1);
-    expect(ultima.altas).toBe(2);
-    expect(ultima.retencion).toBeGreaterThan(0);
+describe("el puente de activos", () => {
+  const VENTANA = 120 * DIA;
+  /** Días atrás de `desde` a `hasta`, de `paso` en `paso`. */
+  const cada = (desde, hasta, paso) => Array.from({ length: Math.floor((desde - hasta) / paso) + 1 }, (_, i) => desde - i * paso);
+  /** Un cliente con sus visitas (días atrás) y los eventos que dejaron, solo los que caben en la ventana. */
+  const con = (serial, alta, dias, resto = {}) => ({
+    cliente: cli({ serial, alta, visitas: dias.length, ultima: Math.min(...dias), ...resto }),
+    eventos: dias.map((d) => ({ serial, tipo: "sellar", ts: haceDias(d) })).filter((e) => Date.parse(e.ts) >= AHORA - VENTANA),
   });
+  const casos = [
+    con("sigue", 90, cada(90, 0, 5)),
+    con("enfria", 90, cada(90, 35, 5)),                // venía cada 5 días y lleva 35 sin venir
+    con("vuelve", 100, [...cada(100, 72, 7), 10, 5]),  // hace 30 días llevaba 42 fuera; ahora ha vuelto
+    con("nuevo", 20, [20, 12]),                        // aún no existía
+    con("estrena", 50, [8]),                           // la tenía sin estrenar: empieza, no vuelve
+    con("dormido", 200, cada(200, 100, 10)),           // fuera entonces y ahora
+    con("antiguo", 200, [...cada(200, 130, 10), 25, 20]), // su última de antes queda fuera del historial
+    con("descartada", 60, [], { instalado: false }),
+    con("sinUso", 10, []),
+  ];
+  const clientes = casos.map((c) => c.cliente);
+  const eventos = casos.flatMap((c) => c.eventos);
+  const perfiles = clientes.map((c) => perfilDe(c, NUBE, AHORA));
+  const opciones = { ahora: AHORA, historialDesde: AHORA - VENTANA };
+
+  it("los de hace 30 días, más nuevos y vueltos, menos enfriados, dan los de hoy", () => {
+    const p = puenteActivos(clientes, perfiles, eventos, NUBE, opciones);
+    expect(p).toMatchObject({ listo: true, dias: 30, antes: 2, nuevos: 2, volvieron: 2, enfriados: 1, hoy: 5, siguen: 1 });
+    expect(p.antes + p.nuevos + p.volvieron - p.enfriados).toBe(p.hoy);
+  });
+
+  it("«hoy» es la cifra de Activos y se mide igual hace 30 días", () => {
+    const p = puenteActivos(clientes, perfiles, eventos, NUBE, opciones);
+    expect(p.hoy).toBe(metricas(perfiles, eventos, clientes, AHORA).activos);
+    expect(perfiles.filter(esActivo).map((x) => x.serial).sort()).toEqual(["antiguo", "estrena", "nuevo", "sigue", "vuelve"]);
+  });
+
+  it("las barras flotan donde las deja la anterior", () => {
+    const { pasos } = puenteActivos(clientes, perfiles, eventos, NUBE, opciones);
+    expect(pasos.map((x) => [x.key, x.desde, x.hasta, x.signo])).toEqual([
+      ["antes", 0, 2, 0], ["nuevos", 2, 4, 1], ["volvieron", 4, 6, 1], ["enfriados", 5, 6, -1], ["hoy", 0, 5, 0],
+    ]);
+  });
+
+  it("sin historial que cubra hace 30 días (y dos meses más), no sale", () => {
+    expect(puenteActivos(clientes, perfiles, eventos, NUBE, { ahora: AHORA, historialDesde: AHORA - 60 * DIA }))
+      .toEqual({ dias: 30, listo: false, motivo: "historial" });
+    expect(puenteActivos(clientes, perfiles, eventos, NUBE, { ahora: AHORA }).motivo).toBe("historial");
+  });
+
+  it("una tienda sin clientes de hace 30 días dice cuánto falta", () => {
+    const jovenes = [con("a", 20, [20, 3]).cliente, con("b", 5, [5]).cliente];
+    const pj = jovenes.map((c) => perfilDe(c, NUBE, AHORA));
+    expect(puenteActivos(jovenes, pj, [], NUBE, opciones)).toEqual({ dias: 30, listo: false, motivo: "joven", faltanDias: 10 });
+    expect(puenteActivos([], [], [], NUBE, opciones).faltanDias).toBe(30);
+  });
+});
+
+describe("cohortes a la misma edad", () => {
+  const ev = (serial, dias) => ({ serial, tipo: "sellar", ts: haceDias(dias) });
+  const opciones = { ahora: AHORA, historialDesde: AHORA - 120 * DIA };
+  // El 21-09-2026 es lunes: hace 21 días, el lunes 31-08; hace 14, el 07-09.
+  const clientes = [
+    cli({ serial: "a1", alta: 21 }), cli({ serial: "a2", alta: 20 }), cli({ serial: "a3", alta: 20, visitas: 0 }),
+    cli({ serial: "a4", alta: 19 }), cli({ serial: "a5", alta: 19 }),
+    cli({ serial: "a6", alta: 20, visitas: 0, instalado: false }), // descartada: no es cliente
+    cli({ serial: "b1", alta: 14 }), cli({ serial: "b2", alta: 13 }),
+    cli({ serial: "c1", alta: 3 }),                                   // aún en su primera semana
+    cli({ serial: "viejo", alta: 200 }),                              // antes del historial
+  ];
+  const eventos = [
+    ev("a1", 21), ev("a1", 12),   // su semana 2 (9 días después del alta)
+    ev("a2", 20), ev("a2", 19.5), // dos veces, las dos en su semana 1
+    ev("a4", 19), ev("a4", 10),
+    ev("a5", 19), ev("a5", 2),    // su semana 3: aún no la ha vivido toda la fila
+    ev("b1", 14), ev("b1", 10), ev("b2", 13),
+    ev("c1", 3), ev("viejo", 20),
+  ];
+  const perfiles = clientes.map((c) => perfilDe(c, NUBE, AHORA));
+
+  it("cada celda es la parte de la fila que vino en esa semana desde SU alta", () => {
+    const co = cohortes(clientes, perfiles, eventos, opciones);
+    expect(co.unidad).toBe("semana");
+    expect(co.semanas).toBe(2);
+    expect(co.filas.map((f) => [f.desde, f.altas, f.vividas])).toEqual([["2026-08-31", 5, 2], ["2026-09-07", 2, 1]]);
+    expect(co.filas[0].celdas).toEqual([{ n: 4, pct: 80 }, { n: 2, pct: 40 }]);
+  });
+
+  it("lo que aún no han vivido todos los de la fila va vacío, y la fila sin nada vivido no sale", () => {
+    const co = cohortes(clientes, perfiles, eventos, opciones);
+    expect(co.filas[1].celdas).toEqual([{ n: 2, pct: 100 }, null]);
+    expect(co.filas.some((f) => f.desde === "2026-09-14")).toBe(false);
+    expect(co.listo).toBe(true);
+  });
+
+  it("sin una fila de cinco que haya vivido dos semanas, aún no está lista", () => {
+    const pocos = clientes.filter((c) => !["a4", "a5"].includes(c.serial));
+    expect(cohortes(pocos, perfiles, eventos, opciones).listo).toBe(false);
+  });
+
+  it("con más de diez semanas de historia, las filas van por mes", () => {
+    const largos = [cli({ serial: "m1", alta: 100 }), cli({ serial: "m2", alta: 20 })];
+    const co = cohortes(largos, largos.map((c) => perfilDe(c, NUBE, AHORA)), [ev("m1", 100), ev("m1", 60), ev("m2", 20)], opciones);
+    expect(co.unidad).toBe("mes");
+    expect(co.filas.map((f) => [f.desde, f.vividas])).toEqual([["2026-06-01", 14], ["2026-09-01", 2]]);
+    expect(co.semanas).toBe(14);
+    expect(co.filas[0].celdas[5]).toEqual({ n: 1, pct: 100 }); // 40 días después del alta: su semana 6
+    expect(co.filas[1].celdas.slice(2).every((c) => c === null)).toBe(true);
+  });
+});
+
+describe("campañas", () => {
 
   it("efectoCampana solo cuenta a los avisados que volvieron DESPUÉS", () => {
     const campana = { seriales: ["a", "b"], creado: haceDias(10) };

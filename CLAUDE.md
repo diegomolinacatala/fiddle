@@ -361,6 +361,13 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   del anterior), «Vuelven en 14 días» (`vueltaPronto`, solo quien se dio de alta dentro
   del historial que llega), los premios por dar (`porDar`: guardados y cartillas llenas,
   de las dos) y dónde se queda la cartilla (`repartoCartillas`).
+- **El pasado se reconstruye, no se guarda**: el puente de activos (`puenteActivos`: hace
+  30 días + nuevos + volvieron − se enfriaron = Activos de hoy) pasa a cada cliente por
+  `perfilDe` con su fila de entonces (visitas de hoy menos las posteriores, la última de
+  antes). Pide historial hasta 30 + `dormidoDias` atrás; si el tope de eventos no llega,
+  no sale. Las cohortes miden a todos a la MISMA edad (semana 1, 2, 3… desde el alta de
+  cada uno; una celda sale cuando la ha vivido toda la fila), nunca «cuántos siguen hoy»
+  por mes de alta: el mes viejo salía peor solo por ser viejo.
 - **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
   cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
   (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
