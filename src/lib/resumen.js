@@ -7,7 +7,7 @@
 // nunca entre sí.
 // ============================================================================
 
-import { cuentaCorta } from "./cartillas";
+import { cartillasDe, cuentaDeCartilla } from "./cartillas";
 
 /** @param {{sellos:number, premios:number}} cliente @param {{tipo:string, meta:number}} negocio */
 export function estadoDe(cliente, negocio) {
@@ -25,15 +25,21 @@ export function estadoDe(cliente, negocio) {
   };
 }
 
-/** Etiqueta + valor del contador, tal cual sale en Google Wallet ("Sellos 5/8"). */
+/**
+ * Los huecos de puntos de Google Wallet, tal cual salen ("Sellos 5/8"). Google
+ * tiene dos (loyaltyPoints y secondaryLoyaltyPoints). Con dos cartillas, uno por
+ * cartilla, en el mismo orden que la banda y con lo que tiene guardado de ella:
+ * "Cookies 3/8 · 2 gratis". Con una, solo el contador: el otro hueco es para los
+ * premios guardados (google/pase.js).
+ * @returns {{label:string, balance:string}[]}
+ */
 export function puntosDe(cliente, negocio) {
   const e = estadoDe(cliente, negocio);
-  // Dos cartillas: "Cookies · Cafés" / "3/8 · 5/8", en el mismo orden que la banda.
   if (negocio.cartillas && !e.esCupon) {
-    return { label: negocio.cartillas.map((c) => c.nombre).join(" · "), balance: cuentaCorta(cliente, negocio) };
+    return cartillasDe(cliente, negocio).map((c) => ({ label: c.nombre, balance: cuentaDeCartilla(c) }));
   }
-  return {
+  return [{
     label: e.esCupon ? "Cupón" : "Sellos",
     balance: e.esCupon ? (e.usado ? "Usado" : "Válido") : `${e.sellos}/${e.meta}`,
-  };
+  }];
 }

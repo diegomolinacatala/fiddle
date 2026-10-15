@@ -66,7 +66,7 @@ export function seccionDe(clave) {
   if (k === "fondo") return "colores";
   if (k === "logo" || k === "cabecera") return "logo";
   if (k === "nombre") return "nombre";
-  if (k === "banda" || k === "puntos") return "sellos";
+  if (k === "banda" || k === "puntos" || k === "puntos2") return "sellos";
   if (k === "estado") return "estado";
   if (/^premio\d?$/.test(k) || k === "descuento" || k === "reverso.premios") return "premio";
   if (k === "como" || k === "reverso.como") return "reverso";
@@ -397,14 +397,22 @@ function Seccion(props) {
 
   if (seccion === "premio") {
     if (d.cartillas) {
-      return d.cartillas.map((c, i) => (
-        <div key={i} style={{ marginTop: i ? 14 : 4 }}>
-          <label style={{ ...etiqueta, marginTop: 0 }}>Premio · {c.nombre}</label>
-          <input value={c.premio} maxLength={64} onChange={(e) => props.setCartilla(i, "premio", e.target.value)} style={campo} />
-          <label style={etiqueta}>Sellos para conseguirlo</label>
-          <Numero valor={c.meta} max={20} onChange={(v) => props.setCartilla(i, "meta", v)} />
-        </div>
-      ));
+      return (
+        <>
+          {d.cartillas.map((c, i) => (
+            <div key={i} style={{ marginTop: i ? 14 : 4 }}>
+              <label style={{ ...etiqueta, marginTop: 0 }}>Premio · {c.nombre}</label>
+              <input value={c.premio} maxLength={64} onChange={(e) => props.setCartilla(i, "premio", e.target.value)} style={campo} />
+              <label style={etiqueta}>Sellos para conseguirlo</label>
+              <Numero valor={c.meta} max={20} onChange={(v) => props.setCartilla(i, "meta", v)} />
+            </div>
+          ))}
+          <p style={ayuda}>
+            Debajo de la banda, cada cartilla dice cuánto le falta. Si el cliente se ha guardado premios de una, dice
+            cuántos tiene gratis («2 gratis»).
+          </p>
+        </>
+      );
     }
     return (
       <>

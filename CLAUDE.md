@@ -261,6 +261,12 @@ Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"
 Todo lo que mueva el saldo pasa por `SALDO` en `store.js`, que es lo que compara el
 guardado optimista: una columna de saldo nueva va ahí.
 
+En la tarjeta, **lo guardado va con SU cartilla** (lo pidió La Delicantería, 15-10-2026): el
+`GUARDADOS` de la cabecera es la suma y no dice si es un café o una cookie. Con dos cartillas,
+el campo de cada una bajo la banda dice «2 gratis» en vez de «Faltan 3» (eso ya lo dicen sus
+casillas) y en Google cada cartilla tiene su hueco de puntos («Cookies 3/8 · 2 gratis»,
+`puntosDe`). Al guardar suena; mientras le quede uno guardado, sellar esa cartilla no suena.
+
 ## Android
 
 Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WALLET.md).
