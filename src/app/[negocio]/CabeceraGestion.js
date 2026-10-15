@@ -27,7 +27,9 @@ const AJUSTES = ["ajustes", "Ajustes", "ajustes"];
 export default function CabeceraGestion({ negocio, slug, activa, ayuda = false }) {
   const accent = negocio.tema.accent;
   return (
-    <header style={{ display: "grid", gap: 14 }}>
+    // Sin `minmax(0, 1fr)` la columna crece con el nombre entero de la tienda (no
+    // llega a cortarse con «…») y a 320 px toda la página se salía 16 px.
+    <header style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
           <MarcaTienda tema={negocio.tema} tam={42} icono />

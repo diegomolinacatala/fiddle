@@ -24,13 +24,13 @@
 // ============================================================================
 
 import { DIAS, tramosDe, sumarDias, abreEl, diaDeFecha, fechaLocal, ZONA_POR_DEFECTO } from "./horario";
-import { soloVisitas } from "./crm";
+import { soloVisitas, UMBRALES } from "./crm";
 
 // Los tramos del día con los que se habla: también los usa lib/plantilla.js.
 export const BLOQUES = [
-  { id: "manana", plural: "mañanas", desde: 0, hasta: 12, texto: "Esta mañana estamos tranquilos: ven a por lo tuyo sin colas." },
-  { id: "mediodia", plural: "mediodías", desde: 12, hasta: 16, texto: "A mediodía hay sitio de sobra: pásate y suma en tu tarjeta." },
-  { id: "tarde", plural: "tardes", desde: 16, hasta: 24, texto: "Esta tarde está tranquilo: ven con calma, tu tarjeta sigue sumando." },
+  { id: "manana", plural: "mañanas", articulo: "las", desde: 0, hasta: 12, texto: "Esta mañana estamos tranquilos: ven a por lo tuyo sin colas." },
+  { id: "mediodia", plural: "mediodías", articulo: "los", desde: 12, hasta: 16, texto: "A mediodía hay sitio de sobra: pásate y suma en tu tarjeta." },
+  { id: "tarde", plural: "tardes", articulo: "las", desde: 16, hasta: 24, texto: "Esta tarde está tranquilo: ven con calma, tu tarjeta sigue sumando." },
 ];
 const MIN_VISITAS = 30; // por debajo, cualquier "patrón" es casualidad
 const FECHAS_POR_DIA = 2; // cada día que abre, visto con visitas al menos dos veces
@@ -74,10 +74,10 @@ function aperturaEn(abiertas, dias, bloque) {
   return bloque.desde;
 }
 
-/** "las tardes de martes y miércoles", "las mañanas de lunes a viernes". */
+/** "las tardes de martes y miércoles", "los mediodías de lunes a viernes". */
 const enBloque = (b, dias) => {
   const lista = listaDias(dias); // "los sábados" -> "las tardes de los sábados"
-  return `las ${b.plural} ${lista.startsWith("de ") ? lista : `de ${lista}`}`;
+  return `${b.articulo} ${b.plural} ${lista.startsWith("de ") ? lista : `de ${lista}`}`;
 };
 
 const hhmm = (h) => `${String(h).padStart(2, "0")}:00`;
@@ -229,7 +229,7 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
   // con un mes y poco de historia, "los 30 anteriores" son unos días sueltos.
   const antes = metricas.visitas30Previas || 0;
   const ahora = metricas.visitas30 || 0;
-  if (antes >= 20 && (!s || s.diasDeHistoria >= DIAS_TENDENCIA)) {
+  if (antes >= UMBRALES.tendenciaMin && (!s || s.diasDeHistoria >= DIAS_TENDENCIA)) {
     const cambio = Math.round(((ahora - antes) / antes) * 100);
     if (cambio <= -20) {
       out.push({

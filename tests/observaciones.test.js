@@ -34,6 +34,15 @@ describe("lo que dicen los números", () => {
     expect(fuerte.accion).toBeUndefined();
   });
 
+  it("habla de «los mediodías», no de «las mediodías»", () => {
+    // Martes y miércoles a mediodía, casi nadie.
+    const r = rejilla();
+    for (let h = 12; h < 16; h++) { r[1][h] = 0; r[2][h] = 0; }
+    for (let d = 0; d < 5; d++) for (let h = 16; h < 20; h++) r[d][h] = 5;
+    const tranquilo = observaciones({ rejilla: r, horario }).find((o) => o.id.startsWith("tranquilo"));
+    expect(tranquilo.texto).toBe("Lo más tranquilo: los mediodías de martes y miércoles.");
+  });
+
   it("con pocas visitas no se inventa patrones", () => {
     const poco = Array.from({ length: 7 }, () => new Array(24).fill(0));
     poco[0][9] = 3;
