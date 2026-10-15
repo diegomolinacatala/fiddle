@@ -108,7 +108,7 @@ export function usePuntero(cuantos, aIndice = (x) => Math.floor(x * cuantos)) {
     i,
     props: {
       tabIndex: 0,
-      className: "grafica",
+      className: "grafica", // con Tab se ve el anillo de siempre (el :focus-visible del layout)
       onPointerMove: desde,
       onPointerDown: desde,
       onPointerLeave: (e) => { if (e.pointerType === "mouse") setI(null); },
@@ -119,7 +119,7 @@ export function usePuntero(cuantos, aIndice = (x) => Math.floor(x * cuantos)) {
         const paso = e.key === "ArrowLeft" ? -1 : 1;
         setI((x) => Math.max(0, Math.min(cuantos - 1, (x ?? (paso > 0 ? -1 : cuantos)) + paso)));
       },
-      style: { touchAction: "pan-y", outline: "none" },
+      style: { touchAction: "pan-y" },
     },
   };
 }
@@ -200,7 +200,7 @@ export function Rejilla({ rejilla, accent, horas: abiertas = null, cerrados = []
         }}
         onBlur={() => setSel(null)}
         onPointerLeave={(e) => { if (e.pointerType === "mouse") setSel(null); }}
-        style={{ display: "grid", gridTemplateColumns: columnas, gap: 2, touchAction: "pan-y", outline: "none" }}
+        style={{ display: "grid", gridTemplateColumns: columnas, gap: 2, touchAction: "pan-y" }}
       >
         {rejilla.map((fila, dia) => (
           <div key={dia} role="row" style={{ display: "contents" }}>

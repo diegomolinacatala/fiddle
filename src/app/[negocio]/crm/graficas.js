@@ -152,6 +152,7 @@ function Marca({ izquierda, arriba, accent, texto }) {
  */
 export function VisitasPorDia({ serie, resumen, accent: tienda }) {
   const accent = legible(tienda);
+  if (!serie.length) return null;
   const max = Math.max(1, ...serie.map((d) => d.n));
   const ayer = serie.length > 1 && serie.at(-1).hoy ? serie.length - 2 : serie.length - 1;
   const { i, props } = usePuntero(serie.length);

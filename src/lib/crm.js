@@ -316,6 +316,16 @@ export const LISTA_GRUPOS = Object.entries(GRUPOS).map(([key, v]) => ({
   key, label: v.label, icon: v.icon, descripcion: v.descripcion, idea: v.idea,
 }));
 
+/**
+ * La idea de partida de un grupo con su premio puesto. Con dos cartillas no se
+ * sabe cuál: un mismo texto va a todo el grupo, y «Tu cookie gratis te está
+ * esperando» le llegaba a quien tenía lleno el de cafés. Entonces, «tu premio».
+ */
+export function ideaDeGrupo(idea, negocio) {
+  const premio = negocio?.cartillas?.length > 1 ? "premio" : negocio?.premio || "premio";
+  return (idea || "").replace("{premio}", premio);
+}
+
 /** ¿Existe ese grupo? (lo pregunta la API antes de fiarse de lo que llega). */
 export const esGrupo = (key) => typeof key === "string" && Object.hasOwn(GRUPOS, key);
 
@@ -464,7 +474,7 @@ export function cambio(ahora, antes) {
  * parte `vueltaSeguidos` de todos): la cola de una curva así salta con una
  * sola persona. `listo` cuando llega a la semana. Si no, `faltanDias`: cuándo
  * llegará con los que ya hay (null si aún no hay estrenos bastantes).
- * @returns {{listo:boolean, base:number, faltanDias:number|null, puntos:{dia:number, pct:number, seguidos:number}[]}}
+ * @returns {{listo:boolean, base:number, faltanDias:number|null, hacenFalta:number, puntos:{dia:number, pct:number, seguidos:number}[]}}
  */
 export function curvaDeVuelta(clientes, eventos, { ahora = Date.now(), historialDesde = null, dias = UMBRALES.vueltaCurvaDias } = {}) {
   const desde = historialDesde ?? Math.min(...(eventos || []).map((e) => ms(e.ts)).filter(Boolean));
@@ -502,6 +512,8 @@ export function curvaDeVuelta(clientes, eventos, { ahora = Date.now(), historial
     listo,
     base: casos.length,
     faltanDias: listo || ultimoQueCuenta === undefined ? null : Math.max(1, Math.ceil(SEMANA_DIAS - ultimoQueCuenta)),
+    // A cuántos hay que haber seguido una semana para que salga.
+    hacenFalta: minimo,
     puntos,
   };
 }

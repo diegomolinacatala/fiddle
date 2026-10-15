@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Icono from "@/app/Icono";
 import { serieVisitas, resumenSerie, rejillaHoraria, horarioDeRejilla, cambio, cadenciaTexto } from "@/lib/crm";
+import { ZONA_POR_DEFECTO } from "@/lib/horario";
 import { observaciones, enlaceDeAccion, suficiencia, textoFalta } from "@/lib/observaciones";
 import { Cifra, Tarjeta, Rejilla, contar, numero } from "./piezas";
 import { Embudo, CurvaVuelta, VisitasPorDia, Estados, Puente, Cartilla, LeyendaCartilla } from "./graficas";
@@ -42,7 +43,7 @@ const fechaLarga = (iso) => {
 export default function Resumen({ d, slug, accent, onVerDescartadas }) {
   const { negocio: n, metricas: m } = d;
   const esCupon = n.tipo === "descuento";
-  const zona = n.horario?.zona;
+  const zona = n.horario?.zona || ZONA_POR_DEFECTO;
 
   const serie = useMemo(() => serieVisitas(d.eventos, 30, Date.now(), n.horario, { desde: m.inicio }), [d.eventos, n.horario, m.inicio]);
   const dia = useMemo(() => resumenSerie(serie), [serie]);
@@ -246,7 +247,7 @@ function pendientesDe({ d, m, hay }) {
   if (d.vuelta && !d.vuelta.listo) {
     out.push({
       id: "curva", titulo: "Cuánto tardan en volver",
-      texto: `${d.vuelta.faltanDias ? `${enDias(d.vuelta.faltanDias)}: ` : "Saldrá "}cuando cinco clientes lleven una semana con la tarjeta.`,
+      texto: `${d.vuelta.faltanDias ? `${enDias(d.vuelta.faltanDias)}: ` : "Saldrá "}cuando ${d.vuelta.hacenFalta} clientes lleven una semana con la tarjeta.`,
     });
   }
   if (!hay.suficiente) out.push({ id: "horas", titulo: "A qué hora viene la gente", texto: textoFalta(hay), dias: hay.dias });
@@ -308,13 +309,11 @@ function DiasVistos({ dias, accent }) {
 }
 
 // --------------------------------------------------------------- estilos
-// Foco visible solo con teclado (las gráficas y los botones se recorren con
-// Tab), y el botón de cada idea con su estado al pasar por encima.
+// El botón de cada idea, con su estado al pasar por encima. El foco del teclado
+// (gráficas incluidas, que se recorren con Tab) es el :focus-visible del layout.
 const CSS = `
-.resumen .grafica:focus-visible { outline: 2px solid ${C.azul} !important; outline-offset: 4px; border-radius: 6px; }
 .resumen .accion { transition: background-color .15s ease-out, border-color .15s ease-out; }
 .resumen .accion:hover { background: ${C.panelSuave}; border-color: ${C.tenue}; }
-.resumen .accion:focus-visible, .resumen .enlace:focus-visible { outline: 2px solid ${C.azul}; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .resumen .accion { transition: none; } }
 `;
 

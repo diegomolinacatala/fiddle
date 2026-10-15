@@ -3,7 +3,7 @@ import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
   metricas, cambio, serieVisitas, rejillaHoraria, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
-  esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos, resumenSerie, horarioDeRejilla,
+  esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos, resumenSerie, horarioDeRejilla, ideaDeGrupo,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -163,6 +163,13 @@ describe("grupos", () => {
     // Una llena y la otra a un punto: las dos cosas a la vez.
     const ambas = perfilDe(cli({ sellos: 8, sellos2: 7 }), DOS, AHORA);
     expect(gruposDe(ambas)).toEqual(expect.arrayContaining(["a_punto", "premio_listo"]));
+  });
+
+  it("con dos cartillas, la idea de partida no nombra el premio de una sola", () => {
+    const DOS = { premio: "cookie gratis", cartillas: [{ nombre: "Cookies", meta: 8 }, { nombre: "Cafés", meta: 8 }] };
+    expect(ideaDeGrupo(GRUPOS.premio_listo.idea, DOS)).toBe("Tu premio te está esperando");
+    expect(ideaDeGrupo(GRUPOS.premio_listo.idea, { premio: "café gratis" })).toBe("Tu café gratis te está esperando");
+    expect(ideaDeGrupo(undefined, DOS)).toBe("");
   });
 
   it("fieles_frios: los que venían mucho y desaparecieron", () => {
@@ -329,6 +336,7 @@ describe("el camino de la tarjeta", () => {
     expect(v.puntos.at(-1).dia).toBe(1);
     expect(v.listo).toBe(false);
     expect(v.faltanDias).toBe(6); // cuando los de ayer (el 8.º más antiguo) lleven una semana
+    expect(v.hacenFalta).toBe(8);
   });
 
   it("no cuenta a quien se dio de alta antes del historial que llega", () => {
