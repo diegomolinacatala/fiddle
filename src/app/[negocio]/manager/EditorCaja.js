@@ -19,7 +19,7 @@ import { C, botonPrimario, botonSecundario, chipCodigo } from "@/app/ui";
 
 // Qué puede hacer la caja, dicho para quien no sabe cómo se llama por dentro.
 const QUE_HACE = {
-  sellar: { label: "Sumar sellos", descripcion: "La fila de cada cartilla: tocarla suma uno." },
+  sellar: { label: "Sumar puntos", descripcion: "La fila de cada cartilla: tocarla suma uno." },
   restar: { label: "Quitar uno", descripcion: "El «−» pequeño a la izquierda de la fila, para corregir." },
   canjear: { label: "Dar premios", descripcion: "Con la cartilla llena sale el recuadro del premio. En un cupón, aplicar el descuento." },
   confirmar: { label: "Confirmar visita", descripcion: "Apunta que vino sin tocar la cartilla (cuenta para los avisos)." },
@@ -148,7 +148,7 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
               <Icono nombre="camara" tam={18} /> Escanear al siguiente
             </div>
             {caja.nombre && <div style={fantasma}>Nombre del cliente · Guardar</div>}
-            {caja.historial && <div style={fantasma}>Actividad reciente: Sello 5/8 · Sello 4/8 · …</div>}
+            {caja.historial && <div style={fantasma}>Actividad reciente: Punto 5/8 · Punto 4/8 · …</div>}
           </div>
         </section>
       </div>

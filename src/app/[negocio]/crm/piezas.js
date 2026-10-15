@@ -147,13 +147,13 @@ export function Cartilla({ c, conNombre }) {
     <div style={{ minWidth: 0 }}>
       {conNombre && <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{c.nombre}</div>}
       {!hay ? (
-        <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Aún nadie tiene sellos en esta cartilla.</p>
+        <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Aún nadie tiene puntos en esta cartilla.</p>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 100 }}>
             {c.filas.map((f) => (
               <div key={f.sellos}
-                title={`${f.sellos === c.meta ? "Llena" : `${f.sellos} sello${f.sellos === 1 ? "" : "s"}`}: ${f.siguen} siguen viniendo, ${f.alejan} se están alejando`}
+                title={`${f.sellos === c.meta ? "Llena" : `${f.sellos} punto${f.sellos === 1 ? "" : "s"}`}: ${f.siguen} siguen viniendo, ${f.alejan} se están alejando`}
                 style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
                 <div style={{ height: `${(f.siguen / max) * 100}%`, background: C.ok, borderRadius: f.alejan ? "3px 3px 0 0" : 3 }} />
                 <div style={{ height: `${(f.alejan / max) * 100}%`, background: C.ojo, borderRadius: f.siguen ? "0 0 3px 3px" : 3 }} />
@@ -171,7 +171,7 @@ export function Cartilla({ c, conNombre }) {
       )}
       {c.alejanMediana !== null && (
         <p style={{ fontSize: 13, margin: "10px 0 0" }}>
-          La mitad de los que se están alejando se quedó en {c.alejanMediana} sello{c.alejanMediana === 1 ? "" : "s"} o menos, de {c.meta}.
+          La mitad de los que se están alejando se quedó en {c.alejanMediana} punto{c.alejanMediana === 1 ? "" : "s"} o menos, de {c.meta}.
         </p>
       )}
       {c.enCero > 0 && (

@@ -22,13 +22,13 @@ funcionan a la vez:
    misma banda de sellos, mismos textos, mismo QR y código de 3 letras.
 3. Debajo, según lo que permita su teléfono:
    - **Añadir a Google Wallet** (si está configurado).
-   - **Avisos de tus sellos** → Activar. El navegador pide permiso y le llega un
+   - **Avisos de tus puntos** → Activar. El navegador pide permiso y le llega un
      primer aviso de prueba ("Avisos activados…").
    - **Instalar** → la tarjeta se queda en la pantalla de inicio como una app, con
-     el icono de la tienda. Si Chrome no ofrece el botón, sale la instrucción del menú.
+     el violín y el nombre de fiddle (`lib/marcaFiddle.js`). Si Chrome no ofrece el botón, sale la instrucción del menú.
 4. Mientras la tiene abierta en caja, la tarjeta **se pone al día sola** (cada 3 s
    los primeros minutos, luego cada 10 s, nada si está en segundo plano). Cuando la
-   caja sella, el teléfono vibra, la banda se anima y sale "Sello añadido".
+   caja suma un punto, el teléfono vibra, la banda se anima y sale "Punto añadido".
 5. **Si vuelve a tocar el tag**, se le abre SU tarjeta, sin volver a pedirle el nombre:
    el alta deja una cookie por tienda (`tarjeta_<slug>`, 1 año). En iPhone pasa lo
    mismo: se le vuelve a dar su pase y iOS lo reconoce por el serial. `?nuevo=1` pide

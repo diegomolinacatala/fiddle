@@ -8,7 +8,7 @@ import { rutaGuardarGoogle } from "@/lib/googlewallet";
 import { clavesPush } from "@/lib/push/vapid";
 import { plataformaDe } from "@/lib/plataforma";
 import { clienteDeTarjeta, negocioDeTarjeta } from "@/lib/tarjeta";
-import { rutaIcono } from "@/lib/rutasImagen";
+import { ICONOS_WEB, appleWebApp } from "@/lib/marcaFiddle";
 import { urlCaja } from "@/lib/url";
 import Tarjeta from "./Tarjeta";
 import { CAPTURAR_INSTALAR, REGISTRAR_SW } from "@/app/temprano";
@@ -35,10 +35,11 @@ export async function generateMetadata({ params }) {
   return {
     title: `${negocio.nombre} · tu tarjeta`,
     description: `Tu tarjeta de ${negocio.nombre}`,
-    // Cada tarjeta es su propia app instalable: abre directamente en ella.
+    // Cada tarjeta es su propia app instalable: abre directamente en ella. En la
+    // pantalla de inicio es fiddle (lib/marcaFiddle.js); dentro, la tienda.
     manifest: `/api/manifest?p=${serial}`,
-    icons: { icon: rutaIcono(negocio, 192), apple: rutaIcono(negocio, 180) },
-    appleWebApp: { capable: true, title: negocio.nombre, statusBarStyle: "default" },
+    icons: ICONOS_WEB,
+    appleWebApp: appleWebApp(),
     robots: { index: false, follow: false },
   };
 }

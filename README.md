@@ -65,7 +65,7 @@ Tarjeta (QR = /w/<serial>)
    │ la caja la escanea (/<negocio>/caja, con login)
    ▼
 Perfil + botones ─▶ /api/accion ─▶ guarda ─▶ APNs ─▶ el iPhone baja el pase nuevo
-                                          ├▶ web push ─▶ "Sello 5 de 8" en el Android
+                                          ├▶ web push ─▶ "Llevas 5 de 8" en el Android
                                           └▶ Google Wallet ─▶ su tarjeta se actualiza
 ```
 

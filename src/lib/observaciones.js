@@ -244,7 +244,7 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
   // LOS GRUPOS que piden un aviso, si tienen a alguien.
   const g = Object.fromEntries(grupos.map((x) => [x.key, x.total]));
   if ((g.premio_listo || 0) >= 2) out.push({ id: "premios", texto: `${g.premio_listo} clientes tienen un premio sin recoger.`, accion: { tipo: "grupo", grupo: "premio_listo", label: "Recordárselo" } });
-  if ((g.a_punto || 0) >= 3) out.push({ id: "a-punto", texto: `${g.a_punto} clientes están a uno o dos sellos del premio.`, accion: { tipo: "grupo", grupo: "a_punto", label: "Darles el empujón" } });
+  if ((g.a_punto || 0) >= 3) out.push({ id: "a-punto", texto: `${g.a_punto} clientes están a uno o dos puntos del premio.`, accion: { tipo: "grupo", grupo: "a_punto", label: "Darles el empujón" } });
   if ((g.fieles_frios || 0) >= 2) out.push({ id: "fieles", texto: `${g.fieles_frios} habituales llevan más tiempo del normal sin venir.`, accion: { tipo: "grupo", grupo: "fieles_frios", label: "Escribirles" } });
   if ((g.fantasmas || 0) >= 5) out.push({ id: "sin-uso", texto: `${g.fantasmas} tienen la tarjeta y nunca la han usado en caja.`, accion: { tipo: "grupo", grupo: "fantasmas", label: "Invitarles a estrenarla" } });
 

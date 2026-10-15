@@ -41,7 +41,7 @@ export function avisoDeCambio(antes, despues, negocio) {
   if ((despues.sellos || 0) > (antes.sellos || 0)) {
     return e.completa
       ? { titulo, cuerpo: `Cartilla completa. Tu ${negocio.premio} te espera en caja.`, tipo: "completa" }
-      : { titulo, cuerpo: `Sello ${e.sellos} de ${e.meta}. ${faltanPara(e.faltan, negocio.premio)}`, tipo: "sello" };
+      : { titulo, cuerpo: `Llevas ${e.sellos} de ${e.meta}. ${faltanPara(e.faltan, negocio.premio)}`, tipo: "sello" };
   }
   return null;
 }

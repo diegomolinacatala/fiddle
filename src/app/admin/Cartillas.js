@@ -15,7 +15,7 @@ import { C, campo, etiqueta } from "@/app/ui";
 // Al encender: la primera es la cartilla que ya tenía la tienda. Si la tienda
 // ya tuvo dos y volvió a una, la segunda vuelve tal cual (con sus sellos).
 const dePartida = (n) => n.cartillasAparcadas ? [{ ...n.cartillasAparcadas[0], meta: Math.min(n.meta, 20), premio: n.premio }, n.cartillasAparcadas[1]] : [
-  { nombre: "Sellos", marca: n.tema.marca === "texto" ? "estrella" : n.tema.marca, meta: n.meta, premio: n.premio },
+  { nombre: "Puntos", marca: n.tema.marca === "texto" ? "estrella" : n.tema.marca, meta: n.meta, premio: n.premio },
   { nombre: "Cafés", marca: "taza", meta: 8, premio: "café gratis" },
 ];
 
@@ -48,7 +48,7 @@ export default function Cartillas({ negocio, onChange }) {
               </select>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <label style={{ ...etiqueta, marginTop: 0 }}>Sellos</label>
+              <label style={{ ...etiqueta, marginTop: 0 }}>Puntos</label>
               <input type="number" min={1} max={20} value={c.meta} onChange={(e) => cambiar(i, "meta", Number(e.target.value))} style={campo} />
             </div>
           </div>

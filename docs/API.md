@@ -143,8 +143,8 @@ segunda tarjeta al lado en vez de actualizar la que tiene (`configDeDescarga`).
 {
   "cliente":  { "serial": "…", "negocio": "delicanteria", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null, "ubicaciones": [], "tema": { … } },
-  "eventos":  [ { "tipo": "sellar", "mensaje": "Sello 5/8", "ts": "…" } ],
-  "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "mas", "descripcion": "…", "correccion": false } ]
+  "eventos":  [ { "tipo": "sellar", "mensaje": "Punto 5/8", "ts": "…" } ],
+  "acciones": [ { "key": "sellar", "label": "Añadir punto", "icon": "mas", "descripcion": "…", "correccion": false } ]
 }
 ```
 
@@ -154,7 +154,7 @@ Respuesta: `{ ok, cliente, aviso }`.
 
 ### `POST /api/accion` — `{ "serial": "uuid", "accion": "sellar" }`
 ```json
-{ "ok": true, "mensaje": "Sello añadido · 6/8", "cliente": { … }, "aviso": { "proveedor": "apple", "avisados": 1, "web": 1, "google": 0 } }
+{ "ok": true, "mensaje": "Punto añadido · 6/8", "cliente": { … }, "aviso": { "proveedor": "apple", "avisados": 1, "web": 1, "google": 0 } }
 { "ok": false, "mensaje": "Aún no llega · 3/8", "cliente": { … } }   // rechazada por la lógica
 ```
 `400` falta serial/acción o acción desconocida · `403` acción desactivada u otro negocio · `404` cliente ·
@@ -351,7 +351,7 @@ Todo el panel en una petición.
                    "enCero": 6, "alejanMediana": 2 } ],
   "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
   "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
-  "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Sello 5/8", "actor": "caja", "ts": "…" } ]
+  "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Punto 5/8", "actor": "caja", "ts": "…" } ]
 }
 ```
 Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen de
@@ -472,7 +472,8 @@ el serial solo no basta ([`gestion.js`](../src/lib/gestion.js)). `403` sin llave
 `410` ya borrada · `429` más de 30 por minuto y IP.
 
 ### `GET /api/manifest?p=<serial>`
-Manifest de la tarjeta como app instalable (abre en `/p/<serial>`). Con `?b=` sigue
+Manifest de la tarjeta como app instalable (abre en `/p/<serial>`), con el nombre y el
+violín de fiddle (`lib/marcaFiddle.js`), no los de la tienda. Con `?b=` sigue
 siendo el de la caja.
 
 ## Salud

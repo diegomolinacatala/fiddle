@@ -39,7 +39,7 @@ export function puntosDe(cliente, negocio) {
     return cartillasDe(cliente, negocio).map((c) => ({ label: c.nombre, balance: cuentaDeCartilla(c) }));
   }
   return [{
-    label: e.esCupon ? "Cupón" : "Sellos",
+    label: e.esCupon ? "Cupón" : "Puntos",
     balance: e.esCupon ? (e.usado ? "Usado" : "Válido") : `${e.sellos}/${e.meta}`,
   }];
 }

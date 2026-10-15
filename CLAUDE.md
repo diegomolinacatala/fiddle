@@ -32,6 +32,16 @@ comprobar siempre que de verdad desplegó.
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
   mensajes de commit. Los comentarios explican *por qué*, no *qué*.
+- **En pantalla no se dice «sello»** (15-10-2026). fiddle son tarjetas de fidelización
+  y lo que suma la caja son **puntos**: «Añadir punto», «Le faltan 2 puntos», «Tu tarjeta
+  de fidelización». Vale para todo lo que lee una persona (caja, manager, tarjeta, avisos,
+  /home, /privacidad, exportaciones). El código y la base siguen con `sellos`, `sellos2` y
+  `sellar`: renombrarlos es migrar producción y nadie los ve. Lo guardado antes (eventos
+  «Sello 3/8», el «Cómo funciona» que escribió una tienda) se queda como estaba.
+- **Guardada en el móvil, la web es fiddle** (`lib/marcaFiddle.js`): la caja, el panel y
+  la tarjeta web se instalan con el violín y «fiddle» debajo, no con la tienda. Dentro,
+  cada pantalla sigue con los colores y el logo de la suya. Los PNG salen de
+  `scripts/gen-marca-web.mjs`.
 - **La vista previa sale de las funciones de verdad.** `PaseVista` usa
   `camposDelPase()`, `stripDelPase()` y `svgLogo()` — los mismos que arman el
   `.pkpass`. Nunca hacer una maqueta paralela: si se separan, mienten. Cómo coloca
@@ -198,7 +208,7 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   lo pendiente sale por la fila con `vaciar` y se espera la respuesta, nunca con
   `sendBeacon` (desde el panel del ordenador no llega). Si alguien toca mientras, o algo
   no se guardó, se queda.
-- **La ficha dice cuándo fue el último sello** («Último sello hace 12 min»,
+- **La ficha dice cuándo fue el último sello** («Último punto hace 12 min»,
   `ultimoSelloTexto`), discreto, bajo las visitas: zanja el «no me has sellado» sin
   depender del historial (que la tienda puede apagar). Solo el cuándo (la cuenta la enseña
   la tarjeta) y sin nombre de quién lo dio: al navegador de la caja nunca va eso.

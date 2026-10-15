@@ -136,8 +136,8 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
               on={promos} onClick={cambiarPromos} accent={accent} icono={promos ? "campana" : "campanaNo"}
               titulo="Recibe promos"
               texto={promos
-                ? "La promo, las campañas y los avisos automáticos. Los sellos le llegan siempre."
-                : "Ni la promo, ni campañas, ni avisos automáticos. Los sellos le siguen llegando."}
+                ? "La promo, las campañas y los avisos automáticos. Los de sus puntos le llegan siempre."
+                : "Ni la promo, ni campañas, ni avisos automáticos. Los de sus puntos le siguen llegando."}
               style={{ marginBottom: 14 }}
             />
 

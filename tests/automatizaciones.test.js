@@ -92,7 +92,7 @@ describe("el texto de cada uno", () => {
     expect(x.cercana).toMatchObject({ nombre: "Cafés", faltan: 1 });
     expect(x.vars).toMatchObject({ faltan: "1 café", premio: "café gratis" });
     expect(ctx({ sellos: 6, sellos2: 2, visitas: 8 }).vars.faltan).toBe("2 cookies");
-    expect(ctx({ sellos: 7, visitas: 7 }, nube).vars.faltan).toBe("1 sello");
+    expect(ctx({ sellos: 7, visitas: 7 }, nube).vars.faltan).toBe("1 punto");
   });
 
   it("las frases solo les salen a quienes encajan; al resto, nada", () => {
@@ -280,7 +280,7 @@ describe("validar lo que llega del manager", () => {
 
 describe("frases y piezas", () => {
   it("la regla se lee como una frase", () => {
-    expect(fraseRegla(regla("a-un-paso"))).toEqual({ quien: "A quien está a 1 sello del premio", cuando: "a las 16:00, de lunes a jueves" });
+    expect(fraseRegla(regla("a-un-paso"))).toEqual({ quien: "A quien está a 1 punto del premio", cuando: "a las 16:00, de lunes a jueves" });
     expect(fraseRegla(regla("racha")).quien).toBe("A quien ha venido 4 días seguidos");
     expect(diasTexto([])).toBe("los días que abre");
     expect(diasTexto([5])).toBe("los sábados");

@@ -12,8 +12,8 @@
  * la que vio al darse de alta (`clientes.aviso_version`). Subirla cada vez que
  * cambie lo que dice /privacidad.
  */
-export const VERSION_AVISO = "2026-10-04";
-export const VERSION_AVISO_TEXTO = "4 de octubre de 2026";
+export const VERSION_AVISO = "2026-10-15";
+export const VERSION_AVISO_TEXTO = "15 de octubre de 2026";
 
 /** Una tarjeta sin ninguna actividad en este tiempo se borra sola. */
 export const MESES_SIN_USO = 24;

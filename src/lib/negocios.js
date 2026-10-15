@@ -46,7 +46,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#fff7f2",
     ink: "#4a2c2a",
     accent: "#ff5c8a",
-    atras: "Un sello por visita. Al completar la cartilla, invita la casa.",
+    atras: "Un punto por visita. Al completar la cartilla, invita la casa.",
   },
   barber: {
     estilo: "barber",
@@ -87,7 +87,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#faf6f0",
     ink: "#3a2f26",
     accent: "#a98963",
-    atras: "Un sello por visita. Al completar la cartilla, invita la casa.",
+    atras: "Un punto por visita. Al completar la cartilla, invita la casa.",
   },
   // La taza que se llena: un solo vaso grande que sube con cada sello.
   iced: {
@@ -115,7 +115,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#fff8ec",
     ink: "#4a3319",
     accent: "#d98d3f",
-    atras: "Un sello por compra. Al completar la cartilla, te invitamos.",
+    atras: "Un punto por compra. Al completar la cartilla, te invitamos.",
   },
   bar: {
     estilo: "bar",
@@ -142,7 +142,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#f2fbf7",
     ink: "#14352c",
     accent: "#3f8f7a",
-    atras: "Un sello por visita. Al completar la cartilla, baño o premio gratis.",
+    atras: "Un punto por visita. Al completar la cartilla, baño o premio gratis.",
   },
   gym: {
     estilo: "gym",
@@ -155,7 +155,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#141416",
     ink: "#f2f2f2",
     accent: "#ff5f1f",
-    atras: "Una sesión, un sello. Al completar la cartilla, semana gratis.",
+    atras: "Una sesión, un punto. Al completar la cartilla, semana gratis.",
   },
   belleza: {
     estilo: "belleza",
@@ -168,7 +168,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#fff5fa",
     ink: "#43203a",
     accent: "#c46a9b",
-    atras: "Un sello por cita. Al completar la cartilla, tratamiento de regalo.",
+    atras: "Un punto por cita. Al completar la cartilla, tratamiento de regalo.",
   },
   // Nutrición y suplementos: pocas compras grandes (un bote al mes), no muchas
   // visitas pequeñas. La barra que se carga de discos da sensación de avance
@@ -213,7 +213,7 @@ const PLANTILLAS_DE_ESTILO = {
     cardBg: "#fbf1e3",
     ink: "#3b2314",
     accent: "#7a3f1d",
-    atras: "Un sello por cookie. Al completar la cartilla, la siguiente te la invitamos.",
+    atras: "Un punto por cookie. Al completar la cartilla, la siguiente te la invitamos.",
   },
   heladeria: {
     estilo: "heladeria",
@@ -467,7 +467,7 @@ export const SEMILLAS = {
     meta: 8,
     premio: "cookie gratis",
     acciones: ["sellar", "canjear", "restar"],
-    tema: { ...TEMA_DE_ESTILO.galletas, atras: "Un sello por cookie y otro por café. Al completar cada cartilla, la siguiente te la invitamos." },
+    tema: { ...TEMA_DE_ESTILO.galletas, atras: "Un punto por cookie y otro por café. Al completar cada cartilla, la siguiente te la invitamos." },
     brief: "Café bistró en Av. dels Tarongers 1 (Algirós, València), junto al campus. Cookies, café, tostadas y brunch. Clientela de estudiantes y gente que teletrabaja; más ambiente de mañana a mediodía.",
     horario: HORARIO_DELICANTERIA,
     automatizaciones: AVISOS_DELICANTERIA,

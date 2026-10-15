@@ -105,7 +105,7 @@ export function patchNegocio(body, accionesValidas, { cartillasActuales = null, 
     // Lo que llega se pone encima de lo que había (o de lo aparcado): basta mandar lo que cambia.
     const base = cartillasActuales || cartillasAparcadas || [];
     const cartillas = normalizarCartillas(b.cartillas.map((c, i) => ({ ...(base[i] || {}), ...limpiarCartilla(c) })));
-    if (!cartillas) return { error: `Cartillas no válidas: dos, cada una con nombre, dibujo, un premio y de 1 a ${MAX_META_CARTILLA} sellos` };
+    if (!cartillas) return { error: `Cartillas no válidas: dos, cada una con nombre, dibujo, un premio y de 1 a ${MAX_META_CARTILLA} puntos` };
     // La primera cartilla ES la de siempre: su meta y su premio son los del negocio.
     Object.assign(patch, { cartillas, meta: cartillas[0].meta, premio: cartillas[0].premio });
   }

@@ -161,7 +161,7 @@ export default function AdminNegocio() {
             {!n.cartillas && <div style={{ display: "flex", gap: 12 }}>
               {n.tipo !== "descuento" && (
                 <div style={{ flex: 1 }}>
-                  <label style={etiqueta}>Sellos</label>
+                  <label style={etiqueta}>Puntos</label>
                   <input type="number" min={1} max={50} value={n.meta} onChange={(e) => set("meta", Number(e.target.value))} style={campo} />
                 </div>
               )}
@@ -236,7 +236,7 @@ export default function AdminNegocio() {
                   ancho={170}
                 />}
                 {!n.cartillas && <Selector
-                  titulo="Cómo se cuentan los sellos"
+                  titulo="Cómo se cuentan los puntos"
                   valor={familiaDeModo(n.tema.modo)}
                   opciones={NOMBRES_FAMILIA}
                   rotulos={ROTULO_FAMILIA}
@@ -259,7 +259,7 @@ export default function AdminNegocio() {
                   {(n.cartillas ? n.tema.doble !== "llenar" : n.tema.modo === "casillas") && (
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Selector
-                        titulo="Casilla del sello"
+                        titulo="Casilla de cada punto"
                         valor={n.tema.forma}
                         opciones={FORMAS}
                         rotulos={ROTULO}

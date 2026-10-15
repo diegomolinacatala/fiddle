@@ -34,7 +34,7 @@ export const PLANES = [
     id: "tarjetas",
     nombre: "Tarjetas",
     precio: 39,
-    lema: "Para empezar a sellar.",
+    lema: "Para empezar con tu tarjeta.",
     incluye: [
       "Tarjetas sin límite, en Apple Wallet y Android",
       "Con tu logo, tus colores y tu premio",

@@ -90,8 +90,8 @@ export default async function Home() {
               Clientes que no se pierden<Punto />
             </h1>
             <p className="entradilla">
-              Tu tarjeta de sellos, en el Apple Wallet o el Android de tus clientes. La guardan con un
-              escaneo y tú sumas sellos desde el móvil de la tienda.
+              Tu tarjeta, en el Apple Wallet o el Android de tus clientes. La guardan con un
+              escaneo y tú sumas puntos desde el móvil de la tienda.
             </p>
             <div className="acciones">
               <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
@@ -138,12 +138,12 @@ export default async function Home() {
                   </div>
                   <img src={banda(antes)} alt="" className="caja-banda" />
                   <span className="caja-boton">
-                    <Icono nombre="mas" tam={18} grosor={2.4} /> Sumar sello
+                    <Icono nombre="mas" tam={18} grosor={2.4} /> Sumar punto
                   </span>
                 </div>
               </div>
               <span className="paso-dato">1 toque</span>
-              <h3>Sumas el sello</h3>
+              <h3>Sumas el punto</h3>
               <p>Escaneas su tarjeta con el móvil de la tienda y tocas una vez. La cola no se para.</p>
             </li>
 

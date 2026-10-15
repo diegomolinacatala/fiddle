@@ -106,7 +106,7 @@ export const ROTULO_DOBLE = {
 };
 
 export const ROTULO_MODO = {
-  casillas: "Una casilla por sello", relleno: "Se va llenando",
+  casillas: "Una casilla por punto", relleno: "Se va llenando",
   porciones: "Porciones de una tarta", pizza: "Pizza de verdad", barra: "Barra de progreso",
   pesas: "Discos en la barra", anillos: "Aro que se cierra",
   camino: "Camino con paradas", torre: "Torre que se apila", planta: "Planta que crece",

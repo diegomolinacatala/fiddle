@@ -91,7 +91,7 @@ export default function Panel() {
       <article className="panel-pieza panel-media revela">
         <div className="panel-texto">
           <h3>Avisos a un grupo</h3>
-          <p>A los que están a un sello del premio, a los que hace semanas que no ves… Con el texto ya sugerido.</p>
+          <p>A los que están a un punto del premio, a los que hace semanas que no ves… Con el texto ya sugerido.</p>
         </div>
         <div className="panel-ui" aria-hidden="true">
           <span className="panel-etiqueta">A quién</span>

@@ -41,7 +41,7 @@ export async function POST(request) {
     const plantilla = plantillaDeCaja(negocio);
     const quien = await quienDeRequest(request, negocio.slug, plantilla);
     if (hayQueElegir(sesion, plantilla) && !quien) {
-      return NextResponse.json({ ok: false, elegir: true, mensaje: "Antes de sellar, di quién atiende en este móvil." }, { status: 428 });
+      return NextResponse.json({ ok: false, elegir: true, mensaje: "Antes de sumar, di quién atiende en este móvil." }, { status: 428 });
     }
     const empleado = sesion.rol === "caja" ? quien?.id ?? null : null;
 

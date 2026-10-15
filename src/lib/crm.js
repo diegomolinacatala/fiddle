@@ -210,7 +210,7 @@ export const GRUPOS = {
   a_punto: {
     label: "Cerca del premio",
     icon: "diana",
-    descripcion: "Les faltan 2 sellos o menos para completar la cartilla.",
+    descripcion: "Les faltan 2 puntos o menos para completar la cartilla.",
     idea: "Te falta 1 para tu {premio}",
     incluye: (p) => !p.esCupon && p.visitas > 0 && !p.completa && p.faltan <= UMBRALES.aPuntoFaltan,
   },

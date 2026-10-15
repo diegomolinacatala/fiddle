@@ -159,7 +159,7 @@ export default function Caja() {
           <div style={{ marginTop: 16 }}>
             {perdido && (
               <div role="alert" style={{ ...aviso(false), marginBottom: 10 }}>
-                El último sello no se ha guardado: en este móvil nadie se había identificado (o pasaron las dos horas). Pon tu PIN y vuelve a darlo.
+                El último punto no se ha guardado: en este móvil nadie se había identificado (o pasaron las dos horas). Pon tu PIN y vuelve a darlo.
               </div>
             )}
             {/* Con «Cambiar» ya hay alguien: a la lista directa, no a proponer al mismo. */}
@@ -204,7 +204,7 @@ export default function Caja() {
             {atiende && hoy && (
               <div data-recorrido="hoy" style={{ ...panel, marginTop: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 }}>Hoy, {atiende.nombre}</span>
-                <Cuenta n={hoy.sellos} uno="sello" varios="sellos" accent={accent} />
+                <Cuenta n={hoy.sellos} uno="punto" varios="puntos" accent={accent} />
                 <Cuenta n={hoy.clientes} uno="cliente" varios="clientes" />
                 <Cuenta n={hoy.premios} uno="premio" varios="premios" />
                 {hoy.quitados > 0 && <Cuenta n={hoy.quitados} uno="quitado" varios="quitados" color={C.mal} />}

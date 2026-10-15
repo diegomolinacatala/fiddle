@@ -46,27 +46,27 @@ const cuantosGuardados = (n) => `${n} ${n === 1 ? "guardado" : "guardados"}`;
 export const SEGUNDOS_DESHACER = 8;
 
 const sellar = (i) => ({
-  label: "Añadir sello",
+  label: "Añadir punto",
   icon: "mas",
-  descripcion: "Suma un sello a la cartilla.",
+  descripcion: "Suma un punto a la cartilla.",
   aplicar(c, n) {
     const k = cartilla(n, i);
     const antes = c[k.clave] || 0;
     if (antes >= k.meta) return { ok: false, mensaje: `Cartilla${deCartilla(k)} llena: dale el premio o guárdaselo.` };
     const sellos = antes + 1;
-    return { cliente: { ...c, [k.clave]: sellos }, mensaje: `Sello añadido · ${cuenta(k, sellos)}`, evento: `Sello ${cuenta(k, sellos)}` };
+    return { cliente: { ...c, [k.clave]: sellos }, mensaje: `Punto añadido · ${cuenta(k, sellos)}`, evento: `Punto ${cuenta(k, sellos)}` };
   },
 });
 
 const restar = (i) => ({
-  label: "Quitar sello",
+  label: "Quitar punto",
   icon: "menos",
   correccion: true, // se pinta en segundo plano: arreglar un error no es el gesto habitual
-  descripcion: "Corrige un sello de más.",
+  descripcion: "Corrige un punto de más.",
   aplicar(c, n) {
     const k = cartilla(n, i);
     const sellos = Math.max(0, (c[k.clave] || 0) - 1);
-    return { cliente: { ...c, [k.clave]: sellos }, mensaje: `Sello quitado · ${cuenta(k, sellos)}`, evento: `Corrección → ${cuenta(k, sellos)}` };
+    return { cliente: { ...c, [k.clave]: sellos }, mensaje: `Punto quitado · ${cuenta(k, sellos)}`, evento: `Corrección → ${cuenta(k, sellos)}` };
   },
 });
 
@@ -178,7 +178,7 @@ export function accionPermitida(negocio, key) {
 /** ¿Se puede deshacer esta acción unos segundos? Solo las que mueven un premio. */
 export const tieneDeshacer = (key) => typeof ACCIONES[key]?.deshecho === "function";
 
-// Lo que dice el botón cuando hay dos cartillas: "Añadir cookie", no "Añadir sello".
+// Lo que dice el botón cuando hay dos cartillas: "Añadir cookie", no "Añadir punto".
 const ETIQUETA = { sellar: (u) => `Añadir ${u}`, restar: (u) => `Quitar ${u}`, canjear: (u) => `Canjear ${u}` };
 
 /** Singular del nombre de la cartilla para el botón: "Cookies" -> "cookie", "Cafés" -> "café". */
