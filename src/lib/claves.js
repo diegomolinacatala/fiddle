@@ -27,32 +27,43 @@ export function generarClave() {
   return Array.from({ length: 3 }, () => Array.from({ length: 4 }, letra).join("")).join("-");
 }
 
-/**
- * "scrypt$<sal hex>$<hash hex>": lo único que se guarda. Se normaliza igual que
- * al comprobar: una que elija el dueño y tenga forma de generada ("cafe12345678")
- * se compara como "CAFE-1234-5678", y el hash tiene que ser de eso.
- */
-export async function hashClave(clave) {
-  const sal = randomBytes(16);
-  const hash = await scrypt(normalizarClave(clave), sal, LARGO_HASH, PARAMS);
-  return `scrypt$${sal.toString("hex")}$${hash.toString("hex")}`;
-}
+// Dos clases de contraseña, y el hash dice cuál es (sin columna nueva):
+//   "scrypt$<sal>$<hash>"          GENERADA por nosotros (o de antes de distinguirlas):
+//                                  se compara sin mayúsculas, espacios ni guiones.
+//   "scrypt-elegida$<sal>$<hash>"  ELEGIDA por el dueño: se compara tal cual (solo se
+//                                  quitan los espacios de los lados). Antes una elegida
+//                                  de 12 letras y cifras ("micafeteria1") se aplanaba
+//                                  como si fuera generada y valía también en mayúsculas.
+const GENERADA = "scrypt";
+const ELEGIDA = "scrypt-elegida";
+const PREPARAR = { [GENERADA]: normalizarClave, [ELEGIDA]: (clave) => String(clave ?? "").trim() };
 
 /**
- * ¿Coincide la contraseña con el hash guardado? Nunca lanza. Mayúsculas y
- * guiones dan igual: "k7mp x3qr 9htb" vale, que se teclea en un móvil.
+ * Lo único que se guarda. `tipo`: "generada" (de `generarClave`) o "elegida" (la
+ * escribió una persona). Se prepara igual que al comprobar, y el hash es de eso.
  */
+export async function hashClave(clave, tipo = "generada") {
+  const etiqueta = tipo === "elegida" ? ELEGIDA : GENERADA;
+  const sal = randomBytes(16);
+  const hash = await scrypt(PREPARAR[etiqueta](clave), sal, LARGO_HASH, PARAMS);
+  return `${etiqueta}$${sal.toString("hex")}$${hash.toString("hex")}`;
+}
+
+/** ¿Coincide la contraseña con el hash guardado? Nunca lanza. */
 export async function comprobarClave(clave, guardado) {
   try {
-    const [tipo, salHex, hashHex] = String(guardado || "").split("$");
-    if (tipo !== "scrypt" || !salHex || !hashHex) return false;
+    const [etiqueta, salHex, hashHex] = String(guardado || "").split("$");
+    if (!PREPARAR[etiqueta] || !salHex || !hashHex) return false;
     const esperado = Buffer.from(hashHex, "hex");
-    const hash = await scrypt(normalizarClave(clave), Buffer.from(salHex, "hex"), esperado.length, PARAMS);
+    const hash = await scrypt(PREPARAR[etiqueta](clave), Buffer.from(salHex, "hex"), esperado.length, PARAMS);
     return timingSafeEqual(hash, esperado);
   } catch {
     return false;
   }
 }
+
+/** ¿Este hash es de una contraseña que eligió una persona? */
+export const esElegida = (guardado) => String(guardado || "").startsWith(`${ELEGIDA}$`);
 
 /**
  * Una que elige el dueño (invitación, lib/invitaciones.js). Larga antes que
@@ -69,7 +80,7 @@ export function problemaClaveElegida(clave, usuario) {
 }
 export const MIN_ELEGIDA = 10;
 
-/** Las generadas se comparan sin mayúsculas, espacios ni guiones. */
+/** Las generadas se comparan sin mayúsculas, espacios ni guiones: "k7mp x3qr 9htb" vale, que se teclea en un móvil. */
 function normalizarClave(clave) {
   const s = String(clave ?? "").trim();
   const limpia = s.toUpperCase().replace(/[\s-]/g, "");

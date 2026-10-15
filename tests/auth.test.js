@@ -1,8 +1,11 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
+import { createHmac } from "node:crypto";
 import {
-  firmarSesion, verificarSesion, puedeAcceder, claveDe, varClave, varPin, usuarioDe, usuariosDemo,
+  firmarSesion, verificarSesion, renovarSesion, cookieSesion, puedeAcceder, claveDe, varClave, varPin, usuarioDe, usuariosDemo,
   resolverUsuario, verificarAcceso, secretoSesion, igualSeguro, TTL_SEGUNDOS, slugDeTiendaLibre,
 } from "@/lib/auth";
+
+const DIA = 24 * 60 * 60 * 1000;
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -81,29 +84,72 @@ describe("contraseñas", () => {
 });
 
 describe("sesión firmada", () => {
-  it("firma y verifica negocio + rol", async () => {
-    const token = await firmarSesion("nube", "caja");
-    const s = await verificarSesion(token);
-    expect(s).toMatchObject({ negocio: "nube", rol: "caja" });
+  it("firma y verifica negocio + rol, y dice con qué usuario y desde cuándo", async () => {
+    const ahora = 1_000_000;
+    const token = await firmarSesion("nube", "caja", ahora);
+    expect(token.split(".")).toHaveLength(6);
+    expect(await verificarSesion(token, ahora)).toEqual({ negocio: "nube", rol: "caja", usuario: "nube-caja", iat: ahora, exp: ahora + TTL_SEGUNDOS.caja * 1000 });
+    expect(await verificarSesion(await firmarSesion("nube", "manager", ahora), ahora)).toMatchObject({ usuario: "nube", iat: ahora });
   });
 
-  it("la sesión de caja dura 30 días y la de manager 12 h", async () => {
+  it("la del admin lleva quién es (victor o diego); sin decirlo queda como «admin», y nadie más cuela", async () => {
+    expect(await verificarSesion(await firmarSesion("plataforma", "admin", Date.now(), { usuario: "victor" }))).toMatchObject({ rol: "admin", usuario: "victor" });
+    expect(await verificarSesion(await firmarSesion("plataforma", "admin"))).toMatchObject({ rol: "admin", usuario: "admin" });
+    await expect(firmarSesion("plataforma", "admin", Date.now(), { usuario: "pepe" })).rejects.toThrow();
+    // El usuario de una tienda sale del slug y el rol: no se puede firmar otro.
+    await expect(firmarSesion("nube", "caja", Date.now(), { usuario: "nube" })).rejects.toThrow();
+    await expect(firmarSesion("nube", "caja", Date.now(), { iat: Date.now() + 1000 })).rejects.toThrow(); // del futuro, no
+  });
+
+  it("la sesión de caja dura 30 días y la del manager también (y se renueva mientras la usa)", async () => {
     const ahora = 1_000_000;
     const caja = await verificarSesion(await firmarSesion("nube", "caja", ahora), ahora);
     const manager = await verificarSesion(await firmarSesion("nube", "manager", ahora), ahora);
-    expect(caja.exp - ahora).toBe(TTL_SEGUNDOS.caja * 1000);
-    expect(manager.exp - ahora).toBe(TTL_SEGUNDOS.manager * 1000);
+    expect(caja.exp - ahora).toBe(30 * DIA);
+    expect(manager.exp - ahora).toBe(30 * DIA);
+    expect(TTL_SEGUNDOS.admin * 1000).toBe(12 * 60 * 60 * 1000);
+    expect(cookieSesion("caja")).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/", maxAge: TTL_SEGUNDOS.caja });
+  });
+
+  it("renovar: el manager con menos de la mitad recibe otro token con la MISMA emisión; la caja y el admin, no", async () => {
+    const ahora = 1_000_000;
+    const manager = await verificarSesion(await firmarSesion("nube", "manager", ahora), ahora);
+    expect(await renovarSesion(manager, ahora + 10 * DIA)).toBeNull(); // le quedan 20 días: aún no
+    const renovada = await verificarSesion(await renovarSesion(manager, ahora + 16 * DIA), ahora + 16 * DIA);
+    expect(renovada).toEqual({ ...manager, exp: ahora + 16 * DIA + 30 * DIA }); // iat y usuario, los de antes
+    const caja = await verificarSesion(await firmarSesion("nube", "caja", ahora), ahora);
+    expect(await renovarSesion(caja, ahora + 29 * DIA)).toBeNull();
+    const admin = await verificarSesion(await firmarSesion("plataforma", "admin", ahora), ahora);
+    expect(await renovarSesion(admin, ahora + 11 * 60 * 60 * 1000)).toBeNull();
+    expect(await renovarSesion(null)).toBeNull();
   });
 
   it("rechaza tokens manipulados, caducados o mal formados", async () => {
-    const token = await firmarSesion("nube", "caja");
-    const [n, , exp, firma] = token.split(".");
-    expect(await verificarSesion(`${n}.manager.${exp}.${firma}`)).toBeNull();
-    expect(await verificarSesion(`fade.caja.${exp}.${firma}`)).toBeNull();
-    expect(await verificarSesion(token, Date.now() + TTL_SEGUNDOS.caja * 1000 + 1)).toBeNull();
+    const ahora = Date.now();
+    const token = await firmarSesion("nube", "caja", ahora);
+    const [n, rol, usuario, iat, exp, firma] = token.split(".");
+    expect(await verificarSesion(`${n}.manager.${usuario}.${iat}.${exp}.${firma}`)).toBeNull();
+    expect(await verificarSesion(`${n}.${rol}.nube.${iat}.${exp}.${firma}`)).toBeNull();
+    expect(await verificarSesion(`fade.${rol}.fade-caja.${iat}.${exp}.${firma}`)).toBeNull();
+    expect(await verificarSesion(`${n}.${rol}.${usuario}.${iat - 1}.${exp}.${firma}`)).toBeNull(); // más vieja: sobreviviría a un cambio de contraseña
+    expect(await verificarSesion(`${n}.${rol}.${usuario}.${iat}.${Number(exp) + 1}.${firma}`)).toBeNull();
+    expect(await verificarSesion(token, ahora + TTL_SEGUNDOS.caja * 1000 + 1)).toBeNull();
     expect(await verificarSesion("basura")).toBeNull();
     expect(await verificarSesion("")).toBeNull();
-    expect(await verificarSesion("NUBE.caja.1.x")).toBeNull();
+    expect(await verificarSesion("NUBE.caja.nube-caja.1.2.x")).toBeNull();
+    expect(await verificarSesion("nube.caja.1.2.x")).toBeNull(); // ni 4 ni 6 partes
+  });
+
+  it("acepta todavía el formato de antes (`negocio.rol.exp.firma`) con la emisión deducida; quitarlo a partir del 15-11-2026", async () => {
+    vi.stubEnv("AUTH_SECRET", "el-de-vercel");
+    const ahora = Date.now();
+    const exp = ahora + 10 * DIA; // una caja que entró hace 20 días
+    const payload = `nube.caja.${exp}`;
+    const viejo = `${payload}.${createHmac("sha256", "el-de-vercel").update(payload).digest("hex")}`;
+    expect(await verificarSesion(viejo, ahora)).toEqual({ negocio: "nube", rol: "caja", usuario: "nube-caja", iat: exp - 30 * DIA, exp });
+    const admin = `plataforma.admin.${exp}`;
+    expect(await verificarSesion(`${admin}.${createHmac("sha256", "el-de-vercel").update(admin).digest("hex")}`, ahora)).toMatchObject({ rol: "admin", usuario: "admin" });
+    expect(await verificarSesion(`${payload}.${"0".repeat(64)}`, ahora)).toBeNull();
   });
 
   it("un token firmado con otro secreto no vale", async () => {

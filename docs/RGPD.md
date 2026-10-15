@@ -155,13 +155,16 @@ borra nada solo) y que alguien que sepa de RGPD confirme 2.3 y 4.3.
 - [x] **6.7 Logs sin datos personales.** Con los dos matices de siempre (`errorInterno`
   escribe el error tal cual; los logs de Vercel guardan IPs): al registro de actividades.
 - [x] **6.8 Registro de auditoría.** Tabla `auditoria` (ts, tienda, usuario, rol, acción,
-  detalle sin datos personales): contraseñas, config (manager y admin, con las claves que
-  cambiaron), archivar y borrar tiendas, borrar clientes, exportar la lista (el CSV se arma
-  en el navegador y avisa a `/api/crm/exportar`) y descargar los datos de uno.
+  detalle sin datos personales): los logins que entran (`login`; los fallos van a
+  `intentos`, sin usuario), contraseñas (generadas por el admin o el manager, y la propia
+  del dueño), invitaciones (`creada`/`aceptada` con su alcance), cerrar todas las sesiones,
+  config (manager y admin, con las claves que cambiaron), archivar y borrar tiendas, borrar
+  clientes, exportar la lista (el CSV se arma en el navegador y avisa a `/api/crm/exportar`)
+  y descargar los datos de uno.
 - [x] **6.9 El acceso del admin, apuntado.** Una fila cuando una sesión de admin abre
-  Clientes, Tienda, Avisos, Ajustes o la ficha de caja de una tienda. **Pendiente:** la
-  sesión del admin no dice si es victor o diego (firma la plataforma y el rol): sale
-  «admin». Arreglarlo es cambiar el formato de la sesión. 2FA: NEXT-STEPS.
+  Clientes, Tienda, Avisos, Ajustes o la ficha de caja de una tienda. Desde el 15-10-2026
+  el token de sesión lleva con quién se entró, así que sale «victor» o «diego» (una sesión
+  de antes de ese día, «admin»). 2FA: NEXT-STEPS.
 
 ## 7. Cuando una tienda se va
 

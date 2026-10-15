@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { generarClave, hashClave, comprobarClave } from "@/lib/claves";
-import { comprobarAcceso, nuevaClave, estadoAccesos } from "@/lib/accesos";
+import { generarClave, hashClave, comprobarClave, esElegida } from "@/lib/claves";
+import { comprobarAcceso, nuevaClave, cambiarClavePropia, estadoAccesos } from "@/lib/accesos";
 
 describe("claves", () => {
   it("generadas legibles, sin caracteres que se confunden", () => {
@@ -12,15 +12,33 @@ describe("claves", () => {
     expect(generarClave()).not.toBe(c);
   });
 
-  it("se guarda el hash, nunca la clave, y se comprueba aunque se teclee en minúsculas", async () => {
+  it("se guarda el hash, nunca la clave, y una generada se comprueba aunque se teclee en minúsculas", async () => {
     const hash = await hashClave("K7MP-X3QR-9HTB");
     expect(hash).not.toContain("K7MP");
     expect(hash).toMatch(/^scrypt\$[0-9a-f]{32}\$[0-9a-f]{64}$/);
+    expect(esElegida(hash)).toBe(false);
     expect(await comprobarClave("K7MP-X3QR-9HTB", hash)).toBe(true);
     expect(await comprobarClave("k7mp x3qr 9htb", hash)).toBe(true);
     expect(await comprobarClave("k7mpx3qr9htb", hash)).toBe(true);
     expect(await comprobarClave("K7MP-X3QR-9HTC", hash)).toBe(false);
     expect(await comprobarClave("x", "basura")).toBe(false);
+  });
+
+  it("una elegida se guarda aparte y se compara tal cual: «micafeteria1» no vale como «MICAFETERIA1»", async () => {
+    const hash = await hashClave("micafeteria1", "elegida");
+    expect(hash).toMatch(/^scrypt-elegida\$[0-9a-f]{32}\$[0-9a-f]{64}$/);
+    expect(esElegida(hash)).toBe(true);
+    expect(await comprobarClave("micafeteria1", hash)).toBe(true);
+    expect(await comprobarClave("  micafeteria1 ", hash)).toBe(true); // los espacios de los lados, no cuentan
+    expect(await comprobarClave("MICAFETERIA1", hash)).toBe(false);
+    expect(await comprobarClave("mi ca fe teria1", hash)).toBe(false);
+    // Una frase con espacios y mayúsculas dentro, exacta.
+    const frase = await hashClave("Un café por favor", "elegida");
+    expect(await comprobarClave("Un café por favor", frase)).toBe(true);
+    expect(await comprobarClave("un café por favor", frase)).toBe(false);
+    // Las de antes de distinguirlas ("scrypt$") siguen comparándose como generadas: nadie se queda fuera.
+    const deAntes = await hashClave("micafeteria1");
+    expect(await comprobarClave("MICAFETERIA1", deAntes)).toBe(true);
   });
 });
 
@@ -67,14 +85,46 @@ describe("login con contraseñas en la base", () => {
     expect(await comprobarAcceso("victor", "victor")).toBeNull();
   });
 
-  it("el estado dice cómo entra cada usuario, sin enseñar hashes", async () => {
+  it("el estado dice cómo entra cada usuario y si la eligió él, sin enseñar hashes", async () => {
     await nuevaClave("nube", "manager");
     const estado = await estadoAccesos("nube");
-    expect(estado.map((a) => [a.usuario, Boolean(a.desde), a.respaldo])).toEqual([
-      ["nube", true, false],
-      ["nube-caja", false, true],
+    expect(estado.map((a) => [a.usuario, Boolean(a.desde), a.elegida, a.respaldo])).toEqual([
+      ["nube", true, false, false],
+      ["nube-caja", false, false, true],
     ]);
     expect(JSON.stringify(estado)).not.toContain("scrypt");
+  });
+
+  describe("el dueño cambia su contraseña (Ajustes → Tu acceso)", () => {
+    it("con la actual bien, la nueva entra y la de antes no; queda como elegida", async () => {
+      const generada = await nuevaClave("nube", "manager");
+      const r = await cambiarClavePropia("nube", "manager", { actual: generada.clave.toLowerCase(), nueva: "mi cafetería desde 2019" });
+      expect(r).toEqual({ ok: true, usuario: "nube" });
+      expect(await comprobarAcceso("nube", "mi cafetería desde 2019")).toMatchObject({ negocio: "nube", rol: "manager" });
+      expect(await comprobarAcceso("nube", "Mi cafetería desde 2019")).toBeNull(); // elegida: exacta
+      expect(await comprobarAcceso("nube", generada.clave)).toBeNull();
+      expect((await estadoAccesos("nube")).find((a) => a.rol === "manager").elegida).toBe(true);
+    });
+
+    it("con la actual mal no cambia nada, y lo dice en su campo", async () => {
+      const generada = await nuevaClave("nube", "manager");
+      expect(await cambiarClavePropia("nube", "manager", { actual: "esta no es", nueva: "mi cafetería desde 2019" })).toMatchObject({ ok: false, campo: "actual" });
+      expect(await cambiarClavePropia("nube", "manager", { actual: "", nueva: "mi cafetería desde 2019" })).toMatchObject({ ok: false, campo: "actual" });
+      expect(await comprobarAcceso("nube", generada.clave)).toMatchObject({ rol: "manager" });
+    });
+
+    it("la nueva tiene que valer como elegida, ser distinta de la actual y de la de la caja", async () => {
+      const generada = await nuevaClave("nube", "manager");
+      const caja = await nuevaClave("nube", "caja");
+      const actual = generada.clave;
+      expect(await cambiarClavePropia("nube", "manager", { actual, nueva: "corta" })).toMatchObject({ ok: false, campo: "nueva", motivo: expect.stringMatching(/al menos/) });
+      expect(await cambiarClavePropia("nube", "manager", { actual, nueva: actual })).toMatchObject({ ok: false, campo: "nueva", motivo: expect.stringMatching(/distinta de la actual/) });
+      expect(await cambiarClavePropia("nube", "manager", { actual, nueva: caja.clave })).toMatchObject({ ok: false, campo: "nueva", motivo: expect.stringMatching(/caja/) });
+      expect(await comprobarAcceso("nube", actual)).toMatchObject({ rol: "manager" });
+      // Y la de la caja sigue siendo la suya: cambiar la del dueño no la toca.
+      expect(await cambiarClavePropia("nube", "manager", { actual, nueva: "mi cafetería desde 2019" })).toMatchObject({ ok: true });
+      expect(await comprobarAcceso("nube-caja", caja.clave)).toMatchObject({ rol: "caja" });
+    });
   });
 
   it("una fila de otra tienda no abre esta (una tienda «nube-caja» pudo pisar la caja de «nube»)", async () => {

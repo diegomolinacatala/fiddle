@@ -1,6 +1,6 @@
 import { resolverUsuario, verificarAcceso, usuariosDemo, usuarioDe, claveDe, igualSeguro } from "./auth";
 import { getAcceso, guardarAcceso, accesosDeNegocio } from "./store";
-import { generarClave, hashClave, comprobarClave } from "./claves";
+import { generarClave, hashClave, comprobarClave, problemaClaveElegida, esElegida } from "./claves";
 
 // ============================================================================
 // QUIÉN ENTRA (contraseñas de las tiendas)
@@ -61,18 +61,42 @@ export async function nuevaClave(slug, rol) {
 }
 
 /**
+ * El dueño cambia SU contraseña (Ajustes → «Tu acceso»): tiene que saber la actual,
+ * y la nueva es una elegida (lib/claves.js) distinta de la actual y de la de la
+ * caja, que la sabe todo el personal. Guardarla saca a sus otras sesiones
+ * (lib/sesionVigente.js); la de quien lo pide se vuelve a firmar en la respuesta.
+ * @returns {Promise<{ok:true, usuario:string} | {ok:false, motivo:string, campo:"actual"|"nueva"}>}
+ */
+export async function cambiarClavePropia(slug, rol, { actual, nueva }) {
+  if (!ROLES_TIENDA.includes(rol)) throw new Error(`Rol no válido: ${rol}`);
+  const usuario = usuarioDe(slug, rol);
+  if (!(await comprobarAcceso(usuario, actual))) return { ok: false, motivo: "La contraseña actual no es correcta", campo: "actual" };
+  const problema = problemaClaveElegida(nueva, usuario);
+  if (problema) return { ok: false, motivo: problema, campo: "nueva" };
+  if (String(nueva).trim() === String(actual).trim()) return { ok: false, motivo: "La nueva tiene que ser distinta de la actual", campo: "nueva" };
+  if (rol === "manager" && (await comprobarAcceso(usuarioDe(slug, "caja"), nueva))) {
+    return { ok: false, motivo: "No puede ser la misma que la de la caja: la sabe quien la use", campo: "nueva" };
+  }
+  await guardarAcceso({ usuario, negocio: slug, rol, hash: await hashClave(nueva, "elegida") });
+  return { ok: true, usuario };
+}
+
+/**
  * Cómo entra cada usuario de una tienda, sin enseñar contraseñas.
  * `desde`: fecha de la contraseña de la base (null si no tiene).
+ * `elegida`: la escribió una persona (invitación o Ajustes), no se la generamos.
  * `respaldo`: si hay variable de entorno (solo cuenta cuando no hay `desde`).
  */
 export async function estadoAccesos(slug) {
   const enBase = await accesosDeNegocio(slug);
   return ROLES_TIENDA.map((rol) => {
     const usuario = usuarioDe(slug, rol);
+    const fila = enBase.find((a) => a.usuario === usuario);
     return {
       rol,
       usuario,
-      desde: enBase.find((a) => a.usuario === usuario)?.actualizado ?? null,
+      desde: fila?.actualizado ?? null,
+      elegida: Boolean(fila) && esElegida(fila.hash),
       respaldo: Boolean(claveDe(slug, rol)),
     };
   });

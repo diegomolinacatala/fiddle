@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS, ADMINS,
+  resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, cookieSesion, secretoSesion, COOKIE, ADMINS,
 } from "@/lib/auth";
 import { listNegocios, getNegocio, getCliente } from "@/lib/store";
 import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
@@ -8,6 +8,7 @@ import { comprobarAcceso } from "@/lib/accesos";
 import { COOKIE_QUIEN } from "@/lib/plantilla";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno } from "@/lib/http";
+import { auditar } from "@/lib/auditoria";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,15 +66,12 @@ export async function POST(request) {
       return jsonError("Usuario o contraseña incorrectos", 401);
     }
 
+    // Queda apuntado quién entró (el admin, con su nombre); los fallos van a `intentos`.
+    await auditar(acceso, acceso.rol === "admin" ? null : acceso.negocio, "login");
     const destino = await destinoTrasLogin(acceso, next);
     const res = NextResponse.json({ ok: true, negocio: acceso.negocio, rol: acceso.rol, destino });
-    res.cookies.set(COOKIE, await firmarSesion(acceso.negocio, acceso.rol), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: TTL_SEGUNDOS[acceso.rol],
-    });
+    // El token lleva con quién entró: así la auditoría sabe si fue victor o diego.
+    res.cookies.set(COOKIE, await firmarSesion(acceso.negocio, acceso.rol, Date.now(), { usuario: acceso.usuario }), cookieSesion(acceso.rol));
     // Sesión nueva, nombre nuevo: la caja vuelve a preguntar quién atiende (lib/plantilla.js).
     res.cookies.set(COOKIE_QUIEN, "", { path: "/", maxAge: 0 });
     return res;

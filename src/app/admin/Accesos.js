@@ -48,7 +48,7 @@ export default function Accesos({ slug }) {
             <strong style={{ fontSize: 14 }}>{a.usuario}</strong>
             <div style={{ fontSize: 13, color: a.desde || a.respaldo ? C.suave : C.mal }}>
               {a.desde
-                ? `Contraseña propia desde el ${fecha(a.desde)}`
+                ? `Contraseña ${a.elegida ? "elegida por el dueño" : "generada"} desde el ${fecha(a.desde)}`
                 : a.respaldo ? "Usa la contraseña de Vercel (antigua)" : "Sin contraseña: no puede entrar"}
             </div>
           </div>
@@ -59,6 +59,8 @@ export default function Accesos({ slug }) {
       ))}
       {nuevas.length > 0 && <ClaveNueva accesos={nuevas} onCerrar={() => setNuevas([])} />}
       <Invitar slug={slug} />
+      {/* El dueño perdió la suya: que la elija él, sin tocar la caja ni dictarle nada. */}
+      <Invitar slug={slug} alcance="manager" />
     </section>
   );
 }

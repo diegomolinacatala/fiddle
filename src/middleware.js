@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verificarSesion, puedeAcceder, COOKIE } from "@/lib/auth";
+import { verificarSesion, renovarSesion, cookieSesion, puedeAcceder, COOKIE } from "@/lib/auth";
 import { reglaDeRuta, negocioDeRuta } from "@/lib/acceso";
 
 // ============================================================================
@@ -8,6 +8,12 @@ import { reglaDeRuta, negocioDeRuta } from "@/lib/acceso";
 // Verifica la sesión (firma HMAC real, no solo "existe la cookie") antes de
 // dejar pasar. Las reglas viven en lib/acceso.js (testeadas).
 // Página sin permiso -> /login?b=<negocio>&next=<ruta>.  API sin permiso -> 401.
+//
+// Y RENUEVA la sesión del manager cuando le queda menos de la mitad (ventana que
+// se desliza: mientras use la app no vuelve al login). Aquí y no en la página,
+// porque una página de servidor no puede poner cookies. El token renovado
+// conserva la fecha de emisión: si la contraseña cambió después de entrar, lo
+// echa igual lib/sesionVigente.js, que es quien mira la base.
 // ============================================================================
 
 export async function middleware(req) {
@@ -20,7 +26,12 @@ export async function middleware(req) {
     regla.tipo === "admin" ? sesion?.rol === "admin"
     : regla.tipo === "sesion" ? Boolean(sesion)
     : puedeAcceder(sesion, regla.slug, regla.rol);
-  if (permitido) return NextResponse.next();
+  if (permitido) {
+    const res = NextResponse.next();
+    const renovada = await renovarSesion(sesion).catch(() => null);
+    if (renovada) res.cookies.set(COOKIE, renovada, cookieSesion(sesion.rol));
+    return res;
+  }
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });

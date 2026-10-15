@@ -459,15 +459,24 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 
 - **Viven en la tabla `accesos`, solo como hash scrypt.** Se generan al crear la tienda
   en `/admin`, se enseñan UNA vez y se cambian desde la ficha de la tienda en `/admin`
-  o, la de la caja, desde el manager. La única vez que las elige alguien es la
-  **invitación** (`lib/invitaciones.js`): el dueño pone la suya y la de la caja, cada una
-  escrita dos veces. Mínimo 10 caracteres y sin reglas de mayúsculas o números a propósito:
-  se aconseja una frase («un café por favor»), que es más larga y más fácil de recordar.
+  o, la de la caja, desde el manager. Las elige una persona en la **invitación**
+  (`lib/invitaciones.js`: el dueño pone la suya y la de la caja, cada una escrita dos veces)
+  y en **Ajustes → Tu acceso → «Cambiar mi contraseña»** (la actual y la nueva dos veces,
+  `POST /api/accesos/manager`, con el límite de intentos del login). Mínimo 10 caracteres
+  y sin reglas de mayúsculas o números a propósito: se aconseja una frase («un café por
+  favor»), que es más larga y más fácil de recordar.
 - **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
   detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
-  desde el correo del admin: no hay proveedor de correo.
-- `hashClave` normaliza igual que `comprobarClave`. Si se toca una, la otra también: una
-  elegida con forma de generada ("cafe12345678") dejaría de entrar.
+  desde el correo del admin: no hay proveedor de correo. Tiene **alcance**
+  (`invitaciones.alcance`): `alta` fija las dos; `manager` solo la del dueño, para cuando
+  la pierde, y NO toca la caja (el admin lo crea desde Accesos). Es el mismo enlace y la
+  misma pantalla: cuando la recuperación la haga Supabase Auth por correo (Cuentas), se
+  convierte en eso, no se duplica.
+- **El hash dice si la contraseña es generada o elegida** (`lib/claves.js`): `scrypt$…`
+  (generada, o de antes de distinguirlas) se compara sin mayúsculas, espacios ni guiones,
+  que se dicta en el mostrador; `scrypt-elegida$…` se compara tal cual. `hashClave(clave,
+  tipo)` prepara igual que `comprobarClave`: si se toca una, la otra también. Nunca
+  guardar una elegida como generada: «micafeteria1» valdría también en mayúsculas.
 - Si un usuario tiene contraseña en la base, **solo vale esa**. Sin fila, vale la
   variable `CLAVE_<SLUG>_<ROL>` de Vercel (las tiendas de antes). Si la base falla,
   también se cae a la variable: una caja sin poder entrar es peor.
@@ -476,10 +485,18 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   ni se "arreglan" desde el código. Una variable cambiada en Vercel **no vale hasta
   el siguiente despliegue** (Deployments → Redeploy).
 - **Cambiar una contraseña saca a quien ya estaba dentro** (la caja perdida, el empleado
-  que se va): `lib/sesionVigente.js` rechaza la sesión firmada antes de
-  `accesos.actualizado`, y también la de una tienda archivada o borrada. Lo miran
-  `exigirNegocio` y las páginas del personal (`sesionDeCookie`), no el middleware (Edge,
-  solo la firma). Página o API nueva del personal = por ahí, nunca `verificarSesion` a pelo.
+  que se va): `lib/sesionVigente.js` rechaza la sesión emitida (`iat` del token) antes de
+  `accesos.actualizado` o de `negocio.sesionesDesde` (Ajustes → «Cerrar todas las
+  sesiones», `DELETE /api/sesiones`: manager y caja fuera sin cambiar contraseñas), y
+  también la de una tienda archivada o borrada. Lo miran `exigirNegocio` y las páginas del
+  personal (`sesionDeCookie`), no el middleware (Edge, solo la firma). Página o API nueva
+  del personal = por ahí, nunca `verificarSesion` a pelo. Quien cambia su contraseña o
+  cierra las sesiones recibe su cookie firmada de nuevo en esa misma respuesta.
+- **La sesión del manager dura 30 días y se desliza**: el middleware la vuelve a firmar
+  cuando le queda menos de la mitad (`renovarSesion`), conservando el `iat`. Por eso la
+  vigencia se compara con `iat` y nunca con la caducidad: una renovada sigue cayendo si la
+  contraseña cambió después de entrar. El token es `negocio.rol.usuario.iat.exp.firma`;
+  el de antes (4 partes) se acepta hasta el 15-11-2026 (`deCuatroPartes` en `auth.js`).
 - **Lo de `/api/admin/*` comprueba el admin también dentro** (`exigirAdmin`), aunque el
   middleware ya lo haga: si una ruta se le escapa, no queda abierta.
 - **Una tienda no puede llamarse como un usuario** (`slugDeTiendaLibre`): `pan-caja` haría

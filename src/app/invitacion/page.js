@@ -2,24 +2,25 @@
 
 import { useEffect, useState } from "react";
 import MarcaTienda from "@/app/MarcaTienda";
-import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, legible } from "@/app/ui";
+import { Clave, Coinciden, Ayuda, revisar, lista } from "@/app/ClaveElegida";
+import { C, paginaCentrada, panel, etiqueta, aviso, botonSecundario, legible } from "@/app/ui";
 
 // ============================================================================
-// INVITACIÓN — el dueño de una tienda nueva elige sus contraseñas
+// INVITACIÓN — el dueño elige sus contraseñas
 // ----------------------------------------------------------------------------
-// Llega aquí desde el enlace del correo (/invitacion#<token>). Dos pasos: la
-// suya (manager) y la del móvil de la caja, cada una escrita dos veces (lo pidió
-// La Delicantería: con una sola no sabes si la has tecleado bien, y no se puede
-// volver a usar el enlace). Al terminar entra directo a su manager. El token
-// vive detrás de `#`: se lee aquí y viaja en el cuerpo de la petición, nunca en
-// una URL que quede en un log (ver lib/invitaciones.js).
+// Llega aquí desde el enlace del correo (/invitacion#<token>). Según el alcance
+// del enlace (lib/invitaciones.js):
+//   "alta"     la tienda nueva: dos pasos, la suya (manager) y la del móvil de la
+//              caja, cada una escrita dos veces (lo pidió La Delicantería: con una
+//              sola no sabes si la has tecleado bien, y el enlace no se repite).
+//   "manager"  perdió la suya: un solo paso, la nueva dos veces. La caja no cambia.
+// Al terminar entra directo a su manager. El token vive detrás de `#`: se lee
+// aquí y viaja en el cuerpo de la petición, nunca en una URL que quede en un log.
 // ============================================================================
-
-const MIN = 10; // el mismo mínimo que lib/claves.js (problemaClaveElegida)
 
 export default function Invitacion() {
   const [token, setToken] = useState(null);
-  const [info, setInfo] = useState(null); // { nombre, tema, usuarios }
+  const [info, setInfo] = useState(null); // { nombre, tema, alcance, usuarios }
   const [error, setError] = useState(null);
   const [paso, setPaso] = useState(1);
   const [manager, setManager] = useState("");
@@ -43,29 +44,19 @@ export default function Invitacion() {
       .catch((e) => setError(e.message));
   }, []);
 
+  const soloManager = info?.alcance === "manager";
+
   // Al volver a escribir se quita el aviso: si no, «No son iguales» sigue ahí
   // debajo de un «Son iguales.» recién arreglado.
   const escribir = (set) => (v) => { set(v); setError(null); };
 
-  function siguiente(e) {
-    e.preventDefault();
-    setError(null);
-    const problema = revisar(manager, manager2, info.usuarios.manager);
-    if (problema) return setError(problema);
-    setPaso(2);
-  }
-
-  async function terminar(e) {
-    e.preventDefault();
-    setError(null);
-    const problema = revisar(caja, caja2, info.usuarios.caja) || (caja.trim() === manager.trim() ? "Tiene que ser distinta de la tuya: la sabrá quien use la caja." : null);
-    if (problema) return setError(problema);
+  async function enviar(cuerpo) {
     setBusy(true);
     try {
       const r = await fetch("/api/invitacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, manager, caja }),
+        body: JSON.stringify({ token, ...cuerpo }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -77,6 +68,24 @@ export default function Invitacion() {
       setError(err.message);
       setBusy(false);
     }
+  }
+
+  // Paso 1: la suya. Con alcance "manager" es también el último: se guarda ya.
+  function siguiente(e) {
+    e.preventDefault();
+    setError(null);
+    const problema = revisar(manager, manager2, info.usuarios.manager);
+    if (problema) return setError(problema);
+    if (soloManager) return enviar({ manager });
+    setPaso(2);
+  }
+
+  function terminar(e) {
+    e.preventDefault();
+    setError(null);
+    const problema = revisar(caja, caja2, info.usuarios.caja) || (caja.trim() === manager.trim() ? "Tiene que ser distinta de la tuya: la sabrá quien use la caja." : null);
+    if (problema) return setError(problema);
+    enviar({ manager, caja });
   }
 
   if (!info) {
@@ -97,6 +106,7 @@ export default function Invitacion() {
 
   const { usuarios } = info;
   const accent = info.tema?.accent || C.texto;
+  const listaManager = lista(manager, manager2) && !busy;
 
   return (
     <main style={paginaCentrada}>
@@ -105,32 +115,40 @@ export default function Invitacion() {
           {info.tema && <MarcaTienda tema={info.tema} tam={44} icono />}
           <div>
             <h1 style={{ ...titulo, margin: 0 }}>{info.nombre}</h1>
-            <p style={{ ...texto, margin: 0 }}>Te damos la bienvenida. Dos contraseñas y listo.</p>
+            <p style={{ ...texto, margin: 0 }}>
+              {soloManager ? "Elige tu nueva contraseña y sigues donde estabas." : "Te damos la bienvenida. Dos contraseñas y listo."}
+            </p>
           </div>
         </div>
 
-        <ol style={pasos} aria-label="Pasos">
-          <li style={pasoEstilo(paso === 1, paso > 1, accent)}>1 · La tuya</li>
-          <li style={pasoEstilo(paso === 2, false, accent)}>2 · La de la caja</li>
-        </ol>
+        {!soloManager && (
+          <ol style={pasos} aria-label="Pasos">
+            <li style={pasoEstilo(paso === 1, paso > 1, accent)}>1 · La tuya</li>
+            <li style={pasoEstilo(paso === 2, false, accent)}>2 · La de la caja</li>
+          </ol>
+        )}
 
         {paso === 1 && (
           <form onSubmit={siguiente} style={panel}>
             <p style={texto}>
-              Con ella entras al <strong style={{ color: C.texto }}>manager</strong>: la tarjeta, las promos y tus clientes.
+              {soloManager
+                ? <>La de antes deja de valer en cuanto guardes. La del <strong style={{ color: C.texto }}>móvil de la caja</strong> no cambia.</>
+                : <>Con ella entras al <strong style={{ color: C.texto }}>manager</strong>: la tarjeta, las promos y tus clientes.</>}
             </p>
             <label style={etiqueta}>Tu usuario</label>
             <div style={usuarioFijo}>{usuarios.manager}</div>
             {/* Para que el gestor de contraseñas la guarde con su usuario. */}
             <input type="text" name="username" autoComplete="username" value={usuarios.manager} readOnly hidden />
-            <label style={etiqueta} htmlFor="clave-manager">Elige tu contraseña</label>
+            <label style={etiqueta} htmlFor="clave-manager">{soloManager ? "Elige tu nueva contraseña" : "Elige tu contraseña"}</label>
             <Clave id="clave-manager" valor={manager} onChange={escribir(setManager)} ver={ver} setVer={setVer} autoFocus />
             <Ayuda valor={manager} />
             <label style={etiqueta} htmlFor="clave-manager-2">Repítela</label>
             <Clave id="clave-manager-2" valor={manager2} onChange={escribir(setManager2)} ver={ver} />
             <Coinciden clave={manager} repetida={manager2} />
             {error && <div role="alert" style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
-            <button type="submit" style={principal(accent, lista(manager, manager2))}>Siguiente</button>
+            <button type="submit" disabled={busy} style={principal(accent, listaManager)}>
+              {soloManager ? (busy ? "Guardando…" : "Guardar y entrar") : "Siguiente"}
+            </button>
           </form>
         )}
 
@@ -159,70 +177,14 @@ export default function Invitacion() {
         )}
 
         <p style={{ fontSize: 12, color: C.tenue, textAlign: "center", marginTop: 14 }}>
-          Este enlace solo sirve una vez. Las contraseñas que te hayan dado antes dejarán de valer.
+          {soloManager
+            ? "Este enlace solo sirve una vez. Tu contraseña de antes dejará de valer; la de la caja sigue igual."
+            : "Este enlace solo sirve una vez. Las contraseñas que te hayan dado antes dejarán de valer."}
         </p>
       </div>
     </main>
   );
 }
-
-function Clave({ id, valor, onChange, ver, setVer, autoFocus }) {
-  return (
-    <div style={{ display: "flex", gap: 8 }}>
-      <input
-        id={id}
-        value={valor}
-        onChange={(e) => onChange(e.target.value)}
-        type={ver ? "text" : "password"}
-        autoComplete="new-password"
-        autoCapitalize="none"
-        autoCorrect="off"
-        autoFocus={autoFocus}
-        style={{ ...campo, minWidth: 0 }}
-      />
-      {/* Un solo «Ver», en la primera: enseña las dos, que es cuando se ve en qué no coinciden. */}
-      {setVer && (
-        <button type="button" onClick={() => setVer((v) => !v)} style={{ ...botonSecundario, flexShrink: 0 }}>
-          {ver ? "Ocultar" : "Ver"}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Coinciden({ clave, repetida }) {
-  const a = clave.trim();
-  const b = repetida.trim();
-  const [color, frase] =
-    b && a === b ? [C.ok, "Son iguales."]
-    : b.length >= a.length && b ? [C.mal, "No es igual que la de arriba."]
-    : [C.tenue, "Otra vez, para saber que está bien escrita."];
-  return <div style={{ fontSize: 12, color, marginTop: 6 }}>{frase}</div>;
-}
-
-function Ayuda({ valor }) {
-  const faltan = MIN - valor.trim().length;
-  return (
-    <div style={{ fontSize: 12, color: faltan > 0 ? C.tenue : C.ok, marginTop: 6 }}>
-      {faltan > 0 ? `Al menos ${MIN} caracteres${valor ? ` (faltan ${faltan})` : ""}. Mejor una frase que una palabra rara.` : "Vale."}
-    </div>
-  );
-}
-
-// Lo mismo que comprueba el servidor, para avisar antes de enviar. Que las dos sean
-// iguales solo se mira aquí: al servidor llega una. Se comparan sin los espacios de
-// los lados, que el servidor también quita (normalizarClave en lib/claves.js).
-function revisar(clave, repetida, usuario) {
-  const s = clave.trim();
-  if (s.length < MIN) return `Tiene que tener al menos ${MIN} caracteres.`;
-  if (s.toLowerCase() === usuario.toLowerCase()) return "No puede ser igual que el usuario.";
-  if (/^(.)\1+$/.test(s)) return "No puede ser el mismo carácter repetido.";
-  if (!repetida.trim()) return "Escríbela otra vez en «Repítela».";
-  if (repetida.trim() !== s) return "Las dos no son iguales. Con «Ver» puedes mirarlas.";
-  return null;
-}
-
-const lista = (clave, repetida) => clave.trim().length >= MIN && repetida.trim() === clave.trim();
 
 const titulo = { fontSize: "1.35rem", fontWeight: 650, margin: "0 0 6px", letterSpacing: "-0.01em" };
 const texto = { color: C.suave, fontSize: 14, lineHeight: 1.5, margin: "0 0 4px" };

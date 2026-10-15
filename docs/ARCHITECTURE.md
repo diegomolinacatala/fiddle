@@ -112,14 +112,24 @@ Cada dependencia se detecta por separado:
 
 - **Login por negocio.** Usuario (`delicanteria` manager · `delicanteria-caja`) y contraseña
   (hash scrypt en `accesos`; sin fila, `CLAVE_<SLUG>_<ROL>`). Sesión HMAC
-  `negocio.rol.exp.firma` en una cookie `HttpOnly` y `SameSite=Lax`: la sesión de una
-  tienda no vale en otra. El middleware aplica las reglas de
-  [`acceso.js`](../src/lib/acceso.js) y solo mira la firma; los handlers comprueban el
+  `negocio.rol.usuario.iat.exp.firma` en una cookie `HttpOnly` y `SameSite=Lax`: la sesión
+  de una tienda no vale en otra, y dice con quién se entró (el admin, `victor` o `diego`) y
+  cuándo (`iat`). El middleware aplica las reglas de
+  [`acceso.js`](../src/lib/acceso.js), solo mira la firma y renueva la del manager cuando le
+  queda menos de la mitad (30 días deslizantes; conserva `iat`); los handlers comprueban el
   negocio del recurso (cliente, `?b=`, body) con `exigirNegocio`, que además rechaza la
-  sesión firmada antes de un cambio de contraseña o de una tienda que ya no está
+  sesión emitida antes de un cambio de contraseña, de un «Cerrar todas las sesiones»
+  (`negocio.sesionesDesde`, Ajustes) o de que la tienda dejara de estar
   (`lib/sesionVigente.js`). Por defecto, cualquier `/api` nueva exige sesión. El admin no
   tiene fila en `accesos`: su sesión (12 h) solo se corta cambiando `AUTH_SECRET`, que
   echa a todos.
+- **Contraseñas generadas y elegidas** ([`claves.js`](../src/lib/claves.js)). Las que
+  generamos (`scrypt$…`) se comparan sin mayúsculas, espacios ni guiones; las que escribe
+  una persona (invitación, Ajustes → «Cambiar mi contraseña»: `scrypt-elegida$…`) se
+  comparan tal cual. El dueño cambia la suya dando la actual (`POST /api/accesos/manager`,
+  con el límite del login) o, si la perdió, con un enlace de restablecimiento del admin
+  (`invitaciones.alcance = 'manager'`): el mismo enlace del alta, pero solo fija la suya y
+  no toca la caja.
 - **Fallo cerrado en producción.** Sin `AUTH_SECRET` no se firman ni aceptan sesiones;
   sin contraseña configurada, ese usuario no entra. Los accesos de prueba (contraseña =
   usuario, visibles en el login) solo existen en local y sin `AUTH_SECRET` (con el de

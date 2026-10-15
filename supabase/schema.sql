@@ -182,6 +182,10 @@ create table if not exists invitaciones (
   usada   timestamptz
 );
 create index if not exists invitaciones_negocio on invitaciones (negocio);
+-- Qué fija el enlace: 'alta' (las dos contraseñas, la tienda nueva) o 'manager'
+-- (solo la del dueño, para recuperarla sin tocar la caja). Añadida el 15-10-2026:
+-- aplicar en producción ANTES de desplegar el código que la usa.
+alter table invitaciones add column if not exists alcance text not null default 'alta';
 
 -- Recorridos de bienvenida que ya vio cada usuario (`nube`, `nube-caja`, `admin`).
 create table if not exists tutoriales (
