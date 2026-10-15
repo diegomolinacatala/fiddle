@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido } from "@/lib/acceso";
+import { reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda } from "@/lib/acceso";
+import { resolverUsuario, usuarioDe } from "@/lib/auth";
 
 const regla = (ruta, method = "GET") => {
   const url = new URL(ruta, "http://x");
@@ -140,5 +141,19 @@ describe("usuarioSugerido", () => {
     expect(usuarioSugerido("nube", "//evil.com/nube/caja")).toBe("nube");
     expect(usuarioSugerido("admin", "/admin")).toBe(""); // reservado: no es una tienda
     expect(usuarioSugerido("victor", "/admin")).toBe("victor");
+  });
+
+  it("entiende los usuarios de tienda igual que lib/auth.js, sin importarlo (los admins no van al navegador)", () => {
+    for (const u of ["nube", "nube-caja", "fade-manager", "NUBE "]) {
+      const quien = resolverUsuario(u);
+      expect(tiendaDeUsuario(u), u).toEqual({ slug: quien.negocio, rol: quien.rol });
+    }
+    for (const u of ["nube caja", "", null]) expect(tiendaDeUsuario(u), String(u)).toBeNull();
+    // Un slug reservado no es una tienda, aunque resolverUsuario no lo mire.
+    expect(tiendaDeUsuario("admin")).toBeNull();
+    expect(tiendaDeUsuario("w")).toBeNull();
+    expect(tiendaDeUsuario("victor")).toEqual({ slug: "victor", rol: "manager" }); // aquí no hay admins: es un slug más
+    expect(usuarioDeTienda("nube", "caja")).toBe(usuarioDe("nube", "caja"));
+    expect(usuarioDeTienda("nube", "manager")).toBe(usuarioDe("nube", "manager"));
   });
 });

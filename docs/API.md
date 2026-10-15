@@ -55,10 +55,11 @@ El dueño de una tienda elige sus contraseñas desde el enlace del correo
 `410` con `codigo`: `incompleto` (no tiene forma de token), `desconocido` (inventado o
 anulado por otro más nuevo), `usada`, `caducada`, `sin_tienda`; cada uno deja un
 `console.warn` sin el token · `400` contraseña floja (`campo`: `manager` | `caja`; mínimo 10
-caracteres, distinta del usuario y entre sí) · `429` más de 20 altas por IP en 10 min.
-Fijarlas guarda las dos contraseñas ANTES de gastar el enlace (si la base falla a medias,
-el enlace sigue vivo y se repite) y queda en `auditoria` (`invitacion` · `aceptada`, como el
-manager de la tienda).
+caracteres, distinta del usuario y entre sí) · `429` más de 20 altas por IP en 10 min (y, en
+memoria, más de 60 comprobaciones por IP en 10 min). Fijarlas gasta el enlace primero (con
+dos pestañas solo una escribe) y, si guardar falla a medias, lo reabre para repetir; si
+tampoco se puede reabrir, `auditoria` lleva `invitacion` · `sin_reabrir`. Aceptar queda en
+`auditoria` (`invitacion` · `aceptada`, como el manager de la tienda).
 
 ### `GET /api/tutorial?recorrido=manager|caja` · `POST /api/tutorial` — `{ "recorrido": "caja" }`
 Si el usuario de la sesión ya vio el recorrido de bienvenida (`{ "visto": true }`) y

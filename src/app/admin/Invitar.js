@@ -38,8 +38,11 @@ export default function Invitar({ slug }) {
   useEffect(() => { setInv(null); cargar(); }, [slug]);
 
   async function crear() {
-    const hayPendiente = inv || estado?.pendiente;
-    if (hayPendiente && !window.confirm("¿Crear otro enlace? El pendiente dejará de valer: si el dueño ya lo tiene, le fallará.")) return;
+    // Sin estado (el GET falló) se pregunta igual: crear a ciegas es justo lo que anulaba el enlace del dueño.
+    const pregunta = inv || estado?.pendiente
+      ? "¿Crear otro enlace? El pendiente dejará de valer: si el dueño ya lo tiene, le fallará."
+      : !estado ? "No se ha podido comprobar si hay un enlace pendiente. ¿Crear uno igualmente? Si lo había, dejará de valer." : null;
+    if (pregunta && !window.confirm(pregunta)) return;
     setBusy(true);
     setError(null);
     try {
@@ -83,10 +86,11 @@ export default function Invitar({ slug }) {
       {!inv && (
         <>
           {estado && <Situacion estado={estado} />}
-          <button type="button" onClick={crear} disabled={busy} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {/* Hasta saber cómo está el enlace, el botón espera: no se crea uno sin mirar. */}
+          <button type="button" onClick={crear} disabled={busy || (!estado && !error)} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Icono nombre="correo" tam={16} />
             {" "}
-            {busy ? "Creando…" : estado?.pendiente ? "Crear otro (el pendiente dejará de valer)" : "Invitar al dueño por correo"}
+            {busy ? "Creando…" : !estado && !error ? "Mirando el enlace…" : estado?.pendiente ? "Crear otro (el pendiente dejará de valer)" : "Invitar al dueño por correo"}
           </button>
           <p style={nota}>
             Le llega un enlace para elegir su contraseña y la de la caja. Caduca en 7 días y sirve una vez;

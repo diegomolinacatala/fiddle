@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { leerInvitacion, aceptarInvitacion } from "@/lib/invitaciones";
 import { firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS } from "@/lib/auth";
-import { usoExcedido, ipDe } from "@/lib/limitador";
+import { usoExcedido, limiteEnMemoria, ipDe } from "@/lib/limitador";
 import { auditar } from "@/lib/auditoria";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -15,10 +15,20 @@ export const dynamic = "force-dynamic";
 // Un 410 lleva `codigo` (incompleto, desconocido, usada, caducada, sin_tienda):
 // la página aconseja con él, y aquí queda en el log de Vercel SIN el token,
 // que es lo único que permite ver desde el servidor que un enlace falló.
+//
+// Comprobar un enlace no gasta nada (un token de 256 bits no se adivina), pero
+// cada comprobación es una lectura de la base y una línea de log: un límite en
+// memoria, sin tocar la base, corta un bucle. Fijar las contraseñas sí va al
+// límite persistido (dos scrypt por intento).
+const LIMITE_COMPROBAR = { max: 60, ventanaMs: 10 * 60 * 1000 };
+
 export async function POST(request) {
   try {
     const { token, manager, caja } = await request.json().catch(() => ({}));
     if (manager === undefined && caja === undefined) {
+      if (limiteEnMemoria(`invitacion-leer:${ipDe(request) || "?"}`, LIMITE_COMPROBAR)) {
+        return jsonError("Demasiados intentos. Espera unos minutos.", 429);
+      }
       const r = await leerInvitacion(token);
       if (!r.ok) return rechazada(r);
       return NextResponse.json({ nombre: r.negocio.nombre, tema: r.negocio.tema, usuarios: r.usuarios });

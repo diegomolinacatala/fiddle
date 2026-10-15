@@ -1,5 +1,4 @@
 import { RESERVADOS } from "./negocios";
-import { resolverUsuario, usuarioDe } from "./auth";
 
 // ============================================================================
 // REGLAS DE ACCESO POR RUTA (función pura, la usa el middleware)
@@ -137,6 +136,23 @@ export function negocioDeRuta(pathname) {
   return m && !RESERVADOS.has(m[1]) ? m[1] : null;
 }
 
+// Los usuarios de tienda (`nube`, `nube-caja`) sin pasar por lib/auth.js: esto lo
+// importa /login, que corre en el navegador, y auth.js lleva la lista de admins
+// de la plataforma, que no tiene que salir en el JavaScript público. La forma es
+// la misma que la de `resolverUsuario` (hay un test que lo fija); los admins no
+// son de ninguna tienda y aquí no cuentan.
+const USUARIO_TIENDA = /^([a-z0-9-]+?)(?:-(caja|manager))?$/;
+
+/** @returns {{slug:string, rol:"caja"|"manager"}|null} la tienda y el rol de un usuario de acceso, o null */
+export function tiendaDeUsuario(usuario) {
+  const m = USUARIO_TIENDA.exec(String(usuario ?? "").trim().toLowerCase());
+  if (!m || RESERVADOS.has(m[1])) return null;
+  return { slug: m[1], rol: m[2] === "caja" ? "caja" : "manager" };
+}
+
+/** Usuario de acceso de una tienda y rol: `nube` (manager) · `nube-caja`. Igual que `usuarioDe` en lib/auth.js. */
+export const usuarioDeTienda = (slug, rol) => (rol === "caja" ? `${slug}-caja` : slug);
+
 /**
  * Qué usuario rellenar en /login. El middleware (y «Salir») mandan `b`, la
  * tienda, y `next`, a dónde iba. Quien iba a la caja (/<slug>/caja) o a una
@@ -149,10 +165,10 @@ export function negocioDeRuta(pathname) {
  * @returns {string}
  */
 export function usuarioSugerido(b, next) {
-  const quien = resolverUsuario(b);
-  if (!quien || RESERVADOS.has(quien.negocio)) return quien?.rol === "admin" ? quien.usuario : "";
-  if (quien.rol === "caja") return quien.usuario; // ya venía el de la caja
+  const tienda = tiendaDeUsuario(b);
+  if (!tienda) return "";
+  if (tienda.rol === "caja") return usuarioDeTienda(tienda.slug, "caja"); // ya venía el de la caja
   const ruta = (destinoSeguro(next) || "").split(/[?#]/)[0].replace(/\/+$/, "");
-  const deCaja = ruta === `/${quien.negocio}/caja` || ruta.startsWith("/w/");
-  return deCaja ? usuarioDe(quien.negocio, "caja") : quien.usuario;
+  const deCaja = ruta === `/${tienda.slug}/caja` || ruta.startsWith("/w/");
+  return usuarioDeTienda(tienda.slug, deCaja ? "caja" : "manager");
 }

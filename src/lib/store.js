@@ -1509,6 +1509,23 @@ export async function invitacionesDeNegocio(negocio) {
 }
 
 /**
+ * Lo contrario de gastar: el enlace vuelve a valer. Solo para cuando se gastó y
+ * guardar las contraseñas falló justo después (lib/invitaciones.js): sin esto el
+ * dueño se quedaba con el enlace gastado y sin contraseñas.
+ */
+export async function reabrirInvitacion(huella) {
+  if (hasSupabase()) {
+    sinError(await supa().from("invitaciones").update({ usada: null }).eq("huella", huella), "reabrir invitación");
+    return;
+  }
+  return enFila(async () => {
+    const todas = await leer("invitaciones", {});
+    if (!todas[huella]) return;
+    await escribir("invitaciones", { ...todas, [huella]: { ...todas[huella], usada: null } });
+  });
+}
+
+/**
  * Gasta la invitación. Condicional (solo si seguía sin usar): con dos pestañas
  * a la vez, solo una fija las contraseñas.
  * @returns {Promise<boolean>} true si era la primera vez

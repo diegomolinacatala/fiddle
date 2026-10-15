@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MarcaTienda from "@/app/MarcaTienda";
 import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, legible } from "@/app/ui";
 import { tokenAlAbrir, tokenDeTexto, CLAVE_GUARDADO, LARGO_TOKEN } from "@/lib/tokenInvitacion";
@@ -42,7 +42,9 @@ const CONSEJO = {
   caducada: "Pide otro enlace a quien te lo envió: puede crear uno nuevo desde su panel.",
   usada: "Tus contraseñas ya están puestas: entra con tu usuario y la que elegiste. Si no la recuerdas, pide otro enlace.",
   sin_tienda: "Habla con quien te lo envió.",
-  red: "No se pudo comprobar el enlace. Mira la conexión y prueba otra vez.",
+  // Estos tres no dicen nada del enlace: ni se enseña el texto del servidor ni se olvida el token.
+  red: "Mira la conexión y prueba otra vez.",
+  limite: "Demasiados intentos desde esta conexión. Espera unos minutos y prueba otra vez.",
   servidor: "Prueba otra vez en un momento. Si sigue igual, avisa a quien te lo envió.",
 };
 const SE_PUEDE_PEGAR = new Set(["incompleto", "desconocido", "caducada"]);
@@ -51,7 +53,8 @@ export default function Invitacion() {
   const [token, setToken] = useState(undefined); // undefined: aún no se ha mirado; null: no hay
   const [intento, setIntento] = useState(0); // para volver a comprobar el mismo token
   const [info, setInfo] = useState(null); // { nombre, tema, usuarios }
-  const [error, setError] = useState(null); // { texto, codigo }
+  const [error, setError] = useState(null); // { texto, codigo, rechazado }
+  const terminado = useRef(false); // ya se guardaron las contraseñas y se fue al manager
   const [pegando, setPegando] = useState(false);
   const [paso, setPaso] = useState(1);
   const [manager, setManager] = useState("");
@@ -69,8 +72,15 @@ export default function Invitacion() {
       setPegando(false);
     };
     mirar();
+    // «Atrás» desde el manager en iOS devuelve esta página congelada (bfcache) con
+    // «Guardando…» y las contraseñas en los campos: a su sitio, que ya está dentro.
+    const volver = (e) => { if (e.persisted && terminado.current) window.location.replace("/"); };
     window.addEventListener("hashchange", mirar);
-    return () => window.removeEventListener("hashchange", mirar);
+    window.addEventListener("pageshow", volver);
+    return () => {
+      window.removeEventListener("hashchange", mirar);
+      window.removeEventListener("pageshow", volver);
+    };
   }, []);
 
   // Cada token se comprueba con el servidor (y otra vez si se pide con «Probar otra
@@ -86,8 +96,12 @@ export default function Invitacion() {
     fetch("/api/invitacion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) })
       .then(async (r) => {
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw Object.assign(new Error(d.error || "Este enlace no vale"), { codigo: d.codigo || "servidor" });
-        return d;
+        if (r.ok) return d;
+        // `rechazado`: el servidor miró el enlace y dijo que no (410, con su código y
+        // su texto). Un 429 o un 500 no dicen nada del enlace: texto propio y el
+        // token guardado se queda.
+        const rechazado = r.status === 410 && Boolean(d.codigo);
+        throw Object.assign(new Error(rechazado ? d.error : ""), { codigo: rechazado ? d.codigo : r.status === 429 ? "limite" : "servidor", rechazado });
       })
       .then((d) => {
         if (!vigente) return;
@@ -96,8 +110,8 @@ export default function Invitacion() {
       })
       .catch((e) => {
         if (!vigente) return;
-        if (e.codigo && guardado.leer() === token) guardado.borrar();
-        setError({ texto: e.message, codigo: e.codigo || "red" });
+        if (e.rechazado && guardado.leer() === token) guardado.borrar();
+        setError({ texto: e.rechazado ? e.message : null, codigo: e.codigo || "red", rechazado: Boolean(e.rechazado) });
       });
     return () => { vigente = false; };
   }, [token, intento]);
@@ -134,12 +148,15 @@ export default function Invitacion() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, manager, caja }),
       });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
       if (!r.ok) {
         if (d.campo === "manager") setPaso(1);
-        throw Object.assign(new Error(d.error || "No se pudo guardar"), { codigo: d.codigo });
+        // Un 500 (la base, un momento) no es cosa del dueño: que repita, el enlace sigue vivo.
+        const texto = r.status >= 500 ? "No se pudo guardar. Prueba otra vez en un momento." : d.error || "No se pudo guardar";
+        throw Object.assign(new Error(texto), { codigo: d.codigo });
       }
       // Gastado: fuera de la pestaña y de la barra, que «atrás» no vuelva a enseñarlo.
+      terminado.current = true;
       guardado.borrar();
       window.history.replaceState(null, "", "/invitacion");
       window.location.assign(d.destino);
@@ -237,18 +254,20 @@ export default function Invitacion() {
   );
 }
 
-// El servidor dijo que no (o no dijo nada): qué pasa y qué hacer.
+// El servidor dijo que no (o no se le pudo preguntar): qué pasa y qué hacer. Solo
+// cuando lo rechazó de verdad se dice que el enlace no sirve: con la red caída o un
+// 500, decirlo haría que el dueño pidiera otro, y eso anula el bueno.
 function Rechazo({ error, pegando, onPegar, onComprobar, onOtraVez }) {
   const codigo = error.codigo || "servidor";
   const consejo = CONSEJO[codigo] || CONSEJO.servidor;
   if (pegando) return <PegarCodigo onComprobar={onComprobar} titulo="Pega el código del correo" consejo={consejo} />;
   return (
     <div style={panel}>
-      <h1 style={titulo}>Este enlace no sirve</h1>
-      <p style={{ ...texto, marginBottom: 6 }}>{error.texto}</p>
+      <h1 style={titulo}>{error.rechazado ? "Este enlace no sirve" : "No se pudo comprobar el enlace"}</h1>
+      {error.texto && <p style={{ ...texto, marginBottom: 6 }}>{error.texto}</p>}
       <p style={{ ...texto, marginBottom: 16 }}>{consejo}</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {(codigo === "red" || codigo === "servidor") && (
+        {!error.rechazado && (
           <button type="button" onClick={onOtraVez} style={botonSecundario}>Probar otra vez</button>
         )}
         {SE_PUEDE_PEGAR.has(codigo) && (
@@ -291,7 +310,8 @@ function PegarCodigo({ onComprobar, titulo: cabecera, consejo }) {
       {aviso_ && <div role="alert" style={{ ...aviso(false), marginTop: 12 }}>{aviso_}</div>}
       <button type="submit" style={principal(C.texto, Boolean(pegado.trim()))}>Comprobar</button>
       <p style={{ ...texto, fontSize: 12, color: C.tenue, marginTop: 12 }}>
-        Si no tienes el correo, pide otro enlace a quien te lo mandó.
+        Si no tienes el correo, pide otro enlace a quien te lo mandó. Si ya elegiste tus contraseñas,
+        {" "}<a href="/login" style={{ color: C.texto }}>entra con ellas</a>.
       </p>
     </form>
   );

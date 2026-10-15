@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { destinoSeguro, usuarioSugerido } from "@/lib/acceso";
-import { resolverUsuario, usuarioDe } from "@/lib/auth";
+// Nada de lib/auth.js aquí: lleva la lista de admins y esto va al navegador.
+import { destinoSeguro, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda } from "@/lib/acceso";
 import { CORREO, TELEFONO_VISIBLE, enlaceWhatsApp, enlaceCorreo } from "@/app/home/datos";
 import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, solapa } from "@/app/ui";
 import LogoFiddle from "@/app/LogoFiddle";
@@ -25,8 +25,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = destinoSeguro(params.get("next"));
-  const tienda = resolverUsuario(params.get("b"));
-  const slug = tienda && tienda.rol !== "admin" ? tienda.negocio : null;
+  const slug = tiendaDeUsuario(params.get("b"))?.slug ?? null;
 
   const [usuario, setUsuario] = useState(() => usuarioSugerido(params.get("b"), params.get("next")));
   const [clave, setClave] = useState("");
@@ -78,7 +77,7 @@ function LoginForm() {
   }
 
   const listo = usuario && clave && !busy;
-  const soy = (rol) => { setUsuario(usuarioDe(slug, rol)); setError(null); };
+  const soy = (rol) => { setUsuario(usuarioDeTienda(slug, rol)); setError(null); };
 
   return (
     <main style={paginaCentrada}>
@@ -96,7 +95,7 @@ function LoginForm() {
           {slug && (
             <div role="group" aria-label="Quién entra" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[["caja", "Soy la caja"], ["manager", "Soy el dueño"]].map(([rol, texto]) => (
-                <button key={rol} type="button" onClick={() => soy(rol)} style={solapa(usuario === usuarioDe(slug, rol))}>
+                <button key={rol} type="button" onClick={() => soy(rol)} style={solapa(usuario === usuarioDeTienda(slug, rol))}>
                   {texto}
                 </button>
               ))}

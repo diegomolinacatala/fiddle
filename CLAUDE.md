@@ -503,8 +503,10 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   (`sessionStorage`), lo vuelve a leer si cambia el hash y, sin token, deja pegar el código
   del correo (`lib/tokenInvitacion.js`, sin imports del servidor; el correo lleva el token
   también en texto). Cada 410 de `/api/invitacion` lleva `codigo` y deja un `console.warn`
-  sin el token. `aceptarInvitacion` guarda las dos contraseñas ANTES de gastar el enlace.
-  Crear y aceptar quedan en `auditoria`. La ficha del admin enseña si hay un enlace pendiente
+  sin el token. `aceptarInvitacion` gasta el enlace PRIMERO (es el cerrojo: con dos pestañas
+  solo una escribe) y, si guardar las contraseñas falla a medias, lo reabre
+  (`reabrirInvitacion`) para que el dueño repita. Crear y aceptar quedan en `auditoria`.
+  `/login` no importa `lib/auth.js` (lleva los admins): lo suyo está en `lib/acceso.js`. La ficha del admin enseña si hay un enlace pendiente
   (`GET /api/admin/invitacion`) antes de ofrecer otro, y en la web de dev avisa de que no va
   a servir (`enlacesFiables`).
 

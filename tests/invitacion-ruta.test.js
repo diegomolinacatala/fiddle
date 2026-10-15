@@ -21,7 +21,7 @@ vi.mock("@/lib/store", async (original) => {
 });
 
 const store = await import("@/lib/store");
-const { nuevaInvitacion, enlacesFiables } = await import("@/lib/invitaciones");
+const { nuevaInvitacion, estadoInvitacion, enlacesFiables } = await import("@/lib/invitaciones");
 const { comprobarAcceso } = await import("@/lib/accesos");
 const { firmarSesion } = await import("@/lib/auth");
 const ruta = await import("@/app/api/invitacion/route.js");
@@ -128,7 +128,7 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect(await auditoria("invitacion")).toEqual([]);
   });
 
-  it("si la base falla a medias, el enlace sigue vivo y se puede repetir (M1)", async () => {
+  it("si la base falla a medias, el enlace se reabre y se puede repetir (M1)", async () => {
     const { token } = await nuevaInvitacion("nube");
     // La del manager se guarda; la de la caja, no (Supabase caído un segundo).
     const real = store.guardarAcceso.getMockImplementation();
@@ -136,8 +136,9 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
 
     expect((await aceptar(token)).status).toBe(500);
     expect(error).toHaveBeenCalled();
-    // Ni gastado ni apuntado: el dueño vuelve a pulsar.
+    // Reabierto y sin apuntar: el dueño vuelve a pulsar.
     expect((await comprobar(token)).status).toBe(200);
+    expect((await estadoInvitacion("nube")).pendiente).toBeTruthy();
     expect(await auditoria("invitacion")).toEqual([]);
 
     expect((await aceptar(token)).status).toBe(200);
@@ -146,12 +147,44 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect((await comprobar(token)).data.codigo).toBe("usada");
   });
 
-  it("si las contraseñas se guardaron pero el enlace no se pudo gastar, la respuesta es que sí", async () => {
+  it("si el enlace no se puede gastar, no se guarda nada y sigue vivo", async () => {
     const { token } = await nuevaInvitacion("nube");
     const gastar = vi.spyOn(store, "gastarInvitacion").mockRejectedValueOnce(new Error("Supabase caído"));
-    expect((await aceptar(token)).status).toBe(200);
+    expect((await aceptar(token)).status).toBe(500);
     expect(gastar).toHaveBeenCalled();
-    expect(await comprobarAcceso("nube", CLAVES.manager)).toMatchObject({ rol: "manager" });
+    expect(await comprobarAcceso("nube", CLAVES.manager)).toBeNull();
+    expect((await comprobar(token)).status).toBe(200);
+  });
+
+  it("si falla guardar y tampoco se puede reabrir, queda en la auditoría para que el admin cree otro", async () => {
+    const { token } = await nuevaInvitacion("nube");
+    store.guardarAcceso.mockRejectedValueOnce(new Error("Supabase caído"));
+    vi.spyOn(store, "reabrirInvitacion").mockRejectedValueOnce(new Error("sigue caído"));
+    expect((await aceptar(token)).status).toBe(500);
+    expect((await comprobar(token)).data.codigo).toBe("usada"); // quemado: se ve en la ficha
+    expect(await auditoria("invitacion")).toEqual([expect.objectContaining({ negocio: "nube", detalle: "sin_reabrir" })]);
+  });
+
+  it("dos peticiones a la vez con el mismo enlace: solo una fija las contraseñas", async () => {
+    const { token } = await nuevaInvitacion("nube");
+    const otras = { manager: "la del portátil 2026", caja: "caja del portátil" };
+    const [a, b] = await Promise.all([aceptar(token), aceptar(token, otras)]);
+    const [gana, pierde] = a.status === 200 ? [a, b] : [b, a];
+    expect(gana.status).toBe(200);
+    expect(pierde).toMatchObject({ status: 410, data: { codigo: "usada" } });
+    expect(pierde.cookies.find((c) => c.name === "sesion")).toBeUndefined();
+    // Las que quedan son las de la que ganó, las dos.
+    const suyas = gana === a ? CLAVES : otras;
+    expect(await comprobarAcceso("nube", suyas.manager)).toMatchObject({ rol: "manager" });
+    expect(await comprobarAcceso("nube-caja", suyas.caja)).toMatchObject({ rol: "caja" });
+    expect(await auditoria("invitacion")).toHaveLength(1);
+  });
+
+  it("comprobar un enlace tiene su propio límite, en memoria: al 61 desde la misma IP, 429", async () => {
+    const { token } = await nuevaInvitacion("nube");
+    for (let i = 0; i < 60; i++) expect((await comprobar(token, "7.7.7.7")).status).toBe(200);
+    expect((await comprobar(token, "7.7.7.7")).status).toBe(429);
+    expect((await comprobar(token, "7.7.7.8")).status).toBe(200);
   });
 
   it("más de 20 intentos desde la misma IP en 10 minutos: 429", async () => {

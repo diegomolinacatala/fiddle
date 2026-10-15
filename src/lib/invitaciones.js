@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
-import { crearInvitacion, getInvitacion, gastarInvitacion, invitacionesDeNegocio, getNegocio, guardarAcceso, hasSupabase } from "./store";
+import { crearInvitacion, getInvitacion, gastarInvitacion, reabrirInvitacion, invitacionesDeNegocio, getNegocio, guardarAcceso, hasSupabase } from "./store";
 import { hashClave, problemaClaveElegida } from "./claves";
 import { usuarioDe } from "./auth";
 import { appUrl } from "./url";
+import { auditar } from "./auditoria";
 import { TOKEN } from "./tokenInvitacion";
 
 // ============================================================================
@@ -95,22 +96,30 @@ export async function aceptarInvitacion(token, { manager, caja }, ahora = Date.n
     return { ok: false, motivo: "La de la caja tiene que ser distinta de la tuya", campo: "caja" };
   }
 
+  // Los hashes antes de gastar el enlace (tardan): si algo falla, se puede reintentar.
   const [hashManager, hashCaja] = await Promise.all([hashClave(manager), hashClave(caja)]);
-  // Primero las contraseñas, después el enlace. Si la base falla a medias (una
-  // guardada y la otra no, o ninguna), lo que lanza llega al dueño como error y
-  // el enlace sigue vivo: vuelve a pulsar y se guardan las dos. Al revés, el
-  // enlace quedaba gastado con las contraseñas a medias y sin forma de repetir.
-  await guardarAcceso({ usuario: usuarios.manager, negocio: negocio.slug, rol: "manager", hash: hashManager });
-  await guardarAcceso({ usuario: usuarios.caja, negocio: negocio.slug, rol: "caja", hash: hashCaja });
-  // Las contraseñas ya están: pase lo que pase con el enlace, la respuesta es que sí.
-  // Si no se pudo gastar (la base justo ahora) o lo gastó otra pestaña del mismo
-  // dueño un instante antes, queda apuntado y nada más.
+  // Primero se gasta el enlace, que es atómico: con dos pestañas, o un reintento del
+  // navegador tras un corte, solo UNA petición escribe contraseñas y firma sesión;
+  // la otra ve «ya se usó». (Si escribieran las dos, la segunda subiría
+  // `accesos.actualizado` después de firmar la primera y esa sesión rebotaría al
+  // login: justo «el enlace no funcionó».) Luego las contraseñas; si la base falla
+  // a medias, el enlace se reabre para que el dueño repita: antes se quedaba sin
+  // contraseñas y con el enlace gastado (docs/AUDITORIA-ACCESOS.md, M1). Si tampoco
+  // se puede reabrir, queda en el log y en la auditoría: el admin lo ve en la ficha
+  // («usado» sin que el dueño entre) y crea otro.
+  const huella = huellaDe(token);
+  if (!(await gastarInvitacion(huella))) return rechazo("usada");
   try {
-    if (!(await gastarInvitacion(huellaDe(token)))) {
-      console.warn("[invitación] las contraseñas se guardaron pero el enlace ya estaba gastado (¿dos pestañas?)");
-    }
+    await guardarAcceso({ usuario: usuarios.manager, negocio: negocio.slug, rol: "manager", hash: hashManager });
+    await guardarAcceso({ usuario: usuarios.caja, negocio: negocio.slug, rol: "caja", hash: hashCaja });
   } catch (e) {
-    console.error("[invitación] las contraseñas se guardaron pero no se pudo gastar el enlace:", e);
+    try {
+      await reabrirInvitacion(huella);
+    } catch (e2) {
+      console.error("[invitación] guardar falló y no se pudo reabrir el enlace:", e2);
+      await auditar({ negocio: negocio.slug, rol: "manager" }, negocio.slug, "invitacion", "sin_reabrir");
+    }
+    throw e;
   }
   return { ok: true, negocio: negocio.slug };
 }
