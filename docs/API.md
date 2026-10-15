@@ -337,18 +337,18 @@ Todo el panel en una petición.
 {
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
   "metricas": { "total": 33, "activos": 14, "enRiesgo": 10, "porEstado": { "activo": 11, "nuevo": 3, … },
-                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31, "porDar": 4,
-                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79,
-                "cadenciaHabitual": 6, "visitasHabituales": 4,
-                "vuelta": { "base": 20, "volvieron": 12, "tasa": 60, "dias": 14 },
-                "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "n": 37, "paso": null }, … ] },
+                "inicio": 1759305600000, "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
+                "porDar": 4, "conPremio": 3, "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79,
+                "cadenciaHabitual": 6,
+                "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "de": "la sacaron", "n": 37, "paso": null },
+                            { "key": "quedaron", "label": "Se la quedaron", "de": "se la quedaron", "n": 33, "paso": 89 }, … ] },
   "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
   "puente":   { "dias": 30, "listo": true, "antes": 41, "nuevos": 24, "volvieron": 2, "enfriados": 13, "hoy": 54, "siguen": 28,
-                "pasos": [ { "key": "antes", "label": "Activos hace 30 días", "n": 41, "signo": 0, "desde": 0, "hasta": 41 }, … ] },
-  "cohortes": { "unidad": "semana", "semanas": 3, "listo": true,
-                "filas": [ { "desde": "2026-09-28", "altas": 12, "vividas": 2, "celdas": [ { "n": 10, "pct": 83 }, { "n": 6, "pct": 50 }, null ] } ] },
+                "pasos": [ { "key": "antes", "label": "Hace 30 días", "descripcion": "Seguían viniendo", "n": 41, "signo": 0, "desde": 0, "hasta": 41 }, … ] },
+  "vuelta":   { "listo": true, "base": 21, "faltanDias": null,
+                "puntos": [ { "dia": 0, "pct": 0, "seguidos": 21 }, { "dia": 1, "pct": 11, "seguidos": 18 }, … ] },
   "cartillas": [ { "indice": 0, "nombre": "Sellos", "meta": 8, "filas": [ { "sellos": 1, "siguen": 4, "alejan": 2 }, … ],
-                   "enCero": 6, "alejanMediana": 2 } ],
+                   "enCero": 6, "conPuntos": 20, "mitad": 3, "alejanMediana": 2 } ],
   "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
   "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
   "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Punto 5/8", "actor": "caja", "ts": "…" } ]
@@ -358,12 +358,12 @@ Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen
 la hora local —a qué hora viene la gente— se hacen **en el navegador**: el
 servidor vive en UTC y sacaría el café de las 9 a las 7.
 
-`puente` y `cohortes` reconstruyen el pasado con esos eventos. Sin historial que cubra
-hace 30 días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`;
-con una tienda que aún no tenía clientes entonces, `"motivo": "joven"` y `faltanDias`.
-En `cohortes`, cada celda es la parte de la fila que vino en esa semana desde su alta;
-`null`, una semana que aún no han vivido todos. Con más de 10 semanas de historia,
-`"unidad": "mes"` (las columnas siguen siendo semanas).
+`puente` y `vuelta` miran el pasado con esos eventos. Sin historial que cubra hace 30
+días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`; con
+una tienda que aún no tenía clientes entonces, `"motivo": "joven"` y `faltanDias`.
+`vuelta` es la curva de cuánto tardan en volver (Kaplan-Meier): en `puntos`, qué parte
+de los que la estrenaron ha vuelto a los `dia` días, y a cuántos se ha podido seguir
+tanto tiempo. Sin llegar a la semana, `listo: false` y `faltanDias` (o null).
 
 ### `POST /api/crm/campana` · manager
 Manda un mensaje a un GRUPO. El negocio va en el cuerpo (como en `/api/promo`).

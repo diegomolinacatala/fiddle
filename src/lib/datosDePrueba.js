@@ -36,8 +36,8 @@ const NOMBRES = [
 ];
 
 // Los de hace uno o dos meses (alta de hace ANTES_DIAS[0] a ANTES_DIAS[1] días).
-// Sin pasar de diez semanas: así el Resumen enseña las cohortes por semana, que es
-// lo que ve una tienda en sus primeros meses (lib/crm.js, `cohorteSemanas`).
+// Sin pasar de diez semanas, lo que ve una tienda en sus primeros meses: así el
+// Resumen enseña el puente de activos y la curva de vuelta hasta las cuatro semanas.
 const NOMBRES_ANTES = [
   "Rosa", "Manu", "Teresa", "Álvaro", "Inés", null, "Jaime", "Patricia", "Rubén", "Noelia",
   "Adrián", null, "Lorena", "Gonzalo", "Silvia", "Miguel", null, "Eva", "Fernando", "Cristina",

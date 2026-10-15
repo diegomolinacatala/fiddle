@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
-  metricas, cambio, serieVisitas, rejillaHoraria, cohortes, efectoCampana,
+  metricas, cambio, serieVisitas, rejillaHoraria, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
-  esActivo, mediana, vueltaPronto, embudo, repartoCartillas, puenteActivos,
+  esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos, resumenSerie, horarioDeRejilla, ideaDeGrupo,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -150,6 +150,28 @@ describe("grupos", () => {
     expect(GRUPOS.premio_listo.incluye(lleno)).toBe(true);
   });
 
+  it("con dos cartillas, cerca del premio y premio pendiente miran las dos", () => {
+    // La Delicantería: cookies y cafés. Antes solo contaba la primera (las cookies).
+    const DOS = { ...NUBE, cartillas: [{ nombre: "Cookies", meta: 8, premio: "Cookie" }, { nombre: "Cafés", meta: 8, premio: "Café" }] };
+    const cafeCerca = perfilDe(cli({ sellos: 1, sellos2: 7 }), DOS, AHORA);
+    expect(cafeCerca.faltan).toBe(1);
+    expect(GRUPOS.a_punto.incluye(cafeCerca)).toBe(true);
+    // Un café guardado es un premio por recoger, aunque las dos cartillas vayan a medias.
+    const guardado = perfilDe(cli({ sellos: 2, sellos2: 3, guardados2: 1 }), DOS, AHORA);
+    expect(GRUPOS.premio_listo.incluye(guardado)).toBe(true);
+    expect(GRUPOS.a_punto.incluye(guardado)).toBe(false);
+    // Una llena y la otra a un punto: las dos cosas a la vez.
+    const ambas = perfilDe(cli({ sellos: 8, sellos2: 7 }), DOS, AHORA);
+    expect(gruposDe(ambas)).toEqual(expect.arrayContaining(["a_punto", "premio_listo"]));
+  });
+
+  it("con dos cartillas, la idea de partida no nombra el premio de una sola", () => {
+    const DOS = { premio: "cookie gratis", cartillas: [{ nombre: "Cookies", meta: 8 }, { nombre: "Cafés", meta: 8 }] };
+    expect(ideaDeGrupo(GRUPOS.premio_listo.idea, DOS)).toBe("Tu premio te está esperando");
+    expect(ideaDeGrupo(GRUPOS.premio_listo.idea, { premio: "café gratis" })).toBe("Tu café gratis te está esperando");
+    expect(ideaDeGrupo(undefined, DOS)).toBe("");
+  });
+
   it("fieles_frios: los que venían mucho y desaparecieron", () => {
     // 8 visitas, ritmo de ~3 días, lleva 40 sin venir.
     const fiel = perfilDe(cli({ alta: 61, visitas: 8, ultima: 40 }), NUBE, AHORA);
@@ -226,11 +248,20 @@ describe("métricas", () => {
     expect(perfiles.filter((p) => !p.descartada && esActivo(p)).map((p) => p.serial)).toEqual(["a", "b", "e"]);
   });
 
-  it("ritmo y visitas por cliente con la mediana, no con la media", () => {
+  it("el ritmo del cliente típico va con la mediana, no con la media", () => {
     expect(mediana([1, 2, 30])).toBe(2);
     expect(mediana([1, 2, 3, 30])).toBe(2.5);
     expect(mediana([])).toBeNull();
-    expect(m.visitasHabituales).toBe(4.5); // 1, 3, 6 y 20
+    // b viene cada ~4,7 días, e cada ~17,5 y c cada ~6: la de en medio.
+    expect(m.cadenciaHabitual).toBeCloseTo(30 / 5, 5);
+  });
+
+  it("sabe desde cuándo hay tarjetas y a cuántos se les debe un premio", () => {
+    expect(m.inicio).toBe(Date.parse(haceDias(200)));
+    expect(m.conPremio).toBe(0);
+    const conGuardado = [cli({ serial: "g", guardados: 2 }), cli({ serial: "h" })];
+    const mg = metricas(conGuardado.map((c) => perfilDe(c, NUBE, AHORA)), [], conGuardado, AHORA);
+    expect(mg).toMatchObject({ porDar: 2, conPremio: 1 });
   });
 
   it("sin dos meses de tienda no hay mes anterior con el que comparar", () => {
@@ -259,26 +290,61 @@ describe("métricas", () => {
 describe("el camino de la tarjeta", () => {
   const ev = (serial, dias, tipo = "sellar") => ({ serial, tipo, ts: haceDias(dias) });
 
-  it("vueltaPronto: de los que estrenaron hace más de 14 días, cuántos volvieron en 14", () => {
-    const clientes = ["a", "b", "c", "d", "e", "f", "g"].map((serial) => cli({ serial, alta: 50 }));
-    const eventos = [
-      ev("z", 60),                 // el historial empieza aquí
-      ev("a", 40), ev("a", 35),    // volvió a los 5 días
-      ev("b", 40), ev("b", 20),    // volvió, pero a los 20: no cuenta
-      ev("c", 30), ev("c", 29.5),  // a las 12 horas: otra visita
-      ev("d", 30),                 // no volvió
-      ev("e", 25), ev("e", 25.01), // dos sellos de golpe: una visita, no volvió
-      ev("f", 20), ev("f", 10),
-      ev("g", 5), ev("g", 2),      // estrenó hace 5 días: aún no se le puede medir
-    ];
-    expect(vueltaPronto(clientes, eventos, { ahora: AHORA })).toEqual({ base: 6, volvieron: 3, tasa: 50, dias: 14 });
+  const HISTORIAL = { ahora: AHORA, historialDesde: AHORA - 120 * DIA };
+  /** Clientes de alta hace `alta` días que la estrenan ese día y vuelven a los `vuelve` días (o nunca). */
+  const estrenos = (prefijo, cuantos, alta, vuelve = null) => Array.from({ length: cuantos }, (_, i) => {
+    const serial = `${prefijo}${i}`;
+    return { cliente: cli({ serial, alta }), eventos: [ev(serial, alta), ...(vuelve === null ? [] : [ev(serial, alta - vuelve)])] };
+  });
+  const juntar = (...grupos) => ({ clientes: grupos.flat().map((x) => x.cliente), eventos: grupos.flat().flatMap((x) => x.eventos) });
+
+  it("la curva de vuelta: qué parte ha vuelto a los N días de estrenarla", () => {
+    // Diez que la estrenaron hace 20 días: 4 vuelven a los 2 días, 2 a los 10 y 4 nunca.
+    const { clientes, eventos } = juntar(estrenos("a", 4, 20, 2), estrenos("b", 2, 20, 10), estrenos("c", 4, 20));
+    const v = curvaDeVuelta(clientes, eventos, HISTORIAL);
+    expect(v).toMatchObject({ listo: true, base: 10, faltanDias: null });
+    expect(v.puntos[0]).toEqual({ dia: 0, pct: 0, seguidos: 10 });
+    expect(v.puntos[7].pct).toBe(40);
+    expect(v.puntos[14].pct).toBe(60);
+    // Se corta cuando ya no queda nadie seguido tanto tiempo: el día 20.
+    expect(v.puntos.at(-1).dia).toBe(20);
   });
 
-  it("vueltaPronto no cuenta a quien se dio de alta antes del historial que llega", () => {
-    const clientes = [cli({ serial: "viejo", alta: 300 }), cli({ serial: "a", alta: 40 })];
-    const v = vueltaPronto(clientes, [ev("viejo", 40), ev("viejo", 38), ev("a", 40)], { ahora: AHORA });
-    expect(v.base).toBe(1);
-    expect(v.tasa).toBeNull(); // menos estrenos que vueltaMinBase
+  it("quien la estrenó ayer no hunde la curva: aún no ha tenido tiempo de volver", () => {
+    // Cinco de hace 20 días (3 vuelven a los 2) y cinco de ayer. Contando a secas
+    // saldría «han vuelto 3 de 10»; a la semana, de los que se ha podido ver, 3 de 5.
+    const { clientes, eventos } = juntar(estrenos("v", 3, 20, 2), estrenos("n", 2, 20), estrenos("j", 5, 1));
+    const v = curvaDeVuelta(clientes, eventos, HISTORIAL);
+    expect(v.base).toBe(10);
+    expect(v.puntos[7].pct).toBe(60);
+  });
+
+  it("sin una semana de cinco estrenos no sale, y dice cuándo saldrá", () => {
+    const { clientes, eventos } = juntar(estrenos("a", 6, 3, 1));
+    const v = curvaDeVuelta(clientes, eventos, HISTORIAL);
+    expect(v.listo).toBe(false);
+    expect(v.faltanDias).toBe(4);
+    const pocos = juntar(estrenos("b", 3, 30, 2));
+    expect(curvaDeVuelta(pocos.clientes, pocos.eventos, HISTORIAL)).toMatchObject({ listo: false, faltanDias: null });
+  });
+
+  it("la cola se corta cuando quedan pocos seguidos: uno solo no la lleva al 100 %", () => {
+    // 20 estrenos: 15 de ayer y 5 de hace 12 días (4 vuelven a los 2). A los 8 días
+    // solo se sigue a esos 5, la cuarta parte: menos del 40 %, la curva no llega.
+    const { clientes, eventos } = juntar(estrenos("j", 15, 1), estrenos("v", 4, 12, 2), estrenos("n", 1, 12, 9));
+    const v = curvaDeVuelta(clientes, eventos, HISTORIAL);
+    expect(v.puntos.at(-1).dia).toBe(1);
+    expect(v.listo).toBe(false);
+    expect(v.faltanDias).toBe(6); // cuando los de ayer (el 8.º más antiguo) lleven una semana
+    expect(v.hacenFalta).toBe(8);
+  });
+
+  it("no cuenta a quien se dio de alta antes del historial que llega", () => {
+    const viejo = cli({ serial: "viejo", alta: 300 });
+    const { clientes, eventos } = juntar(estrenos("a", 5, 20, 3));
+    const v = curvaDeVuelta([...clientes, viejo], [...eventos, ev("viejo", 20), ev("viejo", 19)], HISTORIAL);
+    expect(v.base).toBe(5);
+    expect(v.puntos[7].pct).toBe(100);
   });
 
   it("el embudo baja escalón a escalón y empieza en todas las tarjetas", () => {
@@ -291,12 +357,17 @@ describe("el camino de la tarjeta", () => {
       cli({ serial: "p", alta: 90, visitas: 12, ultima: 2, premios: 1 }),             // canjeó
       cli({ serial: "x", alta: 5, visitas: 1, ultima: 5, sellos: 8 }),                // llena de golpe, sin volver
     ];
-    const e = embudo(clientes.map((c) => perfilDe(c, NUBE, AHORA)));
+    const perfiles = clientes.map((c) => perfilDe(c, NUBE, AHORA));
+    const e = embudo(perfiles);
     expect(e.map((x) => [x.key, x.n])).toEqual([
-      ["sacaron", 7], ["estrenaron", 5], ["volvieron", 3], ["llenaron", 2], ["canjearon", 1],
+      ["sacaron", 7], ["quedaron", 6], ["estrenaron", 5], ["volvieron", 3], ["llenaron", 2], ["canjearon", 1],
     ]);
     expect(e[0].paso).toBeNull();
-    expect(e[2].paso).toBe(60);
+    expect(e[3].paso).toBe(60);
+    // «60 % de los que la estrenaron»: cada escalón dice de quién sale el siguiente.
+    expect(e[2].de).toBe("la estrenaron");
+    // «Se la quedaron» es la cifra de «Clientes».
+    expect(e[1].n).toBe(metricas(perfiles, [], clientes, AHORA).total);
   });
 
   it("en un cupón no hay cartilla: se estrena, se usa y luego se vuelve", () => {
@@ -307,10 +378,10 @@ describe("el camino de la tarjeta", () => {
     ];
     const perfiles = clientes.map((c) => perfilDe(c, CUPON, AHORA));
     const e = embudo(perfiles);
-    expect(e.map((x) => [x.key, x.n])).toEqual([["sacaron", 4], ["estrenaron", 4], ["canjearon", 4], ["volvieron", 1]]);
-    expect(e[2].label).toBe("Usaron el cupón");
+    expect(e.map((x) => [x.key, x.n])).toEqual([["sacaron", 4], ["quedaron", 4], ["estrenaron", 4], ["canjearon", 4], ["volvieron", 1]]);
+    expect(e[3].label).toBe("Usaron el cupón");
     // Cuadra con la cifra de «Cupones usados».
-    expect(metricas(perfiles, [], clientes, AHORA).premios).toBe(e[2].n);
+    expect(metricas(perfiles, [], clientes, AHORA).premios).toBe(e[3].n);
   });
 
   it("premios por dar: los guardados y las cartillas llenas, de las dos cartillas", () => {
@@ -339,7 +410,9 @@ describe("el camino de la tarjeta", () => {
     expect(r.filas[0]).toEqual({ sellos: 1, siguen: 0, alejan: 1 });
     expect(r.filas[1]).toEqual({ sellos: 2, siguen: 1, alejan: 1 });
     expect(r.enCero).toBe(1);
+    expect(r.conPuntos).toBe(3);
     expect(r.alejanMediana).toBeNull(); // dos que se alejan: pocos para decir nada
+    expect(r.mitad).toBeNull();         // tres con puntos: tampoco
     expect(repartoCartillas(clientes, perfiles, CUPON)).toEqual([]);
   });
 });
@@ -364,14 +437,68 @@ describe("series y rejilla", () => {
     expect(serieVisitas([], 3, AHORA).every((d) => d.cerrado === false)).toBe(true);
   });
 
-  it("la rejilla es 7 × 24 y solo cuenta visitas", () => {
+  it("la serie empieza el día de la primera tarjeta y marca hoy, que está a medias", () => {
+    const s = serieVisitas([], 30, AHORA, null, { desde: Date.parse(haceDias(4)) });
+    expect(s).toHaveLength(5);
+    expect(s[0].dia).toBe(haceDias(4).slice(0, 10));
+    expect(s.map((d) => d.hoy)).toEqual([false, false, false, false, true]);
+  });
+
+  it("la rejilla es 7 × 24, solo cuenta visitas y va con la hora de la tienda", () => {
+    // Lunes 21-09 a las 09:30 UTC: las 11:30 en Madrid.
     const r = rejillaHoraria([
-      { tipo: "sellar", ts: "2026-09-21T09:30:00.000Z" },
-      { tipo: "restar", ts: "2026-09-21T09:30:00.000Z" },
-    ]);
-    expect(r).toHaveLength(7);
-    expect(r[0]).toHaveLength(24);
-    expect(r.flat().reduce((a, b) => a + b, 0)).toBe(1);
+      { serial: "a", tipo: "sellar", ts: "2026-09-21T09:30:00.000Z" },
+      { serial: "a", tipo: "restar", ts: "2026-09-21T09:30:00.000Z" },
+    ], { horario: { zona: "Europe/Madrid", semana: Array(7).fill([{ abre: "08:00", cierra: "20:00" }]) }, ahora: AHORA + 2 * DIA });
+    expect(r.visitas).toHaveLength(7);
+    expect(r.visitas[0]).toHaveLength(24);
+    expect(r.visitas.flat().reduce((a, b) => a + b, 0)).toBe(1);
+    expect(r.visitas[0][11]).toBe(1);
+  });
+
+  it("la rejilla da la media de un día normal: el día que sale más veces no pesa más", () => {
+    // Del lunes 07-09 al miércoles 23-09, sin contar hoy (jueves 24): tres lunes y dos viernes.
+    // 6 visitas cada lunes y 6 cada viernes a las 10 de Madrid: la media es la misma.
+    const madrid = { zona: "Europe/Madrid", semana: Array(7).fill([{ abre: "08:00", cierra: "20:00" }]) };
+    const dia = (fecha) => Array.from({ length: 6 }, (_, i) => ({ serial: `${fecha}-${i}`, tipo: "sellar", ts: `${fecha}T08:15:00.000Z` }));
+    const eventos = ["2026-09-07", "2026-09-14", "2026-09-21", "2026-09-11", "2026-09-18"].flatMap(dia);
+    const ahora = Date.parse("2026-09-24T12:00:00.000Z");
+    const r = rejillaHoraria(eventos, { horario: madrid, ahora });
+    expect(r.veces[0]).toBe(3);
+    expect(r.veces[4]).toBe(2);
+    expect(r.visitas[0][10]).toBe(18);
+    expect(r.media[0][10]).toBe(6);
+    expect(r.media[4][10]).toBe(6);
+    // Un festivo no es un lunes visto.
+    expect(rejillaHoraria(eventos, { horario: { ...madrid, cerrados: ["2026-09-14"] }, ahora }).veces[0]).toBe(2);
+  });
+
+  it("la media de la serie es la de los días que abrió, sin hoy ni los cerrados", () => {
+    const serie = [
+      { dia: "2026-09-18", n: 10, cerrado: false, hoy: false },
+      { dia: "2026-09-19", n: 0, cerrado: true, hoy: false },   // cerrado: no baja la media
+      { dia: "2026-09-20", n: 20, cerrado: false, hoy: false },
+      { dia: "2026-09-21", n: 2, cerrado: false, hoy: true },    // a medias
+    ];
+    expect(resumenSerie(serie)).toEqual({ media: 15, mejor: serie[2], dias: 2 });
+    expect(resumenSerie([serie[3]])).toEqual({ media: null, mejor: null, dias: 0 });
+  });
+
+  it("la rejilla enseña las horas que abre y sabe cuáles están cerradas", () => {
+    // De lunes a viernes de 8 a 14 y de 17 a 20:30; el sábado de 9 a 14; el domingo cierra.
+    const partido = [{ abre: "08:00", cierra: "14:00" }, { abre: "17:00", cierra: "20:30" }];
+    const h = horarioDeRejilla({ zona: "Europe/Madrid", semana: [...Array(5).fill(partido), [{ abre: "09:00", cierra: "14:00" }], null] });
+    expect(h.horas).toEqual([8, 21]);
+    expect(h.cerrados).toEqual([6]);
+    expect(h.abierta[0][15]).toBe(false); // el descanso
+    expect(h.abierta[0][20]).toBe(true);  // de 20 a 20:30 abre
+    expect(h.abierta[5][17]).toBe(false); // el sábado por la tarde
+    expect(horarioDeRejilla(null)).toEqual({ horas: null, cerrados: [], abierta: null });
+  });
+
+  it("hoy no entra en la rejilla: aún no ha acabado", () => {
+    const r = rejillaHoraria([{ serial: "a", tipo: "sellar", ts: new Date(AHORA - 60_000).toISOString() }], { ahora: AHORA });
+    expect(r.visitas.flat().reduce((a, b) => a + b, 0)).toBe(0);
   });
 
   it("TIPOS_VISITA deja fuera la corrección a propósito", () => {
@@ -438,59 +565,6 @@ describe("el puente de activos", () => {
   });
 });
 
-describe("cohortes a la misma edad", () => {
-  const ev = (serial, dias) => ({ serial, tipo: "sellar", ts: haceDias(dias) });
-  const opciones = { ahora: AHORA, historialDesde: AHORA - 120 * DIA };
-  // El 21-09-2026 es lunes: hace 21 días, el lunes 31-08; hace 14, el 07-09.
-  const clientes = [
-    cli({ serial: "a1", alta: 21 }), cli({ serial: "a2", alta: 20 }), cli({ serial: "a3", alta: 20, visitas: 0 }),
-    cli({ serial: "a4", alta: 19 }), cli({ serial: "a5", alta: 19 }),
-    cli({ serial: "a6", alta: 20, visitas: 0, instalado: false }), // descartada: no es cliente
-    cli({ serial: "b1", alta: 14 }), cli({ serial: "b2", alta: 13 }),
-    cli({ serial: "c1", alta: 3 }),                                   // aún en su primera semana
-    cli({ serial: "viejo", alta: 200 }),                              // antes del historial
-  ];
-  const eventos = [
-    ev("a1", 21), ev("a1", 12),   // su semana 2 (9 días después del alta)
-    ev("a2", 20), ev("a2", 19.5), // dos veces, las dos en su semana 1
-    ev("a4", 19), ev("a4", 10),
-    ev("a5", 19), ev("a5", 2),    // su semana 3: aún no la ha vivido toda la fila
-    ev("b1", 14), ev("b1", 10), ev("b2", 13),
-    ev("c1", 3), ev("viejo", 20),
-  ];
-  const perfiles = clientes.map((c) => perfilDe(c, NUBE, AHORA));
-
-  it("cada celda es la parte de la fila que vino en esa semana desde SU alta", () => {
-    const co = cohortes(clientes, perfiles, eventos, opciones);
-    expect(co.unidad).toBe("semana");
-    expect(co.semanas).toBe(2);
-    expect(co.filas.map((f) => [f.desde, f.altas, f.vividas])).toEqual([["2026-08-31", 5, 2], ["2026-09-07", 2, 1]]);
-    expect(co.filas[0].celdas).toEqual([{ n: 4, pct: 80 }, { n: 2, pct: 40 }]);
-  });
-
-  it("lo que aún no han vivido todos los de la fila va vacío, y la fila sin nada vivido no sale", () => {
-    const co = cohortes(clientes, perfiles, eventos, opciones);
-    expect(co.filas[1].celdas).toEqual([{ n: 2, pct: 100 }, null]);
-    expect(co.filas.some((f) => f.desde === "2026-09-14")).toBe(false);
-    expect(co.listo).toBe(true);
-  });
-
-  it("sin una fila de cinco que haya vivido dos semanas, aún no está lista", () => {
-    const pocos = clientes.filter((c) => !["a4", "a5"].includes(c.serial));
-    expect(cohortes(pocos, perfiles, eventos, opciones).listo).toBe(false);
-  });
-
-  it("con más de diez semanas de historia, las filas van por mes", () => {
-    const largos = [cli({ serial: "m1", alta: 100 }), cli({ serial: "m2", alta: 20 })];
-    const co = cohortes(largos, largos.map((c) => perfilDe(c, NUBE, AHORA)), [ev("m1", 100), ev("m1", 60), ev("m2", 20)], opciones);
-    expect(co.unidad).toBe("mes");
-    expect(co.filas.map((f) => [f.desde, f.vividas])).toEqual([["2026-06-01", 14], ["2026-09-01", 2]]);
-    expect(co.semanas).toBe(14);
-    expect(co.filas[0].celdas[5]).toEqual({ n: 1, pct: 100 }); // 40 días después del alta: su semana 6
-    expect(co.filas[1].celdas.slice(2).every((c) => c === null)).toBe(true);
-  });
-});
-
 describe("campañas", () => {
 
   it("efectoCampana solo cuenta a los avisados que volvieron DESPUÉS", () => {
@@ -544,6 +618,6 @@ describe("el Resumen cuenta visitas, no sellos", () => {
   it("la serie de 30 días y la rejilla usan esa cuenta", () => {
     const serie = serieVisitas(eventos, 30, Date.parse("2026-10-08T12:00:00Z"));
     expect(serie.find((d) => d.dia === "2026-10-07").n).toBe(2);
-    expect(rejillaHoraria(eventos).flat().reduce((a, b) => a + b, 0)).toBe(3);
+    expect(rejillaHoraria(eventos, { ahora: Date.parse("2026-10-09T12:00:00Z") }).visitas.flat().reduce((a, b) => a + b, 0)).toBe(3);
   });
 });

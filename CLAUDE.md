@@ -388,26 +388,49 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
 
 - **Una visita se cuenta igual en todas partes.** La ficha lleva su contador
   (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
-  rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
-  son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
-- **«Activo» es UNO: `esActivo`** (a su ritmo o recién llegado). Lo usan la cifra de
-  Activos, las cohortes y la cartilla; antes la cifra dejaba fuera a los nuevos y la
-  tabla no, y en la misma pantalla salían 10 y 27. Ritmo y visitas por cliente van con
-  la MEDIANA: un habitual diario arrastra la media.
+  rejilla horaria, la curva de vuelta, lo que dicen los números) pasa por `soloVisitas`:
+  siete cafés de golpe son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **«Siguen viniendo» es UNO: `esActivo`** (a su ritmo o recién llegado). Lo usan la cifra,
+  el puente y la cartilla. El estado `activo` se llama «A su ritmo», no «Activo»: con los
+  dos nombres iguales, arriba salían 41 activos y en el reparto 24. El ritmo del cliente
+  típico va con la MEDIANA: un habitual diario arrastra la media.
 - **Las flechas no mienten con poco** (`cambio`): sin un mes anterior ENTERO (dos meses
   de tienda y el historial cubriéndolos) no hay flecha; con menos de `tendenciaMin`
   detrás, la diferencia en unidades («+6»), nunca «+100 %» de 2 a 4.
+- **El Resumen se entiende sin que nadie lo explique** (15-10-2026, tras enseñárselo a Jesús
+  de La Delicantería: preguntaba qué era cada cosa). Cada bloque es una PREGUNTA pequeña, su
+  respuesta en una frase con la cifra (el titular) y la gráfica que lo demuestra (`Tarjeta`
+  en `crm/piezas.js`; las gráficas en `crm/graficas.js`). Nada solo al pasar el ratón: cada
+  porcentaje dice de qué es («62 % de los que la estrenaron») y las gráficas tienen una línea
+  de lectura que cambia al tocarlas o con las flechas (`usePuntero`). Lo que aún no tiene
+  datos no ocupa un panel vacío: va a «Lo que verás con más días», con cuándo saldrá.
+- **Las cifras del Resumen cuadran a la vista**: «Clientes» es el escalón «Se la quedaron»
+  del embudo y la suma de los estados; «Siguen viniendo» es el «Hoy» del puente; «Premios
+  por dar», el grupo «Premio pendiente» y el aviso «Tiene un premio sin recoger» miran lo
+  mismo (las dos cartillas y los guardados: `perfil.faltan` es el de la cartilla más cerca y
+  `completa`, cualquiera llena). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
+  no puede contar dos cosas («Volvieron» del embudo es la segunda visita; en el puente, los
+  que vuelven tras irse son «Recuperados»).
 - **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale
-  del anterior), «Vuelven en 14 días» (`vueltaPronto`, solo quien se dio de alta dentro
-  del historial que llega), los premios por dar (`porDar`: guardados y cartillas llenas,
-  de las dos) y dónde se queda la cartilla (`repartoCartillas`).
+  del anterior), cuánto tardan en volver (`curvaDeVuelta`), los premios por dar (`porDar`)
+  y cuántos puntos lleva cada uno (`repartoCartillas`). **Una sola medida de si vuelven**:
+  la curva, de Kaplan-Meier, porque contar «cuántos han vuelto» a secas hunde la cifra con
+  los que la estrenaron ayer (aún no han tenido tiempo). Cada cliente cuenta mientras se le
+  ha podido seguir; la curva se corta cuando quedan menos seguidos que `vueltaMinBase` o
+  que `vueltaSeguidos` de todos (en la cola, uno solo la llevaba al 100 %). Sustituye a
+  «Vuelven en 14 días» y a las cohortes, que daban otras dos cifras de lo mismo en la misma
+  pantalla (y su semana 1 salía al 100 % porque contaba el estreno).
 - **El pasado se reconstruye, no se guarda**: el puente de activos (`puenteActivos`: hace
-  30 días + nuevos + volvieron − se enfriaron = Activos de hoy) pasa a cada cliente por
-  `perfilDe` con su fila de entonces (visitas de hoy menos las posteriores, la última de
+  30 días + nuevos + recuperados − se alejaron = siguen viniendo hoy) pasa a cada cliente
+  por `perfilDe` con su fila de entonces (visitas de hoy menos las posteriores, la última de
   antes). Pide historial hasta 30 + `dormidoDias` atrás; si el tope de eventos no llega,
-  no sale. Las cohortes miden a todos a la MISMA edad (semana 1, 2, 3… desde el alta de
-  cada uno; una celda sale cuando la ha vivido toda la fila), nunca «cuántos siguen hoy»
-  por mes de alta: el mes viejo salía peor solo por ser viejo.
+  no sale.
+- **El tiempo de la tienda manda en las gráficas**: con menos de 30 días de fiddle, la serie
+  de visitas empieza el primer día (`serieVisitas` con `desde`: antes salían dos semanas de
+  ceros) y las cifras dicen «desde el 1 oct», no «últimos 30 días»; hoy va aparte, a medias.
+  La rejilla horaria es la MEDIA de un día normal (`rejillaHoraria`: visitas ÷ veces que ese
+  día de la semana abrió, sin hoy, con la hora de la tienda): con la suma, el día que había
+  salido más veces en el calendario parecía el más fuerte.
 - **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día, una semana, un mes o
   unas fechas de la caja para cuadrarlos con los tickets (Día / Semana / Mes y «Otras
   fechas»; el modo se recuerda en el navegador). Sale de `eventos` (hora y `actor`), con la
@@ -419,13 +442,15 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   (`historialCompletoDesde`). Su hoja no lleva nombres.
 
 - **Una tarjeta que nadie guardó ni usó no es un cliente** (`perfil.descartada`: sin visitas,
-  sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto, las tasas y las
-  cohortes la dejan fuera y la cuentan aparte (`descartadas`); en la lista solo sale si se
-  pide («Sin guardar ni usar») o se busca. Nunca se borra por esto.
+  sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto y las tasas la
+  dejan fuera y la cuentan aparte (`descartadas`); en el embudo es la caída de «Sacaron la
+  tarjeta» a «Se la quedaron». En la lista solo sale si se pide («Sin guardar ni usar») o se
+  busca. Nunca se borra por esto.
 - **Sin datos, ni rejilla ni patrones** (`suficiencia` en `lib/observaciones.js`): cada día
   que abre la tienda visto con visitas 2 veces (o 4 semanas abierto sin nadie) y 30 visitas.
-  Los días cerrados del horario no cuentan. Hasta entonces la pantalla dice qué falta; los
-  grupos (premios, a punto…) sí salen, que son hechos, no patrones.
+  Los días cerrados del horario no cuentan. Hasta entonces la rejilla va a «Lo que verás con
+  más días» con lo que falta; los grupos (premios, a punto…) sí salen, que son hechos, no
+  patrones.
 
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.

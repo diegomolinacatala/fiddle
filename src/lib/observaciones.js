@@ -15,12 +15,15 @@
 // martes a las 16:40". Con unas decenas de visitas a la semana, más detalle
 // sería ruido, y una tienda no cambia su día por un hueco de veinte minutos.
 //
-// Pura: la rejilla se calcula en el navegador (hora local, ver lib/crm.js).
+// Pura. La rejilla que recibe es la MEDIA de un día normal de cada uno
+// (rejillaHoraria en lib/crm.js): con la suma, el día que había salido más
+// veces en el calendario parecía el más fuerte.
 //
 // ANTES DE NADA, ¿HAY CON QUÉ? (`suficiencia`): una semana suelta no dice nada
 // (el martes que se vio puede ser el del mercadillo). Hasta que cada día que
 // abre la tienda se ha visto con visitas y hay un mínimo de visitas, ni la
-// rejilla ni los patrones salen: la pantalla dice qué falta.
+// rejilla ni los patrones salen: la rejilla dice qué falta, y aquí solo quedan
+// las frases que no dependen de la hora (premios, grupos, instalación).
 // ============================================================================
 
 import { DIAS, tramosDe, sumarDias, abreEl, diaDeFecha, fechaLocal, ZONA_POR_DEFECTO } from "./horario";
@@ -38,6 +41,9 @@ const FECHAS_POR_DIA = 2; // cada día que abre, visto con visitas al menos dos 
 // sin esto un domingo que nunca viene nadie dejaría la barrera puesta para siempre.
 const SEMANAS_DE_SOBRA = 4;
 const DIAS_TENDENCIA = 60; // "estos 30 días contra los 30 anteriores" pide dos meses de historia
+// Por debajo de este % con la tarjeta en el móvil, se dice; con menos clientes, aún no.
+const INSTALACION_BAJA = 60;
+const MIN_CLIENTES_INSTALACION = 10;
 
 const plural = (d) => (DIAS[d].endsWith("s") ? DIAS[d] : `${DIAS[d]}s`);
 
@@ -217,16 +223,14 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
         });
       }
     }
-  } else {
-    out.push({
-      id: "pocos",
-      texto: "Aún es pronto para sacar conclusiones.",
-      detalle: s ? `${textoFalta(s)} Entonces saldrán aquí las horas tranquilas y las fuertes.` : "Con unas cuantas visitas más, aquí saldrán las horas tranquilas y las fuertes de la tienda.",
-    });
   }
+  // Sin datos para hablar de horas no se dice nada aquí: lo que falta ya lo
+  // enseña la rejilla de «A qué horas viene la gente» (antes salía dos veces).
 
-  // LA TENDENCIA del mes, solo si el cambio es grande y hay con qué comparar:
-  // con un mes y poco de historia, "los 30 anteriores" son unos días sueltos.
+  // LA BAJADA del mes, solo si es grande y hay con qué comparar: con un mes y
+  // poco de historia, "los 30 anteriores" son unos días sueltos. La subida no
+  // se dice aquí: ya la enseña la flecha de la cifra de visitas, y aquí va lo
+  // que pide hacer algo.
   const antes = metricas.visitas30Previas || 0;
   const ahora = metricas.visitas30 || 0;
   if (antes >= UMBRALES.tendenciaMin && (!s || s.diasDeHistoria >= DIAS_TENDENCIA)) {
@@ -236,8 +240,6 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
         id: "baja", texto: `Estos 30 días han venido un ${-cambio}% menos que los 30 anteriores.`,
         accion: { tipo: "grupo", grupo: "riesgo", label: "Escribir a los que se están alejando" },
       });
-    } else if (cambio >= 20) {
-      out.push({ id: "sube", texto: `Estos 30 días han venido un ${cambio}% más que los 30 anteriores.` });
     }
   }
 
@@ -247,6 +249,16 @@ export function observaciones({ rejilla, horario = null, metricas = {}, grupos =
   if ((g.a_punto || 0) >= 3) out.push({ id: "a-punto", texto: `${g.a_punto} clientes están a uno o dos puntos del premio.`, accion: { tipo: "grupo", grupo: "a_punto", label: "Darles el empujón" } });
   if ((g.fieles_frios || 0) >= 2) out.push({ id: "fieles", texto: `${g.fieles_frios} habituales llevan más tiempo del normal sin venir.`, accion: { tipo: "grupo", grupo: "fieles_frios", label: "Escribirles" } });
   if ((g.fantasmas || 0) >= 5) out.push({ id: "sin-uso", texto: `${g.fantasmas} tienen la tarjeta y nunca la han usado en caja.`, accion: { tipo: "grupo", grupo: "fantasmas", label: "Invitarles a estrenarla" } });
+
+  // POCOS CON LA TARJETA EN EL MÓVIL: a los demás no les llega ningún aviso, y
+  // eso se arregla en el mostrador, no con un aviso (no hay a quién mandarlo).
+  if ((metricas.total || 0) >= MIN_CLIENTES_INSTALACION && metricas.tasaInstalacion < INSTALACION_BAJA) {
+    out.push({
+      id: "instalan",
+      texto: `Solo ${metricas.instalados} de tus ${metricas.total} clientes tienen la tarjeta en el móvil.`,
+      detalle: "A los demás no les llegan tus avisos. En caja, que la guarden en la Cartera del móvil al sacarla.",
+    });
+  }
 
   return out;
 }

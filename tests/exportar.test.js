@@ -23,7 +23,7 @@ describe("exportar a CSV", () => {
     expect(csv.startsWith("﻿")).toBe(true);
     const [cabecera, fila] = csv.slice(1).split("\r\n");
     expect(cabecera.split(";").slice(0, 5)).toEqual(["Código", "Nombre", "Estado", "Visitas", "Puntos (de 8)"]);
-    expect(fila.split(";").slice(0, 5)).toEqual(["K7M", "Ana", "Activo", "3", "1"]);
+    expect(fila.split(";").slice(0, 5)).toEqual(["K7M", "Ana", "A su ritmo", "3", "1"]);
     expect(cabecera).not.toContain(",");
   });
 
