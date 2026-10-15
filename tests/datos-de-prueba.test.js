@@ -4,6 +4,7 @@ import { tramosDe, relojLocal } from "@/lib/horario";
 import { SEMILLAS } from "@/lib/negocios";
 import { comprobarClave } from "@/lib/claves";
 import { normalizarPlantilla } from "@/lib/plantilla";
+import { perfilDe, puenteActivos, cohortes } from "@/lib/crm";
 
 const ahora = Date.parse("2026-10-08T10:00:00Z");
 
@@ -56,6 +57,19 @@ describe("datos de prueba de dev", () => {
     process.env.DATOS_DE_PRUEBA = "1";
     process.env.VERCEL_ENV = "preview";
     expect(semillaDe("negocios").delicanteria.config.plantilla).toHaveLength(5);
+  });
+
+  it("el Resumen tiene con qué: puente con altas, vueltas y bajas, y cohortes por semana", () => {
+    const { clientes, eventos } = generar(ahora);
+    const lista = Object.values(clientes);
+    const tienda = SEMILLAS.delicanteria;
+    const perfiles = lista.map((c) => perfilDe(c, tienda, ahora));
+    const historialDesde = ahora - 120 * 864e5;
+    const p = puenteActivos(lista, perfiles, eventos, tienda, { ahora, historialDesde });
+    expect(p.listo).toBe(true);
+    for (const k of ["antes", "nuevos", "volvieron", "enfriados"]) expect(p[k], k).toBeGreaterThan(0);
+    const co = cohortes(lista, perfiles, eventos, { ahora, historialDesde, zona: tienda.horario.zona });
+    expect(co).toMatchObject({ unidad: "semana", listo: true });
   });
 
   it("la caja trabaja en horario, salvo el sello de después de cerrar", () => {

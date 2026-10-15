@@ -38,8 +38,9 @@ gh pr create --base main --head dev --title "Lo que sube a producción"
 
 Sin `SUPABASE_URL`, el store guarda en ficheros (`DATA_DIR`). En Vercel eso es `/tmp`, y
 con `DATOS_DE_PRUEBA=1` lo que falta arranca con La Delicantería inventada: unos 30
-clientes y tres semanas de caja, con un sello fuera de horario, una corrección y siete
-sellos de golpe.
+clientes de las últimas tres semanas, con un sello fuera de horario, una corrección y siete
+sellos de golpe, y otros 30 de hace uno o dos meses (unos siguen, otros se enfrían, alguno
+vuelve) para que Clientes → Resumen enseñe el puente de activos y las cohortes.
 
 - **Lo que se toca en dev no dura**: vive mientras la función de Vercel siga despierta.
   Tras un rato sin uso o un despliegue nuevo, vuelve a los datos de partida. Sirve para
