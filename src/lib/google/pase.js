@@ -37,6 +37,7 @@ export const idClase = (issuerId, slug) => `${issuerId}.${slug}`;
 export const idObjeto = (issuerId, serial) => `${issuerId}.${serial}`;
 
 const texto = (valor) => ({ defaultValue: { language: IDIOMA, value: String(valor) } });
+const hueco = ({ label, balance }) => ({ label, balance: { string: balance } });
 const imagen = (uri, descripcion) => ({ sourceUri: { uri }, contentDescription: texto(descripcion) });
 
 /** Google solo acepta #rrggbb o #rgb. */
@@ -127,12 +128,16 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDato
     // SIN accountName, como en Apple: el nombre lo sabe él y lo ve la caja. En
     // Google, además, se quedaría en una copia que guarda Google. Como el objeto
     // va entero (PUT), el próximo cambio lo borra de las tarjetas que lo llevaban.
-    loyaltyPoints: { label: puntos.label, balance: { string: puntos.balance } },
-    // Como la cabecera del pase de Apple: los premios guardados, aunque sean 0.
-    // Los canjeados de toda la vida no salen en la tarjeta.
-    ...(!e.esCupon && !cliente.borrado_en && !cliente.fusionado_en
-      ? { secondaryLoyaltyPoints: { label: "Premios guardados", balance: { int: totalGuardados(cliente) } } }
-      : {}),
+    loyaltyPoints: hueco(puntos[0]),
+    // Con dos cartillas, el otro hueco es la segunda ("Cafés 5/8 · 1 gratis"):
+    // cada una con sus premios guardados, que un total no dice de cuál son.
+    // Con una, como la cabecera del pase de Apple: los premios guardados, aunque
+    // sean 0. Los canjeados de toda la vida no salen en la tarjeta.
+    ...(puntos[1]
+      ? { secondaryLoyaltyPoints: hueco(puntos[1]) }
+      : !e.esCupon && !cliente.borrado_en && !cliente.fusionado_en
+        ? { secondaryLoyaltyPoints: { label: "Premios guardados", balance: { int: totalGuardados(cliente) } } }
+        : {}),
     barcode: { type: "QR_CODE", value: `${appUrl}/w/${cliente.serial}`, alternateText: codigo },
     heroImage: imagen(
       `${appUrl}${rutaBanda(negocio, cliente)}`,

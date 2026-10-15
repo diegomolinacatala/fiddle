@@ -39,10 +39,10 @@ describe("resumen del estado", () => {
   const nube = { tipo: "sellos", meta: 8 };
   const forno = { tipo: "descuento", meta: 1 };
   it("cartilla y cupón cuentan distinto", () => {
-    expect(puntosDe({ sellos: 3, premios: 0 }, nube)).toEqual({ label: "Sellos", balance: "3/8" });
-    expect(puntosDe({ sellos: 99, premios: 0 }, nube).balance).toBe("8/8"); // no se pasa de la meta
-    expect(puntosDe({ sellos: 0, premios: 0 }, forno)).toEqual({ label: "Cupón", balance: "Válido" });
-    expect(puntosDe({ sellos: 0, premios: 1 }, forno).balance).toBe("Usado");
+    expect(puntosDe({ sellos: 3, premios: 0 }, nube)).toEqual([{ label: "Sellos", balance: "3/8" }]);
+    expect(puntosDe({ sellos: 99, premios: 0 }, nube)[0].balance).toBe("8/8"); // no se pasa de la meta
+    expect(puntosDe({ sellos: 0, premios: 0 }, forno)).toEqual([{ label: "Cupón", balance: "Válido" }]);
+    expect(puntosDe({ sellos: 0, premios: 1 }, forno)[0].balance).toBe("Usado");
     expect(estadoDe({ sellos: 5, premios: 0 }, nube)).toMatchObject({ faltan: 3, completa: false });
     expect(estadoDe({ sellos: 8, premios: 0 }, nube)).toMatchObject({ faltan: 0, completa: true });
   });

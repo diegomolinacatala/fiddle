@@ -397,10 +397,11 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
             <div style={{ fontSize: 12.5, opacity: 0.9 }}>{objeto.loyaltyPoints.label}</div>
             <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.loyaltyPoints.balance.string}</div>
           </Anotable>
+          {/* Con dos cartillas, el segundo hueco es la segunda cartilla; con una, los premios guardados. */}
           {objeto.secondaryLoyaltyPoints && (
-            <Anotable clave="google.guardados" etiqueta={objeto.secondaryLoyaltyPoints.label} anota={anota} estilo={{ width: "auto", textAlign: "center" }}>
+            <Anotable clave={negocio.cartillas ? "google.puntos2" : "google.guardados"} etiqueta={objeto.secondaryLoyaltyPoints.label} anota={anota} estilo={{ width: "auto", textAlign: "center" }}>
               <div style={{ fontSize: 12.5, opacity: 0.9 }}>{objeto.secondaryLoyaltyPoints.label}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.secondaryLoyaltyPoints.balance.int}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.secondaryLoyaltyPoints.balance.string ?? objeto.secondaryLoyaltyPoints.balance.int}</div>
             </Anotable>
           )}
         </div>

@@ -87,8 +87,9 @@ describe("dos cartillas en un pase", () => {
     expect(avisoDeCambio(cliente(2, 4), cliente(2, 3), deli)).toBeNull(); // una corrección no suena
   });
 
-  it("Google cuenta las dos", () => {
-    expect(puntosDe(cliente(3, 5), deli)).toEqual({ label: "Cookies · Cafés", balance: "3/8 · 5/8" });
+  it("Google cuenta las dos, un hueco por cartilla", () => {
+    expect(puntosDe(cliente(3, 5), deli)).toEqual([{ label: "Cookies", balance: "3/8" }, { label: "Cafés", balance: "5/8" }]);
+    expect(puntosDe({ sellos: 3 }, componerNegocio("nube", null))).toEqual([{ label: "Sellos", balance: "3/8" }]);
   });
 
   it("la banda tiene dos filas con su dibujo, y su URL lleva las dos cuentas", () => {
