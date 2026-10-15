@@ -493,6 +493,22 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
+- **`/login` rellena el usuario según de dónde se viene** (`usuarioSugerido` en
+  `lib/acceso.js`): la caja si `next` era `/<slug>/caja` o `/w/…`, el dueño si no; y dos
+  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Hasta que
+  haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
+  `app/home/datos.js`). Lo que se aprendió con La Delicantería (15-10-2026) está en
+  [docs/AUDITORIA-ACCESOS.md](docs/AUDITORIA-ACCESOS.md).
+- **La página `/invitacion` NO quita el token de la barra**: lo guarda en la pestaña
+  (`sessionStorage`), lo vuelve a leer si cambia el hash y, sin token, deja pegar el código
+  del correo (`lib/tokenInvitacion.js`, sin imports del servidor; el correo lleva el token
+  también en texto). Cada 410 de `/api/invitacion` lleva `codigo` y deja un `console.warn`
+  sin el token. `aceptarInvitacion` gasta el enlace PRIMERO (es el cerrojo: con dos pestañas
+  solo una escribe) y, si guardar las contraseñas falla a medias, lo reabre
+  (`reabrirInvitacion`) para que el dueño repita. Crear y aceptar quedan en `auditoria`.
+  `/login` no importa `lib/auth.js` (lleva los admins): lo suyo está en `lib/acceso.js`. La ficha del admin enseña si hay un enlace pendiente
+  (`GET /api/admin/invitacion`) antes de ofrecer otro, y en la web de dev avisa de que no va
+  a servir (`enlacesFiables`).
 
 ## Cuentas: lo decidido (01-10-2026, sin empezar)
 

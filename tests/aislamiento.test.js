@@ -86,6 +86,7 @@ const DEL_ADMIN = [
   ["admin/accesos", "POST", () => "/api/admin/accesos", () => ({ slug: "nube", rol: "caja" })],
   ["admin/cifrar", "POST", () => "/api/admin/cifrar"],
   ["admin/crm", "GET", () => "/api/admin/crm"],
+  ["admin/invitacion", "GET", () => "/api/admin/invitacion?slug=nube"],
   ["admin/invitacion", "POST", () => "/api/admin/invitacion", () => ({ slug: "nube" })],
   ["admin/negocios", "GET", () => "/api/admin/negocios"],
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", legal: { nif: "B1" } })],

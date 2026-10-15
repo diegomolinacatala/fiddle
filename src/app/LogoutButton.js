@@ -3,13 +3,17 @@
 import { useRouter } from "next/navigation";
 import { botonPequeno } from "@/app/ui";
 
-// Cierra la sesión y vuelve al login del mismo negocio.
-export default function LogoutButton({ negocio, style }) {
+// Cierra la sesión y vuelve al login del mismo negocio. Con `next` al sitio del
+// que sale (la caja o el manager): así /login rellena el usuario que toca
+// (usuarioSugerido en lib/acceso.js). Sin eso, la caja se encontraba el usuario
+// del dueño y fallaba con su propia contraseña hasta quedar bloqueada.
+export default function LogoutButton({ negocio, rol = "manager", style }) {
   const router = useRouter();
 
   async function salir() {
     await fetch("/api/logout", { method: "POST" }).catch(() => {});
-    router.push(negocio ? `/login?b=${encodeURIComponent(negocio)}` : "/login");
+    const sitio = rol === "caja" ? "caja" : "manager";
+    router.push(negocio ? `/login?b=${encodeURIComponent(negocio)}&next=${encodeURIComponent(`/${negocio}/${sitio}`)}` : "/login");
     router.refresh();
   }
 
