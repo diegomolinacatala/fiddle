@@ -44,4 +44,11 @@ describe("la vista de la caja", () => {
   it("el manager la guarda limpia", () => {
     expect(patchNegocio({ caja: { volverAlEscaner: true, x: 2 } }, []).patch.caja).toEqual({ ...normalizarCaja({}), volverAlEscaner: true });
   });
+
+  it("volver al escáner sin tocarla: apagado de partida, y se puede encender", () => {
+    expect(normalizarCaja({}).volverSinTocar).toBe(false);
+    expect(OPCIONES_CAJA.volverSinTocar.descripcion).toMatch(/30 segundos/);
+    expect(patchNegocio({ caja: { volverSinTocar: true } }, []).patch.caja.volverSinTocar).toBe(true);
+    expect(normalizarCaja({ volverSinTocar: "si" }).volverSinTocar).toBe(false);
+  });
 });
