@@ -175,3 +175,39 @@ export function usuarioSugerido(b, next) {
   const deCaja = ruta === `/${tienda.slug}/caja` || ruta.startsWith("/w/");
   return usuarioDeTienda(tienda.slug, deCaja ? "caja" : "manager");
 }
+
+// ----------------------------------------------------------------------------
+// LOS USUARIOS QUE RECUERDA ESTE MÓVIL
+// /login guarda en el propio navegador (localStorage) con qué usuarios se entró,
+// el último primero, para no teclearlos: el móvil fijo de la caja sale ya con el
+// suyo. NUNCA la contraseña. Cada uno lleva su tienda (`t`) tal como la dijo el
+// servidor al entrar, null para un admin: de un nombre suelto no se puede saber
+// (aquí no está la lista de admins, ver arriba).
+// ----------------------------------------------------------------------------
+
+export const CLAVE_RECORDADOS = "fiddle-usuarios";
+export const MAX_RECORDADOS = 3;
+const USUARIO_VALIDO = /^[a-z0-9-]{1,60}$/;
+
+/** Lo guardado, ya limpio: lo que no tenga forma de usuario se descarta. */
+export function leerRecordados(texto) {
+  let lista;
+  try { lista = JSON.parse(texto || "[]"); } catch { return []; }
+  if (!Array.isArray(lista)) return [];
+  return lista
+    .filter((r) => r && USUARIO_VALIDO.test(r.u) && (r.t === null || USUARIO_VALIDO.test(r.t)))
+    .map((r) => ({ u: r.u, t: r.t }))
+    .slice(0, MAX_RECORDADOS);
+}
+
+/**
+ * La lista con este usuario delante, sin repetir y con tope.
+ * @param {{u:string, t:string|null}[]} lista
+ * @param {{usuario:string, negocio:string, rol:string}} entrada lo que devolvió /api/login
+ */
+export function recordarUsuario(lista, { usuario, negocio, rol }) {
+  const u = String(usuario ?? "").trim().toLowerCase();
+  if (!USUARIO_VALIDO.test(u)) return lista;
+  const nuevo = { u, t: rol === "admin" ? null : negocio };
+  return [nuevo, ...lista.filter((r) => r.u !== u)].slice(0, MAX_RECORDADOS);
+}

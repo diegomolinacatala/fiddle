@@ -208,6 +208,11 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   lo pendiente sale por la fila con `vaciar` y se espera la respuesta, nunca con
   `sendBeacon` (desde el panel del ordenador no llega). Si alguien toca mientras, o algo
   no se guardó, se queda.
+- **Debajo del escáner, «Hoy en la caja»** (`atendidosHoy` en `lib/actividad.js`,
+  `/api/clientes?hoy=1`): los que ha atendido el personal hoy (hora de la tienda), el
+  último arriba, con lo último que se les hizo. Para volver a abrir al que se acaba de ir.
+  Antes eran las últimas tarjetas CREADAS y no se entendía. Con el móvil fijo, esa lista
+  la ve cualquiera: solo código, nombre y lo de hoy, nada más de la ficha.
 - **La ficha dice cuándo fue el último sello** («Último punto hace 12 min»,
   `ultimoSelloTexto`), discreto, bajo las visitas: zanja el «no me has sellado» sin
   depender del historial (que la tienda puede apagar). Solo el cuándo (la cuenta la enseña
@@ -403,10 +408,15 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   no sale. Las cohortes miden a todos a la MISMA edad (semana 1, 2, 3… desde el alta de
   cada uno; una celda sale cuando la ha vivido toda la fila), nunca «cuántos siguen hoy»
   por mes de alta: el mes viejo salía peor solo por ser viejo.
-- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
-  cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
-  (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
-  medias y no se enseña (`historialCompletoDesde`). Su hoja no lleva nombres.
+- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día, una semana, un mes o
+  unas fechas de la caja para cuadrarlos con los tickets (Día / Semana / Mes y «Otras
+  fechas»; el modo se recuerda en el navegador). Sale de `eventos` (hora y `actor`), con la
+  hora de la TIENDA (`horario.zona`). De un día, cada movimiento; de varios, una fila por
+  día que abre ese día (`actividadDelRango`). Las flechas comparan con el periodo anterior
+  y, si el de ahora no ha acabado, con sus mismos días hasta la misma hora
+  (`periodoAnterior`); sin flechas si la tienda no existía entonces (`comparable`). Si el
+  historial del panel llegó al tope, el día más viejo está a medias y no se enseña
+  (`historialCompletoDesde`). Su hoja no lleva nombres.
 
 - **Una tarjeta que nadie guardó ni usó no es un cliente** (`perfil.descartada`: sin visitas,
   sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto, las tasas y las
@@ -545,7 +555,9 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   personal (`sesionDeCookie`), no el middleware (Edge, solo la firma). Página o API nueva
   del personal = por ahí, nunca `verificarSesion` a pelo. Quien cambia su contraseña o
   cierra las sesiones recibe su cookie firmada de nuevo en esa misma respuesta.
-- **La sesión del manager dura 30 días y se desliza**: el middleware la vuelve a firmar
+- **La sesión del manager y la de la caja duran 30 días y se deslizan** (la de la caja
+  desde el 15-10-2026: el móvil fijo del mostrador pedía la contraseña cada mes a quien
+  estuviera atendiendo). El middleware la vuelve a firmar
   cuando le queda menos de la mitad (`renovarSesion`), conservando el `iat`. Por eso la
   vigencia se compara con `iat` y nunca con la caducidad: una renovada sigue cayendo si la
   contraseña cambió después de entrar. El token es `negocio.rol.usuario.iat.exp.firma`;
@@ -565,7 +577,10 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
 - **`/login` rellena el usuario según de dónde se viene** (`usuarioSugerido` en
   `lib/acceso.js`): la caja si `next` era `/<slug>/caja` o `/w/…`, el dueño si no; y dos
-  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Hasta que
+  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Sin `b`,
+  el último usuario que entró en ESE móvil (`localStorage`, hasta 3, `leerRecordados`;
+  nunca la contraseña, y abajo «Olvidar»). Cada recordado lleva la tienda que dijo el
+  servidor al entrar: por el nombre no se distingue un admin de una tienda. Hasta que
   haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
   `app/home/datos.js`). Lo que se aprendió con La Delicantería (15-10-2026) está en
   [docs/AUDITORIA-ACCESOS.md](docs/AUDITORIA-ACCESOS.md).
