@@ -194,6 +194,8 @@ function fusionarConfig(actual, patch) {
     // «Enviar a las…» (lib/envios.js) y lo que la tienda ha subido (lib/propios.js).
     enviosProgramados: patch.enviosProgramados ?? actual.enviosProgramados,
     propios: patch.propios ?? actual.propios,
+    // «Cerrar todas las sesiones» (lib/sesionVigente.js): las firmadas antes no valen.
+    sesionesDesde: patch.sesionesDesde ?? actual.sesionesDesde,
   };
   return config;
 }
@@ -1434,16 +1436,20 @@ export async function getAcceso(usuario) {
   return (await enFila(() => leer("accesos", {})))[usuario] ?? null;
 }
 
-/** Cuándo se puso la contraseña de cada usuario de una tienda (sin hashes). */
+/**
+ * Las contraseñas de una tienda: cuándo se puso cada una y su hash (de él sale si
+ * la eligió el dueño, lib/claves.js). Para el servidor: al navegador va lo que
+ * saca `estadoAccesos` (lib/accesos.js), nunca esto.
+ */
 export async function accesosDeNegocio(negocio) {
   if (hasSupabase()) {
     return sinError(
-      await supa().from("accesos").select("usuario, rol, actualizado").eq("negocio", negocio),
+      await supa().from("accesos").select("usuario, rol, hash, actualizado").eq("negocio", negocio),
       "leer accesos",
     ) || [];
   }
   const todos = await enFila(() => leer("accesos", {}));
-  return Object.values(todos).filter((a) => a.negocio === negocio).map(({ usuario, rol, actualizado }) => ({ usuario, rol, actualizado }));
+  return Object.values(todos).filter((a) => a.negocio === negocio).map(({ usuario, rol, hash, actualizado }) => ({ usuario, rol, hash, actualizado }));
 }
 
 export async function guardarAcceso({ usuario, negocio, rol, hash }) {
@@ -1459,12 +1465,13 @@ export async function guardarAcceso({ usuario, negocio, rol, hash }) {
 }
 
 // ============================ INVITACIONES (ver invitaciones.js) ============================
-// Un enlace por tienda para que su dueño elija sus contraseñas. Se guarda la
-// huella del token, no el token: quien lea la tabla no puede usar el enlace.
+// Un enlace por tienda para que su dueño elija sus contraseñas (`alcance` "alta":
+// las dos) o solo la suya ("manager": la caja no se toca). Se guarda la huella
+// del token, no el token: quien lea la tabla no puede usar el enlace.
 
-/** Guarda la invitación nueva y anula las anteriores sin usar de esa tienda: solo vale el último enlace. */
-export async function crearInvitacion({ huella, negocio, caduca }) {
-  const fila = { huella, negocio, caduca, creado: ahoraISO(), usada: null };
+/** Guarda la invitación nueva y anula las anteriores sin usar de esa tienda (del alcance que sean): solo vale el último enlace. */
+export async function crearInvitacion({ huella, negocio, caduca, alcance = "alta" }) {
+  const fila = { huella, negocio, caduca, alcance, creado: ahoraISO(), usada: null };
   if (hasSupabase()) {
     const db = supa();
     sinError(await db.from("invitaciones").delete().eq("negocio", negocio).is("usada", null), "anular invitaciones");
@@ -1478,15 +1485,16 @@ export async function crearInvitacion({ huella, negocio, caduca }) {
   });
 }
 
-/** @returns {Promise<{huella:string, negocio:string, caduca:string, creado:string, usada:string|null}|null>} */
+/** @returns {Promise<{huella:string, negocio:string, caduca:string, alcance:string, creado:string, usada:string|null}|null>} */
 export async function getInvitacion(huella) {
-  if (hasSupabase()) {
-    return sinError(
-      await supa().from("invitaciones").select("huella, negocio, caduca, creado, usada").eq("huella", huella).maybeSingle(),
-      "leer invitación",
-    ) ?? null;
-  }
-  return (await enFila(() => leer("invitaciones", {})))[huella] ?? null;
+  const fila = hasSupabase()
+    ? sinError(
+        await supa().from("invitaciones").select("huella, negocio, caduca, alcance, creado, usada").eq("huella", huella).maybeSingle(),
+        "leer invitación",
+      )
+    : (await enFila(() => leer("invitaciones", {})))[huella];
+  // Las de antes de la columna son de alta: pedían las dos contraseñas.
+  return fila ? { ...fila, alcance: fila.alcance || "alta" } : null;
 }
 
 /**

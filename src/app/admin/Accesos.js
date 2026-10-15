@@ -14,6 +14,10 @@ export default function Accesos({ slug }) {
   const [estado, setEstado] = useState(null);
   const [nuevas, setNuevas] = useState([]);
   const [error, setError] = useState(null);
+  // Un enlace nuevo (del alcance que sea) anula el pendiente de la tienda: el bloque
+  // del OTRO alcance vuelve a empezar, que su enlace ya no vale.
+  const [reinicios, setReinicios] = useState({ alta: 0, manager: 0 });
+  const otroCreado = (alcance) => setReinicios((r) => ({ ...r, [alcance === "alta" ? "manager" : "alta"]: r[alcance === "alta" ? "manager" : "alta"] + 1 }));
 
   const cargar = () => fetch(`/api/admin/accesos?slug=${slug}`)
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No se pudieron leer los accesos"))))
@@ -48,7 +52,7 @@ export default function Accesos({ slug }) {
             <strong style={{ fontSize: 14 }}>{a.usuario}</strong>
             <div style={{ fontSize: 13, color: a.desde || a.respaldo ? C.suave : C.mal }}>
               {a.desde
-                ? `Contraseña propia desde el ${fecha(a.desde)}`
+                ? `Contraseña ${a.elegida ? "elegida por el dueño" : "generada"} desde el ${fecha(a.desde)}`
                 : a.respaldo ? "Usa la contraseña de Vercel (antigua)" : "Sin contraseña: no puede entrar"}
             </div>
           </div>
@@ -58,7 +62,9 @@ export default function Accesos({ slug }) {
         </div>
       ))}
       {nuevas.length > 0 && <ClaveNueva accesos={nuevas} onCerrar={() => setNuevas([])} />}
-      <Invitar slug={slug} />
+      <Invitar key={`alta-${reinicios.alta}`} slug={slug} onCreado={otroCreado} />
+      {/* El dueño perdió la suya: que la elija él, sin tocar la caja ni dictarle nada. */}
+      <Invitar key={`manager-${reinicios.manager}`} slug={slug} alcance="manager" onCreado={otroCreado} />
     </section>
   );
 }

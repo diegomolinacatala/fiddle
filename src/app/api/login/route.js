@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS, ADMINS,
+  resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, cookieSesion, secretoSesion, COOKIE, ADMINS,
 } from "@/lib/auth";
 import { listNegocios, getNegocio, getCliente } from "@/lib/store";
 import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
@@ -8,6 +8,7 @@ import { comprobarAcceso } from "@/lib/accesos";
 import { COOKIE_QUIEN } from "@/lib/plantilla";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno } from "@/lib/http";
+import { auditar } from "@/lib/auditoria";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,15 +67,14 @@ export async function POST(request) {
       return jsonError("Usuario o contraseña incorrectos", 401);
     }
 
+    // Con quién entró, con el nombre canónico: `nube-manager` es un alias de `nube`
+    // y el token (y la auditoría) llevan el de siempre. El admin, su nombre.
+    const quienEntra = { negocio: acceso.negocio, rol: acceso.rol, usuario: acceso.rol === "admin" ? acceso.usuario : usuarioDe(acceso.negocio, acceso.rol) };
+    // Queda apuntado quién entró; los fallos van a `intentos`.
+    await auditar(quienEntra, acceso.rol === "admin" ? null : acceso.negocio, "login");
     const destino = await destinoTrasLogin(acceso, next);
     const res = NextResponse.json({ ok: true, negocio: acceso.negocio, rol: acceso.rol, destino });
-    res.cookies.set(COOKIE, await firmarSesion(acceso.negocio, acceso.rol), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: TTL_SEGUNDOS[acceso.rol],
-    });
+    res.cookies.set(COOKIE, await firmarSesion(acceso.negocio, acceso.rol, Date.now(), { usuario: quienEntra.usuario }), cookieSesion(acceso.rol));
     // Sesión nueva, nombre nuevo: la caja vuelve a preguntar quién atiende (lib/plantilla.js).
     res.cookies.set(COOKIE_QUIEN, "", { path: "/", maxAge: 0 });
     return res;

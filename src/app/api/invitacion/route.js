@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { leerInvitacion, aceptarInvitacion } from "@/lib/invitaciones";
-import { firmarSesion, secretoSesion, COOKIE, TTL_SEGUNDOS } from "@/lib/auth";
+import { firmarSesion, cookieSesion, secretoSesion, COOKIE } from "@/lib/auth";
 import { usoExcedido, limiteEnMemoria, ipDe } from "@/lib/limitador";
 import { auditar } from "@/lib/auditoria";
 import { jsonError, errorInterno } from "@/lib/http";
@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
 
 // La página /invitacion (pública: el dueño aún no tiene contraseña). El token
 // va en el cuerpo, nunca en la URL (ver lib/invitaciones.js).
-//   POST { token }                   ¿vale? -> tienda y usuarios
-//   POST { token, manager, caja }    fija las dos contraseñas y deja dentro
+//   POST { token }                   ¿vale? -> tienda, alcance y usuarios
+//   POST { token, manager, caja }    fija las dos contraseñas (alcance "alta") y deja dentro
+//   POST { token, manager }          solo la del dueño (alcance "manager"); la caja no cambia
 // Un 410 lleva `codigo` (incompleto, desconocido, usada, caducada, sin_tienda):
 // la página aconseja con él, y aquí queda en el log de Vercel SIN el token,
 // que es lo único que permite ver desde el servidor que un enlace falló.
@@ -31,7 +32,7 @@ export async function POST(request) {
       }
       const r = await leerInvitacion(token);
       if (!r.ok) return rechazada(r);
-      return NextResponse.json({ nombre: r.negocio.nombre, tema: r.negocio.tema, usuarios: r.usuarios });
+      return NextResponse.json({ nombre: r.negocio.nombre, tema: r.negocio.tema, alcance: r.alcance, usuarios: r.usuarios });
     }
 
     if (await usoExcedido("invitacion", ipDe(request))) return jsonError("Demasiados intentos. Espera unos minutos.", 429);
@@ -42,18 +43,12 @@ export async function POST(request) {
       if (r.campo) return NextResponse.json({ error: r.motivo, campo: r.campo }, { status: 400 });
       return rechazada(r);
     }
-    // Quien acepta es el dueño: desde ahora, el manager de esa tienda.
-    await auditar({ negocio: r.negocio, rol: "manager" }, r.negocio, "invitacion", "aceptada");
+    // Quien acepta es el dueño: desde ahora, el manager de esa tienda. Queda con qué alcance.
+    await auditar({ negocio: r.negocio, rol: "manager" }, r.negocio, "invitacion", `aceptada ${r.alcance}`);
 
     // Entra ya como manager: acaba de elegir la contraseña, pedírsela otra vez sobra.
     const res = NextResponse.json({ ok: true, destino: `/${r.negocio}/manager` });
-    res.cookies.set(COOKIE, await firmarSesion(r.negocio, "manager"), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: TTL_SEGUNDOS.manager,
-    });
+    res.cookies.set(COOKIE, await firmarSesion(r.negocio, "manager"), cookieSesion("manager"));
     return res;
   } catch (e) {
     return errorInterno("invitación", e);

@@ -116,7 +116,7 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect(await comprobarAcceso("nube", CLAVES.manager)).toMatchObject({ rol: "manager" });
     expect(await comprobarAcceso("nube-caja", CLAVES.caja)).toMatchObject({ rol: "caja" });
     expect(await auditoria("invitacion")).toEqual([
-      expect.objectContaining({ negocio: "nube", usuario: "nube", rol: "manager", accion: "invitacion", detalle: "aceptada" }),
+      expect.objectContaining({ negocio: "nube", usuario: "nube", rol: "manager", accion: "invitacion", detalle: "aceptada alta" }),
     ]);
   });
 
@@ -205,7 +205,7 @@ describe("GET /api/admin/invitacion: cómo está el enlace", () => {
     expect(creado.data.url).toBe(`https://sellos.app/invitacion#${creado.data.token}`);
     expect(creado.data).toMatchObject({ fiable: true, dias: 7, usuarios: { manager: "nube", caja: "nube-caja" } });
     expect(await auditoria("invitacion")).toEqual([
-      expect.objectContaining({ negocio: "nube", usuario: "admin", rol: "admin", accion: "invitacion", detalle: "creada" }),
+      expect.objectContaining({ negocio: "nube", usuario: "admin", rol: "admin", accion: "invitacion", detalle: "creada alta" }),
     ]);
 
     let r = (await estado()).data;

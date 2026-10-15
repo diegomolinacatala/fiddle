@@ -18,18 +18,38 @@ import { C, campo, botonPequeno, botonPrimario, aviso } from "@/app/ui";
 // en dos sitios (la ficha y el panel de «tienda creada») y lo pueden pulsar dos
 // admins: sin esto, uno mataba el enlace que el otro ya había mandado sin
 // enterarse (docs/AUDITORIA-ACCESOS.md, A3).
+//
+// Dos usos del mismo enlace (`alcance`): el alta de una tienda (las dos
+// contraseñas) y recuperar la del dueño sin tocar la caja. Un enlace nuevo anula
+// el pendiente de la tienda, sea del uso que sea: la situación del enlace se pinta
+// una vez, en el bloque del alta, que va primero.
 // ============================================================================
 
 const AZUL = "#2563eb";
 const fecha = (iso) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
-export default function Invitar({ slug }) {
+const TEXTOS = {
+  alta: {
+    boton: "Invitar al dueño por correo",
+    nota: "Le llega un enlace para elegir su contraseña y la de la caja. Caduca en 7 días y sirve una vez; las contraseñas de arriba dejan de valer cuando lo use.",
+    listo: "Invitación lista",
+  },
+  manager: {
+    boton: "Enlace para que el dueño elija su contraseña",
+    nota: "Para cuando la pierde: elige una nueva él mismo, sin que nadie se la dicte. Solo cambia la suya; la caja sigue igual. Caduca en 7 días y sirve una vez.",
+    listo: "Enlace para su contraseña listo",
+  },
+};
+
+/** `onCreado(alcance)`: avisa a quien pinte otro bloque de enlace de que el suyo acaba de quedar anulado. */
+export default function Invitar({ slug, alcance = "alta", onCreado = null }) {
   const [estado, setEstado] = useState(null); // { pendiente, caducada, ultimaUsada, fiable, base }
-  const [inv, setInv] = useState(null); // { url, token, caduca, nombre, usuarios }
+  const [inv, setInv] = useState(null); // { url, token, caduca, alcance, nombre, usuarios }
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const textos = TEXTOS[alcance];
 
   const cargar = () => fetch(`/api/admin/invitacion?slug=${encodeURIComponent(slug)}`)
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No se pudo leer el estado del enlace"))))
@@ -49,13 +69,14 @@ export default function Invitar({ slug }) {
       const r = await fetch("/api/admin/invitacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug }),
+        body: JSON.stringify({ slug, alcance }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "No se pudo crear la invitación");
       setInv(d);
       setCopiado(false);
       cargar();
+      onCreado?.(alcance);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -85,32 +106,29 @@ export default function Invitar({ slug }) {
 
       {!inv && (
         <>
-          {estado && <Situacion estado={estado} />}
+          {estado && alcance === "alta" && <Situacion estado={estado} />}
           {/* Hasta saber cómo está el enlace, el botón espera: no se crea uno sin mirar. */}
           <button type="button" onClick={crear} disabled={busy || (!estado && !error)} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Icono nombre="correo" tam={16} />
             {" "}
-            {busy ? "Creando…" : !estado && !error ? "Mirando el enlace…" : estado?.pendiente ? "Crear otro (el pendiente dejará de valer)" : "Invitar al dueño por correo"}
+            {busy ? "Creando…" : !estado && !error ? "Mirando el enlace…" : estado?.pendiente ? "Crear otro (el pendiente dejará de valer)" : textos.boton}
           </button>
-          <p style={nota}>
-            Le llega un enlace para elegir su contraseña y la de la caja. Caduca en 7 días y sirve una vez;
-            las contraseñas de arriba dejan de valer cuando lo use.
-          </p>
+          <p style={nota}>{textos.nota}</p>
         </>
       )}
 
       {inv && (
         <div>
           <strong style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icono nombre="correo" tam={16} /> Invitación lista
+            <Icono nombre="correo" tam={16} /> {textos.listo}
           </strong>
           {/* El enlace entero, a la vista: que se vea a qué web apunta (APP_URL) antes de mandarlo. */}
           <code style={enlace}>{inv.url}</code>
-          <label style={{ display: "block", fontSize: 12, color: C.suave, margin: "10px 0 4px" }} htmlFor="email-dueno">
+          <label style={{ display: "block", fontSize: 12, color: C.suave, margin: "10px 0 4px" }} htmlFor={`email-dueno-${alcance}`}>
             Correo del dueño (opcional, no se guarda)
           </label>
           <input
-            id="email-dueno"
+            id={`email-dueno-${alcance}`}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -155,18 +173,23 @@ function Situacion({ estado }) {
 // El correo, ya escrito. Corto: lo importante es el enlace y qué va a pasar. El
 // código va también suelto, debajo: algún correo recorta lo que va tras `#`, y
 // la página lo acepta pegado (lib/tokenInvitacion.js).
-function mailto(email, { url, token, caduca, nombre, usuarios }) {
-  const asunto = `Tu acceso a las tarjetas de ${nombre}`;
+function mailto(email, { url, token, caduca, alcance, nombre, usuarios }) {
+  const soloManager = alcance === "manager";
+  const asunto = soloManager ? `Tu nueva contraseña para las tarjetas de ${nombre}` : `Tu acceso a las tarjetas de ${nombre}`;
   const cuerpo = [
     "Hola:",
     "",
-    `Ya está lista la tarjeta de fidelización de ${nombre}. Para entrar, abre este enlace y elige dos contraseñas: la tuya (para ver clientes, lanzar promos y cambiar la tarjeta) y la del móvil de la caja (solo para sellar).`,
+    soloManager
+      ? `Abre este enlace y elige tu nueva contraseña para entrar en las tarjetas de fidelización de ${nombre}.`
+      : `Ya está lista la tarjeta de fidelización de ${nombre}. Para entrar, abre este enlace y elige dos contraseñas: la tuya (para ver clientes, lanzar promos y cambiar la tarjeta) y la del móvil de la caja (solo para sellar).`,
     "",
     url,
     "",
     `Si al abrirlo te pide el código, es este: ${token}`,
     "",
-    `Tu usuario será «${usuarios.manager}» y el de la caja «${usuarios.caja}».`,
+    soloManager
+      ? `Tu usuario sigue siendo «${usuarios.manager}». La contraseña de la caja no cambia.`
+      : `Tu usuario será «${usuarios.manager}» y el de la caja «${usuarios.caja}».`,
     `El enlace sirve una vez y caduca el ${fecha(caduca)}. Puedes recargar la página o volver más tarde: no se pierde.`,
     "",
     "Un saludo",

@@ -22,7 +22,7 @@ sesión sea **del negocio del recurso** (`403` si no).
 | `/<negocio>/manager`, `PUT /api/negocio`, `POST /api/promo`, `POST /api/crear`, `POST /api/logo`, `/api/propios`, `POST\|DELETE /api/fondo` | **manager** de ese negocio |
 | `/<negocio>/crm`, `GET /api/crm`, `POST /api/crm/campana`, `/api/crm/cliente/<serial>`, `POST /api/crm/exportar` | **manager** de ese negocio |
 | `/<negocio>/avisos`, `/api/automatizaciones`, `/api/envios` | **manager** de ese negocio |
-| `/<negocio>/ajustes`, `POST /api/accesos/caja` | **manager** de ese negocio |
+| `/<negocio>/ajustes`, `POST /api/accesos/caja`, `POST /api/accesos/manager`, `DELETE /api/sesiones` | **manager** de ese negocio |
 | `/api/cron/avisos` | sin sesión: lo protege `CRON_SECRET` (cabecera `Authorization: Bearer …`) |
 | `/admin`, `/admin/<slug>`, `/admin/crm`, `/api/admin/*`, `GET /api/estado` | **admin de la plataforma** (`victor`, `diego`) |
 
@@ -38,7 +38,13 @@ Usuarios: `<negocio>` = manager · `<negocio>-caja` = caja. La contraseña vive 
 `accesos` (hash scrypt); sin fila, vale `CLAVE_<SLUG>_<ROL>` de Vercel ([`accesos.js`](../src/lib/accesos.js)).
 `401` usuario o contraseña incorrectos · `429` demasiados intentos (10 por IP y
 negocio en 15 min, 100 por negocio) · `503` falta `AUTH_SECRET` en producción.
-Sesión de caja: 30 días. Sesión de manager: 12 h.
+Sesión de caja: 30 días. Sesión de manager: 30 días y se renueva sola mientras la use
+(el middleware vuelve a poner la cookie en las páginas cuando le queda menos de la mitad,
+hasta 90 días desde que entró). Admin: 12 h.
+El token es `negocio.rol.usuario.iat.exp.firma`: dice con quién se entró y cuándo; un
+cambio de contraseña o un «Cerrar todas las sesiones» posterior a `iat` la echa aunque se
+haya renovado. El login que entra queda en `auditoria` (`login`, con el usuario; el admin
+con su nombre).
 
 ### `POST /api/logout`
 Borra la cookie. `{ "ok": true }`.
@@ -46,20 +52,26 @@ Borra la cookie. `{ "ok": true }`.
 ### `POST /api/invitacion`
 El dueño de una tienda elige sus contraseñas desde el enlace del correo
 ([`invitaciones.js`](../src/lib/invitaciones.js)). El token va en el cuerpo, nunca en la URL.
+`alcance`: `alta` (las dos contraseñas, la tienda nueva) o `manager` (solo la suya: para
+recuperarla sin tocar la caja).
 ```json
 // ¿vale el enlace?                          // response
-{ "token": "…" }                             { "nombre": "Nube Café", "tema": {…}, "usuarios": { "manager": "nube", "caja": "nube-caja" } }
-// fijar las dos                             // response ok (+ cookie de sesión de manager)
+{ "token": "…" }                             { "nombre": "Nube Café", "tema": {…}, "alcance": "alta", "usuarios": { "manager": "nube", "caja": "nube-caja" } }
+// fijar las dos (alcance alta)              // response ok (+ cookie de sesión de manager)
 { "token": "…", "manager": "…", "caja": "…" } { "ok": true, "destino": "/nube/manager" }
+// solo la suya (alcance manager)
+{ "token": "…", "manager": "…" }             { "ok": true, "destino": "/nube/manager" }
 ```
 `410` con `codigo`: `incompleto` (no tiene forma de token), `desconocido` (inventado o
 anulado por otro más nuevo), `usada`, `caducada`, `sin_tienda`; cada uno deja un
 `console.warn` sin el token · `400` contraseña floja (`campo`: `manager` | `caja`; mínimo 10
-caracteres, distinta del usuario y entre sí) · `429` más de 20 altas por IP en 10 min (y, en
-memoria, más de 60 comprobaciones por IP en 10 min). Fijarlas gasta el enlace primero (con
-dos pestañas solo una escribe) y, si guardar falla a medias, lo reabre para repetir; si
-tampoco se puede reabrir, `auditoria` lleva `invitacion` · `sin_reabrir`. Aceptar queda en
-`auditoria` (`invitacion` · `aceptada`, como el manager de la tienda).
+caracteres, distinta del usuario, entre sí y, con alcance `manager`, de la actual de la caja) ·
+`429` más de 20 altas por IP en 10 min (y, en memoria, más de 60 comprobaciones por IP en 10
+min). Fijarlas gasta el enlace primero (con dos pestañas solo una escribe) y, si guardar falla
+a medias, lo reabre para repetir; si tampoco se puede reabrir, `auditoria` lleva `invitacion` ·
+`sin_reabrir`. Las contraseñas quedan como **elegidas** (se comparan tal cual,
+[`claves.js`](../src/lib/claves.js)). Aceptar queda en `auditoria` (`invitacion` ·
+`aceptada <alcance>`, como el manager de la tienda).
 
 ### `GET /api/tutorial?recorrido=manager|caja` · `POST /api/tutorial` — `{ "recorrido": "caja" }`
 Si el usuario de la sesión ya vio el recorrido de bienvenida (`{ "visto": true }`) y
@@ -68,6 +80,20 @@ apuntarlo. Va por usuario (`nube`, `nube-caja`); los admins comparten `admin`.
 ### `POST /api/accesos/caja?b=<negocio>` · manager
 Contraseña nueva para la caja (Ajustes; un empleado que se va). Se devuelve **una vez**
 y saca a quien estuviera dentro con la vieja.
+
+### `POST /api/accesos/manager?b=<negocio>` — `{ actual, nueva }` · solo el manager
+El dueño cambia su propia contraseña (Ajustes → Tu acceso). `nueva` queda como elegida
+(mínimo 10 caracteres, distinta de la actual y de la de la caja). Responde `{ ok, usuario }`
+y vuelve a poner su cookie de sesión; las demás sesiones del manager caen, la caja sigue.
+`401` con `campo: "actual"` si la actual no es (cuenta como fallo de login: mismo límite,
+`429` al pasarse) · `400` con `campo: "nueva"` · la caja no llega (`401` del middleware) y el
+admin recibe `403`. Queda en `auditoria` (`clave`, `manager`).
+
+### `DELETE /api/sesiones?b=<negocio>` · manager (o admin)
+Cierra todas las sesiones de la tienda (manager y caja, en todos los dispositivos) sin
+cambiar contraseñas: guarda `sesionesDesde` en la tienda y
+[`sesionVigente`](../src/lib/sesionVigente.js) rechaza las firmadas antes. Al manager que lo
+pide le vuelve a poner su cookie. `{ ok, desde }`. Queda en `auditoria` (`sesiones`, `cerradas`).
 
 ## Emitir
 
@@ -252,23 +278,26 @@ devuelve · `borrar` la elimina para siempre **con sus clientes y su historial**
 `&confirmar=<slug>` exacto.
 
 ### `GET /api/admin/accesos?slug=` · `POST /api/admin/accesos` — `{ slug, rol }`
-Cómo entra cada usuario de la tienda (sin contraseñas) · genera una nueva para
-`manager` o `caja` y la devuelve **una vez**. Queda en `auditoria`.
+Cómo entra cada usuario de la tienda (sin contraseñas: `desde`, `elegida` si la puso una
+persona, `respaldo` si hay variable) · genera una nueva para `manager` o `caja` y la
+devuelve **una vez**. Queda en `auditoria`.
 
 ### `POST /api/admin/cifrar`
 Cifra los nombres y notas guardados antes de tener `CIFRADO_CLAVE` (`{ cifrados: n }`).
 Repetirlo no hace nada · `409` sin una `CIFRADO_CLAVE` válida.
 
-### `GET /api/admin/invitacion?slug=` · `POST /api/admin/invitacion` — `{ "slug": "nube" }`
+### `GET /api/admin/invitacion?slug=` · `POST /api/admin/invitacion` — `{ "slug": "nube", "alcance": "alta" | "manager" }`
 Cómo está el enlace de la tienda (lo pinta la ficha antes de ofrecer «crear otro») · enlace
-nuevo para que el dueño elija sus contraseñas, que anula los anteriores sin usar y queda en
-`auditoria` (`invitacion` · `creada`). Nunca devuelven la huella; el token solo sale del POST.
+nuevo para que el dueño elija sus contraseñas (`alta`, lo de siempre) o solo la suya
+(`manager`: la perdió y no se toca la caja). Anula los anteriores sin usar, del alcance que
+sean, y queda en `auditoria` (`invitacion` · `creada <alcance>`, con el nombre del admin).
+Nunca devuelven la huella; el token solo sale del POST.
 ```json
 // GET: pendiente (sin usar ni caducar), el último caducado sin usar, cuándo se usó el último
 { "pendiente": { "creado": "2026-10-15T…", "caduca": "2026-10-22T…" } | null, "caducada": {…} | null,
   "ultimaUsada": "2026-10-03T…" | null, "fiable": true, "base": "https://fiddle-zeta.vercel.app" }
 // POST
-{ "url": "https://…/invitacion#<token>", "token": "<token>", "caduca": "2026-10-01T…", "dias": 7, "fiable": true,
+{ "url": "https://…/invitacion#<token>", "token": "<token>", "caduca": "2026-10-01T…", "alcance": "alta", "dias": 7, "fiable": true,
   "nombre": "Nube Café", "usuarios": { "manager": "nube", "caja": "nube-caja" } }
 ```
 `fiable: false` = este servidor no guarda los enlaces de verdad (la web de dev: Vercel sin

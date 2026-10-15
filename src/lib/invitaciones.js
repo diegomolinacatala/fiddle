@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { crearInvitacion, getInvitacion, gastarInvitacion, reabrirInvitacion, invitacionesDeNegocio, getNegocio, guardarAcceso, hasSupabase } from "./store";
 import { hashClave, problemaClaveElegida } from "./claves";
+import { comprobarAcceso } from "./accesos";
 import { usuarioDe } from "./auth";
 import { appUrl } from "./url";
 import { auditar } from "./auditoria";
@@ -27,6 +28,11 @@ import { TOKEN } from "./tokenInvitacion";
 // ============================================================================
 
 export const DIAS_VALIDA = 7;
+// Qué fija el enlace. "alta": las dos contraseñas (la tienda nueva). "manager": solo
+// la del dueño, para recuperarla cuando la pierde; la caja no se entera. Es el mismo
+// enlace, la misma tabla y la misma pantalla: cuando la recuperación la haga Supabase
+// Auth por correo (CLAUDE.md → Cuentas), esto se convierte en eso, no se duplica.
+export const ALCANCES = ["alta", "manager"];
 
 const huellaDe = (token) => createHash("sha256").update(String(token)).digest("hex");
 
@@ -48,20 +54,21 @@ const rechazo = (codigo) => ({ ok: false, codigo, motivo: RECHAZOS[codigo] });
 export const enlacesFiables = () => hasSupabase() || !process.env.VERCEL_ENV;
 
 /**
- * Crea el enlace. Anula los anteriores de esa tienda que no se usaron.
- * @returns {Promise<{url:string, token:string, caduca:string}>}
+ * Crea el enlace. Anula los anteriores de esa tienda que no se usaron, del alcance que sean.
+ * @returns {Promise<{url:string, token:string, caduca:string, alcance:string}>}
  */
-export async function nuevaInvitacion(slug, ahora = Date.now()) {
+export async function nuevaInvitacion(slug, { alcance = "alta", ahora = Date.now() } = {}) {
+  if (!ALCANCES.includes(alcance)) throw new Error(`Alcance no válido: ${alcance}`);
   const token = randomBytes(32).toString("base64url");
   const caduca = new Date(ahora + DIAS_VALIDA * 24 * 60 * 60 * 1000).toISOString();
-  await crearInvitacion({ huella: huellaDe(token), negocio: slug, caduca });
+  await crearInvitacion({ huella: huellaDe(token), negocio: slug, caduca, alcance });
   // El token suelto también: el correo lo lleva en texto por si el enlace llega cortado.
-  return { url: `${appUrl()}/invitacion#${token}`, token, caduca };
+  return { url: `${appUrl()}/invitacion#${token}`, token, caduca, alcance };
 }
 
 /**
- * ¿Vale este enlace? Devuelve la tienda y sus usuarios, o por qué no vale.
- * @returns {Promise<{ok:true, negocio:object, usuarios:{manager:string, caja:string}} | {ok:false, codigo:string, motivo:string}>}
+ * ¿Vale este enlace? Devuelve la tienda, qué fija y sus usuarios, o por qué no vale.
+ * @returns {Promise<{ok:true, negocio:object, alcance:string, usuarios:{manager:string, caja:string}} | {ok:false, codigo:string, motivo:string}>}
  */
 export async function leerInvitacion(token, ahora = Date.now()) {
   if (!TOKEN.test(String(token ?? ""))) return rechazo("incompleto");
@@ -74,30 +81,47 @@ export async function leerInvitacion(token, ahora = Date.now()) {
   return {
     ok: true,
     negocio,
+    alcance: inv.alcance,
     usuarios: { manager: usuarioDe(negocio.slug, "manager"), caja: usuarioDe(negocio.slug, "caja") },
   };
 }
 
 /**
- * Fija las dos contraseñas y gasta el enlace.
- * @returns {Promise<{ok:true, negocio:string} | {ok:false, motivo:string, codigo?:string, campo?:string}>}
+ * Fija las contraseñas que toque según el alcance (las dos, o solo la del manager) y
+ * gasta el enlace. Van como ELEGIDAS (lib/claves.js): se comparan tal cual.
+ * @returns {Promise<{ok:true, negocio:string, alcance:string} | {ok:false, motivo:string, codigo?:string, campo?:string}>}
  */
 export async function aceptarInvitacion(token, { manager, caja }, ahora = Date.now()) {
   const inv = await leerInvitacion(token, ahora);
   if (!inv.ok) return inv;
-  const { usuarios, negocio } = inv;
+  const { usuarios, negocio, alcance } = inv;
+  const slug = negocio.slug;
 
   const malManager = problemaClaveElegida(manager, usuarios.manager);
   if (malManager) return { ok: false, motivo: malManager, campo: "manager" };
-  const malCaja = problemaClaveElegida(caja, usuarios.caja);
-  if (malCaja) return { ok: false, motivo: malCaja, campo: "caja" };
-  // La de la caja la sabrá cualquier empleado: no puede abrir también el manager.
-  if (String(manager).trim() === String(caja).trim()) {
-    return { ok: false, motivo: "La de la caja tiene que ser distinta de la tuya", campo: "caja" };
+
+  // Qué se va a guardar. Los hashes se calculan antes de gastar el enlace (tardan).
+  let cambios;
+  if (alcance === "manager") {
+    // La caja sigue con la suya, y la sabe todo el personal: la nueva no puede ser esa.
+    if (await comprobarAcceso(usuarios.caja, manager)) {
+      return { ok: false, motivo: "No puede ser la misma que la de la caja: la sabe quien la use", campo: "manager" };
+    }
+    cambios = [{ usuario: usuarios.manager, rol: "manager", hash: await hashClave(manager, "elegida") }];
+  } else {
+    const malCaja = problemaClaveElegida(caja, usuarios.caja);
+    if (malCaja) return { ok: false, motivo: malCaja, campo: "caja" };
+    // La de la caja la sabrá cualquier empleado: no puede abrir también el manager.
+    if (String(manager).trim() === String(caja).trim()) {
+      return { ok: false, motivo: "La de la caja tiene que ser distinta de la tuya", campo: "caja" };
+    }
+    const [hashManager, hashCaja] = await Promise.all([hashClave(manager, "elegida"), hashClave(caja, "elegida")]);
+    cambios = [
+      { usuario: usuarios.manager, rol: "manager", hash: hashManager },
+      { usuario: usuarios.caja, rol: "caja", hash: hashCaja },
+    ];
   }
 
-  // Los hashes antes de gastar el enlace (tardan): si algo falla, se puede reintentar.
-  const [hashManager, hashCaja] = await Promise.all([hashClave(manager), hashClave(caja)]);
   // Primero se gasta el enlace, que es atómico: con dos pestañas, o un reintento del
   // navegador tras un corte, solo UNA petición escribe contraseñas y firma sesión;
   // la otra ve «ya se usó». (Si escribieran las dos, la segunda subiría
@@ -110,18 +134,17 @@ export async function aceptarInvitacion(token, { manager, caja }, ahora = Date.n
   const huella = huellaDe(token);
   if (!(await gastarInvitacion(huella))) return rechazo("usada");
   try {
-    await guardarAcceso({ usuario: usuarios.manager, negocio: negocio.slug, rol: "manager", hash: hashManager });
-    await guardarAcceso({ usuario: usuarios.caja, negocio: negocio.slug, rol: "caja", hash: hashCaja });
+    for (const cambio of cambios) await guardarAcceso({ ...cambio, negocio: slug });
   } catch (e) {
     try {
       await reabrirInvitacion(huella);
     } catch (e2) {
       console.error("[invitación] guardar falló y no se pudo reabrir el enlace:", e2);
-      await auditar({ negocio: negocio.slug, rol: "manager" }, negocio.slug, "invitacion", "sin_reabrir");
+      await auditar({ negocio: slug, rol: "manager" }, slug, "invitacion", "sin_reabrir");
     }
     throw e;
   }
-  return { ok: true, negocio: negocio.slug };
+  return { ok: true, negocio: slug, alcance };
 }
 
 /**

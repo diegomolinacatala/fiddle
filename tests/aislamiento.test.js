@@ -49,6 +49,7 @@ const conSerial = () => ({ params: Promise.resolve({ serial: S() }) });
 // [ruta, método, url, cuerpo, ¿lleva params?]
 const DEL_PERSONAL = [
   ["accesos/caja", "POST", () => "/api/accesos/caja?b=nube"],
+  ["accesos/manager", "POST", () => "/api/accesos/manager?b=nube", () => ({ actual: "x", nueva: "una frase larga" })],
   ["accion", "POST", () => "/api/accion", () => ({ serial: S(), accion: "sellar" })],
   ["automatizaciones", "GET", () => "/api/automatizaciones?b=nube"],
   ["automatizaciones", "PUT", () => "/api/automatizaciones?b=nube", () => ({ avisosActivos: true })],
@@ -78,6 +79,7 @@ const DEL_PERSONAL = [
   ["plantilla/quien", "GET", () => "/api/plantilla/quien?b=nube"],
   ["plantilla/quien", "POST", () => "/api/plantilla/quien?b=nube", () => ({ id: "sebas001" })],
   ["promo", "POST", () => "/api/promo", () => ({ b: "nube", texto: "2x1" })],
+  ["sesiones", "DELETE", () => "/api/sesiones?b=nube"],
 ];
 
 // Del admin: con la sesión de una tienda, fuera.

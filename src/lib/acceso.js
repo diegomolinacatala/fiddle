@@ -101,8 +101,11 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
   if (pathname === "/api/clientes") return { tipo: "negocio", slug: b, rol: "caja" };
   if (pathname === "/api/crear") return { tipo: "negocio", slug: b, rol: "manager" };
-  // El manager puede cambiar la contraseña de SU caja (un empleado que se va).
-  if (pathname === "/api/accesos/caja") return { tipo: "negocio", slug: b, rol: "manager" };
+  // El manager puede cambiar la contraseña de SU caja (un empleado que se va), la
+  // suya propia (dando la actual) y cerrar todas las sesiones de su tienda.
+  if (pathname === "/api/accesos/caja" || pathname === "/api/accesos/manager" || pathname === "/api/sesiones") {
+    return { tipo: "negocio", slug: b, rol: "manager" };
+  }
   // CRM y avisos automáticos: quién es quién y qué se le dice. Solo el manager.
   // Las dos que llevan ?b= se comprueban aquí; /api/crm/campana (el negocio va
   // en el cuerpo, como en /api/promo) y /api/crm/cliente/<serial> (sale del
