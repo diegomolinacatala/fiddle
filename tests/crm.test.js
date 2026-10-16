@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  perfilDe, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
+  perfilDe, perfilesDe, ritmoDeTienda, estadoDe, GRUPOS, gruposDe, conteoGrupos, esGrupo,
   metricas, cambio, serieVisitas, rejillaHoraria, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
   esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos, resumenSerie, horarioDeRejilla, ideaDeGrupo,
@@ -126,6 +126,64 @@ describe("estadoDe: la escalera", () => {
   it("sin ritmo conocido vale el mes de gracia", () => {
     expect(estadoDe({ visitas: 1, diasDesdeAlta: 200, diasSinVenir: 10, retraso: null })).toBe("activo");
     expect(estadoDe({ visitas: 1, diasDesdeAlta: 200, diasSinVenir: 45, retraso: null })).toBe("riesgo");
+  });
+});
+
+describe("quien aún no tiene costumbre se mide con la de la tienda", () => {
+  // Una visita, la del alta, hace `hace` días.
+  const una = (hace, resto = {}) => cli({ alta: hace, visitas: 1, ultima: hace, ...resto });
+
+  it("en un café que vuelve cada 4 días, quien vino una vez hace 10 días está en riesgo", () => {
+    expect(perfilDe(una(10), NUBE, AHORA, { ritmoTienda: 4 }).estado).toBe("riesgo");
+    // Antes de una semana, nunca: cierres, puentes.
+    expect(perfilDe(una(6), NUBE, AHORA, { ritmoTienda: 4 }).estado).toBe("nuevo");
+    // Sin el ritmo de la tienda, como siempre: nuevo sus 30 días.
+    expect(perfilDe(una(10), NUBE, AHORA).estado).toBe("nuevo");
+  });
+
+  it("en una barbería que vuelve cada mes, el mismo cliente sigue siendo nuevo", () => {
+    expect(perfilDe(una(20), NUBE, AHORA, { ritmoTienda: 30 }).estado).toBe("nuevo");
+    // Pasado el mes ya no es nuevo, pero tampoco tarda: 40 días frente a 30 es poco.
+    expect(perfilDe(una(40), NUBE, AHORA, { ritmoTienda: 30 }).estado).toBe("activo");
+    // Sin ritmo de tienda, el mes de gracia de siempre lo daba por perdido para la causa.
+    expect(perfilDe(una(40), NUBE, AHORA).estado).toBe("riesgo");
+  });
+
+  it("con dos visitas, un solo hueco no es una costumbre: manda el más largo", () => {
+    // Vino dos días seguidos hace 12 y 11 días: su «ritmo» sería a diario.
+    const dos = cli({ alta: 12, visitas: 2, ultima: 11 });
+    const p = perfilDe(dos, NUBE, AHORA, { ritmoTienda: 10 });
+    expect(p).toMatchObject({ conRitmoDeTienda: true, ritmo: 10, ritmoTienda: 10 });
+    expect(p.estado).toBe("nuevo");
+    expect(perfilDe(dos, NUBE, AHORA, { ritmoTienda: 4 }).estado).toBe("riesgo");
+  });
+
+  it("a quien ya tiene costumbre se le sigue midiendo con la suya", () => {
+    const habitual = cli({ alta: 60, visitas: 8, ultima: 9 }); // cada ~7 días
+    const p = perfilDe(habitual, NUBE, AHORA, { ritmoTienda: 2 });
+    expect(p.conRitmoDeTienda).toBe(false);
+    expect(p.ritmo).toBe(p.cadencia);
+    expect(p.estado).toBe("activo");
+  });
+
+  it("el ritmo de la tienda es la mediana de los que tienen uno, y con pocos no hay", () => {
+    const habituales = [3, 4, 5, 6, 40].map((dias, i) => cli({ serial: `h${i}`, alta: dias * 4, visitas: 5, ultima: 0 }));
+    expect(ritmoDeTienda(habituales.map((c) => perfilDe(c, NUBE, AHORA)))).toBe(5);
+    expect(ritmoDeTienda(habituales.slice(0, 4).map((c) => perfilDe(c, NUBE, AHORA)))).toBeNull();
+  });
+
+  it("perfilesDe mide a cada uno con la tienda entera, y el puente lo hace igual", () => {
+    const habituales = [3, 4, 4, 5, 5].map((dias, i) => cli({ serial: `h${i}`, alta: 60, visitas: Math.round(60 / dias) + 1, ultima: 1 }));
+    const clientes = [...habituales, una(10, { serial: "n" })];
+    const { perfiles, ritmoTienda } = perfilesDe(clientes, NUBE, AHORA);
+    expect(ritmoTienda).toBeCloseTo(59 / 15, 0);
+    expect(perfiles.at(-1).estado).toBe("riesgo");
+    // Una tienda sin costumbre todavía: todo como antes.
+    expect(perfilesDe([una(10, { serial: "n" })], NUBE, AHORA)).toMatchObject({ ritmoTienda: null, perfiles: [{ estado: "nuevo" }] });
+    // «Siguen viniendo» de las cifras y el «Hoy» del puente salen de los mismos perfiles.
+    const eventos = clientes.map((c) => ({ serial: c.serial, tipo: "sellar", ts: c.ultima_visita }));
+    const p = puenteActivos(clientes, perfiles, eventos, NUBE, { ahora: AHORA, historialDesde: AHORA - 120 * DIA, ritmoTienda });
+    expect(p.hoy).toBe(metricas(perfiles, eventos, clientes, AHORA).activos);
   });
 });
 

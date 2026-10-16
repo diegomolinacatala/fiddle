@@ -2,7 +2,7 @@ import {
   saveNegocio, getNegocio, listClientes, serialesRegistrados,
   guardarMensajes, crearCampana, addEventos,
 } from "./store";
-import { perfilDe } from "./crm";
+import { perfilesDe } from "./crm";
 import { avisarSeriales, notificarNegocio } from "./wallet";
 import {
   esDestino, esPromo, infoDestino, incluyeDestino, textoDeEnvio, caducidadMomento, repartirPendientes, MOMENTO,
@@ -42,9 +42,9 @@ export async function mandarMensaje(negocio, destino, texto, { actor = "manager"
   if (!esDestino(destino) || esPromo(destino)) return { error: `No existe el grupo "${destino}"`, status: 400 };
   const mensaje = textoDeEnvio(destino, texto);
   const [clientes, registrados] = await Promise.all([listClientes(negocio.slug), serialesRegistrados(negocio.slug)]);
-  const delGrupo = clientes.filter((c) =>
-    incluyeDestino(destino, perfilDe({ ...c, instalado: c.instalado || (registrados.has(c.serial) ? c.creado : null) }, negocio)),
-  );
+  // Todos a la vez (perfilesDe): quien aún no tiene costumbre se mide con la de la tienda, como en Clientes.
+  const { perfiles } = perfilesDe(clientes.map((c) => ({ ...c, instalado: c.instalado || (registrados.has(c.serial) ? c.creado : null) })), negocio);
+  const delGrupo = clientes.filter((c, i) => incluyeDestino(destino, perfiles[i]));
 
   // Sin pase en un teléfono no hay a dónde mandar nada. No es un fallo: es el
   // límite de avisar por Wallet, y la pantalla ya lo cuenta antes de enviar.

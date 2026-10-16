@@ -48,6 +48,9 @@ export const UMBRALES = {
   horasVisita: 3,
   cadenciaMin: 1,     // el ritmo más rápido que se mide: a diario
   riesgoMinDias: 7,   // nadie está en riesgo por faltar menos de una semana (cierres, puentes)
+  // El ritmo de la tienda (ritmoDeTienda) solo vale con al menos estos clientes
+  // con ritmo propio: dos o tres no hacen una costumbre.
+  ritmoTiendaMin: 5,
   // Un pase que nadie guardó ni usó, pasado este rato, no es un cliente: es
   // alguien que escaneó y se fue. Antes del plazo aún puede estar guardándolo.
   descartadaDias: 1,
@@ -104,11 +107,18 @@ export function soloVisitas(eventos) {
  * tarjeta de prueba con diez sellos seguidos cuenta como una visita, no como un
  * habitual que lleva horas sin venir.
  *
+ * El RITMO que se le pide (`ritmo`, y de ahí el `retraso`) es su cadencia si ya
+ * la tiene. Quien aún no tiene costumbre (menos de `nuevoVisitas`) se mide con
+ * el de la tienda (`ritmoTienda`, de perfilesDe), o con el suyo si es más largo:
+ * un solo hueco entre dos visitas no es una costumbre. Sin el de la tienda,
+ * como siempre: el suyo si lo hay y, si no, el mes de gracia de estadoDe.
+ *
  * @param {object} cliente fila de `clientes`
  * @param {object} negocio ficha del negocio (meta, tipo)
  * @param {number} [ahora]
+ * @param {{ritmoTienda?: number|null}} [opciones] cada cuánto vuelve el cliente típico de la tienda (días)
  */
-export function perfilDe(cliente, negocio, ahora = Date.now()) {
+export function perfilDe(cliente, negocio, ahora = Date.now(), { ritmoTienda = null } = {}) {
   const alta = ms(cliente.creado);
   const ultima = ms(cliente.ultima_visita);
   const caben = alta && ultima && ultima >= alta ? Math.floor((ultima - alta) / (UMBRALES.horasVisita * HORA)) + 1 : Infinity;
@@ -118,7 +128,11 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
   // Sin visitas, el reloj corre desde el alta: un pase emitido hace un año y
   // nunca usado lleva un año sin usarse, no "cero días".
   const diasSinVenir = dias(ultima || alta, ahora);
-  const retraso = cadencia && cadencia > 0 && diasSinVenir !== null ? diasSinVenir / cadencia : null;
+  // Quien vino una vez hace tres semanas no «sigue viniendo» en un café donde la
+  // gente vuelve cada cuatro días: sin costumbre propia, se le pide la de la tienda.
+  const conRitmoDeTienda = Boolean(ritmoTienda) && visitas > 0 && visitas < UMBRALES.nuevoVisitas;
+  const ritmo = conRitmoDeTienda ? Math.max(cadencia ?? 0, ritmoTienda) : cadencia;
+  const retraso = ritmo && diasSinVenir !== null ? diasSinVenir / ritmo : null;
 
   const esCupon = negocio?.tipo === "descuento";
   // Las DOS cartillas si las hay, en todo: lo que la tienda debe, quién está
@@ -149,6 +163,10 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
     diasDesdeAlta: dias(alta, ahora),
     diasSinVenir,
     cadencia,
+    // Lo que se le pide (su cadencia o la de la tienda) y cuántas veces eso lleva sin venir.
+    ritmo,
+    conRitmoDeTienda,
+    ritmoTienda: conRitmoDeTienda ? ritmoTienda : null,
     retraso,
     // Sin pase instalado no hay a dónde mandar el aviso: es el límite de todo esto.
     contactable: Boolean(cliente.instalado && !cliente.desinstalado),
@@ -163,6 +181,32 @@ export function perfilDe(cliente, negocio, ahora = Date.now()) {
   perfil.descartada = !visitas && !perfil.instalado && (perfil.diasDesdeAlta ?? 0) >= UMBRALES.descartadaDias;
   perfil.estado = estadoDe(perfil);
   return perfil;
+}
+
+/**
+ * Cada cuánto vuelve el cliente típico de la tienda: la mediana de las cadencias
+ * de quien ya tiene una (la mediana, que uno que viene a diario no arrastra).
+ * Null con menos de `ritmoTiendaMin`: entonces nadie se mide con ella.
+ */
+export function ritmoDeTienda(perfiles) {
+  const cadencias = perfiles.filter((p) => !p.descartada && p.cadencia).map((p) => p.cadencia);
+  return cadencias.length >= UMBRALES.ritmoTiendaMin ? mediana(cadencias) : null;
+}
+
+/**
+ * Los perfiles de los clientes de UNA tienda, con los que aún no tienen
+ * costumbre medidos por la de la tienda. Todo lo que juzga a los clientes de
+ * una tienda (el CRM, los avisos, las campañas, la ficha) pasa por aquí, y no
+ * por perfilDe a secas: si no, un mismo cliente estaría «en riesgo» en la lista
+ * y sería «nuevo» para el aviso. Dos pasadas: la cadencia de cada uno no
+ * depende de la de la tienda; su estado, sí.
+ * @returns {{perfiles: object[], ritmoTienda: number|null}} en el orden de `clientes`
+ */
+export function perfilesDe(clientes, negocio, ahora = Date.now()) {
+  const primera = clientes.map((c) => perfilDe(c, negocio, ahora));
+  const ritmoTienda = ritmoDeTienda(primera);
+  if (ritmoTienda === null) return { perfiles: primera, ritmoTienda };
+  return { perfiles: clientes.map((c) => perfilDe(c, negocio, ahora, { ritmoTienda })), ritmoTienda };
 }
 
 // ------------------------------------------------------ la escalera (excluyentes)
@@ -183,7 +227,8 @@ export const ESTADOS = {
   },
   nuevo: {
     label: "Nuevo", plural: "Nuevos", icon: "clientes", color: "#3478d4",
-    descripcion: "Sacó la tarjeta hace menos de 30 días y lleva menos de 3 visitas.", quienes: "Menos de 30 días con la tarjeta y menos de 3 visitas",
+    descripcion: "Sacó la tarjeta hace menos de 30 días, lleva menos de 3 visitas y vuelve como los demás.",
+    quienes: "Menos de 30 días con la tarjeta y menos de 3 visitas, y vuelven como los demás",
   },
   activo: {
     label: "A su ritmo", plural: "A su ritmo", icon: "check", color: "#18943a",
@@ -191,7 +236,9 @@ export const ESTADOS = {
   },
   riesgo: {
     label: "En riesgo", plural: "En riesgo", icon: "alerta", color: "#c47f00",
-    descripcion: "Tarda en volver más de lo que suele.", quienes: "Tardan en volver más de lo que suelen",
+    // «Lo que suele»: su ritmo; el que aún no tiene, el de los demás clientes.
+    descripcion: "Tarda en volver más de lo que suele, o más que los demás si aún es nuevo.",
+    quienes: "Tardan en volver más de lo que suelen (los nuevos, más que los demás)",
   },
   dormido: {
     label: "Inactivo", plural: "Inactivos", icon: "reloj", color: "#8a63d2",
@@ -214,19 +261,25 @@ export const LISTA_ESTADOS = Object.entries(ESTADOS).map(([key, v]) => ({ key, .
 /**
  * En qué escalón está. El orden de las preguntas ES la definición: primero
  * quien nunca usó el pase, luego quien acaba de llegar (a ese no se le puede
- * exigir ritmo todavía), y después el reloj.
+ * exigir SU ritmo todavía, pero sí el de la tienda) y después el reloj.
+ *
+ * «Tarda»: lleva más de `retraso` veces lo que se le pide sin venir, y nunca
+ * por faltar menos de `riesgoMinDias`. Un recién llegado solo pasa a «En
+ * riesgo» por el ritmo de la tienda (`conRitmoDeTienda`): sin él, o con una
+ * tienda aún sin costumbre, es «nuevo» sus 30 días, como siempre.
  */
 export function estadoDe(p) {
   if (p.descartada) return "descartada";
   if (!p.visitas) return "fantasma";
-  if (p.diasDesdeAlta !== null && p.diasDesdeAlta <= UMBRALES.nuevoDias && p.visitas < UMBRALES.nuevoVisitas) {
-    return "nuevo";
-  }
   const d = p.diasSinVenir ?? 0;
+  const tarda = p.retraso !== null && p.retraso > UMBRALES.retraso && d >= UMBRALES.riesgoMinDias;
+  if (p.diasDesdeAlta !== null && p.diasDesdeAlta <= UMBRALES.nuevoDias && p.visitas < UMBRALES.nuevoVisitas) {
+    return p.conRitmoDeTienda && tarda ? "riesgo" : "nuevo";
+  }
   if (d > UMBRALES.perdidoDias) return "perdido";
   if (d > UMBRALES.dormidoDias) return "dormido";
-  // Con ritmo conocido manda el ritmo; sin él, el mes de gracia de siempre.
-  if (p.retraso !== null) return p.retraso > UMBRALES.retraso && d >= UMBRALES.riesgoMinDias ? "riesgo" : "activo";
+  // Con ritmo (el suyo o el de la tienda) manda el ritmo; sin ninguno, el mes de gracia de siempre.
+  if (p.retraso !== null) return tarda ? "riesgo" : "activo";
   return d > UMBRALES.nuevoDias ? "riesgo" : "activo";
 }
 
@@ -654,7 +707,8 @@ function clienteEnFecha(c, visitas, fecha, historialDesde) {
  * hace `dias` ya no, y hoy sí), menos los que se enfriaron (activos entonces y
  * hoy no). «Activo» es esActivo, el de la cifra de arriba, y hace `dias` se
  * mide igual: perfilDe con la fila de cada uno como estaba entonces
- * (clienteEnFecha). Así `hoy` es justo la cifra de «Activos».
+ * (clienteEnFecha), y con el mismo `ritmoTienda` que los perfiles de hoy
+ * (perfilesDe). Así `hoy` es justo la cifra de «Siguen viniendo».
  *
  * Para reconstruir el pasado hace falta el historial: las visitas posteriores
  * a la fecha y, para saber si alguien estaba ya inactivo, `dormidoDias` más
@@ -668,7 +722,7 @@ function clienteEnFecha(c, visitas, fecha, historialDesde) {
  *   | {dias:number, listo:true, antes:number, nuevos:number, volvieron:number, enfriados:number, hoy:number, siguen:number,
  *      pasos:{key:string, label:string, descripcion:string, n:number, signo:number, desde:number, hasta:number}[]}}
  */
-export function puenteActivos(clientes, perfiles, eventos, negocio, { dias = UMBRALES.puenteDias, ahora = Date.now(), historialDesde = null } = {}) {
+export function puenteActivos(clientes, perfiles, eventos, negocio, { dias = UMBRALES.puenteDias, ahora = Date.now(), historialDesde = null, ritmoTienda = null } = {}) {
   const fecha = ahora - dias * DIA;
   const primera = Math.min(...clientes.map((c) => ms(c.creado)).filter(Boolean));
   if (!(primera <= fecha)) {
@@ -685,7 +739,8 @@ export function puenteActivos(clientes, perfiles, eventos, negocio, { dias = UMB
   for (const c of clientes) {
     const hoySi = activoHoy.get(c.serial) ?? false;
     const fila = clienteEnFecha(c, visitas.get(c.serial) || [], fecha, historialDesde);
-    const entonces = fila ? perfilDe(fila, negocio, fecha) : null;
+    // Con el ritmo de la tienda de hoy: el de entonces cambiaría poco y habría que reconstruirlo entero.
+    const entonces = fila ? perfilDe(fila, negocio, fecha, { ritmoTienda }) : null;
     const entoncesSi = esActivo(entonces);
     if (entoncesSi) antes += 1;
     if (entoncesSi && !hoySi) enfriados += 1;
