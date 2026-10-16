@@ -4,6 +4,9 @@
 desplegado automáticamente desde `main`. Un cliente de pago: **La Delicantería**.
 Se trabaja en `dev` (su propia web, con datos inventados): ver [docs/ENTORNOS.md](docs/ENTORNOS.md).
 
+> Esto es el estado TÉCNICO. Las tareas, las tiendas y todo lo del negocio están en el
+> repo privado **`Victrozz/fiddleobsidian`** (ver [CLAUDE.md](CLAUDE.md#lo-del-negocio-el-vault-victrozzfiddleobsidian)).
+
 | Pieza | Estado |
 |-------|--------|
 | Pases de Apple Wallet | firmados con nuestra cuenta (`pass.com.fiddle`, caduca **17-10-2027**) |
