@@ -6,6 +6,7 @@ import { appUrl } from "../url";
 import { estadoDeTienda } from "../horario";
 import { enlaceGestion } from "../gestion";
 import { relojVivo } from "../relojAvisos";
+import { instalarFirmaNativa } from "./firmaNativa";
 
 // ============================================================================
 // APPLE WALLET — firma del .pkpass
@@ -15,6 +16,9 @@ import { relojVivo } from "../relojAvisos";
 // ============================================================================
 
 export const MIME_PKPASS = "application/vnd.apple.pkpass";
+
+// El RSA de la firma, con OpenSSL y la clave descifrada una sola vez (firmaNativa.js).
+instalarFirmaNativa();
 
 /**
  * Genera el .pkpass firmado de un cliente.
