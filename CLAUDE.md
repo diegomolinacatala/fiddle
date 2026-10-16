@@ -386,6 +386,16 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   `riesgoMinDias` (7). Sin esto, diez sellos de prueba = "habitual que viene cada
   segundo y lleva horas sin venir".
 
+- **Quien aún no tiene costumbre se mide con la de la tienda** (`perfilesDe`, 16-10-2026).
+  Con menos de 3 visitas no hay ritmo propio, y un «nuevo» que vino una vez hace tres
+  semanas contaba en «Siguen viniendo» sus 30 días. Ahora se le pide el del cliente típico
+  (`ritmoDeTienda`: la mediana de las cadencias, solo con `ritmoTiendaMin` clientes con
+  ritmo) y pasa a «En riesgo» si lleva `retraso` veces eso sin venir (nunca antes de
+  `riesgoMinDias`). Con dos visitas, el más largo de su hueco y el de la tienda: un solo
+  hueco no es una costumbre. En un café, a la semana; en una barbería mensual, no. Sin
+  ritmo de tienda, como antes. **Todo lo que juzga a los clientes de una tienda (CRM,
+  ficha, avisos, campañas, admin) va por `perfilesDe`, nunca por `perfilDe` a secas**: si
+  no, un cliente saldría «En riesgo» en la lista y «Nuevo» para el aviso.
 - **Una visita se cuenta igual en todas partes.** La ficha lleva su contador
   (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
   rejilla horaria, la curva de vuelta, lo que dicen los números) pasa por `soloVisitas`:

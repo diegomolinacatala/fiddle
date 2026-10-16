@@ -111,12 +111,18 @@ export default function Ficha({ serial, accent, estados, onCerrar, flash }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10, margin: "16px 0" }}>
               <Dato label="Visitas" valor={datos.perfil.visitas} />
-              <Dato label="Ritmo" valor={cadenciaTexto(datos.perfil.cadencia)} />
+              <Dato label="Ritmo" valor={datos.perfil.cadencia ? cadenciaTexto(datos.perfil.cadencia) : "Aún sin ritmo"} />
               <Dato label="Última" valor={haceTexto(datos.perfil.diasSinVenir)} />
               <Dato label="Cliente desde" valor={haceTexto(datos.perfil.diasDesdeAlta)} />
               <Dato label="Tarjeta" valor={datos.saldo} />
             </div>
 
+            {/* Por qué un recién llegado puede salir «En riesgo»: se le mide con los demás (perfilesDe en lib/crm.js). */}
+            {datos.perfil.conRitmoDeTienda && (
+              <p style={{ fontSize: 13, color: C.suave, margin: "0 0 8px" }}>
+                Aún no tiene costumbre propia: se le compara con el cliente típico de la tienda, que vuelve {cadenciaTexto(datos.perfil.ritmoTienda)}.
+              </p>
+            )}
             <p style={{ fontSize: 13, color: C.suave, margin: "0 0 14px" }}>
               {datos.perfil.contactable
                 ? "Tiene la tarjeta en el teléfono (Wallet o avisos de Android): le llegan los avisos."

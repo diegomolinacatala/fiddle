@@ -349,7 +349,7 @@ Todo el panel en una petición.
                 "puntos": [ { "dia": 0, "pct": 0, "seguidos": 21 }, { "dia": 1, "pct": 11, "seguidos": 18 }, … ] },
   "cartillas": [ { "indice": 0, "nombre": "Sellos", "meta": 8, "filas": [ { "sellos": 1, "siguen": 4, "alejan": 2 }, … ],
                    "enCero": 6, "conPuntos": 20, "mitad": 3, "alejanMediana": 2 } ],
-  "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
+  "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "ritmo": 7.2, "conRitmoDeTienda": false, "retraso": 3.1, "contactable": true, … } } ],
   "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
   "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Punto 5/8", "actor": "caja", "ts": "…" } ]
 }
@@ -357,6 +357,9 @@ Todo el panel en una petición.
 Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen de
 la hora local —a qué hora viene la gente— se hacen **en el navegador**: el
 servidor vive en UTC y sacaría el café de las 9 a las 7.
+
+En cada `perfil`, `ritmo` es lo que se le pide para no estar «en riesgo»: su `cadencia`
+o, si aún no tiene costumbre (menos de 3 visitas), la de la tienda (`conRitmoDeTienda`).
 
 `puente` y `vuelta` miran el pasado con esos eventos. Sin historial que cubra hace 30
 días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`; con
