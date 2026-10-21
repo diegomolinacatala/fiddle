@@ -63,6 +63,15 @@ export default async function Page({ params }) {
   await apuntarEntradaAdmin(sesion, cliente.negocio, `Ficha ${cliente.codigo}`);
 
   const n = await getNegocio(cliente.negocio);
+  // La tienda archivada (o borrada) no se ve: el cliente sigue, la tienda no. Al admin
+  // le llega igual (entra en todo) y, sin esto, la ficha reventaba en vez de decirlo.
+  if (!n) {
+    return (
+      <main style={pagina}>
+        <Aviso titulo="Esta tienda ya no está activa" texto="La tarjeta es de una tienda archivada: no se le pueden sumar sellos." />
+      </main>
+    );
+  }
   // Quién atiende desde este móvil (lib/quien.js). El QR se escanea muchas veces
   // con la cámara del móvil y entra aquí directo, sin pasar por la caja: si la
   // tienda tiene plantilla y en este móvil nadie se ha identificado (o pasaron
