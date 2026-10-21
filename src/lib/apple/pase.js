@@ -12,7 +12,7 @@
 // pantalla de bloqueo cuando cambian (p.ej. "Tienes 5 de 8 sellos").
 // ============================================================================
 
-import { cartillasDe, totalGuardados } from "../cartillas";
+import { cartillasDe, totalGuardados, gratisTexto } from "../cartillas";
 import { enlacesDeContacto } from "../contacto";
 import { colorDelPase } from "./dibujo";
 
@@ -75,12 +75,19 @@ function camposSellos(cliente, negocio) {
  * entero ("cookie gratis") no cabe dos veces en la fila; va en el reverso y
  * sale en cuanto la cartilla se completa. Cada campo lleva su changeMessage
  * con el nombre delante, para que el aviso diga de qué cartilla es.
+ *
+ * Con premios guardados de esa cartilla, su campo dice cuántos tiene gratis
+ * ("COOKIES · 2 gratis") en vez de cuánto falta, que ya lo dicen sus casillas.
+ * Es lo que pidió La Delicantería (15-10-2026): el GUARDADOS de la cabecera es
+ * la suma de las dos y no dice si es un café o una cookie. Al guardar suena
+ * ("Cafés: 1 gratis"); a cambio, mientras le quede uno guardado, sellar esa
+ * cartilla no suena: el campo no cambia.
  */
 function camposCartillas(cliente, negocio) {
   return cartillasDe(cliente, negocio).map((c) => ({
     key: c.indice === 0 ? "premio" : `premio${c.indice + 1}`,
     label: c.nombre.toUpperCase(),
-    value: c.completa ? `¡${c.premio}!` : `Faltan ${c.faltan}`,
+    value: c.completa ? `¡${c.premio}!` : c.guardados > 0 ? gratisTexto(c.guardados) : `Faltan ${c.faltan}`,
     changeMessage: `${c.nombre}: %@`,
   }));
 }
@@ -132,7 +139,7 @@ export function camposDelPase(cliente, negocio) {
     return {
       headerFields: [],
       primaryFields: [],
-      secondaryFields: [{ key: "premio", label: "TARJETA ANTIGUA", value: "Tus sellos están en tu tarjeta nueva", changeMessage: "%@" }],
+      secondaryFields: [{ key: "premio", label: "TARJETA ANTIGUA", value: "Tus puntos están en tu tarjeta nueva", changeMessage: "%@" }],
       auxiliaryFields: [],
       backFields: [{ key: "como", label: "Puedes borrarla", value: "Esta tarjeta se ha pasado a la nueva que añadiste. No pierdes nada al borrarla." }],
     };

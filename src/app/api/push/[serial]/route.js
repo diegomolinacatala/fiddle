@@ -59,7 +59,7 @@ export async function POST(request, { params }) {
     // borra y el CRM no apunta nada.
     const r = await enviarPush([{
       token,
-      payload: avisoPush({ titulo: negocio.nombre, cuerpo: "Avisos activados. Te diremos cada sello y cada promo.", tipo: "bienvenida" }, negocio, cliente.serial),
+      payload: avisoPush({ titulo: negocio.nombre, cuerpo: "Avisos activados. Te diremos cada punto y cada promo.", tipo: "bienvenida" }, negocio, cliente.serial),
     }]);
     if (r.caducados.length) {
       await borrarDispositivos([dispositivo]);

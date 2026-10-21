@@ -16,11 +16,12 @@
 import { ACCIONES } from "./acciones";
 import { cartillasDe } from "./cartillas";
 import { singular } from "./acciones";
+import { SEGUNDOS_SIN_TOCAR } from "./sinTocar";
 
 export const OPCIONES_CAJA = {
   sumarDos: {
     label: "Botón «+2»",
-    descripcion: "Para quien se lleva dos de golpe: suma dos sellos con un toque.",
+    descripcion: "Para quien se lleva dos de golpe: suma dos puntos con un toque.",
     def: false,
   },
   guardarPremios: {
@@ -33,9 +34,15 @@ export const OPCIONES_CAJA = {
     descripcion: "Tras sumar, a los 3 segundos vuelve a la cámara para el siguiente (se puede cancelar).",
     def: false,
   },
+  // Para el móvil fijo del mostrador (lib/sinTocar.js).
+  volverSinTocar: {
+    label: "Volver al escáner si nadie la toca",
+    descripcion: `A los ${SEGUNDOS_SIN_TOCAR} segundos sin tocar la ficha, vuelve sola a la cámara. Para un móvil fijo en el mostrador: así nadie suma al cliente anterior.`,
+    def: false,
+  },
   historial: {
     label: "Ver su actividad reciente",
-    descripcion: "Los últimos sellos y canjes de ese cliente, debajo de los botones.",
+    descripcion: "Los últimos puntos y canjes de ese cliente, debajo de los botones.",
     def: true,
   },
   nombre: {
@@ -68,7 +75,7 @@ export function filasDeCaja(negocio) {
   const filas = [];
   if (negocio.tipo !== "descuento" && puede(negocio, "sellar")) {
     for (const c of cartillasDe({}, negocio)) {
-      const palabra = negocio.cartillas ? singular(c.nombre) : "sello";
+      const palabra = negocio.cartillas ? singular(c.nombre) : "punto";
       filas.push({
         tipo: "cartilla",
         key: claveDe("sellar", c.indice),

@@ -30,15 +30,17 @@ const enc = new TextEncoder();
 
 export const COOKIE = "sesion";
 export const ROLES = ["caja", "manager", "admin"];
-// La caja vive en un móvil de la tienda: sesión larga. La del manager también, y se
-// RENUEVA sola mientras la use (DESLIZANTES): con 12 h sin renovar, el dueño tecleaba
-// cada mañana una contraseña generada que no podía cambiar, y así se pierden. La del
-// admin sigue corta: entra con una variable de Vercel y no tiene otro corte.
+// La caja vive en un móvil de la tienda: sesión larga. La del manager también. Las
+// dos se RENUEVAN solas mientras se usan (DESLIZANTES): con 12 h sin renovar, el
+// dueño tecleaba cada mañana una contraseña generada que no podía cambiar, y así se
+// pierden; y la caja de un móvil fijo en el mostrador (La Delicantería) pedía la
+// contraseña cada 30 días a quien estuviera atendiendo. La del admin sigue corta:
+// entra con una variable de Vercel y no tiene otro corte.
 export const TTL_SEGUNDOS = { caja: 60 * 60 * 24 * 30, manager: 60 * 60 * 24 * 30, admin: 60 * 60 * 12 };
 // Qué sesiones se vuelven a firmar al usarlas cuando les queda menos de la mitad, y
 // cuánto puede vivir una desde que se entró aunque se use a diario: pasado eso, al
 // login otra vez (una cookie robada que se usara cada día no viviría para siempre).
-const DESLIZANTES = ["manager"];
+const DESLIZANTES = ["manager", "caja"];
 export const MAX_SESION_MS = 90 * 24 * 60 * 60 * 1000;
 
 // ADMIN DE LA PLATAFORMA: no es de ningún negocio, es de todos. Entra en /admin,

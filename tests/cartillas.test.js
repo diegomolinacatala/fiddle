@@ -32,7 +32,7 @@ describe("dos cartillas en un pase", () => {
     const nube = componerNegocio("nube", null);
     expect(nube.cartillas).toBeNull();
     expect(cartillasDe({ sellos: 3 }, nube)).toMatchObject([{ clave: "sellos", sellos: 3, meta: 8, faltan: 5 }]);
-    expect(describirBanda({ sellos: 3 }, nube)).toBe("3 de 8 sellos");
+    expect(describirBanda({ sellos: 3 }, nube)).toBe("3 de 8 puntos");
   });
 
   it("cada cartilla cuenta en su columna", () => {
@@ -44,7 +44,7 @@ describe("dos cartillas en un pase", () => {
   });
 
   it("sellar2 y canjear2 tocan solo la segunda cartilla", () => {
-    expect(ACCIONES.sellar2.aplicar(cliente(2, 7), deli)).toMatchObject({ cliente: { sellos: 2, sellos2: 8 }, mensaje: "Sello añadido · Cafés 8/8" });
+    expect(ACCIONES.sellar2.aplicar(cliente(2, 7), deli)).toMatchObject({ cliente: { sellos: 2, sellos2: 8 }, mensaje: "Punto añadido · Cafés 8/8" });
     expect(ACCIONES.sellar2.aplicar(cliente(2, 8), deli).ok).toBe(false);
     expect(ACCIONES.canjear2.aplicar(cliente(2, 7), deli).ok).toBe(false);
     expect(ACCIONES.canjear2.aplicar(cliente(2, 8, 1), deli)).toMatchObject({ cliente: { sellos: 2, sellos2: 0, premios: 2 }, mensaje: "Premio entregado: café gratis" });
@@ -67,7 +67,7 @@ describe("dos cartillas en un pase", () => {
     ]);
     // El premio no es un botón: tiene su recuadro (premiosDe), solo cuando hay algo que dar.
     const nube = componerNegocio("nube", null);
-    expect(accionesDe(nube).map((a) => a.label)).toEqual(["Añadir sello", "Quitar sello"]);
+    expect(accionesDe(nube).map((a) => a.label)).toEqual(["Añadir punto", "Quitar punto"]);
     expect([singular("Cookies"), singular("Cafés"), singular("Panes"), singular("Té")]).toEqual(["cookie", "café", "pan", "té"]);
   });
 
@@ -87,8 +87,9 @@ describe("dos cartillas en un pase", () => {
     expect(avisoDeCambio(cliente(2, 4), cliente(2, 3), deli)).toBeNull(); // una corrección no suena
   });
 
-  it("Google cuenta las dos", () => {
-    expect(puntosDe(cliente(3, 5), deli)).toEqual({ label: "Cookies · Cafés", balance: "3/8 · 5/8" });
+  it("Google cuenta las dos, un hueco por cartilla", () => {
+    expect(puntosDe(cliente(3, 5), deli)).toEqual([{ label: "Cookies", balance: "3/8" }, { label: "Cafés", balance: "5/8" }]);
+    expect(puntosDe({ sellos: 3 }, componerNegocio("nube", null))).toEqual([{ label: "Puntos", balance: "3/8" }]);
   });
 
   it("la banda tiene dos filas con su dibujo, y su URL lleva las dos cuentas", () => {

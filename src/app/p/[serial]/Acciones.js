@@ -37,7 +37,7 @@ export default function Acciones({ serial, negocio, plataforma, appleUrl, google
 
       {conAvisos && (
         <Fila icono={avisos.estado === "bloqueado" ? "campanaNo" : "campana"} accent={accent}
-          titulo={esCupon ? `Avisos de ${negocio.nombre}` : "Avisos de tus sellos"}
+          titulo={esCupon ? `Avisos de ${negocio.nombre}` : "Avisos de tus puntos"}
           texto={textoAvisos(avisos.estado, esCupon)}
           error={avisos.error}
         >
@@ -60,11 +60,11 @@ export default function Acciones({ serial, negocio, plataforma, appleUrl, google
 }
 
 function textoAvisos(estado, esCupon) {
-  if (estado === "encendido") return `Activados en este móvil. Te llegará ${esCupon ? "cada promo" : "cada sello y cada promo"}.`;
+  if (estado === "encendido") return `Activados en este móvil. Te llegará ${esCupon ? "cada promo" : "cada punto y cada promo"}.`;
   if (estado === "bloqueado") return "Están bloqueados. Actívalos en los ajustes del navegador, en Notificaciones.";
   return esCupon
     ? "Te avisamos cuando la tienda tenga una promo."
-    : "Te avisamos al sumar un sello y cuando la tienda tenga una promo.";
+    : "Te avisamos al sumar un punto y cuando la tienda tenga una promo.";
 }
 
 function Fila({ icono, accent, titulo, texto, error, children }) {

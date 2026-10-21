@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listNegocios, listClientes, listEventosDeNegocio, serialesRegistrados } from "@/lib/store";
-import { perfilDe, metricas } from "@/lib/crm";
+import { perfilesDe, metricas } from "@/lib/crm";
 import { errorInterno, exigirAdmin } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -26,9 +26,7 @@ export async function GET(request) {
         listEventosDeNegocio(n.slug, VENTANA),
         serialesRegistrados(n.slug),
       ]);
-      const perfiles = clientes.map((c) =>
-        perfilDe({ ...c, instalado: c.instalado || (registrados.has(c.serial) ? c.creado : null) }, n),
-      );
+      const { perfiles } = perfilesDe(clientes.map((c) => ({ ...c, instalado: c.instalado || (registrados.has(c.serial) ? c.creado : null) })), n);
       return {
         slug: n.slug,
         nombre: n.nombre,

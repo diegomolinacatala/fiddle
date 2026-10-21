@@ -1,102 +1,136 @@
 "use client";
 
+import { useState } from "react";
 import Icono from "@/app/Icono";
 import { C, panel, legible, tinte } from "@/app/ui";
-import { textoFalta } from "@/lib/observaciones";
 
 // ============================================================================
-// PIEZAS DEL PANEL — los trozos que se repiten en el CRM
+// PIEZAS DEL PANEL — los trozos que se repiten en el CRM (y en Plantilla)
 // ----------------------------------------------------------------------------
-// Gráficos dibujados a mano con SVG, sin librerías: son cuatro barras y una
-// rejilla, y una dependencia de 200 KB para esto no se paga sola.
+// Gráficos dibujados a mano, sin librerías: son unas barras y una rejilla, y
+// una dependencia de 200 KB para esto no se paga sola. Los del Resumen están en
+// graficas.js; aquí, lo que usan también Actividad y Plantilla.
 //
-// Todo lo que se pinta aquí sale de lib/crm.js. Ninguna pieza hace cuentas por
-// su cuenta: si una cifra sale mal, el sitio donde arreglarla es siempre el
-// mismo, y la pantalla y la API nunca pueden discrepar.
+// Todo lo que se pinta sale de lib/crm.js. Ninguna pieza hace cuentas por su
+// cuenta: si una cifra sale mal, el sitio donde arreglarla es siempre el mismo,
+// y la pantalla y la API nunca pueden discrepar.
+//
+// NADA SOLO AL PASAR EL RATÓN. El dueño mira esto en el móvil, donde no hay
+// ratón: lo que antes iba en un `title` (qué es este 45 %, cuántas visitas tiene
+// esta barra) va escrito, o sale en la línea de lectura al tocar (`Lectura`).
 // ============================================================================
+
+/** Números como se escriben aquí: «1.234», «4,5». */
+export const numero = (x, decimales = 1) => (x ?? 0).toLocaleString("es-ES", { maximumFractionDigits: decimales });
+
+/** «1 visita», «3 visitas». */
+export const contar = (n, [uno, varios], decimales = 0) => `${numero(n, decimales)} ${n === 1 ? uno : varios}`;
 
 /**
- * Cifra grande con su etiqueta y, si lo hay, el cambio contra el mes anterior
- * (`cambio()` de lib/crm.js): en % con base suficiente, en unidades si no.
+ * Cifra grande con su etiqueta y, si lo hay, el cambio contra el periodo
+ * anterior (`cambio()` de lib/crm.js): en % con base suficiente, en unidades si
+ * no. `pie` puede ser una línea o varias.
  */
 export function Cifra({ label, valor, pie, cambio, accent, titulo }) {
+  const lineas = [pie].flat().filter(Boolean);
   return (
     <div title={titulo} style={{ ...panel, padding: "14px 16px", minWidth: 0 }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: C.tenue, textTransform: "uppercase", letterSpacing: 0.8 }}>
         {label}
       </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-        <span style={{ fontSize: 26, fontWeight: 650, color: accent ? legible(accent) : C.texto, lineHeight: 1 }}>{valor}</span>
+      <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 8px", marginTop: 6 }}>
+        <span style={{ fontSize: 28, fontWeight: 650, color: accent ? legible(accent) : C.texto, lineHeight: 1, letterSpacing: "-0.01em" }}>{valor}</span>
         {cambio && <Cambio {...cambio} />}
       </div>
-      {pie && <div style={{ fontSize: 12, color: C.suave, marginTop: 5 }}>{pie}</div>}
+      {lineas.map((l, i) => (
+        <div key={i} style={{ fontSize: 12.5, color: i ? C.tenue : C.suave, marginTop: i ? 2 : 6, lineHeight: 1.35 }}>{l}</div>
+      ))}
     </div>
   );
 }
 
+/** La flechita: ▲ verde si sube, ▼ roja si baja, con el número (nunca solo el color). */
 function Cambio({ pct, unidades }) {
   const n = pct ?? unidades;
-  if (!n) return <span style={{ fontSize: 12, fontWeight: 600, color: C.tenue }}>igual</span>;
+  if (!n) return <span style={{ fontSize: 12.5, fontWeight: 600, color: C.tenue }}>igual</span>;
   const sube = n > 0;
   return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: sube ? C.ok : C.mal }}>
+    <span style={{ fontSize: 12.5, fontWeight: 650, color: sube ? C.ok : C.mal, whiteSpace: "nowrap" }}>
       {pct !== undefined ? `${sube ? "▲" : "▼"} ${Math.abs(n)}%` : `${sube ? "+" : "−"}${Math.abs(n)}`}
     </span>
   );
 }
 
 /**
- * Visitas por día. Barras simples; el eje no lleva números porque la altura ya
- * se compara sola y lo que importa es la forma: si sube, si cae, si hay un día
- * muerto. El detalle exacto va en el `title` de cada barra. Un día que la
- * tienda cerró (`cerrado`, del horario) lleva una raya gris en la base: un cero
- * de un domingo cerrado no es un domingo malo.
+ * Un bloque del Resumen: la pregunta pequeña, la respuesta grande (el titular,
+ * una frase con su cifra) y debajo la gráfica que lo demuestra. Así la gráfica
+ * no necesita explicación: ya se ha dicho qué hay que ver en ella.
  */
-export function Barras({ serie, accent, alto = 110 }) {
-  const max = Math.max(1, ...serie.map((d) => d.n));
-  const ancho = 100 / Math.max(serie.length, 1);
-  const dia = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-  const hayCerrados = serie.some((d) => d.cerrado && !d.n);
-
+export function Tarjeta({ id, pregunta, titular, detalle, children, pie }) {
   return (
-    <div>
-      <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: alto, display: "block" }}>
-        {serie.map((d, i) => (d.cerrado && !d.n ? (
-          <rect key={d.dia} x={i * ancho + ancho * 0.15} y={38.6} width={ancho * 0.7} height={1.4} style={{ fill: C.bordeFuerte }}>
-            <title>{`${dia(d.dia)}: cerrado`}</title>
-          </rect>
-        ) : (
-          <rect
-            key={d.dia}
-            x={i * ancho + ancho * 0.15}
-            y={40 - (d.n / max) * 38}
-            width={ancho * 0.7}
-            height={Math.max(d.n ? 0.8 : 0, (d.n / max) * 38)}
-            fill={accent}
-            opacity={d.n ? 0.85 : 0}
-            rx={0.4}
-          >
-            <title>{`${dia(d.dia)}: ${d.n} visita${d.n === 1 ? "" : "s"}`}</title>
-          </rect>
-        )))}
-      </svg>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.tenue, marginTop: 4 }}>
-        <span>{serie.length ? dia(serie[0].dia) : ""}</span>
-        <span>máx. {max}/día</span>
-        <span>{serie.length ? dia(serie.at(-1).dia) : ""}</span>
-      </div>
-      {hayCerrados && <Leyenda colores={[[C.bordeFuerte, "Cerrado"]]} />}
-    </div>
+    <section aria-labelledby={id} style={{ ...panel, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <h2 id={id} style={{ fontSize: 13, fontWeight: 600, color: C.suave, margin: 0 }}>{pregunta}</h2>
+      {titular && <p style={{ fontSize: 17, fontWeight: 650, lineHeight: 1.35, margin: "6px 0 0", letterSpacing: "-0.005em" }}>{titular}</p>}
+      {detalle && <p style={{ fontSize: 13.5, color: C.suave, lineHeight: 1.45, margin: "4px 0 0" }}>{detalle}</p>}
+      <div style={{ marginTop: 16, flex: 1 }}>{children}</div>
+      {pie}
+    </section>
   );
 }
 
-/** Cuadraditos de color con su nombre, debajo de un gráfico. */
-function Leyenda({ colores }) {
+/**
+ * La línea de encima de una gráfica que dice el dato que se toca o se señala
+ * (con el ratón, el dedo o las flechas del teclado). Sin nada señalado dice el
+ * de partida: nunca está vacía, y no salta de alto al cambiar.
+ */
+export function Lectura({ children }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", marginTop: 8, fontSize: 12, color: C.suave }}>
+    <p aria-live="polite" style={{ fontSize: 13, color: C.suave, margin: "0 0 10px", minHeight: "1.4em", lineHeight: 1.4, fontVariantNumeric: "tabular-nums" }}>
+      {children}
+    </p>
+  );
+}
+
+/**
+ * Qué dato de una gráfica se está señalando. Con el puntero (ratón o dedo) se
+ * elige por la posición en horizontal, sin tener que acertar en una barra de
+ * 6 px; con el teclado, las flechas. Al salir el ratón vuelve al de partida.
+ * `aIndice(x)` pasa de 0..1 (la fracción del ancho) al índice.
+ */
+export function usePuntero(cuantos, aIndice = (x) => Math.floor(x * cuantos)) {
+  const [i, setI] = useState(null);
+  const desde = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    if (!r.width) return;
+    setI(Math.max(0, Math.min(cuantos - 1, aIndice((e.clientX - r.left) / r.width))));
+  };
+  return {
+    i,
+    props: {
+      tabIndex: 0,
+      className: "grafica", // con Tab se ve el anillo de siempre (el :focus-visible del layout)
+      onPointerMove: desde,
+      onPointerDown: desde,
+      onPointerLeave: (e) => { if (e.pointerType === "mouse") setI(null); },
+      onBlur: () => setI(null),
+      onKeyDown: (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const paso = e.key === "ArrowLeft" ? -1 : 1;
+        setI((x) => Math.max(0, Math.min(cuantos - 1, (x ?? (paso > 0 ? -1 : cuantos)) + paso)));
+      },
+      style: { touchAction: "pan-y" },
+    },
+  };
+}
+
+/** Cuadraditos (o rayas) de color con su nombre, debajo de un gráfico. */
+export function Leyenda({ colores }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", marginTop: 10, fontSize: 12.5, color: C.suave }}>
       {colores.map(([color, texto]) => (
         <span key={texto} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 9, height: 9, borderRadius: 3, background: color, display: "inline-block" }} />
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: color, display: "inline-block", flexShrink: 0 }} />
           {texto}
         </span>
       ))}
@@ -104,299 +138,113 @@ function Leyenda({ colores }) {
   );
 }
 
-/**
- * El camino de la tarjeta (`embudo()` de lib/crm.js): una barra por escalón,
- * medida contra el primero, y qué parte del escalón de arriba llega. El nombre
- * va encima de la barra, no al lado: en el móvil, al lado, la barra no medía nada.
- */
-export function Embudo({ pasos, accent }) {
-  const primero = pasos[0]?.n || 0;
-  if (!primero) return <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Todavía no se ha sacado ninguna tarjeta.</p>;
-  return (
-    <div style={{ display: "grid", gap: 10 }}>
-      {pasos.map((p, i) => (
-        <div key={p.key} title={i ? `${p.n} de los ${pasos[i - 1].n} del paso anterior (${p.paso}%)` : `${p.n} tarjetas en total`}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, fontSize: 13 }}>
-            <span style={{ color: C.suave }}>{p.label}</span>
-            <span style={{ whiteSpace: "nowrap" }}>
-              <strong style={{ fontWeight: 650 }}>{p.n}</strong>
-              {p.paso !== null && <span style={{ color: C.tenue, fontSize: 12 }}> {p.paso}%</span>}
-            </span>
-          </div>
-          <div style={{ height: 10, background: C.borde, borderRadius: 4, overflow: "hidden", marginTop: 4 }}>
-            <div style={{ width: `${(p.n / primero) * 100}%`, minWidth: p.n ? 3 : 0, height: "100%", background: accent, opacity: 0.85 }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * Dónde se queda una cartilla (`repartoCartillas()` de lib/crm.js): una columna
- * por número de sellos; abajo, en naranja, los que se están alejando; encima, en
- * verde, los que siguen viniendo (los colores del reparto por estado).
- */
-export function Cartilla({ c, conNombre }) {
-  const max = Math.max(1, ...c.filas.map((f) => f.siguen + f.alejan));
-  const hay = c.filas.some((f) => f.siguen + f.alejan);
-  // Como mucho unas ocho etiquetas, y ninguna pegada a «llena».
-  const salto = Math.ceil(c.meta / 8);
-  const etiqueta = (s) => (s === c.meta ? "llena" : salto > 1 && (s % salto || s > c.meta - salto) ? "" : s);
-  return (
-    <div style={{ minWidth: 0 }}>
-      {conNombre && <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{c.nombre}</div>}
-      {!hay ? (
-        <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Aún nadie tiene sellos en esta cartilla.</p>
-      ) : (
-        <>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 100 }}>
-            {c.filas.map((f) => (
-              <div key={f.sellos}
-                title={`${f.sellos === c.meta ? "Llena" : `${f.sellos} sello${f.sellos === 1 ? "" : "s"}`}: ${f.siguen} siguen viniendo, ${f.alejan} se están alejando`}
-                style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-                <div style={{ height: `${(f.siguen / max) * 100}%`, background: C.ok, borderRadius: f.alejan ? "3px 3px 0 0" : 3 }} />
-                <div style={{ height: `${(f.alejan / max) * 100}%`, background: C.ojo, borderRadius: f.siguen ? "0 0 3px 3px" : 3 }} />
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 3, marginTop: 4, fontSize: 11, color: C.tenue }}>
-            {c.filas.map((f) => (
-              <span key={f.sellos} style={{ flex: 1, minWidth: 0, textAlign: "center", whiteSpace: "nowrap" }}>
-                {etiqueta(f.sellos)}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-      {c.alejanMediana !== null && (
-        <p style={{ fontSize: 13, margin: "10px 0 0" }}>
-          La mitad de los que se están alejando se quedó en {c.alejanMediana} sello{c.alejanMediana === 1 ? "" : "s"} o menos, de {c.meta}.
-        </p>
-      )}
-      {c.enCero > 0 && (
-        <p style={{ fontSize: 12, color: C.tenue, margin: "6px 0 0" }}>
-          Aparte, {c.enCero} con la cartilla a cero: empiezan o acaban de canjear.
-        </p>
-      )}
-    </div>
-  );
-}
-
-export const LeyendaCartilla = () => <Leyenda colores={[[C.ok, "Siguen viniendo"], [C.ojo, "Se están alejando"]]} />;
-
-/** En vez de un gráfico que aún no dice nada: qué le falta. */
-export function AunNo({ children }) {
-  return (
-    <div>
-      <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>Aún no hay datos suficientes</p>
-      <p style={{ fontSize: 13, color: C.suave, margin: 0 }}>{children}</p>
-    </div>
-  );
-}
-
-/**
- * De dónde salen los activos de hoy (`puenteActivos()` de lib/crm.js): los dos
- * totales desde cero, en el color de la tienda, y entre medias cada cambio
- * flotando donde lo deja el anterior: en verde lo que suma, en naranja lo que
- * resta (los colores de la cartilla). En horizontal y con el nombre encima, como
- * el camino de la tarjeta: cinco columnas con su nombre debajo no caben en un móvil.
- */
-export function Puente({ p, accent }) {
-  const max = Math.max(1, ...p.pasos.map((x) => x.hasta));
-  const color = (x) => (x.signo > 0 ? C.ok : x.signo < 0 ? C.ojo : accent);
-  return (
-    <div style={{ display: "grid", gap: 10 }}>
-      {p.pasos.map((x) => (
-        <div key={x.key} title={x.descripcion}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, fontSize: 13 }}>
-            <span style={{ color: x.signo ? C.suave : C.texto, fontWeight: x.signo ? 400 : 600 }}>{x.label}</span>
-            <strong style={{ fontWeight: 650, whiteSpace: "nowrap" }}>{x.signo > 0 ? "+" : x.signo < 0 ? "−" : ""}{x.n}</strong>
-          </div>
-          <div style={{ position: "relative", height: 10, background: C.panelSuave, borderRadius: 4, marginTop: 4 }}>
-            <div style={{
-              position: "absolute", top: 0, bottom: 0, borderRadius: 4,
-              left: `${(x.desde / max) * 100}%`, width: `${((x.hasta - x.desde) / max) * 100}%`, minWidth: x.n ? 3 : 0,
-              background: color(x), opacity: x.signo ? 1 : 0.85,
-            }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// El brillo de un #rrggbb (0 a 255), con los pesos de tintaClara (app/ui.js).
-const brillo = (hex) => {
-  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(String(hex).slice(i, i + 2), 16));
-  return [r, g, b].some(Number.isNaN) ? 80 : 0.299 * r + 0.587 * g + 0.114 * b;
-};
-
-/**
- * Cohortes a la misma edad (`cohortes()` de lib/crm.js): una fila por semana (o
- * mes) de alta y una columna por semana desde el alta, con la cifra dentro y el
- * color de la tienda más intenso cuanto más vinieron. Lo que aún no ha vivido
- * toda la fila va vacío: la escalera de la derecha es el tiempo, no clientes
- * que se fueron.
- *
- * La cifra va en blanco solo cuando el fondo es oscuro de día; de noche el fondo
- * siempre lo es y el texto de la app ya es claro.
- */
-export function Triangulo({ co, accent }) {
-  const fuerza = (pct) => 8 + 0.92 * pct; // % del color: un 0 se ve, pero apenas
-  const oscuro = (pct) => (fuerza(pct) / 100) * brillo(accent) + (1 - fuerza(pct) / 100) * 255 < 120;
-  const esteAno = new Date().getFullYear();
-  const nombre = (iso) => {
-    const d = new Date(`${iso}T12:00:00`);
-    if (co.unidad === "semana") return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-    return d.toLocaleDateString("es-ES", d.getFullYear() === esteAno ? { month: "long" } : { month: "short", year: "numeric" });
-  };
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "separate", borderSpacing: 3, fontSize: 12 }}>
-        <thead>
-          <tr>
-            <th style={cabecera} />
-            <th colSpan={co.semanas} style={{ ...cabecera, textAlign: "left", paddingLeft: 2 }}>Semana desde el alta</th>
-          </tr>
-          <tr>
-            <th style={cabecera} />
-            {Array.from({ length: co.semanas }, (_, i) => <th key={i} style={cabecera}>{i + 1}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {co.filas.map((f) => (
-            <tr key={f.desde}>
-              <td style={{ paddingRight: 8, whiteSpace: "nowrap", verticalAlign: "middle" }}>
-                <div style={{ fontWeight: 600, fontSize: 12.5, textTransform: co.unidad === "mes" ? "capitalize" : "none" }}>{nombre(f.desde)}</div>
-                <div style={{ fontSize: 11, color: C.tenue }}>{f.altas} alta{f.altas === 1 ? "" : "s"}</div>
-              </td>
-              {f.celdas.map((c, i) => (c ? (
-                <td key={i} title={`Semana ${i + 1}: vinieron ${c.n} de ${f.altas}`} style={{
-                  ...celda, background: tinte(accent, fuerza(c.pct)), color: oscuro(c.pct) ? "#fff" : C.texto,
-                }}>
-                  {c.pct}
-                </td>
-              ) : <td key={i} style={celda} />))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-const cabecera = { fontSize: 11, fontWeight: 600, color: C.tenue, textAlign: "center", padding: "0 0 2px", whiteSpace: "nowrap" };
-const celda = { minWidth: 34, height: 30, borderRadius: 5, textAlign: "center", verticalAlign: "middle", fontWeight: 600, fontVariantNumeric: "tabular-nums" };
-
 const DIAS = ["L", "M", "X", "J", "V", "S", "D"];
+const DIAS_PLURAL = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábados", "Domingos"];
+const franja = (h) => `de ${h} a ${h + 1}`;
 
 /**
- * Cuándo viene la gente: día de la semana × hora, en intensidad de color.
- * Solo se pintan las horas con actividad (un café no abre a las 4 de la mañana
- * y 24 columnas de nada solo aplastan las que importan).
+ * Cuándo viene la gente: día de la semana × hora, del color de la tienda más
+ * intenso cuanto más gente (un solo tono: más oscuro = más). Las horas son las
+ * que abre la tienda (`horas`, del horario) más cualquiera con algo; un día que
+ * cierra lo dice en su fila en vez de enseñar siete casillas vacías.
+ *
+ * Los valores pueden ser medias (el Resumen: lo de un día normal) o cuentas
+ * (Plantilla): `unidad` y `media` dicen cómo leerlos. Arriba, la lectura: la
+ * casilla que se toca o, si no, la más fuerte.
  */
-export function Rejilla({ rejilla, accent }) {
-  const max = Math.max(1, ...rejilla.flat());
-  const horas = Array.from({ length: 24 }, (_, h) => h).filter((h) => rejilla.some((fila) => fila[h] > 0));
-  if (!horas.length) return <p style={{ color: C.suave, fontSize: 13 }}>Todavía no hay visitas que situar en el reloj.</p>;
+export function Rejilla({ rejilla, accent, horas: abiertas = null, cerrados = [], abierta = null, unidad = ["visita", "visitas"], media = false }) {
+  const [sel, setSel] = useState(null);
+  const max = Math.max(0, ...rejilla.flat());
+  const conAlgo = Array.from({ length: 24 }, (_, h) => h).filter((h) => rejilla.some((fila) => fila[h] > 0));
+  if (!conAlgo.length) return <p style={{ color: C.suave, fontSize: 13, margin: 0 }}>Todavía no hay visitas que situar en el reloj.</p>;
 
-  const desde = Math.min(...horas);
-  const hasta = Math.max(...horas);
+  const desde = Math.min(...conAlgo, ...(abiertas ? [abiertas[0]] : []));
+  const hasta = Math.max(...conAlgo, ...(abiertas ? [abiertas[1] - 1] : []));
   const rango = Array.from({ length: hasta - desde + 1 }, (_, i) => desde + i);
 
+  let pico = [0, desde];
+  rejilla.forEach((fila, d) => rango.forEach((h) => { if (fila[h] > rejilla[pico[0]][pico[1]]) pico = [d, h]; }));
+  const valor = (n) => (media ? `${contar(n, unidad, 1)} de media` : contar(n, unidad));
+  const [d, h] = sel || pico;
+  const lectura = sel
+    ? `${DIAS_PLURAL[d]} ${franja(h)}: ${abierta && !abierta[d][h] && !(rejilla[d][h] > 0) ? "cerrado" : valor(rejilla[d][h])}`
+    : `La hora punta: ${DIAS_PLURAL[d].toLowerCase()} ${franja(h)}, ${valor(rejilla[d][h])}`;
+
+  // Cinco escalones del color de la tienda: se distinguen a simple vista y la
+  // leyenda los puede enseñar (un degradado continuo no se lee).
+  // Una hora abierta sin nadie lleva su casilla (perfilada: «no vino nadie»);
+  // una hora cerrada, nada.
+  const escalon = (n) => (n <= 0 ? 0 : Math.min(5, Math.ceil((n / (max || 1)) * 5)));
+  const color = legible(accent); // de noche, aclarado: si no, «más» se pierde en el fondo
+  const fondo = (n) => (n <= 0 ? C.panelSuave : tinte(color, [0, 18, 34, 52, 72, 92][escalon(n)]));
+  const cerrada = (dia, hora) => abierta && !abierta[dia][hora] && !(rejilla[dia][hora] > 0);
+  const mover = (dd, dh) => {
+    const [y, x] = sel || pico;
+    setSel([Math.max(0, Math.min(6, y + dd)), Math.max(desde, Math.min(hasta, x + dh))]);
+  };
+
+  const columnas = `22px repeat(${rango.length}, minmax(0, 1fr))`;
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ borderSpacing: 2, borderCollapse: "separate" }}>
-        <tbody>
-          {rejilla.map((fila, d) => (
-            <tr key={d}>
-              <td style={{ fontSize: 11, color: C.tenue, paddingRight: 4, fontWeight: 600 }}>{DIAS[d]}</td>
-              {rango.map((h) => (
-                <td
-                  key={h}
-                  title={`${DIAS[d]} ${String(h).padStart(2, "0")}:00 · ${fila[h]} visita${fila[h] === 1 ? "" : "s"}`}
+    <div>
+      <Lectura>{lectura}</Lectura>
+      <div
+        role="grid"
+        aria-label="Visitas por día de la semana y hora"
+        tabIndex={0}
+        className="grafica"
+        onKeyDown={(e) => {
+          const flechas = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
+          if (!flechas[e.key]) return;
+          e.preventDefault();
+          mover(...flechas[e.key]);
+        }}
+        onBlur={() => setSel(null)}
+        onPointerLeave={(e) => { if (e.pointerType === "mouse") setSel(null); }}
+        style={{ display: "grid", gridTemplateColumns: columnas, gap: 2, touchAction: "pan-y" }}
+      >
+        {rejilla.map((fila, dia) => (
+          <div key={dia} role="row" style={{ display: "contents" }}>
+            <span role="rowheader" aria-label={DIAS_PLURAL[dia]} style={etiquetaDia}>{DIAS[dia]}</span>
+            {cerrados.includes(dia) && !fila.some((n) => n > 0) ? (
+              <span style={{ gridColumn: `2 / span ${rango.length}`, fontSize: 11.5, color: C.tenue, alignSelf: "center", paddingLeft: 4 }}>cerrado</span>
+            ) : rango.map((hora) => {
+              const marcada = sel && sel[0] === dia && sel[1] === hora;
+              const fuera = cerrada(dia, hora);
+              return (
+                <span
+                  key={hora}
+                  role="gridcell"
+                  aria-label={`${DIAS_PLURAL[dia]} ${franja(hora)}: ${fuera ? "cerrado" : valor(fila[hora])}`}
+                  onPointerEnter={() => setSel(fuera ? null : [dia, hora])}
+                  onPointerDown={() => setSel(fuera ? null : [dia, hora])}
                   style={{
-                    width: 15, height: 15, borderRadius: 3,
-                    background: fila[h] ? accent : C.borde,
-                    opacity: fila[h] ? 0.25 + 0.75 * (fila[h] / max) : 0.5,
+                    height: 20, borderRadius: 4, boxSizing: "border-box",
+                    background: fuera ? "transparent" : fondo(fila[hora]),
+                    border: !fuera && !(fila[hora] > 0) ? `1px solid ${C.borde}` : "none",
+                    boxShadow: marcada ? `0 0 0 2px ${C.texto}` : "none",
                   }}
                 />
-              ))}
-            </tr>
-          ))}
-          <tr>
-            <td />
-            {rango.map((h) => (
-              <td key={h} style={{ fontSize: 9, color: C.tenue, textAlign: "center" }}>
-                {h % 3 === 0 ? h : ""}
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
+              );
+            })}
+          </div>
+        ))}
+        <span />
+        {rango.map((hora) => (
+          <span key={hora} style={{ fontSize: 10.5, color: C.tenue, textAlign: "center", fontVariantNumeric: "tabular-nums", marginTop: 2 }}>
+            {hora % 2 === 0 ? hora : ""}
+          </span>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: C.suave }}>
+        <span>Menos</span>
+        {[1, 2, 3, 4, 5].map((e) => <span key={e} style={{ width: 14, height: 10, borderRadius: 3, background: tinte(color, [0, 18, 34, 52, 72, 92][e]) }} />)}
+        <span>Más</span>
+      </div>
     </div>
   );
 }
 
-/**
- * En vez de la rejilla mientras no hay con qué (lib/observaciones.js, `suficiencia`):
- * la semana, con los días que ya se han visto llenos y los que faltan vacíos. Así
- * se ve que se va llenando, no un "vuelve más tarde".
- */
-export function FaltanDatos({ s, accent }) {
-  const estado = (x) => (!x.abre ? "cerrado" : x.listo ? "listo" : x.fechas ? "a medias" : "sin ver");
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {s.dias.map((x) => (
-          <span key={x.d} title={`${DIAS[x.d]}: ${estado(x)}`} style={{
-            width: 32, height: 32, borderRadius: 8, display: "inline-flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 650,
-            background: !x.abre ? "transparent" : x.listo || x.fechas ? accent : C.borde,
-            opacity: x.abre && !x.listo && x.fechas ? 0.4 : 1,
-            color: x.abre && (x.listo || x.fechas) ? "#fff" : C.tenue,
-            border: x.abre ? "none" : `1px dashed ${C.bordeFuerte}`,
-          }}>
-            {DIAS[x.d]}
-          </span>
-        ))}
-      </div>
-      <p style={{ fontSize: 14, fontWeight: 600, margin: "12px 0 4px" }}>Aún no hay datos suficientes</p>
-      <p style={{ fontSize: 13, color: C.suave, margin: 0 }}>
-        {textoFalta(s)} Con una semana suelta, un día raro parecería la costumbre de la tienda.
-      </p>
-    </div>
-  );
-}
-
-/** Reparto por estado, en una sola barra apilada. Al lado, la leyenda con cifras. */
-export function Reparto({ porEstado, estados, total }) {
-  if (!total) return null;
-  const trozos = estados.filter((e) => porEstado[e.key] > 0);
-  return (
-    <div>
-      <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden", background: C.borde }}>
-        {trozos.map((e) => (
-          <div
-            key={e.key}
-            title={`${e.label}: ${porEstado[e.key]}`}
-            style={{ width: `${(porEstado[e.key] / total) * 100}%`, background: e.color }}
-          />
-        ))}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 12 }}>
-        {estados.map((e) => (
-          <span key={e.key} title={e.descripcion} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-            <span style={{ width: 9, height: 9, borderRadius: 3, background: e.color, display: "inline-block" }} />
-            <span style={{ color: C.suave }}>{e.label}</span>
-            <strong style={{ fontWeight: 650 }}>{porEstado[e.key]}</strong>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+const etiquetaDia = { fontSize: 11, color: C.tenue, fontWeight: 650, alignSelf: "center" };
 
 /** Etiqueta de estado para las filas de la tabla. */
 export function Chip({ estado, estados }) {

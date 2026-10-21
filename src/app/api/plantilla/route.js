@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { saveNegocio } from "@/lib/store";
-import { nuevoEmpleado, cambiarEmpleado, plantillaPublica, empleadoPublico } from "@/lib/plantilla";
+import { nuevoEmpleado, cambiarEmpleado, plantillaPublica, empleadoPublico, conPlantilla } from "@/lib/plantilla";
 import { jsonError, errorInterno, exigirTienda } from "@/lib/http";
 import { auditar } from "@/lib/auditoria";
 
@@ -16,11 +16,16 @@ export const dynamic = "force-dynamic";
 //   PUT  ?b=<slug>  { id, nombre?, activo?, quitarPin? } -> renombrar, baja o vuelta,
 //        o quitarle el PIN (se le olvidó: elige otro en la caja) -> { plantilla, empleado }
 // Queda apuntado en la auditoría con el id de la persona, nunca con su nombre.
+// Con la plantilla apagada en la tienda (lo decide el admin, `plantillaActiva`),
+// 403: ni se ve ni se toca, como su pestaña. La lista se queda como estaba.
+
+const APAGADA = "La plantilla no está activada en esta tienda";
 
 export async function GET(request) {
   try {
     const { respuesta, negocio } = await exigirTienda(request, "manager");
     if (respuesta) return respuesta;
+    if (!conPlantilla(negocio)) return jsonError(APAGADA, 403);
     return NextResponse.json({ plantilla: plantillaPublica(negocio.plantilla) });
   } catch (e) {
     return errorInterno("plantilla GET", e);
@@ -31,6 +36,7 @@ export async function POST(request) {
   try {
     const { respuesta, slug, sesion, negocio } = await exigirTienda(request, "manager");
     if (respuesta) return respuesta;
+    if (!conPlantilla(negocio)) return jsonError(APAGADA, 403);
     const body = (await request.json().catch(() => null)) ?? {};
     const r = nuevoEmpleado(negocio.plantilla, body.nombre);
     if (r.error) return jsonError(r.error, 400);
@@ -48,6 +54,7 @@ export async function PUT(request) {
   try {
     const { respuesta, slug, sesion, negocio } = await exigirTienda(request, "manager");
     if (respuesta) return respuesta;
+    if (!conPlantilla(negocio)) return jsonError(APAGADA, 403);
     const body = (await request.json().catch(() => null)) ?? {};
     if (typeof body.id !== "string") return jsonError("Falta el id de la persona", 400);
     const cambios = {};

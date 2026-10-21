@@ -2,13 +2,14 @@ import PwaRegister from "@/app/pwa-register";
 import { negocioDePeticion, sesionDePeticion } from "./negocioDePeticion";
 import { puedeAcceder } from "@/lib/auth";
 import MarcoGestion from "./MarcoGestion";
+import { conPlantilla } from "@/lib/plantilla";
 
 const leerNegocio = (slug) => negocioDePeticion(slug).catch(() => null);
-import { rutaIcono } from "@/lib/rutasImagen";
+import { ICONOS_WEB, appleWebApp } from "@/lib/marcaFiddle";
 import { CAPTURAR_INSTALAR } from "@/app/temprano";
 
-// Cada negocio es su propia app instalable (manifest + icono propios). El icono
-// sale de su marca: una tienda nueva lo tiene sin que nadie dibuje nada.
+// Cada negocio es su propia app instalable (su manifest), pero guardada en el
+// móvil es fiddle: el violín y «fiddle» bajo el icono (lib/marcaFiddle.js).
 export async function generateMetadata({ params }) {
   const { negocio } = await params;
   const n = await leerNegocio(negocio);
@@ -16,8 +17,8 @@ export async function generateMetadata({ params }) {
   return {
     title: n.nombre,
     manifest: `/api/manifest?b=${negocio}`,
-    appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: n.nombre },
-    icons: { icon: rutaIcono(n, 192), apple: rutaIcono(n, 180) },
+    appleWebApp: appleWebApp("black-translucent"),
+    icons: ICONOS_WEB,
   };
 }
 
@@ -32,7 +33,7 @@ export default async function NegocioLayout({ children, params }) {
   const [n, sesion] = await Promise.all([leerNegocio(slug), sesionDePeticion().catch(() => null)]);
   // La cabecera del dueño, solo a quien puede entrar: al resto la página le manda al login.
   const cabecera = n && puedeAcceder(sesion, slug, "manager")
-    ? { nombre: n.nombre, tema: n.tema, avisosAvanzados: n.avisosAvanzados === true }
+    ? { nombre: n.nombre, tema: n.tema, avisosAvanzados: n.avisosAvanzados === true, plantillaActiva: conPlantilla(n) }
     : null;
   return (
     <>

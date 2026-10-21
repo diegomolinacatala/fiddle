@@ -66,7 +66,7 @@ export function seccionDe(clave) {
   if (k === "fondo") return "colores";
   if (k === "logo" || k === "cabecera") return "logo";
   if (k === "nombre") return "nombre";
-  if (k === "banda" || k === "puntos") return "sellos";
+  if (k === "banda" || k === "puntos" || k === "puntos2") return "sellos";
   if (k === "estado") return "estado";
   if (/^premio\d?$/.test(k) || k === "descuento" || k === "reverso.premios") return "premio";
   if (k === "como" || k === "reverso.como") return "reverso";
@@ -77,7 +77,7 @@ export function seccionDe(clave) {
 }
 
 const TITULO = {
-  colores: "Colores y plantilla", logo: "Logo", nombre: "Nombre de la tienda", sellos: "Los sellos",
+  colores: "Colores y plantilla", logo: "Logo", nombre: "Nombre de la tienda", sellos: "Los puntos",
   estado: "«Abierto ahora»", premio: "Premio", reverso: "«Cómo funciona»", contacto: "Teléfono, web e Instagram",
   promo: "Promo", contador: "Premios del cliente", fijo: "Lo pone la tarjeta",
 };
@@ -165,7 +165,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
       const t = p.tema;
       const marcaSellos = t.marca === "texto" ? "estrella" : t.marca;
       // La primera es la cartilla de siempre: su meta y su premio, los de ahora.
-      const primera = { ...(p.cartillasAparcadas?.[0] || { nombre: "Sellos", marca: marcaSellos, modo: t.modo, forma: t.forma }), meta: Math.min(p.meta, 20), premio: p.premio };
+      const primera = { ...(p.cartillasAparcadas?.[0] || { nombre: "Puntos", marca: marcaSellos, modo: t.modo, forma: t.forma }), meta: Math.min(p.meta, 20), premio: p.premio };
       const segunda = p.cartillasAparcadas?.[1] || SEGUNDA_NUEVA;
       return { ...p, cartillas: [primera, segunda] };
     });
@@ -331,7 +331,7 @@ function Abajo({ abrir, lado }) {
   return (
     <div className="ed-abajo">
       <button type="button" onClick={() => { lado.current = "izq"; abrir("apple.fondo"); }} style={chip}>Colores y plantilla</button>
-      <button type="button" onClick={() => { lado.current = "izq"; abrir("apple.banda"); }} style={chip}>Los sellos</button>
+      <button type="button" onClick={() => { lado.current = "izq"; abrir("apple.banda"); }} style={chip}>Los puntos</button>
       <button type="button" onClick={() => { lado.current = "izq"; abrir("apple.logo"); }} style={chip}>Logo</button>
       <p style={{ fontSize: 12, color: C.tenue, textAlign: "center", margin: "8px 0 0", flexBasis: "100%" }}>
         Al guardar, la tarjeta cambia en todos los teléfonos. En Android (Google Wallet) puede tardar unos minutos.
@@ -346,10 +346,10 @@ function Pista({ lado }) {
     return (
       <div className="ed-pista">
         <strong style={{ display: "block", marginBottom: 6 }}>Google Wallet, en Android</strong>
-        Lleva lo mismo que la de Apple (logo, nombre, sellos, premio, textos), pero Google decide cómo se coloca:
+        Lleva lo mismo que la de Apple (logo, nombre, puntos, premio, textos), pero Google decide cómo se coloca:
         <ul style={lista}>
           <li>El fondo es <strong>un solo color</strong>; el texto lo pone Google en blanco o negro. Lo eliges en «Colores».</li>
-          <li>La banda de sellos va <strong>abajo</strong>, siempre.</li>
+          <li>La banda de puntos va <strong>abajo</strong>, siempre.</li>
           <li>«Abierto hasta…» va en los detalles, debajo.</li>
         </ul>
       </div>
@@ -359,7 +359,7 @@ function Pista({ lado }) {
     <div className="ed-pista">
       <strong style={{ display: "block", marginBottom: 6 }}>¿Qué se puede cambiar?</strong>
       El logo (un dibujo o tu propia imagen), el nombre, los colores, una o dos cartillas y cómo cuenta cada
-      una, cuántos sellos hacen falta y el premio. Y en su información (la i), «Cómo funciona», el teléfono, la web y el
+      una, cuántos puntos hacen falta y el premio. Y en su información (la i), «Cómo funciona», el teléfono, la web y el
       Instagram. Toca el trozo que quieras{lado === "las dos" ? ", en Apple o en Google" : ""}.
     </div>
   );
@@ -397,14 +397,22 @@ function Seccion(props) {
 
   if (seccion === "premio") {
     if (d.cartillas) {
-      return d.cartillas.map((c, i) => (
-        <div key={i} style={{ marginTop: i ? 14 : 4 }}>
-          <label style={{ ...etiqueta, marginTop: 0 }}>Premio · {c.nombre}</label>
-          <input value={c.premio} maxLength={64} onChange={(e) => props.setCartilla(i, "premio", e.target.value)} style={campo} />
-          <label style={etiqueta}>Sellos para conseguirlo</label>
-          <Numero valor={c.meta} max={20} onChange={(v) => props.setCartilla(i, "meta", v)} />
-        </div>
-      ));
+      return (
+        <>
+          {d.cartillas.map((c, i) => (
+            <div key={i} style={{ marginTop: i ? 14 : 4 }}>
+              <label style={{ ...etiqueta, marginTop: 0 }}>Premio · {c.nombre}</label>
+              <input value={c.premio} maxLength={64} onChange={(e) => props.setCartilla(i, "premio", e.target.value)} style={campo} />
+              <label style={etiqueta}>Puntos para conseguirlo</label>
+              <Numero valor={c.meta} max={20} onChange={(v) => props.setCartilla(i, "meta", v)} />
+            </div>
+          ))}
+          <p style={ayuda}>
+            Debajo de la banda, cada cartilla dice cuánto le falta. Si el cliente se ha guardado premios de una, dice
+            cuántos tiene gratis («2 gratis»).
+          </p>
+        </>
+      );
     }
     return (
       <>
@@ -414,7 +422,7 @@ function Seccion(props) {
         <p style={ayuda}>En el iPhone va en la fila de debajo de la banda: si es largo, encoge y acaba en «…». Mira cómo queda.</p>
         {!esCupon && (
           <>
-            <label style={etiqueta}>Sellos para conseguirlo</label>
+            <label style={etiqueta}>Puntos para conseguirlo</label>
             <Numero valor={d.meta} max={50} onChange={(v) => set("meta", v)} />
           </>
         )}
@@ -504,7 +512,7 @@ function PanelColores({ d, setTema, plantilla, kit, slug, cliente }) {
         vacio="Aquí salen los diseños hechos con tu manual de marca, cuando lo tengas. Los colores de abajo los eliges libres."
         predeterminados={(
           <>
-            <p style={ayuda}>Plantillas para cualquier negocio. Cambian los colores y el dibujo; el nombre, los sellos, el premio y tu logo propio se quedan.</p>
+            <p style={ayuda}>Plantillas para cualquier negocio. Cambian los colores y el dibujo; el nombre, los puntos, el premio y tu logo propio se quedan.</p>
             <Opciones opciones={ESTILOS_GENERALES} valor={t.estilo} rotulos={ROTULO_PLANTILLA} vista={vistaPlantilla} onChange={plantilla} ancho={120} />
           </>
         )}
@@ -518,17 +526,17 @@ function PanelColores({ d, setTema, plantilla, kit, slug, cliente }) {
         <Color titulo="Color de la tienda"
           ayuda={aparte
             ? "Los botones de la caja y de tus pantallas. Y el fondo de Google, si no eliges otro."
-            : "Logo, sellos y etiquetas (en las dos), y los botones de la caja. Y el fondo de Google, si no eliges otro."}
+            : "Logo, puntos y etiquetas (en las dos), y los botones de la caja. Y el fondo de Google, si no eliges otro."}
           valor={t.accent} onChange={(v) => setTema("accent", v)} />
-        <label style={etiqueta}>Logo, sellos y etiquetas</label>
+        <label style={etiqueta}>Logo, puntos y etiquetas</label>
         <Segmentos
           valor={aparte ? "otro" : "tienda"}
           opciones={[["tienda", "El de la tienda"], ["otro", "Otro"]]}
           onChange={(v) => setTema("detalle", v === "otro" ? t.detalle || t.accent : null)}
         />
         {aparte && (
-          <Color titulo="Color del logo, los sellos y las etiquetas" valor={t.detalle} onChange={(v) => setTema("detalle", v)}
-            ayuda="Para cuando el fondo de la tarjeta es el color de la tienda: el logo y los sellos, en blanco." />
+          <Color titulo="Color del logo, los puntos y las etiquetas" valor={t.detalle} onChange={(v) => setTema("detalle", v)}
+            ayuda="Para cuando el fondo de la tarjeta es el color de la tienda: el logo y los puntos, en blanco." />
         )}
       </Bloque>
 
@@ -634,8 +642,8 @@ function PanelLogo({ clave, d, set, setTema, kit }) {
               <Subir onClick={() => entradaIcono.current?.click()} texto={subiendo === "icono" ? "Subiendo…" : "Icono propio"} />
             </div>
             <p style={ayuda}>
-              <strong>Imagen de logo:</strong> tu logo tal cual (cuadrado, de al menos {LOGO_MIN}×{LOGO_MIN}). Los sellos siguen siendo un dibujo.{" "}
-              <strong>Icono propio:</strong> un dibujo de un color (tu galleta, tu taza, tu mascota): vale de logo y dentro de los sellos,
+              <strong>Imagen de logo:</strong> tu logo tal cual (cuadrado, de al menos {LOGO_MIN}×{LOGO_MIN}). Los puntos siguen siendo un dibujo.{" "}
+              <strong>Icono propio:</strong> un dibujo de un color (tu galleta, tu taza, tu mascota): vale de logo y dentro de los puntos,
               y se pinta del color que elijas. Mejor un PNG con el fondo transparente o un dibujo oscuro sobre blanco.
             </p>
           </>
@@ -677,7 +685,7 @@ function PanelLogo({ clave, d, set, setTema, kit }) {
           <p style={ayuda}>Hasta cuatro. Sin tildes: se dibujan letra a letra.</p>
         </>
       )}
-      {!imagen && <Color titulo="Color del logo" ayuda="Cambia también las etiquetas y los sellos." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />}
+      {!imagen && <Color titulo="Color del logo" ayuda="Cambia también las etiquetas y los puntos." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />}
     </>
   );
 }
@@ -823,20 +831,20 @@ function PanelSellos(props) {
               <input value={c.nombre} maxLength={24} onChange={(e) => setCartilla(i, "nombre", e.target.value)} style={campo} />
             </div>
             <div style={{ flex: "0 0 auto" }}>
-              <label style={etiqueta}>Sellos</label>
+              <label style={etiqueta}>Puntos</label>
               <Numero valor={c.meta} max={20} onChange={(v) => setCartilla(i, "meta", v)} />
             </div>
           </div>
           <label style={etiqueta}>Premio</label>
           <input value={c.premio} maxLength={64} onChange={(e) => setCartilla(i, "premio", e.target.value)} style={campo} />
-          <label style={etiqueta}>Dibujo de sus sellos</label>
+          <label style={etiqueta}>Dibujo de sus puntos</label>
           <ElegirDibujo key={i} kit={kit} tema={tc} valor={c.marca} onChange={(m) => setCartilla(i, "marca", m)} ancho={64} sinTexto />
         </>
       )}
 
       {!dos && (
         <>
-          <label style={etiqueta}>Sellos para el premio</label>
+          <label style={etiqueta}>Puntos para el premio</label>
           <Numero valor={d.meta} max={50} onChange={(v) => set("meta", v)} />
         </>
       )}
@@ -853,7 +861,7 @@ function PanelSellos(props) {
       )}
       {modo === "casillas" && (
         <>
-          <label style={etiqueta}>Casilla del sello</label>
+          <label style={etiqueta}>Casilla de cada punto</label>
           <Opciones opciones={FORMAS} valor={dos ? c.forma || t.forma : t.forma} rotulos={ROTULO} vista={(f) => vistaForma(t, f)} onChange={ponForma} ancho={100} />
         </>
       )}
@@ -861,7 +869,7 @@ function PanelSellos(props) {
       <div style={{ marginTop: 16, paddingTop: 4, borderTop: `1px solid ${C.borde}` }}>
         <label style={etiqueta}>Fondo de la banda</label>
         <FondoBanda t={tc} setTema={setTema} />
-        <Color titulo="Color de los sellos" ayuda="Cambia también las etiquetas y el logo." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
+        <Color titulo="Color de los puntos" ayuda="Cambia también las etiquetas y el logo." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
         <InterruptorAbierto d={d} setTema={setTema} estado={props.estado} slug={slug} />
       </div>
     </>
@@ -958,7 +966,7 @@ function FondoBanda({ t, setTema }) {
               )}
             </div>
             <p style={ayuda}>
-              Una foto tuya (tu escaparate, tu producto) detrás de los sellos, con un velo del color de la tarjeta para que se lean.
+              Una foto tuya (tu escaparate, tu producto) detrás de los puntos, con un velo del color de la tarjeta para que se lean.
               Se recorta sola a lo ancho de la banda. Mejor apaisada y de al menos 1200 píxeles de ancho.
             </p>
           </>
@@ -991,11 +999,11 @@ function AvisoCartillas({ d, inicial, slug, aDos }) {
     const nombre = inicial.cartillas[1].nombre;
     return (
       <div style={{ ...cajaAviso, marginTop: 10 }}>
-        <strong>«{nombre}» no se borra.</strong> Los sellos de {nombre.toLowerCase()} de cada cliente se quedan guardados:
+        <strong>«{nombre}» no se borra.</strong> Los puntos de {nombre.toLowerCase()} de cada cliente se quedan guardados:
         no se ven en la tarjeta ni se pueden sumar, pero vuelven tal cual si pasas otra vez a dos.
         {cuenta && (cuenta.conSellos > 0 || cuenta.conGuardados > 0) && (
           <div style={{ marginTop: 6 }}>
-            Ahora mismo: {cuenta.conSellos} {cuenta.conSellos === 1 ? "cliente tiene" : "clientes tienen"} sellos de {nombre.toLowerCase()}
+            Ahora mismo: {cuenta.conSellos} {cuenta.conSellos === 1 ? "cliente tiene" : "clientes tienen"} puntos de {nombre.toLowerCase()}
             {cuenta.conGuardados > 0 && ` y ${cuenta.conGuardados} ${cuenta.conGuardados === 1 ? "tiene un premio guardado" : "tienen premios guardados"} que no podrán usar mientras tanto`}.
           </div>
         )}
@@ -1006,7 +1014,7 @@ function AvisoCartillas({ d, inicial, slug, aDos }) {
   if (aparcada) {
     return (
       <div style={{ ...cajaSuave, marginTop: 10, fontSize: 12.5 }}>
-        Tienes «{aparcada.nombre}» guardada, con los sellos de cada cliente.
+        Tienes «{aparcada.nombre}» guardada, con los puntos de cada cliente.
         <button type="button" onClick={aDos} style={{ ...chip, marginLeft: 8, minHeight: 30, padding: "3px 10px" }}>Recuperarla</button>
       </div>
     );
@@ -1028,7 +1036,7 @@ function InterruptorAbierto({ d, setTema, estado, slug }) {
               : !estado
                 ? "Sale cuando el reloj de los avisos está en marcha (lo dice la pestaña Avisos)."
                 : on
-                  ? `En Apple va dibujado arriba de la banda (los sellos bajan un poco para dejarle sitio). En Google, el primero de los detalles. Ahora diría: «${estado.texto}».`
+                  ? `En Apple va dibujado arriba de la banda (los puntos bajan un poco para dejarle sitio). En Google, el primero de los detalles. Ahora diría: «${estado.texto}».`
                   : "Apagado: la banda usa todo su alto y Google no lo lleva."}
           </span>
         </span>
@@ -1151,7 +1159,7 @@ function Legible({ fondo, texto, accent, onArreglar }) {
   return (
     <div style={{ ...ayuda, color: C.mal, background: C.malFondo, padding: "8px 10px", borderRadius: 8, marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
       <span style={{ flex: 1, minWidth: 140 }}>
-        {malTexto ? "El texto casi no se lee sobre este fondo." : "Las etiquetas y los sellos se pierden en el fondo: prueba otro color de la tienda."}
+        {malTexto ? "El texto casi no se lee sobre este fondo." : "Las etiquetas y los puntos se pierden en el fondo: prueba otro color de la tienda."}
       </span>
       {malTexto && (
         <button type="button" onClick={() => onArreglar(mejor)} style={{ ...chip, minHeight: 32, padding: "4px 12px" }}>

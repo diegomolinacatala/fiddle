@@ -3,7 +3,7 @@ import { getCliente, saveCliente, getNegocio, addEvento, registrarVisita, client
 import { TIPOS_VISITA } from "@/lib/crm";
 import { ACCIONES, accionPermitida } from "@/lib/acciones";
 import { notificarCliente } from "@/lib/wallet";
-import { hayQueElegir } from "@/lib/plantilla";
+import { hayQueElegir, plantillaDeCaja } from "@/lib/plantilla";
 import { quienDeRequest, ponerCookiesQuien } from "@/lib/quien";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 
@@ -37,10 +37,11 @@ export async function POST(request) {
     // Quién atiende desde este móvil (lib/quien.js): la cookie firmada con su PIN. Con
     // gente dada de alta, la caja tiene que haberse identificado (y no hace más de
     // HORAS_PIN); la pantalla lo pide con `elegir`. El dueño, con su cuenta, no: queda
-    // como actor "manager".
-    const quien = await quienDeRequest(request, negocio.slug, negocio.plantilla);
-    if (hayQueElegir(sesion, negocio.plantilla) && !quien) {
-      return NextResponse.json({ ok: false, elegir: true, mensaje: "Antes de sellar, di quién atiende en este móvil." }, { status: 428 });
+    // como actor "manager". Con la plantilla apagada en la tienda, nadie: sello sin nombre.
+    const plantilla = plantillaDeCaja(negocio);
+    const quien = await quienDeRequest(request, negocio.slug, plantilla);
+    if (hayQueElegir(sesion, plantilla) && !quien) {
+      return NextResponse.json({ ok: false, elegir: true, mensaje: "Antes de sumar, di quién atiende en este móvil." }, { status: 428 });
     }
     const empleado = sesion.rol === "caja" ? quien?.id ?? null : null;
 

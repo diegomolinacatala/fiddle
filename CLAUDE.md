@@ -49,6 +49,16 @@ comprobar siempre que de verdad desplegó.
 
 - **El código habla español.** Nombres, comentarios, textos de pantalla y
   mensajes de commit. Los comentarios explican *por qué*, no *qué*.
+- **En pantalla no se dice «sello»** (15-10-2026). fiddle son tarjetas de fidelización
+  y lo que suma la caja son **puntos**: «Añadir punto», «Le faltan 2 puntos», «Tu tarjeta
+  de fidelización». Vale para todo lo que lee una persona (caja, manager, tarjeta, avisos,
+  /home, /privacidad, exportaciones). El código y la base siguen con `sellos`, `sellos2` y
+  `sellar`: renombrarlos es migrar producción y nadie los ve. Lo guardado antes (eventos
+  «Sello 3/8», el «Cómo funciona» que escribió una tienda) se queda como estaba.
+- **Guardada en el móvil, la web es fiddle** (`lib/marcaFiddle.js`): la caja, el panel y
+  la tarjeta web se instalan con el violín y «fiddle» debajo, no con la tienda. Dentro,
+  cada pantalla sigue con los colores y el logo de la suya. Los PNG salen de
+  `scripts/gen-marca-web.mjs`.
 - **La vista previa sale de las funciones de verdad.** `PaseVista` usa
   `camposDelPase()`, `stripDelPase()` y `svgLogo()` — los mismos que arman el
   `.pkpass`. Nunca hacer una maqueta paralela: si se separan, mienten. Cómo coloca
@@ -64,7 +74,7 @@ comprobar siempre que de verdad desplegó.
   pantalla "por si acaso". El dueño tiene cuatro pestañas, una por pregunta: **Tienda**
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
   a la lista y baja lo que se ve), **Avisos** (enviar a todos o a un grupo, ahora o a una hora)
-  y **Plantilla** (quién atiende la caja y qué hace cada uno). Y aparte,
+  y **Plantilla** (quién atiende la caja y qué hace cada uno; solo si el admin la enciende). Y aparte,
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
@@ -206,8 +216,21 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   en las cuentas. Otro toque lo confirma al momento; al salir de la página o pasar a
   segundo plano se manda con `sendBeacon` (o `fetch keepalive`). Lo que se acepta a cambio:
   si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
-  «deshacer» en `/api/accion`: habría que borrar eventos.
-- **La ficha dice cuándo fue el último sello** («Último sello hace 12 min»,
+  «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
+  en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
+- **Sin tocarla, la ficha vuelve al escáner** (`volverSinTocar`, Editar vista de caja,
+  apagado de partida; lo pidió La Delicantería, con un móvil fijo en el mostrador): a los
+  `SEGUNDOS_SIN_TOCAR` (30, fijos) sin toques, scroll ni teclado va a `/<slug>/caja`, con
+  una barra arriba los últimos 5 s (`lib/sinTocar.js`, `VueltaSinTocar`). Antes de irse,
+  lo pendiente sale por la fila con `vaciar` y se espera la respuesta, nunca con
+  `sendBeacon` (desde el panel del ordenador no llega). Si alguien toca mientras, o algo
+  no se guardó, se queda.
+- **Debajo del escáner, «Hoy en la caja»** (`atendidosHoy` en `lib/actividad.js`,
+  `/api/clientes?hoy=1`): los que ha atendido el personal hoy (hora de la tienda), el
+  último arriba, con lo último que se les hizo. Para volver a abrir al que se acaba de ir.
+  Antes eran las últimas tarjetas CREADAS y no se entendía. Con el móvil fijo, esa lista
+  la ve cualquiera: solo código, nombre y lo de hoy, nada más de la ficha.
+- **La ficha dice cuándo fue el último sello** («Último punto hace 12 min»,
   `ultimoSelloTexto`), discreto, bajo las visitas: zanja el «no me has sellado» sin
   depender del historial (que la tienda puede apagar). Solo el cuándo (la cuenta la enseña
   la tarjeta) y sin nombre de quién lo dio: al navegador de la caja nunca va eso.
@@ -217,6 +240,17 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
 Ver [`src/lib/plantilla.js`](src/lib/plantilla.js). La cuenta de la caja sigue siendo UNA por
 tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 
+- **Apagada salvo que el admin la encienda** (`plantillaActiva`, interruptor en `/admin/<slug>`,
+  desde el 15-10-2026): es para tiendas donde cada empleado sella desde su móvil; con un móvil
+  fijo en el mostrador (La Delicantería) solo estorba. Apagada es apagada del todo: sin pestaña
+  (su ruta manda a Tienda), `/api/plantilla` da 403 y la caja, la ficha `/w/…` y `/api/accion`
+  trabajan como sin gente dada de alta: ni preguntan quién atiende ni piden PIN, y el sello
+  sale sin nombre aunque el móvil traiga la cookie de antes. Todo lo de quién atiende va con
+  `plantillaDeCaja(negocio)`, nunca con `negocio.plantilla` a pelo; la lista entera solo para
+  poner NOMBRE a lo que ya pasó (Actividad, la hoja). Apagarla no borra nada: la lista, los PIN
+  y el `empleado` de cada movimiento vuelven tal cual al encenderla. El manager no puede
+  encenderla (`patchNegocio` no la deja pasar). En la web de dev viene encendida (la fila de
+  `datosDePrueba.js`), para enseñar la plantilla inventada.
 - **La lista vive en `config.plantilla`** (`{id, nombre, alta, baja}`), la lleva el manager en
   la pestaña **Plantilla** → Equipo. Solo nombre o apodo: ni PIN ni turnos. **Dar de baja no
   borra nada** (sus movimientos siguen con su nombre); el id no cambia nunca. Tope de 30 de
@@ -258,6 +292,12 @@ Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"
 `guardados` / `guardados2` (una columna por cartilla, como `sellos` / `sellos2`).
 Todo lo que mueva el saldo pasa por `SALDO` en `store.js`, que es lo que compara el
 guardado optimista: una columna de saldo nueva va ahí.
+
+En la tarjeta, **lo guardado va con SU cartilla** (lo pidió La Delicantería, 15-10-2026): el
+`GUARDADOS` de la cabecera es la suma y no dice si es un café o una cookie. Con dos cartillas,
+el campo de cada una bajo la banda dice «2 gratis» en vez de «Faltan 3» (eso ya lo dicen sus
+casillas) y en Google cada cartilla tiene su hueco de puntos («Cookies 3/8 · 2 gratis»,
+`puntosDe`). Al guardar suena; mientras le quede uno guardado, sellar esa cartilla no suena.
 
 ## Android
 
@@ -363,41 +403,81 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   `riesgoMinDias` (7). Sin esto, diez sellos de prueba = "habitual que viene cada
   segundo y lleva horas sin venir".
 
+- **Quien aún no tiene costumbre se mide con la de la tienda** (`perfilesDe`, 16-10-2026).
+  Con menos de 3 visitas no hay ritmo propio, y un «nuevo» que vino una vez hace tres
+  semanas contaba en «Siguen viniendo» sus 30 días. Ahora se le pide el del cliente típico
+  (`ritmoDeTienda`: la mediana de las cadencias, solo con `ritmoTiendaMin` clientes con
+  ritmo) y pasa a «En riesgo» si lleva `retraso` veces eso sin venir (nunca antes de
+  `riesgoMinDias`). Con dos visitas, el más largo de su hueco y el de la tienda: un solo
+  hueco no es una costumbre. En un café, a la semana; en una barbería mensual, no. Sin
+  ritmo de tienda, como antes. **Todo lo que juzga a los clientes de una tienda (CRM,
+  ficha, avisos, campañas, admin) va por `perfilesDe`, nunca por `perfilDe` a secas**: si
+  no, un cliente saldría «En riesgo» en la lista y «Nuevo» para el aviso.
 - **Una visita se cuenta igual en todas partes.** La ficha lleva su contador
   (`registrarVisita`) y lo que sale del historial (Resumen: visitas de 30 días, la
-  rejilla horaria, lo que dicen los números) pasa por `soloVisitas`: siete cafés de golpe
-  son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
-- **«Activo» es UNO: `esActivo`** (a su ritmo o recién llegado). Lo usan la cifra de
-  Activos, las cohortes y la cartilla; antes la cifra dejaba fuera a los nuevos y la
-  tabla no, y en la misma pantalla salían 10 y 27. Ritmo y visitas por cliente van con
-  la MEDIANA: un habitual diario arrastra la media.
+  rejilla horaria, la curva de vuelta, lo que dicen los números) pasa por `soloVisitas`:
+  siete cafés de golpe son una visita. Una cuenta nueva de visitas sobre `eventos` va por ahí.
+- **«Siguen viniendo» es UNO: `esActivo`** (a su ritmo o recién llegado). Lo usan la cifra,
+  el puente y la cartilla. El estado `activo` se llama «A su ritmo», no «Activo»: con los
+  dos nombres iguales, arriba salían 41 activos y en el reparto 24. El ritmo del cliente
+  típico va con la MEDIANA: un habitual diario arrastra la media.
 - **Las flechas no mienten con poco** (`cambio`): sin un mes anterior ENTERO (dos meses
   de tienda y el historial cubriéndolos) no hay flecha; con menos de `tendenciaMin`
   detrás, la diferencia en unidades («+6»), nunca «+100 %» de 2 a 4.
+- **El Resumen se entiende sin que nadie lo explique** (15-10-2026, tras enseñárselo a Jesús
+  de La Delicantería: preguntaba qué era cada cosa). Cada bloque es una PREGUNTA pequeña, su
+  respuesta en una frase con la cifra (el titular) y la gráfica que lo demuestra (`Tarjeta`
+  en `crm/piezas.js`; las gráficas en `crm/graficas.js`). Nada solo al pasar el ratón: cada
+  porcentaje dice de qué es («62 % de los que la estrenaron») y las gráficas tienen una línea
+  de lectura que cambia al tocarlas o con las flechas (`usePuntero`). Lo que aún no tiene
+  datos no ocupa un panel vacío: va a «Lo que verás con más días», con cuándo saldrá.
+- **Las cifras del Resumen cuadran a la vista**: «Clientes» es el escalón «Se la quedaron»
+  del embudo y la suma de los estados; «Siguen viniendo» es el «Hoy» del puente; «Premios
+  por dar», el grupo «Premio pendiente» y el aviso «Tiene un premio sin recoger» miran lo
+  mismo (las dos cartillas y los guardados: `perfil.faltan` es el de la cartilla más cerca y
+  `completa`, cualquiera llena). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
+  no puede contar dos cosas («Volvieron» del embudo es la segunda visita; en el puente, los
+  que vuelven tras irse son «Recuperados»).
 - **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale
-  del anterior), «Vuelven en 14 días» (`vueltaPronto`, solo quien se dio de alta dentro
-  del historial que llega), los premios por dar (`porDar`: guardados y cartillas llenas,
-  de las dos) y dónde se queda la cartilla (`repartoCartillas`).
+  del anterior), cuánto tardan en volver (`curvaDeVuelta`), los premios por dar (`porDar`)
+  y cuántos puntos lleva cada uno (`repartoCartillas`). **Una sola medida de si vuelven**:
+  la curva, de Kaplan-Meier, porque contar «cuántos han vuelto» a secas hunde la cifra con
+  los que la estrenaron ayer (aún no han tenido tiempo). Cada cliente cuenta mientras se le
+  ha podido seguir; la curva se corta cuando quedan menos seguidos que `vueltaMinBase` o
+  que `vueltaSeguidos` de todos (en la cola, uno solo la llevaba al 100 %). Sustituye a
+  «Vuelven en 14 días» y a las cohortes, que daban otras dos cifras de lo mismo en la misma
+  pantalla (y su semana 1 salía al 100 % porque contaba el estreno).
 - **El pasado se reconstruye, no se guarda**: el puente de activos (`puenteActivos`: hace
-  30 días + nuevos + volvieron − se enfriaron = Activos de hoy) pasa a cada cliente por
-  `perfilDe` con su fila de entonces (visitas de hoy menos las posteriores, la última de
+  30 días + nuevos + recuperados − se alejaron = siguen viniendo hoy) pasa a cada cliente
+  por `perfilDe` con su fila de entonces (visitas de hoy menos las posteriores, la última de
   antes). Pide historial hasta 30 + `dormidoDias` atrás; si el tope de eventos no llega,
-  no sale. Las cohortes miden a todos a la MISMA edad (semana 1, 2, 3… desde el alta de
-  cada uno; una celda sale cuando la ha vivido toda la fila), nunca «cuántos siguen hoy»
-  por mes de alta: el mes viejo salía peor solo por ser viejo.
-- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día de la caja para
-  cuadrarlo con los tickets. Sale de `eventos` (hora y `actor`), con la hora de la TIENDA
-  (`horario.zona`). Si el historial del panel llegó al tope, el día más viejo está a
-  medias y no se enseña (`historialCompletoDesde`). Su hoja no lleva nombres.
+  no sale.
+- **El tiempo de la tienda manda en las gráficas**: con menos de 30 días de fiddle, la serie
+  de visitas empieza el primer día (`serieVisitas` con `desde`: antes salían dos semanas de
+  ceros) y las cifras dicen «desde el 1 oct», no «últimos 30 días»; hoy va aparte, a medias.
+  La rejilla horaria es la MEDIA de un día normal (`rejillaHoraria`: visitas ÷ veces que ese
+  día de la semana abrió, sin hoy, con la hora de la tienda): con la suma, el día que había
+  salido más veces en el calendario parecía el más fuerte.
+- **Actividad** (Clientes → Actividad, `lib/actividad.js`): un día, una semana, un mes o
+  unas fechas de la caja para cuadrarlos con los tickets (Día / Semana / Mes y «Otras
+  fechas»; el modo se recuerda en el navegador). Sale de `eventos` (hora y `actor`), con la
+  hora de la TIENDA (`horario.zona`). De un día, cada movimiento; de varios, una fila por
+  día que abre ese día (`actividadDelRango`). Las flechas comparan con el periodo anterior
+  y, si el de ahora no ha acabado, con sus mismos días hasta la misma hora
+  (`periodoAnterior`); sin flechas si la tienda no existía entonces (`comparable`). Si el
+  historial del panel llegó al tope, el día más viejo está a medias y no se enseña
+  (`historialCompletoDesde`). Su hoja no lleva nombres.
 
 - **Una tarjeta que nadie guardó ni usó no es un cliente** (`perfil.descartada`: sin visitas,
-  sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto, las tasas y las
-  cohortes la dejan fuera y la cuentan aparte (`descartadas`); en la lista solo sale si se
-  pide («Sin guardar ni usar») o se busca. Nunca se borra por esto.
+  sin instalar nunca, de hace más de `descartadaDias`). `metricas`, el reparto y las tasas la
+  dejan fuera y la cuentan aparte (`descartadas`); en el embudo es la caída de «Sacaron la
+  tarjeta» a «Se la quedaron». En la lista solo sale si se pide («Sin guardar ni usar») o se
+  busca. Nunca se borra por esto.
 - **Sin datos, ni rejilla ni patrones** (`suficiencia` en `lib/observaciones.js`): cada día
   que abre la tienda visto con visitas 2 veces (o 4 semanas abierto sin nadie) y 30 visitas.
-  Los días cerrados del horario no cuentan. Hasta entonces la pantalla dice qué falta; los
-  grupos (premios, a punto…) sí salen, que son hechos, no patrones.
+  Los días cerrados del horario no cuentan. Hasta entonces la rejilla va a «Lo que verás con
+  más días» con lo que falta; los grupos (premios, a punto…) sí salen, que son hechos, no
+  patrones.
 
 - **Añadir un grupo** = una entrada en `GRUPOS` con su `incluye(perfil)`. Sale
   solo en el panel, en el selector de campañas y en la exportación.
@@ -527,7 +607,9 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   personal (`sesionDeCookie`), no el middleware (Edge, solo la firma). Página o API nueva
   del personal = por ahí, nunca `verificarSesion` a pelo. Quien cambia su contraseña o
   cierra las sesiones recibe su cookie firmada de nuevo en esa misma respuesta.
-- **La sesión del manager dura 30 días y se desliza**: el middleware la vuelve a firmar
+- **La sesión del manager y la de la caja duran 30 días y se deslizan** (la de la caja
+  desde el 15-10-2026: el móvil fijo del mostrador pedía la contraseña cada mes a quien
+  estuviera atendiendo). El middleware la vuelve a firmar
   cuando le queda menos de la mitad (`renovarSesion`), conservando el `iat`. Por eso la
   vigencia se compara con `iat` y nunca con la caducidad: una renovada sigue cayendo si la
   contraseña cambió después de entrar. El token es `negocio.rol.usuario.iat.exp.firma`;
@@ -547,7 +629,10 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
 - **`/login` rellena el usuario según de dónde se viene** (`usuarioSugerido` en
   `lib/acceso.js`): la caja si `next` era `/<slug>/caja` o `/w/…`, el dueño si no; y dos
-  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Hasta que
+  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Sin `b`,
+  el último usuario de tienda que entró en ESE móvil (`localStorage`, hasta 3,
+  `leerRecordados`; nunca la contraseña ni los admins, y abajo «Olvidar»). Cada recordado
+  lleva la tienda que dijo el servidor al entrar. Hasta que
   haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
   `app/home/datos.js`). Lo que se aprendió con La Delicantería (15-10-2026) está en
   [docs/AUDITORIA-ACCESOS.md](docs/AUDITORIA-ACCESOS.md).
@@ -580,7 +665,8 @@ cueste lo que cueste (es lo que hacen Square, Loopy o Boomerangme):
   compartida; el manager ve sus cajas y desconecta la que quiera.
 - **PIN personal por empleado** (4-6 cifras) en la caja. **Ya está** (11-10-2026, pestaña
   Plantilla, `lib/quien.js`): se pide al identificarse en cada móvil y cada dos horas sin
-  usar la caja. Queda por decidir si alguna tienda lo quiere solo para dar premios.
+  usar la caja. Desde el 15-10-2026 la tienda lo tiene solo si el admin le enciende la
+  plantilla (`plantillaActiva`). Queda por decidir si alguna tienda lo quiere solo para dar premios.
 - **Sesiones guardadas en el servidor**: cambiar la contraseña o quitar a alguien cierra
   sus sesiones (hoy no pasa).
 - **Registro de actividad**: quién dio cada sello y cada premio, desde qué caja, y quién
@@ -602,7 +688,7 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados
-  en `/admin/<slug>`; lo demás lo ve cualquier tienda).
+  y la plantilla en `/admin/<slug>`; lo demás lo ve cualquier tienda).
 - **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
   con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
   Al lado, «Copiar».

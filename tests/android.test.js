@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createECDH } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { plataformaDe } from "@/lib/plataforma";
@@ -44,7 +44,7 @@ describe("plataformaDe", () => {
 describe("avisoDeCambio (lo que suena en Android)", () => {
   it("un sello dice cuánto lleva y cuánto falta, en singular cuando toca", () => {
     expect(avisoDeCambio({ sellos: 2, premios: 0 }, { sellos: 3, premios: 0 }, nube))
-      .toEqual({ titulo: "Nube Café", cuerpo: "Sello 3 de 8. Te faltan 5 para café gratis.", tipo: "sello" });
+      .toEqual({ titulo: "Nube Café", cuerpo: "Llevas 3 de 8. Te faltan 5 para café gratis.", tipo: "sello" });
     expect(avisoDeCambio({ sellos: 6, premios: 0 }, { sellos: 7, premios: 0 }, nube).cuerpo).toMatch(/Te falta 1 para/);
   });
 
@@ -268,7 +268,7 @@ describe("avisos a Android desde wallet.js", () => {
     const r = await wallet.notificarCliente({ ...cliente, sellos: 1 }, negocio, { antes: cliente });
     expect(r.web).toBe(1);
     const [destinos] = push.enviarPush.mock.calls[0];
-    expect(destinos).toEqual([{ token: '{"endpoint":"https://fcm.googleapis.com/x"}', payload: expect.objectContaining({ cuerpo: "Sello 1 de 8. Te faltan 7 para café gratis." }) }]);
+    expect(destinos).toEqual([{ token: '{"endpoint":"https://fcm.googleapis.com/x"}', payload: expect.objectContaining({ cuerpo: "Llevas 1 de 8. Te faltan 7 para café gratis." }) }]);
 
     push.enviarPush.mockClear();
     expect((await wallet.notificarCliente({ ...cliente, sellos: 0 }, negocio, { antes: { ...cliente, sellos: 1 } })).web).toBe(0);
@@ -334,5 +334,25 @@ describe("/api/imagen solo dibuja URLs canónicas", () => {
 
     expect((await pedir("/api/imagen/otra?b=nube")).status).toBe(404);
     expect((await pedir("/api/imagen/logo?b=no-existe")).status).toBe(404);
+  });
+});
+
+describe("la web guardada en el móvil es fiddle", () => {
+  it("la caja y la tarjeta se instalan con el violín y «fiddle», no con la tienda", async () => {
+    vi.resetModules();
+    vi.stubEnv("SUPABASE_URL", "");
+    vi.stubEnv("APPLE_PASS_TYPE_ID", "");
+    vi.stubEnv("DATA_DIR", mkdtempSync(path.join(tmpdir(), "sellos-manifest-")));
+    await import("./tiendasDePrueba.js");
+    const { emitirPase } = await import("@/lib/wallet");
+    const { GET } = await import("@/app/api/manifest/route.js");
+    const { cliente } = await emitirPase("nube");
+
+    for (const q of ["b=nube", `p=${cliente.serial}`]) {
+      const m = await (await GET(new Request(`http://x/api/manifest?${q}`))).json();
+      expect(m).toMatchObject({ name: "fiddle", short_name: "fiddle" });
+      expect(m.icons.map((i) => i.purpose)).toEqual(expect.arrayContaining(["any", "maskable"]));
+      for (const i of m.icons) expect(existsSync(path.join("public", i.src.split("?")[0]))).toBe(true);
+    }
   });
 });

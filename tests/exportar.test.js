@@ -22,17 +22,17 @@ describe("exportar a CSV", () => {
     const csv = csvClientes([{ cliente, perfil }], nube);
     expect(csv.startsWith("﻿")).toBe(true);
     const [cabecera, fila] = csv.slice(1).split("\r\n");
-    expect(cabecera.split(";").slice(0, 5)).toEqual(["Código", "Nombre", "Estado", "Visitas", "Sellos (de 8)"]);
-    expect(fila.split(";").slice(0, 5)).toEqual(["K7M", "Ana", "Activo", "3", "1"]);
+    expect(cabecera.split(";").slice(0, 5)).toEqual(["Código", "Nombre", "Estado", "Visitas", "Puntos (de 8)"]);
+    expect(fila.split(";").slice(0, 5)).toEqual(["K7M", "Ana", "A su ritmo", "3", "1"]);
     expect(cabecera).not.toContain(",");
   });
 
   it("con dos cartillas, una columna por cartilla", () => {
     const [cabecera, fila] = csvClientes([{ cliente, perfil }], deli).slice(1).split("\r\n");
     const cols = cabecera.split(";");
-    expect(cols).toContain("Sellos cookies (de 8)");
-    expect(cols).toContain("Sellos cafés (de 8)");
-    expect(fila.split(";")[cols.indexOf("Sellos cafés (de 8)")]).toBe("4");
+    expect(cols).toContain("Puntos cookies (de 8)");
+    expect(cols).toContain("Puntos cafés (de 8)");
+    expect(fila.split(";")[cols.indexOf("Puntos cafés (de 8)")]).toBe("4");
     expect(fila.split(";")[cols.indexOf("Premios guardados")]).toBe("1");
   });
 

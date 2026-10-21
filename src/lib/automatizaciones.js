@@ -96,9 +96,9 @@ export const DISPAROS = {
   cerca_premio: {
     label: "Está a punto de conseguir el premio",
     icon: "diana",
-    descripcion: "Le faltan muy pocos sellos. Con dos cartillas, cuenta la que tenga más cerca.",
-    valor: { tipo: "numero", min: 1, max: 5, def: 1, unidad: "sellos o menos" },
-    frase: (v) => (v === 1 ? "está a 1 sello del premio" : `está a ${v} sellos o menos del premio`),
+    descripcion: "Le faltan muy pocos puntos. Con dos cartillas, cuenta la que tenga más cerca.",
+    valor: { tipo: "numero", min: 1, max: 5, def: 1, unidad: "puntos o menos" },
+    frase: (v) => (v === 1 ? "está a 1 punto del premio" : `está a ${v} puntos o menos del premio`),
     incluye: (x, v) => x.perfil.visitas > 0 && Boolean(x.cercana) && x.cercana.faltan <= v,
     sugerencia: "Estás a {faltan} de tu {premio}. ¿Te pasas hoy?",
   },
@@ -109,7 +109,7 @@ export const DISPAROS = {
     valor: { tipo: "numero", min: 3, max: 180, def: 21, unidad: "días" },
     frase: (v) => `lleva ${v} días sin venir`,
     incluye: (x, v) => x.perfil.visitas > 0 && (x.perfil.diasSinVenir ?? 0) >= v,
-    sugerencia: "Hace tiempo que no te vemos. Tu tarjeta sigue aquí, con tus sellos.",
+    sugerencia: "Hace tiempo que no te vemos. Tu tarjeta sigue aquí, con tus puntos.",
   },
   segunda_visita: {
     label: "Vino una vez y no ha vuelto",
@@ -220,7 +220,7 @@ export const variablesDesconocidas = (texto) =>
 export function varsDeEjemplo(regla, negocio) {
   const c = negocio?.cartillas?.[0];
   const premio = c?.premio ?? negocio?.premio ?? "premio";
-  const faltan = c ? `1 ${singular(c.nombre.toLowerCase())}` : "1 sello";
+  const faltan = c ? `1 ${singular(c.nombre.toLowerCase())}` : "1 punto";
   const x = { cercana: { faltan: 1, premio }, pendiente: false, perfil: { visitas: 12, estado: "riesgo" }, vars: { premio, faltan } };
   return {
     premio,
@@ -267,10 +267,10 @@ function cartillaCercana(cliente, negocio) {
     .reduce((mejor, c) => (!mejor || c.faltan < mejor.faltan ? c : mejor), null);
 }
 
-/** "1 cookie", "2 cafés", "3 sellos": lo que le falta, con la palabra de su cartilla. */
+/** "1 cookie", "2 cafés", "3 puntos": lo que le falta, con la palabra de su cartilla. */
 function faltanTexto(c, negocio) {
   if (!c) return "";
-  const palabra = negocio?.cartillas ? c.nombre.toLowerCase() : "sellos";
+  const palabra = negocio?.cartillas ? c.nombre.toLowerCase() : "puntos";
   return `${c.faltan} ${c.faltan === 1 ? singular(palabra) : palabra}`;
 }
 

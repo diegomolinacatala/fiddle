@@ -7,7 +7,7 @@ import { tiendaEnGoogle } from "./googlewallet";
 import { CLAVE_RELOJ } from "./relojAvisos";
 import { enviarPendientes } from "./campanas";
 import { enviosVisibles } from "./envios";
-import { perfilDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
+import { perfilesDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
 import { relojLocal, estadoDeTienda, inicioDelDia } from "./horario";
 import {
   contextoDe, fechasDeVisita, enviosDe, conEnvio, elegibles, candidatos, tocaAhora, porRetirar,
@@ -56,11 +56,16 @@ async function cargarClientes(negocio, ahora) {
   ]);
   const hoy = relojLocal(ahora, zona).fecha;
   const fechas = fechasDeVisita(eventos, TIPOS_VISITA, zona);
-  const contextos = clientes.map((c) => {
+  const conRegistro = clientes.map((c) => {
     const vivo = registrados.has(c.serial);
-    const conRegistro = { ...c, instalado: c.instalado || (vivo ? c.creado : null), desinstalado: vivo ? null : c.desinstalado };
-    const base = perfilDe(conRegistro, negocio, ahora);
-    const perfil = { ...base, contactable: vivo, avisable: vivo && !base.sinPromos };
+    return { ...c, instalado: c.instalado || (vivo ? c.creado : null), desinstalado: vivo ? null : c.desinstalado };
+  });
+  // Los de toda la tienda a la vez, como en Clientes: el estado de quien aún no
+  // tiene costumbre depende de la de la tienda.
+  const { perfiles } = perfilesDe(conRegistro, negocio, ahora);
+  const contextos = clientes.map((c, i) => {
+    const vivo = registrados.has(c.serial);
+    const perfil = { ...perfiles[i], contactable: vivo, avisable: vivo && !perfiles[i].sinPromos };
     return contextoDe(c, perfil, negocio, { fechas: fechas.get(c.serial), hoy });
   });
   return { clientes, contextos, eventos };

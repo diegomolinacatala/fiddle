@@ -4,6 +4,9 @@
 //
 //   public/marcas/fiddle.svg        icono de la pestaña
 //   public/marcas/fiddle-180.png    icono al guardar la web en el iPhone
+//   public/marcas/fiddle-192.png    y en Android (el manifest, lib/marcaFiddle.js),
+//   public/marcas/fiddle-512.png    con su versión «adaptable», que lleva aire
+//   public/marcas/fiddle-*-adaptable.png  porque Android la recorta en círculo
 //   public/marcas/fiddle-og.png     la vista previa al mandar el enlace por WhatsApp
 //   docs/marca/fiddle-violin.svg    el logo para subir donde haga falta (Google
 //   docs/marca/fiddle-violin-1024.png  Wallet lo enseña recortado en círculo)
@@ -31,7 +34,14 @@ const pestana = svgIconoViolin({ color: P.verde, fondo: P.avena, radio: 230 });
 writeFileSync(ruta("../public/marcas/fiddle.svg"), `${pestana}\n`);
 // El iPhone y Google redondean ellos: aquí, cuadrado entero.
 const cuadrado = svgIconoViolin({ color: P.verde, fondo: P.avena });
-await sharp(Buffer.from(cuadrado)).resize(180, 180).png().toFile(ruta("../public/marcas/fiddle-180.png"));
+for (const lado of [180, 192, 512]) {
+  await sharp(Buffer.from(cuadrado)).resize(lado, lado).png().toFile(ruta(`../public/marcas/fiddle-${lado}.png`));
+}
+// Android enseña solo el círculo central (el 80 %): el violín, más pequeño.
+const adaptable = svgIconoViolin({ color: P.verde, fondo: P.avena, alto: 0.56 });
+for (const lado of [192, 512]) {
+  await sharp(Buffer.from(adaptable)).resize(lado, lado).png().toFile(ruta(`../public/marcas/fiddle-${lado}-adaptable.png`));
+}
 writeFileSync(ruta("../docs/marca/fiddle-violin.svg"), `${cuadrado}\n`);
 await sharp(Buffer.from(cuadrado)).resize(1024, 1024).png().toFile(ruta("../docs/marca/fiddle-violin-1024.png"));
 

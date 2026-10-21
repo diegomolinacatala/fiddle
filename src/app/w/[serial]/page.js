@@ -7,7 +7,7 @@ import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { sesionDeCookie } from "@/lib/sesionVigente";
 import { estadoDe } from "@/lib/resumen";
 import { ultimoSelloTexto, fechaHoraTexto, zonaDe, TIPOS_SELLO } from "@/lib/actividad";
-import { hayQueElegir, COOKIE_QUIEN } from "@/lib/plantilla";
+import { hayQueElegir, plantillaDeCaja, COOKIE_QUIEN } from "@/lib/plantilla";
 import { leerQuien } from "@/lib/quien";
 import TarjetaCaja from "./TarjetaCaja";
 import { negocioDeTarjeta } from "@/lib/tarjeta";
@@ -54,7 +54,7 @@ export default async function Page({ params }) {
   if (!puedeAcceder(sesion, cliente.negocio, "caja")) {
     return (
       <main style={pagina}>
-        <Aviso titulo="Esta tarjeta es de otra tienda" texto="Solo la caja de su tienda puede sumarle sellos.">
+        <Aviso titulo="Esta tarjeta es de otra tienda" texto="Solo la caja de su tienda puede sumarle puntos.">
           <a href={`/login?b=${cliente.negocio}&next=/w/${serial}`} style={{ fontSize: 14 }}>Entrar con la caja de esa tienda</a>
         </Aviso>
       </main>
@@ -75,9 +75,10 @@ export default async function Page({ params }) {
   // Quién atiende desde este móvil (lib/quien.js). El QR se escanea muchas veces
   // con la cámara del móvil y entra aquí directo, sin pasar por la caja: si la
   // tienda tiene plantilla y en este móvil nadie se ha identificado (o pasaron
-  // las dos horas), a identificarse primero.
-  const quien = await leerQuien(jar.get(COOKIE_QUIEN)?.value, n.slug, n.plantilla);
-  if (hayQueElegir(sesion, n.plantilla) && !quien) {
+  // las dos horas), a identificarse primero. Con la plantilla apagada, ni eso.
+  const plantilla = plantillaDeCaja(n);
+  const quien = await leerQuien(jar.get(COOKIE_QUIEN)?.value, n.slug, plantilla);
+  if (hayQueElegir(sesion, plantilla) && !quien) {
     redirect(`/${n.slug}/caja?quien=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
   }
   // Cuándo fue el último sello, aparte del historial (que puede estar apagado o no

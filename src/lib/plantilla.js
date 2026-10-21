@@ -210,6 +210,24 @@ export function empleadoDeValor(valor, slug, plantilla) {
 /** ¿Hay que elegir quién atiende? Solo la cuenta de caja, y solo con gente dada de alta. */
 export const hayQueElegir = (sesion, plantilla) => sesion?.rol === "caja" && empleadosActivos(plantilla).length > 0;
 
+// ------------------------------------------------- encendida o no, por tienda
+// La plantilla la enciende el admin para cada tienda (`plantillaActiva`, como
+// `avisosAvanzados`), y viene APAGADA: con un solo móvil fijo en el mostrador,
+// saber quién atiende no aporta nada y el PIN solo estorba. Apagada, la caja
+// trabaja como sin gente dada de alta: ni pregunta quién atiende, ni pide PIN,
+// ni reconoce la cookie de antes. Nada se borra: la lista, los PIN y el nombre
+// de cada movimiento siguen ahí y vuelven tal cual al encenderla.
+
+/** ¿Tiene esta tienda la plantilla encendida? */
+export const conPlantilla = (negocio) => negocio?.plantillaActiva === true;
+
+/**
+ * La gente que la caja ofrece y reconoce: nadie si la tienda la tiene apagada.
+ * Todo lo de quién atiende (hayQueElegir, la cookie) va con esta. Para poner
+ * NOMBRE a lo que ya pasó (Actividad, la hoja), `negocio.plantilla` entera.
+ */
+export const plantillaDeCaja = (negocio) => (conPlantilla(negocio) ? negocio.plantilla : []);
+
 // -------------------------------------------------- quién hizo cada movimiento
 
 export const DUENO = "dueno";
@@ -507,7 +525,7 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
     if (!alto && !bajo) continue;
     out.push({
       id: `ritmo-${alto ? "alto" : "bajo"}-${f.clave}`, clave: f.clave, tono: alto ? "bien" : "ojo",
-      texto: `${f.nombre} da ${cifra(f.sellosPorHora)} sellos por hora de caja; en sus franjas lo normal son ${cifra(f.esperado)}.`,
+      texto: `${f.nombre} da ${cifra(f.sellosPorHora)} puntos por hora de caja; en sus franjas lo normal son ${cifra(f.esperado)}.`,
       detalle: detalleRitmo,
     });
   }
@@ -523,7 +541,7 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
     if (tasa < 0.05 || tasa < tasaResto * 2) continue;
     out.push({
       id: `correcciones-${f.clave}`, clave: f.clave, tono: "ojo",
-      texto: `${f.nombre} quita ${unoDeCada(f.quitados, f.sellos)} sellos que da; el resto del equipo, ${unoDeCada(quitadosResto, sellosResto)}.`,
+      texto: `${f.nombre} quita ${unoDeCada(f.quitados, f.sellos)} puntos que da; el resto del equipo, ${unoDeCada(quitadosResto, sellosResto)}.`,
       detalle: "Suele ser un toque doble. Con prisa ayudan los «Botones grandes» de la vista de caja.",
     });
   }
@@ -534,7 +552,7 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
     out.push({
       id: `fuera-${f.clave}`, clave: f.clave, tono: "ojo",
       texto: `${plural(f.fuera, "movimiento", "movimientos")} de ${f.nombre} con la tienda cerrada, según el horario.`,
-      detalle: "Un sello después de cerrar es un ticket que no cuadra. Cada uno está en el registro, con su hora.",
+      detalle: "Un punto después de cerrar es un ticket que no cuadra. Cada uno está en el registro, con su hora.",
     });
   }
 
@@ -573,7 +591,7 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
       out.push({
         id: `estrenos-${mejor.clave}`, clave: mejor.clave, tono: "bien",
         texto: `${mejor.nombre} estrenó ${mejor.estrenos} de las ${estrenosEquipo} tarjetas nuevas del periodo.`,
-        detalle: "El primer sello de una tarjeta recién sacada: quien más clientes convence.",
+        detalle: "El primer punto de una tarjeta recién sacada: quien más clientes convence.",
       });
     }
   }
@@ -585,7 +603,7 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
     if (cuota >= 0.5) {
       out.push({
         id: `carga-${mayor.clave}`, clave: mayor.clave, tono: "dato",
-        texto: `${mayor.nombre} da el ${Math.round(cuota * 100)} % de los sellos del equipo.`,
+        texto: `${mayor.nombre} da el ${Math.round(cuota * 100)} % de los puntos del equipo.`,
         detalle: "Más de la mitad en una persona: o la caja es casi suya, o el resto no se está apuntando.",
       });
     }
@@ -595,13 +613,13 @@ export function observacionesPlantilla(cuentas, { dias = 30 } = {}) {
   if (equipo.sinNombre > 0) {
     out.push({
       id: "sin-nombre", tono: equipo.sinNombre > equipo.movimientos * 0.2 ? "ojo" : "dato",
-      texto: `${plural(equipo.sinNombre, "movimiento", "movimientos")} sin nombre: se selló sin elegir quién atendía.`,
+      texto: `${plural(equipo.sinNombre, "movimiento", "movimientos")} sin nombre: se sumó sin elegir quién atendía.`,
       detalle: `Los de antes de dar de alta a la plantilla también cuentan aquí; en ${dias} días desaparecen del periodo.`,
     });
   }
 
   if (!out.length && media) {
-    out.push({ id: "parejo", tono: "dato", texto: `Nadie destaca por arriba ni por abajo: ${cifra(media.sellosPorHora || 0)} sellos por hora de caja de media y pocas correcciones.` });
+    out.push({ id: "parejo", tono: "dato", texto: `Nadie destaca por arriba ni por abajo: ${cifra(media.sellosPorHora || 0)} puntos por hora de caja de media y pocas correcciones.` });
   }
   return out;
 }

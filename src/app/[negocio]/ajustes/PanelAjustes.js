@@ -84,7 +84,7 @@ La actual dejará de valer y los móviles que tengan la caja abierta se quedará
           <Bloque
             accent={accent} icono="candado" titulo="Privacidad de tus clientes"
             resumen={<>
-              Guardamos sus sellos, premios e historial de visitas{n.pedirNombre ? ", su nombre" : ""} y las notas que apuntes, con el nombre y las notas cifrados.
+              Guardamos sus puntos, premios e historial de visitas{n.pedirNombre ? ", su nombre" : ""} y las notas que apuntes, con el nombre y las notas cifrados.
               {" "}Una tarjeta sin uso en {MESES_SIN_USO} meses se borra sola. Cada cliente puede dejar las promos, descargar sus datos o borrar su tarjeta desde ella.
               {" "}{legalCompleto(n.legal)
                 ? <>Tus datos legales están en el aviso{n.legal.email ? <> (contacto: {n.legal.email})</> : null}.</>

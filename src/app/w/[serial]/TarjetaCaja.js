@@ -8,7 +8,9 @@ import { filasDeCaja, normalizarCaja } from "@/lib/caja";
 import { stripDelPase, comoDataUri, svgBandaOpaca } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
 import { cartillasDe, describirBanda } from "@/lib/cartillas";
+import { crearFila } from "@/lib/filaCaja";
 import WorkerActions from "./WorkerActions";
+import VueltaSinTocar from "./VueltaSinTocar";
 import Icono from "@/app/Icono";
 import { C, panel, RADIO } from "@/app/ui";
 
@@ -32,11 +34,15 @@ import { C, panel, RADIO } from "@/app/ui";
 // movimientos falsos en las cuentas. Cualquier otro toque confirma lo que
 // esperaba (deshacer es para el «uy» inmediato, no para después de otra cosa),
 // y al salir de la página se manda con `keepalive`, para que no se pierda.
+// La fila y el premio en espera llevan su cuenta en lib/filaCaja.js.
+//
+// SIN TOCARLA, AL ESCÁNER (`volverSinTocar`, lib/sinTocar.js): antes de irse
+// sola, la ficha vacía la fila por el camino normal y espera la respuesta.
 // ============================================================================
 
 // `demo`: la vista previa del manager (Editar vista de caja). Se pulsa y se ve
 // pasar, pero no se guarda nada ni se navega.
-// `volver`: a dónde ir con "Volver al escáner al sumar".
+// `volver`: a dónde ir con "Volver al escáner al sumar" o al pasar el rato sin tocarla.
 export default function TarjetaCaja({ serial, inicial, negocio, demo = false, volver = null }) {
   const router = useRouter();
   const opciones = normalizarCaja(negocio.caja);
@@ -47,16 +53,23 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
   // tiempo que no te vemos"…): la caja tiene que verlo para aplicarlo. Sumar la
   // visita lo quita del pase, pero aquí se queda a la vista mientras se le atiende.
   const [alLlegar] = useState(inicial.mensaje || null);
-  const fila = useRef(Promise.resolve());
-  // Lo que aún no ha contestado el servidor, contando el premio que espera al deshacer.
-  const pendientes = useRef(0);
-  // El premio que espera: { id, key, antes (el cliente tal cual estaba), temporizador }.
-  const enEspera = useRef(null);
+  // Lo que va al servidor, de uno en uno, y el premio que espera al deshacer. Las
+  // funciones que recibe solo usan lo que no cambia en la vida de la ficha.
+  const [fila] = useState(() => crearFila({
+    mandar,
+    mandarAlSalir,
+    alSoltar: () => setToast((t) => (t ? { ...t, deshacer: null } : t)),
+    alAcabar: refrescarSiLibre,
+  }));
   // Un refresco que se dejó pasar porque algo seguía en vuelo: se hace al quedar libre.
   const refrescoPendiente = useRef(false);
+  // La ficha ya se va a otra pantalla (a elegir quién atiende, al escáner tras sumar).
+  const seVa = useRef(false);
+  // Las peticiones que no se guardaron. Si una falla mientras la ficha se iba sola, se queda.
+  const fallos = useRef(0);
 
   // Lo que llegue del servidor al refrescar manda, salvo con algo aún en vuelo.
-  useEffect(() => { if (!pendientes.current) setCliente(inicial); }, [inicial]);
+  useEffect(() => { if (!fila.pendientes) setCliente(inicial); }, [inicial, fila]);
 
   // Se va solo al escáner (si la tienda lo quiere) tras sumar; cualquier otro
   // toque, o "Quedarme aquí", lo para.
@@ -75,43 +88,27 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       clearInterval(vuelta.current);
       vuelta.current = null;
       setToast((t) => (t ? { ...t, vuelta: null } : t));
-      if (!demo && volver) router.push(volver);
+      if (!demo && volver) {
+        seVa.current = true;
+        router.push(volver);
+      }
     }, 1000);
   }
   useEffect(() => () => clearInterval(vuelta.current), []);
 
-  /**
-   * Manda el premio que esperaba al deshacer, si hay uno. `alSalir`: la página se va
-   * (o pasa a segundo plano, que en un móvil puede ser lo mismo). Entonces la petición
-   * sale YA y con `keepalive`, en el mismo manejador y sin pasar por la fila: lo que se
-   * encola en una promesa al descargar la página ya no llega a salir (comprobado), y la
-   * respuesta no la va a leer nadie.
-   */
-  function confirmarEnEspera({ alSalir = false } = {}) {
-    const p = soltarEnEspera();
-    if (!p || demo) return;
-    if (!alSalir) return enviar(p.key);
-    mandarAlSalir(p.key);
-  }
-  /** Quita el premio en espera (y su temporizador) sin mandarlo. Devuelve lo que esperaba, o null. */
-  function soltarEnEspera() {
-    const p = enEspera.current;
-    if (!p) return null;
-    enEspera.current = null;
-    clearTimeout(p.temporizador);
-    pendientes.current -= 1;
-    setToast((t) => (t ? { ...t, deshacer: null } : t));
-    return p;
-  }
-  // Al salir no hay fila ni respuesta: `sendBeacon` es lo hecho para esto (sobrevive a la
-  // descarga de la página también en iOS); si el navegador no lo coge, `fetch` con keepalive.
+  // La página se va (o pasa a segundo plano, que en un móvil puede ser lo mismo): el
+  // premio que esperaba sale YA, en el mismo manejador y sin pasar por la fila: lo que
+  // se encola en una promesa al descargar la página ya no llega a salir (comprobado), y
+  // la respuesta no la va a leer nadie. `sendBeacon` es lo hecho para esto (sobrevive a
+  // la descarga también en iOS); si el navegador no lo coge, `fetch` con keepalive.
   function mandarAlSalir(key) {
+    if (demo) return;
     const cuerpo = JSON.stringify({ serial, accion: key });
     if (navigator.sendBeacon?.("/api/accion", new Blob([cuerpo], { type: "application/json" }))) return;
     fetch("/api/accion", { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpo, keepalive: true }).catch(() => {});
   }
   function deshacer() {
-    const p = soltarEnEspera();
+    const p = fila.soltar();
     if (!p) return;
     setCliente(p.antes);
     setToast({ ok: true, msg: ACCIONES[p.key].deshecho(negocio) });
@@ -120,12 +117,12 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
   }
   /** El refresco de la página (historial, visitas) solo cuando nada sigue en vuelo. */
   function refrescarSiLibre() {
-    if (demo || pendientes.current) { refrescoPendiente.current = !demo; return; }
+    if (demo || fila.pendientes) { refrescoPendiente.current = !demo; return; }
     refrescoPendiente.current = false;
     router.refresh();
   }
   useEffect(() => {
-    const salir = () => confirmarEnEspera({ alSalir: true });
+    const salir = () => fila.alSalir();
     const visibilidad = () => { if (document.visibilityState === "hidden") salir(); };
     window.addEventListener("pagehide", salir);
     document.addEventListener("visibilitychange", visibilidad);
@@ -134,13 +131,25 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       document.removeEventListener("visibilitychange", visibilidad);
       salir(); // la pantalla se va (a elegir quién atiende, por ejemplo): que no se pierda
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fila]);
+
+  /**
+   * Nadie ha tocado la ficha en un rato y se va sola al escáner (VueltaSinTocar). Lo
+   * pendiente sale ANTES por la fila de siempre y se espera su respuesta: dejarlo a
+   * `sendBeacon` al desmontar no vale (desde el panel del ordenador no llega). Dice si
+   * puede irse: no si ya se va a otra pantalla, ni si algo no se guardó mientras tanto
+   * (ese aviso tiene que verse; la cuenta vuelve a empezar).
+   */
+  async function prepararSalida() {
+    const antes = fallos.current;
+    await fila.vaciar();
+    return !seVa.current && fallos.current === antes;
+  }
 
   /** Aplica `key` `veces` veces (el "+2"): aquí al momento, y cada una a la fila del servidor. */
   function ejecutar(key, veces = 1) {
     cancelarVuelta();
-    confirmarEnEspera();
+    fila.confirmar();
     let actual = cliente;
     let r = null;
     let hechas = 0;
@@ -157,59 +166,58 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       return;
     }
     setCliente(actual);
-    const msg = hechas > 1 ? `${hechas} sellos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje;
+    const msg = hechas > 1 ? `${hechas} puntos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje;
     navigator.vibrate?.(50);
     if (hechas === 1 && tieneDeshacer(key)) {
       // `id` distingue un premio en espera del siguiente: la barra del aviso vuelve a empezar.
+      // A la fila antes que el aviso: si algo esperaba, al soltarse no le quita el «Deshacer» a este.
       const id = Date.now();
+      fila.esperar(key, SEGUNDOS_DESHACER * 1000, { id, antes: cliente });
       setToast({ ok: true, msg, deshacer: SEGUNDOS_DESHACER, id });
-      pendientes.current += 1;
-      enEspera.current = { id, key, antes: cliente, temporizador: setTimeout(confirmarEnEspera, SEGUNDOS_DESHACER * 1000) };
       return;
     }
     setToast({ ok: true, msg });
     if (opciones.volverAlEscaner && /^sellar/.test(key)) empezarVuelta();
     if (demo) return;
-    for (let i = 0; i < hechas; i += 1) enviar(key);
+    for (let i = 0; i < hechas; i += 1) fila.enviar(key);
   }
 
-  function enviar(key) {
-    pendientes.current += 1;
-    fila.current = fila.current.then(async () => {
-      try {
-        const res = await fetch("/api/accion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ serial, accion: key }),
-        });
-        const data = await res.json();
-        // Nadie ha dicho quién atiende hoy en este móvil (lib/plantilla.js): a
-        // elegir. El sello que se acaba de pintar NO se guardó: la caja lo avisa
-        // (`perdido=1`) y la ficha vuelve a cargarse con lo que haya en el servidor.
-        if (data.elegir) {
-          router.push(`/${negocio.slug}/caja?quien=1&perdido=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
-          return;
-        }
-        if (!res.ok || data.ok === false) {
-          // Un premio que esperaba se calculó sobre lo que acaba de fallar: no se manda. Con el
-          // estado del servidor delante, la caja lo vuelve a dar si toca.
-          soltarEnEspera();
-          if (data.cliente) setCliente(data.cliente);
-          setToast({ ok: false, msg: data.mensaje || data.error || "No se ha guardado. Vuelve a intentarlo." });
-          navigator.vibrate?.([80, 60, 80]);
-        } else if (pendientes.current === 1) {
-          setCliente(data.cliente);
-          setToast((t) => (t?.ok ? { ...t, detalle: resumenAviso(data.aviso) } : t));
-        }
-      } catch {
-        soltarEnEspera();
-        setToast({ ok: false, msg: "Sin conexión. No se ha guardado: vuelve a intentarlo." });
-        router.refresh();
-      } finally {
-        pendientes.current -= 1;
-        refrescarSiLibre();
+  /** Una acción al servidor (la fila llama de una en una) y lo que se hace con su respuesta. */
+  async function mandar(key) {
+    if (demo) return;
+    try {
+      const res = await fetch("/api/accion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serial, accion: key }),
+      });
+      const data = await res.json();
+      // Nadie ha dicho quién atiende hoy en este móvil (lib/plantilla.js): a
+      // elegir. El sello que se acaba de pintar NO se guardó: la caja lo avisa
+      // (`perdido=1`) y la ficha vuelve a cargarse con lo que haya en el servidor.
+      if (data.elegir) {
+        seVa.current = true;
+        router.push(`/${negocio.slug}/caja?quien=1&perdido=1&volver=${encodeURIComponent(`/w/${serial}`)}`);
+        return;
       }
-    });
+      if (!res.ok || data.ok === false) {
+        // Un premio que esperaba se calculó sobre lo que acaba de fallar: no se manda. Con el
+        // estado del servidor delante, la caja lo vuelve a dar si toca.
+        fallos.current += 1;
+        fila.soltar();
+        if (data.cliente) setCliente(data.cliente);
+        setToast({ ok: false, msg: data.mensaje || data.error || "No se ha guardado. Vuelve a intentarlo." });
+        navigator.vibrate?.([80, 60, 80]);
+      } else if (fila.pendientes === 1) {
+        setCliente(data.cliente);
+        setToast((t) => (t?.ok ? { ...t, detalle: resumenAviso(data.aviso) } : t));
+      }
+    } catch {
+      fallos.current += 1;
+      fila.soltar();
+      setToast({ ok: false, msg: "Sin conexión. No se ha guardado: vuelve a intentarlo." });
+      router.refresh();
+    }
   }
 
   const accent = negocio.tema.accent;
@@ -274,6 +282,11 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
         onCancelarVuelta={cancelarVuelta}
         onDeshacer={deshacer}
       />
+
+      {/* Solo en la ficha de verdad: la vista previa del manager no se va a ningún sitio. */}
+      {!demo && volver && opciones.volverSinTocar && (
+        <VueltaSinTocar destino={volver} accent={accent} prepararSalida={prepararSalida} />
+      )}
     </>
   );
 }

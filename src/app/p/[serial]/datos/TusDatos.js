@@ -120,8 +120,8 @@ export default function TusDatos({ serial, tienda }) {
             <div style={{ display: "grid", gap: 12 }}>
               <Fila icono={estado.promos ? "campana" : "campanaNo"} accent={accent} titulo="Promos de la tienda"
                 texto={estado.promos
-                  ? "Te llegan sus ofertas y avisos. Los de tus sellos y premios, siempre."
-                  : "No te llegan ofertas ni avisos de la tienda. Los de tus sellos y premios, sí."}>
+                  ? "Te llegan sus ofertas y avisos. Los de tus puntos y premios, siempre."
+                  : "No te llegan ofertas ni avisos de la tienda. Los de tus puntos y premios, sí."}>
                 <Interruptor on={estado.promos} onClick={cambiarPromos} accent={accent} disabled={ocupado} etiqueta="Promos de la tienda" />
               </Fila>
 
@@ -131,13 +131,13 @@ export default function TusDatos({ serial, tienda }) {
 
               <div style={{ borderTop: "1px solid #e4e7ec", paddingTop: 12 }}>
                 {!confirmar ? (
-                  <Fila icono="papelera" accent="#b42318" titulo="Borrar mi tarjeta" texto="Se borran tus sellos, tus premios y tus datos. No se puede deshacer.">
+                  <Fila icono="papelera" accent="#b42318" titulo="Borrar mi tarjeta" texto="Se borran tus puntos, tus premios y tus datos. No se puede deshacer.">
                     <button type="button" onClick={() => setConfirmar(true)} disabled={ocupado} style={{ ...botonSuave, color: "#b42318" }}>Borrar</button>
                   </Fila>
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
                     <p style={{ ...texto, margin: 0, color: "#1b1e23" }}>
-                      <strong>¿Seguro?</strong> Pierdes los sellos y premios que tengas en {tienda.nombre}, y no se pueden recuperar.
+                      <strong>¿Seguro?</strong> Pierdes los puntos y premios que tengas en {tienda.nombre}, y no se pueden recuperar.
                     </p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button type="button" onClick={borrar} disabled={ocupado} style={botonPeligro}>{ocupado ? "Borrando…" : "Sí, borrar mi tarjeta"}</button>

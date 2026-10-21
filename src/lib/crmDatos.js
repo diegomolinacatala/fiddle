@@ -1,5 +1,5 @@
 import { listClientes, listEventosDeNegocio, listCampanas, serialesRegistrados, getNegocio } from "./store";
-import { perfilDe, metricas, conteoGrupos, cohortes, puenteActivos, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
+import { perfilesDe, metricas, conteoGrupos, curvaDeVuelta, puenteActivos, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
 
 /**
@@ -32,7 +32,8 @@ export async function datosCrm(slug) {
     instalado: c.instalado || (registrados.has(c.serial) ? c.creado : null),
     desinstalado: registrados.has(c.serial) ? null : c.desinstalado,
   }));
-  const perfiles = conRegistro.map((c) => perfilDe(c, negocio));
+  // Todos a la vez: a los que aún no tienen costumbre se les mide con la de la tienda.
+  const { perfiles, ritmoTienda } = perfilesDe(conRegistro, negocio);
   // Desde cuándo está TODO el historial. Si se llenó el tope, el día más viejo
   // llega a medias: la Actividad no cuadra caja con él (lib/actividad.js) y las
   // cifras no comparan con un mes que no está entero (metricas).
@@ -54,9 +55,9 @@ export async function datosCrm(slug) {
     },
     metricas: metricas(perfiles, eventos, clientes, Date.now(), { historialDesde }),
     grupos: conteoGrupos(perfiles),
-    // Las dos reconstruyen el pasado con el historial: solo hasta donde llega entero.
-    puente: puenteActivos(conRegistro, perfiles, eventos, negocio, { historialDesde }),
-    cohortes: cohortes(conRegistro, perfiles, eventos, { historialDesde, zona: negocio.horario?.zona }),
+    // Las dos miran el pasado con el historial: solo hasta donde llega entero.
+    puente: puenteActivos(conRegistro, perfiles, eventos, negocio, { historialDesde, ritmoTienda }),
+    vuelta: curvaDeVuelta(conRegistro, eventos, { historialDesde }),
     cartillas: repartoCartillas(clientes, perfiles, negocio),
     estados: LISTA_ESTADOS,
     catalogoGrupos: LISTA_GRUPOS,

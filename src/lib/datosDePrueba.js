@@ -36,8 +36,8 @@ const NOMBRES = [
 ];
 
 // Los de hace uno o dos meses (alta de hace ANTES_DIAS[0] a ANTES_DIAS[1] días).
-// Sin pasar de diez semanas: así el Resumen enseña las cohortes por semana, que es
-// lo que ve una tienda en sus primeros meses (lib/crm.js, `cohorteSemanas`).
+// Sin pasar de diez semanas, lo que ve una tienda en sus primeros meses: así el
+// Resumen enseña el puente de activos y la curva de vuelta hasta las cuatro semanas.
 const NOMBRES_ANTES = [
   "Rosa", "Manu", "Teresa", "Álvaro", "Inés", null, "Jaime", "Patricia", "Rubén", "Noelia",
   "Adrián", null, "Lorena", "Gonzalo", "Silvia", "Miguel", null, "Eva", "Fernando", "Cristina",
@@ -117,7 +117,7 @@ export function generar(ahora = Date.now()) {
     const clave = i ? "sellos2" : "sellos";
     const nombre = tienda.cartillas[i].nombre;
     c[clave] += 1;
-    ev(c, i ? "sellar2" : "sellar", `Sello ${nombre} ${c[clave]}/${metas[i]}`, ts, { empleado: quien });
+    ev(c, i ? "sellar2" : "sellar", `Punto ${nombre} ${c[clave]}/${metas[i]}`, ts, { empleado: quien });
     if (c[clave] >= metas[i]) {
       const t = new Date(ts.getTime() + 20_000);
       if (r() < 0.7) {
@@ -249,6 +249,10 @@ export function generar(ahora = Date.now()) {
       slug: SLUG, nombre: tienda.nombre, tipo: tienda.tipo, creado: alta(ANTES_DIAS[1] + 2),
       config: {
         cartillas: tienda.cartillas,
+        // Encendida aquí, aunque de partida venga apagada: la plantilla inventada es
+        // para ver la pestaña. Apagarla desde el admin de dev no dura (cada función
+        // de Vercel tiene su /tmp): para verla apagada, en local.
+        plantillaActiva: true,
         plantilla: [
           { id: QUIEN.sebas, nombre: "Sebas", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
           { id: QUIEN.andreina, nombre: "Andreina", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },

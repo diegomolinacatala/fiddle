@@ -181,6 +181,8 @@ function fusionarConfig(actual, patch) {
     caja: patch.caja ?? actual.caja,
     // Quién atiende la caja (lib/plantilla.js): la lista entera cada vez.
     plantilla: patch.plantilla ?? actual.plantilla,
+    // Plantilla encendida para esta tienda: solo lo cambia el admin.
+    plantillaActiva: patch.plantillaActiva ?? actual.plantillaActiva,
     // Teléfono, web e Instagram del reverso (lib/contacto.js). null lo quita.
     contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
@@ -610,6 +612,28 @@ export async function listClientes(negocio, { limite } = {}) {
     .sort((a, b) => (b.creado || "").localeCompare(a.creado || ""))
     .map(normalizarCliente);
   return limite ? lista.slice(0, limite) : lista;
+}
+
+/**
+ * Solo las tarjetas vigentes de esos seriales, de esa tienda: para cuando ya se
+ * sabe a quién se busca (los que han pasado hoy por la caja) y leer la tienda
+ * entera sería descifrar cientos de nombres para quedarse con quince. Pocos
+ * seriales cada vez: van en la URL de la consulta.
+ * @param {string} negocio
+ * @param {string[]} seriales
+ */
+export async function listClientesDeSeriales(negocio, seriales) {
+  const lista = [...new Set(seriales || [])].filter((s) => typeof s === "string" && s);
+  if (!lista.length) return [];
+  if (hasSupabase()) {
+    const q = supa().from("clientes").select(CAMPOS_CLIENTE).eq("negocio", negocio).in("serial", lista)
+      .is("fusionado_en", null).is("borrado_en", null);
+    return (sinError(await q, "clientes por serial") || []).map(normalizarCliente);
+  }
+  const all = await enFila(() => leer("clientes", {}));
+  return lista.map((s) => all[s])
+    .filter((c) => c && c.negocio === negocio && !c.fusionado_en && !c.borrado_en)
+    .map(normalizarCliente);
 }
 
 // ============================ EVENTOS ============================

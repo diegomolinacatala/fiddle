@@ -111,14 +111,17 @@ describe("sesión firmada", () => {
     expect(cookieSesion("caja")).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/", maxAge: TTL_SEGUNDOS.caja });
   });
 
-  it("renovar: el manager con menos de la mitad recibe otro token con la MISMA emisión; la caja y el admin, no", async () => {
+  it("renovar: el manager y la caja con menos de la mitad reciben otro token con la MISMA emisión; el admin, no", async () => {
     const ahora = 1_000_000;
     const manager = await verificarSesion(await firmarSesion("nube", "manager", ahora), ahora);
     expect(await renovarSesion(manager, ahora + 10 * DIA)).toBeNull(); // le quedan 20 días: aún no
     const renovada = await verificarSesion(await renovarSesion(manager, ahora + 16 * DIA), ahora + 16 * DIA);
     expect(renovada).toEqual({ ...manager, exp: ahora + 16 * DIA + 30 * DIA }); // iat y usuario, los de antes
+    // La caja del móvil fijo del mostrador tampoco tiene que volver a teclear la contraseña cada mes.
     const caja = await verificarSesion(await firmarSesion("nube", "caja", ahora), ahora);
-    expect(await renovarSesion(caja, ahora + 29 * DIA)).toBeNull();
+    expect(await renovarSesion(caja, ahora + 10 * DIA)).toBeNull();
+    const cajaRenovada = await verificarSesion(await renovarSesion(caja, ahora + 29 * DIA), ahora + 29 * DIA);
+    expect(cajaRenovada).toEqual({ ...caja, exp: ahora + 29 * DIA + 30 * DIA });
     const admin = await verificarSesion(await firmarSesion("plataforma", "admin", ahora), ahora);
     expect(await renovarSesion(admin, ahora + 11 * 60 * 60 * 1000)).toBeNull();
     expect(await renovarSesion(null)).toBeNull();

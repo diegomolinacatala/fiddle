@@ -222,7 +222,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
       </div>
 
       <div style={{ position: "relative", flexShrink: 0 }}>
-        <Anotable clave="apple.banda" etiqueta="Banda (los sellos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
+        <Anotable clave="apple.banda" etiqueta="Banda (los puntos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
           <img src={comoDataUri(strip.svg)} alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`} style={{ display: "block", width: "100%", height: "auto" }} />
         </Anotable>
         {primaryFields.length > 0 && (
@@ -397,10 +397,11 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
             <div style={{ fontSize: 12.5, opacity: 0.9 }}>{objeto.loyaltyPoints.label}</div>
             <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.loyaltyPoints.balance.string}</div>
           </Anotable>
+          {/* Con dos cartillas, el segundo hueco es la segunda cartilla; con una, los premios guardados. */}
           {objeto.secondaryLoyaltyPoints && (
-            <Anotable clave="google.guardados" etiqueta={objeto.secondaryLoyaltyPoints.label} anota={anota} estilo={{ width: "auto", textAlign: "center" }}>
+            <Anotable clave={negocio.cartillas ? "google.puntos2" : "google.guardados"} etiqueta={objeto.secondaryLoyaltyPoints.label} anota={anota} estilo={{ width: "auto", textAlign: "center" }}>
               <div style={{ fontSize: 12.5, opacity: 0.9 }}>{objeto.secondaryLoyaltyPoints.label}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.secondaryLoyaltyPoints.balance.int}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{objeto.secondaryLoyaltyPoints.balance.string ?? objeto.secondaryLoyaltyPoints.balance.int}</div>
             </Anotable>
           )}
         </div>
@@ -415,7 +416,7 @@ function PantallaGoogle({ negocio, cliente, qrTexto, anota }) {
 
       {/* La banda, entre las dos curvas: Google la mete por detrás de las esquinas. */}
       <div style={{ margin: "-26px 0" }}>
-        <Anotable clave="google.banda" etiqueta="Banda (los sellos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
+        <Anotable clave="google.banda" etiqueta="Banda (los puntos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
           <img src={comoDataUri(svgBandaOpaca(banda.svg, negocio.tema.cardBg))} alt={objeto.heroImage.contentDescription.defaultValue.value}
             style={{ display: "block", width: "100%", height: "auto", paddingTop: 26, paddingBottom: 26, background: negocio.tema.cardBg, boxSizing: "content-box" }} />
         </Anotable>

@@ -224,7 +224,7 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado, enPa
           texto={!enPase
             ? "Apagado: la tarjeta no dice si estás abierto."
             : reloj
-              ? "En el iPhone, sobre los sellos; en Android, en los detalles y en la tarjeta web."
+              ? "En el iPhone, sobre los puntos; en Android, en los detalles y en la tarjeta web."
               : "En la tarjeta web ya sale. En Wallet, cuando el reloj de los avisos esté en marcha."}
         />
       )}

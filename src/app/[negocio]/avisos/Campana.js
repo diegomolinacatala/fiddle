@@ -7,6 +7,7 @@ import {
   TODOS, MOMENTO, MAX_TEXTO, esPromo, horasParaEnviar, horaSugerida, cuandoEnvioTexto, infoDestino,
 } from "@/lib/envios";
 import { RELOJ_VIVO_MIN } from "@/lib/automatizaciones";
+import { ideaDeGrupo } from "@/lib/crm";
 import { DIAS, horaCorta } from "@/lib/horario";
 import { C, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, RADIO } from "@/app/ui";
 
@@ -41,8 +42,8 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
   // se llegó con un texto (de Clientes), ese.
   useEffect(() => {
     const deSemilla = semilla?.grupo === destino.key && semilla.texto;
-    setTexto(deSemilla || (esTodos ? negocio.promo || "" : destino.idea?.replace("{premio}", negocio.premio) || ""));
-  }, [destino.key, esTodos, destino.idea, negocio.promo, negocio.premio, semilla]);
+    setTexto(deSemilla || (esTodos ? negocio.promo || "" : ideaDeGrupo(destino.idea, negocio)));
+  }, [destino.key, esTodos, destino.idea, negocio, semilla]);
 
   // Las horas se piden al montar y cada minuto: la de hace un rato puede haber pasado.
   const [ahora, setAhora] = useState(() => Date.now());

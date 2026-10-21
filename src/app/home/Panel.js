@@ -17,9 +17,9 @@ import { ejemplo, CAFETERIA } from "./demo";
 // ============================================================================
 
 const CIFRAS = [
-  { label: "Clientes", valor: "248", pie: "212 con la tarjeta en el teléfono" },
-  { label: "Activos", valor: "131", pie: "104 a su ritmo, 27 nuevos" },
-  { label: "Vuelven en 14 días", valor: "58%", pie: "71 de 122 que la estrenaron" },
+  { label: "Clientes", valor: "248", pie: "212 con la tarjeta en el móvil" },
+  { label: "Siguen viniendo", valor: "131", pie: "27 nuevos y 104 a su ritmo" },
+  { label: "Premios por dar", valor: "18", pie: "guardados o con la cartilla llena" },
 ];
 
 // 30 días de visitas: más el fin de semana, cerrado el domingo, algo de subida.
@@ -72,7 +72,7 @@ export default function Panel() {
               <i key={i} style={{ height: `${Math.max(4, (v / MAXIMO) * 100)}%` }} className={i === VISITAS.length - 1 ? "hoy" : v ? "" : "cerrado"} />
             ))}
           </div>
-          <p className="panel-linea">Ritmo habitual: <strong>cada 6 días</strong></p>
+          <p className="panel-linea">El cliente típico vuelve <strong>cada 6 días</strong>.</p>
         </div>
       </article>
 
@@ -91,7 +91,7 @@ export default function Panel() {
       <article className="panel-pieza panel-media revela">
         <div className="panel-texto">
           <h3>Avisos a un grupo</h3>
-          <p>A los que están a un sello del premio, a los que hace semanas que no ves… Con el texto ya sugerido.</p>
+          <p>A los que están a un punto del premio, a los que hace semanas que no ves… Con el texto ya sugerido.</p>
         </div>
         <div className="panel-ui" aria-hidden="true">
           <span className="panel-etiqueta">A quién</span>

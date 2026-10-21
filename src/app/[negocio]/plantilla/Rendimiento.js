@@ -19,7 +19,7 @@ import { C, panel, h2, botonPequeno, legible } from "@/app/ui";
 
 const COLUMNAS = [
   ["nombre", "Persona"],
-  ["sellos", "Sellos"],
+  ["sellos", "Puntos"],
   ["sellosPorHora", "Por hora de caja"],
   ["premios", "Premios"],
   ["quitados", "Quitados"],
@@ -64,10 +64,10 @@ export default function Rendimiento({ cuentas, ideas, serie, dias, accent, color
     // minmax(0, 1fr): sin eso la tabla ancha estira la rejilla y en el móvil se sale TODA la página.
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-        <Cifra label="Sellos" valor={equipo.sellos} pie={`en ${dias} días, ${equipo.personas} ${equipo.personas === 1 ? "persona" : "personas"}`} accent={accent} />
-        <Cifra label="Por hora de caja" valor={media?.sellosPorHora ? cifra(media.sellosPorHora) : "–"} pie="sellos, media del equipo" />
+        <Cifra label="Puntos" valor={equipo.sellos} pie={`en ${dias} días, ${equipo.personas} ${equipo.personas === 1 ? "persona" : "personas"}`} accent={accent} />
+        <Cifra label="Por hora de caja" valor={media?.sellosPorHora ? cifra(media.sellosPorHora) : "–"} pie="puntos, media del equipo" />
         <Cifra label="Premios" valor={equipo.premios} pie="entregados" />
-        <Cifra label="Quitados" valor={equipo.quitados} pie={equipo.quitados ? `${unoDeCada(equipo.quitados, equipo.sellos)} sellos` : "ninguno al corregir"} accent={equipo.quitados ? C.mal : undefined} />
+        <Cifra label="Quitados" valor={equipo.quitados} pie={equipo.quitados ? `${unoDeCada(equipo.quitados, equipo.sellos)} puntos` : "ninguno al corregir"} accent={equipo.quitados ? C.mal : undefined} />
         <Cifra label="Clientes" valor={equipo.clientes} pie="distintos atendidos" />
       </div>
 
@@ -166,11 +166,11 @@ export default function Rendimiento({ cuentas, ideas, serie, dias, accent, color
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 18 }}>
         <section style={panel}>
-          <h2 style={h2}>Sellos por persona</h2>
+          <h2 style={h2}>Puntos por persona</h2>
           <BarrasPorPersona filas={conMovimientos.filter((f) => f.sellos > 0)} colorDe={colorDe} />
         </section>
         <section style={panel}>
-          <h2 style={h2}>Quién selló cada día</h2>
+          <h2 style={h2}>Quién sumó puntos cada día</h2>
           <SerieApilada serie={serie} claves={claves} colorDe={colorDe} nombreDe={nombreDe} />
         </section>
       </div>
@@ -195,7 +195,7 @@ function Detalle({ f, color, zona }) {
         {!f.jornadas.length ? <p style={nota}>Sin movimientos en este periodo.</p> : (
           <>
             <table style={tabla}>
-              <thead><tr>{["Día", "De", "A", "Sellos", "Premios", "Quitados"].map((x) => <th key={x} style={th}>{x}</th>)}</tr></thead>
+              <thead><tr>{["Día", "De", "A", "Puntos", "Premios", "Quitados"].map((x) => <th key={x} style={th}>{x}</th>)}</tr></thead>
               <tbody>
                 {jornadas.map((j) => (
                   <tr key={j.fecha}>
@@ -218,7 +218,7 @@ function Detalle({ f, color, zona }) {
       </div>
       <div>
         <h3 style={h3}>Sus horas</h3>
-        <Rejilla rejilla={f.rejilla} accent={color} />
+        <Rejilla rejilla={f.rejilla} accent={color} unidad={["movimiento", "movimientos"]} />
         {f.primeraVez && (
           <p style={pie}>
             Primer movimiento del periodo: {fechaHoraTexto(f.primeraVez, zona)}. Último: {fechaHoraTexto(f.ultimaVez, zona)}.

@@ -4,6 +4,7 @@ import { firmarTexto, verificarTexto } from "@/lib/auth";
 import {
   normalizarPlantilla, nombreDeEmpleado, nuevoEmpleado, cambiarEmpleado, empleadosActivos, empleadoDe,
   valorQuien, quienDePayload, empleadoDeValor, huellaDePin, pinValido, ponerPin, plantillaPublica, hayQueElegir,
+  conPlantilla, plantillaDeCaja,
   autorDe, quienTexto, ventanaDe, cuentasDePlantilla, serieDiaria, observacionesPlantilla, resumenDeHoy, colorDe,
   movimientosDePlantilla,
 } from "@/lib/plantilla";
@@ -174,6 +175,16 @@ describe("la cookie de quién atiende y el PIN", () => {
     expect(hayQueElegir({ rol: "caja" }, [])).toBe(false);
     expect(hayQueElegir(null, plantilla)).toBe(false);
   });
+
+  it("con la plantilla apagada en la tienda, la caja no tiene a nadie que ofrecer", () => {
+    expect(conPlantilla({ plantillaActiva: true, plantilla })).toBe(true);
+    for (const apagada of [{ plantillaActiva: false, plantilla }, { plantilla }, null]) {
+      expect(conPlantilla(apagada)).toBe(false);
+      expect(plantillaDeCaja(apagada)).toEqual([]);
+      expect(hayQueElegir({ rol: "caja" }, plantillaDeCaja(apagada))).toBe(false);
+    }
+    expect(plantillaDeCaja({ plantillaActiva: true, plantilla })).toBe(plantilla);
+  });
 });
 
 describe("quién hizo cada movimiento", () => {
@@ -309,7 +320,7 @@ describe("cuentas por persona", () => {
     expect(m.find((x) => x.serial === "s8").quien).toBe("Dueño");
     const lineas = csvRegistro({ filas: m, codigoDe: (s) => s.toUpperCase() }).split("\r\n");
     expect(lineas[0]).toBe("﻿Fecha;Hora;Código;Qué;Detalle;Quién;Fuera de horario");
-    expect(lineas[1]).toBe("2026-10-10;21:00;S10;Sello;sellar;Marta;Sí");
+    expect(lineas[1]).toBe("2026-10-10;21:00;S10;Punto;sellar;Marta;Sí");
   });
 
   it("cada persona tiene su color, estable", () => {
@@ -355,15 +366,15 @@ describe("conclusiones", () => {
 
   it("quién va por encima y por debajo de lo normal en sus franjas", () => {
     expect(idea("ritmo-alto-e:sebas1")).toMatchObject({ tono: "bien" });
-    expect(idea("ritmo-alto-e:sebas1").texto).toMatch(/^Sebas da 3 sellos por hora de caja; en sus franjas lo normal son 2/);
+    expect(idea("ritmo-alto-e:sebas1").texto).toMatch(/^Sebas da 3 puntos por hora de caja; en sus franjas lo normal son 2/);
     expect(idea("ritmo-bajo-e:marta1")).toMatchObject({ tono: "ojo" });
-    expect(idea("ritmo-bajo-e:marta1").texto).toMatch(/^Marta da 1,[0-9] sellos por hora de caja/);
+    expect(idea("ritmo-bajo-e:marta1").texto).toMatch(/^Marta da 1,[0-9] puntos por hora de caja/);
     expect(idea("ritmo-")?.detalle).toMatch(/mismos días y tramos/);
   });
 
   it("quién corrige más de la cuenta", () => {
     expect(idea("correcciones-e:jorge1")).toMatchObject({ tono: "ojo" });
-    expect(idea("correcciones-e:jorge1").texto).toBe("Jorge quita 1 de cada 2 sellos que da; el resto del equipo, ninguno.");
+    expect(idea("correcciones-e:jorge1").texto).toBe("Jorge quita 1 de cada 2 puntos que da; el resto del equipo, ninguno.");
     expect(idea("correcciones-e:sebas1")).toBeUndefined();
   });
 
@@ -373,8 +384,8 @@ describe("conclusiones", () => {
   });
 
   it("los movimientos sin nombre y la carga del equipo", () => {
-    expect(idea("sin-nombre").texto).toBe("2 movimientos sin nombre: se selló sin elegir quién atendía.");
-    expect(idea("carga-e:sebas1").texto).toMatch(/^Sebas da el 6\d % de los sellos del equipo\.$/);
+    expect(idea("sin-nombre").texto).toBe("2 movimientos sin nombre: se sumó sin elegir quién atendía.");
+    expect(idea("carga-e:sebas1").texto).toMatch(/^Sebas da el 6\d % de los puntos del equipo\.$/);
     expect(idea("fuera-")).toBeUndefined();
   });
 

@@ -4,7 +4,7 @@ import { tramosDe, relojLocal } from "@/lib/horario";
 import { SEMILLAS } from "@/lib/negocios";
 import { comprobarClave } from "@/lib/claves";
 import { normalizarPlantilla } from "@/lib/plantilla";
-import { perfilDe, puenteActivos, cohortes } from "@/lib/crm";
+import { perfilDe, puenteActivos, curvaDeVuelta } from "@/lib/crm";
 
 const ahora = Date.parse("2026-10-08T10:00:00Z");
 
@@ -44,6 +44,8 @@ describe("datos de prueba de dev", () => {
     const { negocios, eventos } = generar(ahora);
     const { plantilla } = negocios.delicanteria.config;
     expect(plantilla.map((e) => e.nombre)).toEqual(["Sebas", "Andreina", "Marta", "Jorge", "Lucía"]);
+    // De partida viene apagada; en dev, encendida para poder verla.
+    expect(negocios.delicanteria.config.plantillaActiva).toBe(true);
     expect(negocios.delicanteria.config.cartillas).toEqual(SEMILLAS.delicanteria.cartillas);
     const caja = eventos.filter((e) => e.actor === "caja");
     const hace15 = new Date(ahora - 15 * 864e5).toISOString();
@@ -59,7 +61,7 @@ describe("datos de prueba de dev", () => {
     expect(semillaDe("negocios").delicanteria.config.plantilla).toHaveLength(5);
   });
 
-  it("el Resumen tiene con qué: puente con altas, vueltas y bajas, y cohortes por semana", () => {
+  it("el Resumen tiene con qué: puente con altas, vueltas y bajas, y la curva de vuelta", () => {
     const { clientes, eventos } = generar(ahora);
     const lista = Object.values(clientes);
     const tienda = SEMILLAS.delicanteria;
@@ -68,8 +70,10 @@ describe("datos de prueba de dev", () => {
     const p = puenteActivos(lista, perfiles, eventos, tienda, { ahora, historialDesde });
     expect(p.listo).toBe(true);
     for (const k of ["antes", "nuevos", "volvieron", "enfriados"]) expect(p[k], k).toBeGreaterThan(0);
-    const co = cohortes(lista, perfiles, eventos, { ahora, historialDesde, zona: tienda.horario.zona });
-    expect(co).toMatchObject({ unidad: "semana", listo: true });
+    const v = curvaDeVuelta(lista, eventos, { ahora, historialDesde });
+    expect(v.listo).toBe(true);
+    expect(v.puntos.length).toBeGreaterThan(14); // llega a las dos semanas
+    expect(v.puntos.at(-1).pct).toBeGreaterThan(v.puntos[7].pct);
   });
 
   it("la caja trabaja en horario, salvo el sello de después de cerrar", () => {

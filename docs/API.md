@@ -143,8 +143,8 @@ segunda tarjeta al lado en vez de actualizar la que tiene (`configDeDescarga`).
 {
   "cliente":  { "serial": "…", "negocio": "delicanteria", "codigo": "K7M", "sellos": 5, "premios": 0, "nombre": "Marta", "creado": "…" },
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "acciones": ["sellar"], "promo": null, "ubicaciones": [], "tema": { … } },
-  "eventos":  [ { "tipo": "sellar", "mensaje": "Sello 5/8", "ts": "…" } ],
-  "acciones": [ { "key": "sellar", "label": "Añadir sello", "icon": "mas", "descripcion": "…", "correccion": false } ]
+  "eventos":  [ { "tipo": "sellar", "mensaje": "Punto 5/8", "ts": "…" } ],
+  "acciones": [ { "key": "sellar", "label": "Añadir punto", "icon": "mas", "descripcion": "…", "correccion": false } ]
 }
 ```
 
@@ -154,13 +154,14 @@ Respuesta: `{ ok, cliente, aviso }`.
 
 ### `POST /api/accion` — `{ "serial": "uuid", "accion": "sellar" }`
 ```json
-{ "ok": true, "mensaje": "Sello añadido · 6/8", "cliente": { … }, "aviso": { "proveedor": "apple", "avisados": 1, "web": 1, "google": 0 } }
+{ "ok": true, "mensaje": "Punto añadido · 6/8", "cliente": { … }, "aviso": { "proveedor": "apple", "avisados": 1, "web": 1, "google": 0 } }
 { "ok": false, "mensaje": "Aún no llega · 3/8", "cliente": { … } }   // rechazada por la lógica
 ```
 `400` falta serial/acción o acción desconocida · `403` acción desactivada u otro negocio · `404` cliente ·
 `409` otra caja modificó al cliente a la vez (`ok: false`, se devuelve el estado actual; repetir) ·
 `428` la tienda tiene plantilla y en este móvil nadie ha dicho hoy quién atiende (`{ ok: false, elegir: true }`:
 la caja manda a elegir, ver `/api/plantilla/quien`). El evento se guarda con `empleado` = quien atendía.
+Con la plantilla apagada en la tienda (`plantillaActiva`), nunca hay `428` y `empleado` es `null`.
 Si el aviso al Wallet falla, la acción **no** falla (el estado ya está guardado):
 `aviso.error` lo indica y el pase se pondrá al día en la próxima sincronización.
 
@@ -191,6 +192,8 @@ deja la cookie. Con `pin`, lo comprueba. Deja dos cookies httpOnly: `quien` (fir
 caja, con la huella del PIN) y `quien_ultimo` (90 días). `400` no está dado de alta, PIN mal formado
 (4 a 6 cifras, no todas iguales) o ya tenía PIN; `401` PIN incorrecto; `429` cinco fallos en 15 minutos.
 El manager no se identifica: para él `elegir` es siempre `false` y sus sellos quedan como `actor: "manager"`.
+Con la plantilla apagada en la tienda, el GET responde como sin gente dada de alta (`elegir: false`,
+`plantilla: []`) y el POST da `403`.
 
 ## Manager
 
@@ -201,6 +204,7 @@ La lista de la plantilla: alta, renombrar, baja (`activo: false`), vuelta y quit
 personas. Dar de baja no borra nada: deja de salir en la caja y sus movimientos siguen con su
 nombre. Queda en la auditoría (`plantilla`, con el id). Las cuentas y el registro no tienen API: la
 página los calcula con los eventos ([`plantillaDatos.js`](../src/lib/plantillaDatos.js)).
+`403` en los tres si la tienda tiene la plantilla apagada (la enciende el admin).
 
 ### `GET /api/negocio?b=<negocio>` · `PUT /api/negocio?b=<negocio>`
 ```json
@@ -271,6 +275,8 @@ Con `{ slug, nombre?, meta?, premio?, brief?, tema? }` edita la tienda y avisa a
 Con `{ slug, nota: { clave, texto } }` guarda un comentario sobre un campo del pase
 (`texto` vacío lo borra). Las claves son las de la vista previa: `apple.premio`,
 `apple.banda`, `google.puntos`…
+Con `{ slug, avisosAvanzados }` o `{ slug, plantillaActiva }` (un booleano y nada más)
+enciende o apaga eso para la tienda, sin avisar a ningún pase; queda en la auditoría.
 
 ### `DELETE /api/admin/negocios?slug=<slug>&modo=<modo>`
 `archivar` (por defecto) la esconde de todas partes sin borrar nada · `desarchivar` la
@@ -331,33 +337,36 @@ Todo el panel en una petición.
 {
   "negocio":  { "slug": "delicanteria", "nombre": "La Delicantería", "tipo": "sellos", "meta": 8, "premio": "…", "tema": { … } },
   "metricas": { "total": 33, "activos": 14, "enRiesgo": 10, "porEstado": { "activo": 11, "nuevo": 3, … },
-                "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31, "porDar": 4,
-                "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79,
-                "cadenciaHabitual": 6, "visitasHabituales": 4,
-                "vuelta": { "base": 20, "volvieron": 12, "tasa": 60, "dias": 14 },
-                "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "n": 37, "paso": null }, … ] },
+                "inicio": 1759305600000, "visitas30": 100, "visitas30Previas": 105, "nuevos30": 6, "premios": 31,
+                "porDar": 4, "conPremio": 3, "instalados": 28, "descartadas": 4, "tasaInstalacion": 85, "tasaVuelta": 79,
+                "cadenciaHabitual": 6,
+                "embudo": [ { "key": "sacaron", "label": "Sacaron la tarjeta", "de": "la sacaron", "n": 37, "paso": null },
+                            { "key": "quedaron", "label": "Se la quedaron", "de": "se la quedaron", "n": 33, "paso": 89 }, … ] },
   "grupos":   [ { "key": "fieles_frios", "label": "Fieles que se enfriaron", "total": 9, "contactables": 9, … } ],
   "puente":   { "dias": 30, "listo": true, "antes": 41, "nuevos": 24, "volvieron": 2, "enfriados": 13, "hoy": 54, "siguen": 28,
-                "pasos": [ { "key": "antes", "label": "Activos hace 30 días", "n": 41, "signo": 0, "desde": 0, "hasta": 41 }, … ] },
-  "cohortes": { "unidad": "semana", "semanas": 3, "listo": true,
-                "filas": [ { "desde": "2026-09-28", "altas": 12, "vividas": 2, "celdas": [ { "n": 10, "pct": 83 }, { "n": 6, "pct": 50 }, null ] } ] },
+                "pasos": [ { "key": "antes", "label": "Hace 30 días", "descripcion": "Seguían viniendo", "n": 41, "signo": 0, "desde": 0, "hasta": 41 }, … ] },
+  "vuelta":   { "listo": true, "base": 21, "faltanDias": null,
+                "puntos": [ { "dia": 0, "pct": 0, "seguidos": 21 }, { "dia": 1, "pct": 11, "seguidos": 18 }, … ] },
   "cartillas": [ { "indice": 0, "nombre": "Sellos", "meta": 8, "filas": [ { "sellos": 1, "siguen": 4, "alejan": 2 }, … ],
-                   "enCero": 6, "alejanMediana": 2 } ],
-  "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "retraso": 3.1, "contactable": true, … } } ],
+                   "enCero": 6, "conPuntos": 20, "mitad": 3, "alejanMediana": 2 } ],
+  "clientes": [ { "serial": "…", "codigo": "K7M", "nombre": "Marta", "perfil": { "estado": "riesgo", "visitas": 5, "cadencia": 7.2, "ritmo": 7.2, "conRitmoDeTienda": false, "retraso": 3.1, "contactable": true, … } } ],
   "campanas": [ { "id": 1, "grupo": "fieles_frios", "texto": "…", "destinatarios": 9, "avisados": 9, "volvieron": 3, "tasa": 33 } ],
-  "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Sello 5/8", "actor": "caja", "ts": "…" } ]
+  "eventos":  [ { "serial": "…", "tipo": "sellar", "mensaje": "Punto 5/8", "actor": "caja", "ts": "…" } ]
 }
 ```
 Los `eventos` van crudos (120 días, máx. 5000) porque las cuentas que dependen de
 la hora local —a qué hora viene la gente— se hacen **en el navegador**: el
 servidor vive en UTC y sacaría el café de las 9 a las 7.
 
-`puente` y `cohortes` reconstruyen el pasado con esos eventos. Sin historial que cubra
-hace 30 días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`;
-con una tienda que aún no tenía clientes entonces, `"motivo": "joven"` y `faltanDias`.
-En `cohortes`, cada celda es la parte de la fila que vino en esa semana desde su alta;
-`null`, una semana que aún no han vivido todos. Con más de 10 semanas de historia,
-`"unidad": "mes"` (las columnas siguen siendo semanas).
+En cada `perfil`, `ritmo` es lo que se le pide para no estar «en riesgo»: su `cadencia`
+o, si aún no tiene costumbre (menos de 3 visitas), la de la tienda (`conRitmoDeTienda`).
+
+`puente` y `vuelta` miran el pasado con esos eventos. Sin historial que cubra hace 30
+días (y dos meses antes), `puente` es `{ "listo": false, "motivo": "historial" }`; con
+una tienda que aún no tenía clientes entonces, `"motivo": "joven"` y `faltanDias`.
+`vuelta` es la curva de cuánto tardan en volver (Kaplan-Meier): en `puntos`, qué parte
+de los que la estrenaron ha vuelto a los `dia` días, y a cuántos se ha podido seguir
+tanto tiempo. Sin llegar a la semana, `listo: false` y `faltanDias` (o null).
 
 ### `POST /api/crm/campana` · manager
 Manda un mensaje a un GRUPO. El negocio va en el cuerpo (como en `/api/promo`).
@@ -466,7 +475,8 @@ el serial solo no basta ([`gestion.js`](../src/lib/gestion.js)). `403` sin llave
 `410` ya borrada · `429` más de 30 por minuto y IP.
 
 ### `GET /api/manifest?p=<serial>`
-Manifest de la tarjeta como app instalable (abre en `/p/<serial>`). Con `?b=` sigue
+Manifest de la tarjeta como app instalable (abre en `/p/<serial>`), con el nombre y el
+violín de fiddle (`lib/marcaFiddle.js`), no los de la tienda. Con `?b=` sigue
 siendo el de la caja.
 
 ## Salud

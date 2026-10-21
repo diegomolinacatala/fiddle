@@ -31,7 +31,7 @@ export const GUARDADOS = ["guardados", "guardados2"];
  * @returns {{indice:number, clave:string, claveGuardados:string, nombre:string, marca:string|null, meta:number, premio:string, sellos:number, faltan:number, completa:boolean, guardados:number}[]}
  */
 export function cartillasDe(cliente, negocio) {
-  const lista = negocio?.cartillas || [{ nombre: "Sellos", marca: null, meta: negocio?.meta, premio: negocio?.premio }];
+  const lista = negocio?.cartillas || [{ nombre: "Puntos", marca: null, meta: negocio?.meta, premio: negocio?.premio }];
   return lista.map((c, indice) => {
     const clave = CONTADORES[indice];
     const claveGuardados = GUARDADOS[indice];
@@ -49,14 +49,24 @@ export function cartillasDe(cliente, negocio) {
   });
 }
 
-/** "3/8 · 5/8": cómo va de un vistazo, para listas y el pase de Google. */
+/** "3/8 · 5/8": cómo va de un vistazo, para listas. */
 export const cuentaCorta = (cliente, negocio) =>
   cartillasDe(cliente, negocio).map((c) => `${c.sellos}/${c.meta}`).join(" · ");
 
-/** Texto alternativo de la banda: "Cookies 3 de 8, Cafés 5 de 8" o "3 de 8 sellos". */
+/**
+ * "2 gratis": los premios guardados de UNA cartilla, dichos junto a ella (su campo
+ * en el pase, su hueco en Google). Un total de las dos no dice si es un café o una
+ * cookie.
+ */
+export const gratisTexto = (n) => `${n} gratis`;
+
+/** "3/8 · 2 gratis": cómo va UNA cartilla y lo que tiene guardado de ella. */
+export const cuentaDeCartilla = (c) => `${c.sellos}/${c.meta}${c.guardados > 0 ? ` · ${gratisTexto(c.guardados)}` : ""}`;
+
+/** Texto alternativo de la banda: "Cookies 3 de 8, Cafés 5 de 8" o "3 de 8 puntos". */
 export function describirBanda(cliente, negocio) {
   const lista = cartillasDe(cliente, negocio);
-  if (!negocio?.cartillas) return `${lista[0].sellos} de ${lista[0].meta} sellos`;
+  if (!negocio?.cartillas) return `${lista[0].sellos} de ${lista[0].meta} puntos`;
   return lista.map((c) => `${c.nombre} ${c.sellos} de ${c.meta}`).join(", ");
 }
 

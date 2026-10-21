@@ -26,7 +26,7 @@ const GRIS_CLARO = "#eeecec"; // el fondo claro del logo a color (pág. 08)
 const CARBON = "#575756"; // el fondo oscuro del logo en blanco (pág. 08)
 const BLANCO = "#ffffff";
 
-const ATRAS_DELICANTERIA = "Un sello por cookie y otro por café. Al completar cada cartilla, la siguiente te la invitamos.";
+const ATRAS_DELICANTERIA = "Un punto por cookie y otro por café. Al completar cada cartilla, la siguiente te la invitamos.";
 
 // Lo que comparten todos sus diseños: el grano del logo arriba a la izquierda,
 // casillas redondas (como el círculo de su D) y el texto de la información.

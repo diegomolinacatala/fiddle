@@ -87,7 +87,7 @@ integración**: tiene que salir 🟢 en Apple Wallet, URL HTTPS, base de datos y
 1. En Safari del iPhone abre `https://TU-APP/api/tap?b=delicanteria` (o toca el tag NFC).
    → Pide el nombre; al continuar sale la tarjeta con **Añadir a Cartera de Apple**. Añade.
 2. En otro móvil abre `https://TU-APP/delicanteria/caja`, entra con el usuario `delicanteria-caja`,
-   **Escanear pase** → apunta al QR del pase → **Añadir sello**.
+   **Escanear pase** → apunta al QR del pase → **Añadir punto**.
 3. En unos segundos el iPhone recibe la notificación *"Tienes 1 de 8 sellos"* y la
    banda del pase muestra el primer café relleno.
 4. En el manager: **Lanzar** una promo → llega a todos los iPhone del negocio.

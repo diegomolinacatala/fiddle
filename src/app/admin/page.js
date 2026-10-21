@@ -218,7 +218,7 @@ const CONFIRMAR = {
     titulo: (n) => `Borrar las tarjetas de «${n.nombre}»`,
     texto: (n) => (
       <>
-        Sus <strong>{n.clientes} cliente(s)</strong> se borran con sus sellos y su historial; la tienda se
+        Sus <strong>{n.clientes} cliente(s)</strong> se borran con sus puntos y su historial; la tienda se
         queda como está. En el iPhone y en Google Wallet la tarjeta pasa a caducada: quitarla del
         teléfono es cosa de cada uno. Esto no se puede deshacer.
       </>
@@ -313,7 +313,7 @@ function NuevaTienda({ onCreada }) {
         <div>
           <label style={{ ...etiqueta, marginTop: 0 }}>Tipo</label>
           <select value={f.tipo} onChange={(e) => set("tipo", e.target.value)} style={campo}>
-            <option value="sellos">Cartilla de sellos</option>
+            <option value="sellos">Cartilla de puntos</option>
             <option value="descuento">Cupón de un uso</option>
           </select>
         </div>
@@ -323,7 +323,7 @@ function NuevaTienda({ onCreada }) {
         </div>
         {f.tipo === "sellos" && (
           <div>
-            <label style={{ ...etiqueta, marginTop: 0 }}>Sellos para el premio</label>
+            <label style={{ ...etiqueta, marginTop: 0 }}>Puntos para el premio</label>
             <input type="number" min={1} max={50} value={f.meta} onChange={(e) => set("meta", Number(e.target.value))} style={campo} />
           </div>
         )}
@@ -367,7 +367,7 @@ function NuevaTienda({ onCreada }) {
         {f.tipo !== "descuento" && (
           <>
             <Selector
-              titulo="Cómo se cuentan los sellos"
+              titulo="Cómo se cuentan los puntos"
               valor={f.tema.modo}
               opciones={MODOS}
               rotulos={ROTULO}
@@ -377,7 +377,7 @@ function NuevaTienda({ onCreada }) {
             />
             {f.tema.modo !== "relleno" && (
               <Selector
-                titulo="Casilla del sello"
+                titulo="Casilla de cada punto"
                 valor={f.tema.forma}
                 opciones={FORMAS}
                 rotulos={ROTULO}

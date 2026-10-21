@@ -32,7 +32,7 @@ function columnas(negocio) {
   const sellos = esCupon
     ? [["Cupón", (c) => ((c.premios || 0) > 0 ? "usado" : "sin usar")]]
     : cartillasDe({}, negocio).map((k) => [
-        negocio.cartillas ? `Sellos ${k.nombre.toLowerCase()} (de ${k.meta})` : `Sellos (de ${k.meta})`,
+        negocio.cartillas ? `Puntos ${k.nombre.toLowerCase()} (de ${k.meta})` : `Puntos (de ${k.meta})`,
         (c) => c[k.clave] || 0,
       ]);
   return [
@@ -75,13 +75,13 @@ export const QUIEN = { caja: "Caja", manager: "Dueño", admin: "Fiddle", cliente
 
 // Y qué fue cada movimiento (las clases de lib/actividad.js).
 export const QUE = {
-  sello: "Sello", correccion: "Sello quitado", premio: "Premio entregado",
+  sello: "Punto", correccion: "Punto quitado", premio: "Premio entregado",
   guardado: "Premio guardado", visita: "Visita", alta: "Tarjeta nueva",
 };
 
 /**
- * La actividad de un día (`actividadDelDia`), para cuadrarla con los tickets.
- * Una fila por movimiento. Sin nombres a propósito: para cuadrar basta el código
+ * La actividad de un día o de varios (`actividadDelRango`), para cuadrarla con
+ * los tickets. Una fila por movimiento, con su día. Sin nombres a propósito: para cuadrar basta el código
  * y la hora, y esta hoja se pasa al gestor o al contable.
  *
  * @param {{fecha:string, filas:object[], codigoDe:(serial:string)=>string, negocio:object}} datos
@@ -89,7 +89,7 @@ export const QUE = {
 export function csvActividad({ fecha, filas, codigoDe, negocio, quienDe = (f) => QUIEN[f.actor] || "" }) {
   const nombres = negocio.cartillas ? cartillasDe({}, negocio).map((k) => k.nombre) : null;
   const cols = [
-    ["Fecha", () => fecha],
+    ["Fecha", (f) => f.fecha || fecha],
     ["Hora", (f) => f.hora],
     ["Código", (f) => codigoDe(f.serial)],
     ["Qué", (f) => QUE[f.clase] || f.tipo],

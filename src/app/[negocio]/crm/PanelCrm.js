@@ -2,7 +2,7 @@
 
 import Icono from "@/app/Icono";
 import { useEffect, useMemo, useState } from "react";
-import { cadenciaTexto, GRUPOS } from "@/lib/crm";
+import { cadenciaTexto, GRUPOS, ideaDeGrupo } from "@/lib/crm";
 import { ultimaVezTexto, fechaHoraTexto, zonaDe } from "@/lib/actividad";
 import { enlaceDeAccion } from "@/lib/observaciones";
 import { csvClientes } from "@/lib/exportar";
@@ -115,7 +115,7 @@ export default function PanelCrm({ slug, inicial }) {
         {pestana === "grupos" && (
           <div style={{ display: "grid", gap: 16 }}>
             <p style={{ ...nota }}>
-              Cada cliente puede estar en varios grupos a la vez: quien está a un sello del premio también puede llevar
+              Cada cliente puede estar en varios grupos a la vez: quien está a un punto del premio también puede llevar
               semanas sin venir. Toca uno para ver quién hay y escribirles.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 12 }}>
@@ -240,7 +240,7 @@ function DetalleGrupo({ g, d, n, slug, accent, onVerFicha, onVerLista }) {
   const dentro = d.clientes.filter((c) => GRUPOS[g.key]?.incluye(c.perfil));
   const programar = enlaceDeAccion(slug, {
     tipo: "programar",
-    base: { nombre: g.label, disparo: "grupo", valor: g.key, texto: (g.idea || "").replace("{premio}", n.premio), hora: "11:00", caduca: false },
+    base: { nombre: g.label, disparo: "grupo", valor: g.key, texto: ideaDeGrupo(g.idea, n), hora: "11:00", caduca: false },
   });
   return (
     <section style={panel}>

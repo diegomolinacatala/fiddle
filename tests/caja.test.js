@@ -20,7 +20,7 @@ describe("la vista de la caja", () => {
 
   it("una fila por cartilla, que suma, con el − dentro si se puede quitar", () => {
     expect(filasDeCaja(una)).toEqual([
-      { tipo: "cartilla", key: "sellar", restar: "restar", dos: false, label: "Añadir sello", icon: "mas", cartilla: 0 },
+      { tipo: "cartilla", key: "sellar", restar: "restar", dos: false, label: "Añadir punto", icon: "mas", cartilla: 0 },
     ]);
     const filas = filasDeCaja({ ...dos, caja: { sumarDos: true } });
     expect(filas.map((f) => [f.key, f.restar, f.label, f.dos])).toEqual([
@@ -43,5 +43,12 @@ describe("la vista de la caja", () => {
 
   it("el manager la guarda limpia", () => {
     expect(patchNegocio({ caja: { volverAlEscaner: true, x: 2 } }, []).patch.caja).toEqual({ ...normalizarCaja({}), volverAlEscaner: true });
+  });
+
+  it("volver al escáner sin tocarla: apagado de partida, y se puede encender", () => {
+    expect(normalizarCaja({}).volverSinTocar).toBe(false);
+    expect(OPCIONES_CAJA.volverSinTocar.descripcion).toMatch(/30 segundos/);
+    expect(patchNegocio({ caja: { volverSinTocar: true } }, []).patch.caja.volverSinTocar).toBe(true);
+    expect(normalizarCaja({ volverSinTocar: "si" }).volverSinTocar).toBe(false);
   });
 });

@@ -95,7 +95,7 @@ function Bienvenida({ n, slug, nuevo }) {
       {/* Lo mínimo del aviso de privacidad donde se recogen los datos (por capas):
           una línea y el enlace al resto. */}
       <p className="letra entra" style={{ animationDelay: "200ms" }}>
-        Guardamos tus sellos{n.pedirNombre ? " y tu nombre" : ""} y te avisamos de sus promos.{" "}
+        Guardamos tus puntos{n.pedirNombre ? " y tu nombre" : ""} y te avisamos de sus promos.{" "}
         <a href={`/privacidad?b=${slug}`}>Privacidad</a>
       </p>
     </>
@@ -143,7 +143,7 @@ function TuTarjeta({ n, cliente, plataforma }) {
 function promesa(n) {
   if (n.tipo === "descuento") return [n.premio];
   if (n.cartillas) return n.cartillas.map((c) => `${c.meta} ${c.nombre.toLowerCase()} · ${c.premio}`);
-  return [`${n.meta} sellos · ${n.premio}`];
+  return [`${n.meta} puntos · ${n.premio}`];
 }
 
 const marca = { margin: "0 auto", borderRadius: 22, boxShadow: "0 18px 36px -16px rgba(0,0,0,.5)" };

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCliente, getNegocio, listEventos, guardarNota, clientePublico, serialesRegistrados } from "@/lib/store";
-import { perfilDe } from "@/lib/crm";
+import { getCliente, getNegocio, listEventos, listClientes, guardarNota, clientePublico, serialesRegistrados } from "@/lib/store";
+import { perfilesDe } from "@/lib/crm";
 import { saldoCorto } from "@/lib/cartillas";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 import { cambiarPromos, borrarCliente } from "@/lib/derechos";
@@ -21,17 +21,23 @@ export async function GET(request, { params }) {
     const { respuesta } = await exigirNegocio(request, cliente.negocio, "manager");
     if (respuesta) return respuesta;
 
-    const [negocio, eventos, registrados] = await Promise.all([
-      getNegocio(cliente.negocio), listEventos(serial, HISTORIAL), serialesRegistrados(cliente.negocio),
+    const [negocio, eventos, registrados, deLaTienda] = await Promise.all([
+      getNegocio(cliente.negocio), listEventos(serial, HISTORIAL), serialesRegistrados(cliente.negocio), listClientes(cliente.negocio),
     ]);
     // Como en la lista (lib/crmDatos.js): quien manda en "¿se le puede avisar
     // AHORA?" son los registros vivos, no la fecha de alta en el Wallet. Sin esto
     // la ficha decía "Nunca guardó la tarjeta" de quien sí la tiene.
-    const vivo = registrados.has(serial);
-    const conRegistro = { ...cliente, instalado: cliente.instalado || (vivo ? cliente.creado : null), desinstalado: vivo ? null : cliente.desinstalado };
+    const conRegistro = (c) => {
+      const vivo = registrados.has(c.serial);
+      return { ...c, instalado: c.instalado || (vivo ? c.creado : null), desinstalado: vivo ? null : c.desinstalado };
+    };
+    // Su estado se mide con el ritmo de toda la tienda (perfilesDe), como en la
+    // lista: si no, la ficha diría «Nuevo» de quien la tabla tiene «En riesgo».
+    const todos = [conRegistro(cliente), ...deLaTienda.filter((c) => c.serial !== serial).map(conRegistro)];
+    const { perfiles } = perfilesDe(todos, negocio);
     return NextResponse.json({
-      cliente: clientePublico(conRegistro),
-      perfil: perfilDe(conRegistro, negocio),
+      cliente: clientePublico(todos[0]),
+      perfil: perfiles[0],
       saldo: negocio ? saldoCorto(cliente, negocio) : String(cliente.sellos),
       eventos,
     });
