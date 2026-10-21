@@ -87,6 +87,11 @@ comprobar siempre que de verdad desplegó.
 - Los avisos en la pantalla de bloqueo los dispara un **campo que cambia**, no
   una imagen. La banda se actualiza en silencio: por eso `changeMessage` vive en
   PREMIO, cuyo valor cambia con cada sello.
+- **El empujón a APNs va con prioridad alta** (`alert` y 10, `lib/apple/apns.js`). Con
+  `background` y 5 el iPhone lo entrega cuando le conviene: el 21-10-2026 la caja de La
+  Delicantería sumaba el punto y la tarjeta del cliente seguía igual (causa más probable,
+  ver la tabla de problemas de docs/APPLE-WALLET.md para las otras). No bajarla sin
+  probarlo antes con un iPhone de verdad.
 - **Wallet apila los pases que comparten Pass Type ID.** Una tienda puede tener
   uno propio (`APPLE_PASS_TYPE_ID_<SLUG>` + `APPLE_PASS_CERT_<SLUG>`, ver
   `lib/apple/config.js`). Un pase instalado no cambia nunca de ID: por eso el
