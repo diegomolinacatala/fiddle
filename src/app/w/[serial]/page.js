@@ -68,7 +68,7 @@ export default async function Page({ params }) {
   if (!n) {
     return (
       <main style={pagina}>
-        <Aviso titulo="Esta tienda ya no está activa" texto="La tarjeta es de una tienda archivada: no se le pueden sumar sellos." />
+        <Aviso titulo="Esta tienda ya no está activa" texto="La tarjeta es de una tienda archivada: no se le pueden sumar puntos." />
       </main>
     );
   }
