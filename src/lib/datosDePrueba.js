@@ -9,7 +9,8 @@
 // plantilla inventada que lleva dos semanas apuntando quién da cada sello.
 // Detrás, otros tantos de hace uno o dos meses (ANTES), con lo que el Resumen
 // necesita para no salir vacío: quien sigue, quien se enfría, quien vuelve tras
-// una pausa, quien vino una vez y quien la sacó y la estrena tarde o nunca.
+// una pausa, quien vino una vez y quien la sacó y la estrena tarde o nunca. Y
+// los `registros` de quien la guardó: en iPhone, en Android o ya quitada.
 //
 // Se genera al vuelo y con una semilla fija: el mismo despliegue da los mismos
 // clientes, y las fechas van respecto a HOY para que siempre parezca reciente.
@@ -25,6 +26,10 @@ import { SEMILLAS } from "./negocios";
 import { tramosDe, fechaLocal, sumarDias, inicioDelDia, relojLocal, diaDeFecha } from "./horario";
 import { codigoLibre } from "./codigo";
 import { soloVisitas } from "./crm";
+import { TIPO_WEB } from "./push/suscripcion";
+
+// Un Pass Type ID que no es de nadie: el pase de Apple de mentira de los iPhone de dev.
+const PASS_TYPE_DEV = "pass.dev.fiddle.ejemplo";
 
 export const activos = () =>
   process.env.DATOS_DE_PRUEBA === "1" && process.env.VERCEL_ENV !== "production";
@@ -240,6 +245,25 @@ export function generar(ahora = Date.now()) {
   }
   for (const c of lista) c.actualizado = c.ultima_visita || c.creado;
 
+  // En qué teléfono la tienen los que la guardaron (el Resumen, «¿En qué móviles la
+  // llevan?»): unos en iPhone, otros en Android y alguno ya la quitó. Con su propia
+  // semilla, para que todo lo de arriba salga igual que antes. Sin dispositivos
+  // detrás: no hay token al que mandar nada (destinosDeAviso los descarta).
+  const enMovil = azar(20261026);
+  const registros = [];
+  for (const c of Object.values(clientes)) {
+    if (!c.instalado) continue;
+    if (enMovil() < 0.15) {
+      c.desinstalado = new Date((Date.parse(c.instalado) + ahora) / 2).toISOString();
+      continue;
+    }
+    const iphone = enMovil() < 0.55;
+    registros.push({
+      dispositivo: `dev-${c.serial.slice(0, 8)}`, pass_type: iphone ? PASS_TYPE_DEV : TIPO_WEB,
+      serial: c.serial, negocio: SLUG, creado: c.instalado,
+    });
+  }
+
   eventos.sort((a, b) => a.ts.localeCompare(b.ts));
 
   // La fila de la tienda: lo que no esté aquí lo pone la semilla (componerNegocio).
@@ -263,12 +287,12 @@ export function generar(ahora = Date.now()) {
       },
     },
   };
-  return { negocios, clientes, eventos };
+  return { negocios, clientes, eventos, registros };
 }
 
 /** Lo de partida para un fichero del modo demo, o undefined si no hay. */
 export function semillaDe(nombre) {
-  if (!activos() || !["negocios", "clientes", "eventos"].includes(nombre)) return undefined;
+  if (!activos() || !["negocios", "clientes", "eventos", "registros"].includes(nombre)) return undefined;
   cache ||= generar();
   return structuredClone(cache[nombre]);
 }

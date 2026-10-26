@@ -46,6 +46,33 @@ function sinError({ data, error, count }, contexto) {
   return count ?? data;
 }
 
+// Supabase (PostgREST) da como mucho «Max rows» filas por petición, 1000 de
+// partida, aunque se pida más con .limit(): lo que sobra se pierde EN SILENCIO.
+// Así, el Resumen de una tienda con más de 1000 movimientos en su ventana solo
+// veía los últimos días y daba por vacío todo lo de antes. Lo que pueda pasar
+// de mil filas se lee por aquí, a páginas. `pedir` devuelve la consulta entera
+// salvo el .range(), con un orden TOTAL (desempatado por una clave única): con
+// empates, dos páginas podrían repetir o saltarse filas.
+const PAGINA = 1000;
+
+async function porPaginas(pedir, contexto, limite = Infinity) {
+  const filas = [];
+  while (filas.length < limite) {
+    const cuantas = Math.min(PAGINA, limite - filas.length);
+    const pagina = sinError(await pedir().range(filas.length, filas.length + cuantas - 1), contexto) || [];
+    filas.push(...pagina);
+    if (pagina.length < cuantas) break;
+  }
+  return filas;
+}
+
+// Lo que entra mientras se pasa de página empuja una fila de la anterior a la
+// siguiente y saldría dos veces: se queda la primera.
+function sinRepetir(filas, clave) {
+  const vistas = new Set();
+  return filas.filter((f) => !vistas.has(f[clave]) && vistas.add(f[clave]));
+}
+
 // ---------- Backend demo: ficheros JSON ----------
 const dataDir = () => process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const fichero = (nombre) => path.join(dataDir(), `${nombre}.json`);
@@ -407,7 +434,7 @@ const CAMPOS_CLIENTE =
 const PERSONALES = ["nombre", "nota"];
 
 // El saldo de la tarjeta: lo que mueve la caja y se guarda con guardado optimista.
-const SALDO = ["sellos", "sellos2", "premios", "guardados", "guardados2"];
+export const SALDO = ["sellos", "sellos2", "premios", "guardados", "guardados2"];
 const cifrarCampo = (serial, campo, valor) => cifrar(valor, { serial, campo });
 const descifrarCampo = (c, campo) => descifrar(c[campo] ?? null, { serial: c.serial, campo });
 
@@ -557,6 +584,59 @@ export async function saveCliente(cliente, { esperado } = {}) {
   });
 }
 
+/**
+ * «Deshacer cambios» de la caja (lib/deshacer.js): la tarjeta vuelve a como estaba
+ * al escanearla, con su saldo, su contador de visitas, su última visita y el mensaje
+ * que sumar la visita le quitó. Optimista como saveCliente: solo si el saldo sigue
+ * siendo `esperado` (lo que se acaba de leer).
+ * @param {string} serial
+ * @param {{sellos:number, sellos2:number, premios:number, guardados:number, guardados2:number,
+ *   visitas:number, ultima_visita:string|null, mensaje:string|null}} antes
+ * @param {{esperado: object}} opciones
+ * @returns {Promise<boolean>} true si se guardó
+ */
+export async function restaurarCliente(serial, antes, { esperado }) {
+  const patch = { actualizado: ahoraISO(), visitas: antes.visitas || 0, ultima_visita: antes.ultima_visita ?? null, mensaje: antes.mensaje ?? null };
+  for (const k of SALDO) patch[k] = antes[k] || 0;
+
+  if (hasSupabase()) {
+    let q = supa().from("clientes").update(patch).eq("serial", serial);
+    for (const k of SALDO) q = q.eq(k, esperado[k] || 0);
+    const filas = sinError(await q.select("serial"), "restaurar cliente");
+    return (filas?.length ?? 0) > 0;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const actual = all[serial];
+    if (!actual || SALDO.some((k) => (actual[k] || 0) !== (esperado[k] || 0))) return false;
+    await escribir("clientes", { ...all, [serial]: { ...actual, ...patch } });
+    return true;
+  });
+}
+
+/**
+ * Quita del historial lo que hizo la caja en una tarjeta desde `desde` (ISO), solo
+ * de esos `tipos`: lo deshecho no pasó, y no puede contar como visita, sello ni
+ * premio en ninguna cuenta. Lo demás (que instaló el pase, una campaña) se queda.
+ * @returns {Promise<number>} cuántos quitó
+ */
+export async function quitarEventosDesde(serial, desde, tipos) {
+  if (!tipos.length) return 0;
+  if (hasSupabase()) {
+    const filas = sinError(
+      await supa().from("eventos").delete().eq("serial", serial).gte("ts", desde).in("tipo", tipos).select("id"),
+      "quitar eventos",
+    );
+    return filas?.length ?? 0;
+  }
+  return enFila(async () => {
+    const all = await leer("eventos", []);
+    const quedan = all.filter((e) => !(e.serial === serial && e.ts >= desde && tipos.includes(e.tipo)));
+    if (quedan.length !== all.length) await escribir("eventos", quedan);
+    return all.length - quedan.length;
+  });
+}
+
 /** Cambia SOLO el nombre (no pisa sellos que otra caja esté poniendo a la vez). */
 export async function guardarNombre(serial, nombre) {
   const patch = { nombre: cifrarCampo(serial, "nombre", nombre), actualizado: ahoraISO() };
@@ -600,11 +680,13 @@ export async function listClientes(negocio, { limite } = {}) {
     // Las tarjetas fusionadas en otra (ver unaTarjeta.js) ya no son clientes:
     // su historial y sus sellos viven en la que las sustituyó.
     // Tampoco las que se pidió borrar: esperan a la pasada diaria, ya vacías.
-    let q = supa().from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).is("borrado_en", null)
-      .order("creado", { ascending: false });
-    if (negocio) q = q.eq("negocio", negocio);
-    if (limite) q = q.limit(limite);
-    return (sinError(await q, "listar clientes") || []).map(normalizarCliente);
+    const db = supa();
+    const pedir = () => {
+      const q = db.from("clientes").select(CAMPOS_CLIENTE).is("fusionado_en", null).is("borrado_en", null)
+        .order("creado", { ascending: false }).order("serial");
+      return negocio ? q.eq("negocio", negocio) : q;
+    };
+    return sinRepetir(await porPaginas(pedir, "listar clientes", limite || Infinity), "serial").map(normalizarCliente);
   }
   const all = await enFila(() => leer("clientes", {}));
   const lista = Object.values(all)
@@ -734,12 +816,16 @@ export async function ultimoEvento(serial, tipos) {
 export async function listEventosDeNegocio(negocio, { dias = 120, limite = 5000 } = {}) {
   const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
   if (hasSupabase()) {
-    const data = sinError(
-      await supa().from("eventos").select(CAMPOS_EVENTO).eq("negocio", negocio).gt("ts", desde)
-        .order("ts", { ascending: false }).limit(limite),
+    const db = supa();
+    // `id` desempata (una campaña apunta a todos con la misma hora) y quita la
+    // fila repetida entre páginas; al panel no le hace falta.
+    const filas = await porPaginas(
+      () => db.from("eventos").select(`${CAMPOS_EVENTO}, id`).eq("negocio", negocio).gt("ts", desde)
+        .order("ts", { ascending: false }).order("id", { ascending: false }),
       "listar eventos del negocio",
+      limite,
     );
-    return data || [];
+    return sinRepetir(filas, "id").map(({ id, ...e }) => e);
   }
   // En ficheros no hay columna indexada: se filtra por los seriales de la tienda.
   const [eventos, clientes] = await enFila(() => Promise.all([leer("eventos", []), leer("clientes", {})]));
@@ -1206,17 +1292,22 @@ export async function listCampanas(negocio, { limite = 20, desde = null } = {}) 
     .slice(0, limite);
 }
 
-/** Seriales de la tienda que tienen la tarjeta en algún teléfono, por cualquier canal (= avisables). */
-export async function serialesRegistrados(negocio) {
+/** Qué tarjeta de la tienda está en qué canal ahora mismo: `{serial, pass_type}` (ver abajo). */
+export async function registrosDeTienda(negocio) {
   if (hasSupabase()) {
-    const data = sinError(
-      await supa().from("registros").select("serial").eq("negocio", negocio),
+    const db = supa();
+    return porPaginas(
+      () => db.from("registros").select("serial, pass_type").eq("negocio", negocio).order("serial").order("dispositivo").order("pass_type"),
       "leer registros del negocio",
     );
-    return new Set((data || []).map((r) => r.serial));
   }
   const registros = await enFila(() => leer("registros", []));
-  return new Set(registros.filter((r) => r.negocio === negocio).map((r) => r.serial));
+  return registros.filter((r) => r.negocio === negocio).map((r) => ({ serial: r.serial, pass_type: r.pass_type }));
+}
+
+/** Seriales de la tienda que tienen la tarjeta en algún teléfono, por cualquier canal (= avisables). */
+export async function serialesRegistrados(negocio) {
+  return new Set((await registrosDeTienda(negocio)).map((r) => r.serial));
 }
 
 // ================= DISPOSITIVOS Y REGISTROS (a quién avisar) =================

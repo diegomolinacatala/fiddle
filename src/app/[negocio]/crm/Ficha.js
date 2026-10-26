@@ -29,6 +29,7 @@ const ICONO = {
   usarGuardado: "regalo",
   fusion: "movil",
   confirmar: "check",
+  deshacer: "deshacer",
   promos_no: "campanaNo",
   promos_si: "campana",
 };

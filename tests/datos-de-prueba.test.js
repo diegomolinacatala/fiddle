@@ -76,6 +76,16 @@ describe("datos de prueba de dev", () => {
     expect(v.puntos.at(-1).pct).toBeGreaterThan(v.puntos[7].pct);
   });
 
+  it("los que la guardaron la tienen en iPhone o en Android, y alguno la quitó", () => {
+    const { clientes, registros } = generar(ahora);
+    const tipos = new Set(registros.map((r) => r.pass_type));
+    expect(tipos.has("web")).toBe(true);
+    expect([...tipos].some((t) => t.startsWith("pass."))).toBe(true);
+    expect(Object.values(clientes).some((c) => c.instalado && c.desinstalado)).toBe(true);
+    // Solo quien la guardó tiene registro.
+    for (const r of registros) expect(clientes[r.serial].instalado).toBeTruthy();
+  });
+
   it("la caja trabaja en horario, salvo el sello de después de cerrar", () => {
     const { horario } = SEMILLAS.delicanteria;
     const fuera = generar(ahora).eventos.filter((e) => {

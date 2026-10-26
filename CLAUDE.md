@@ -5,6 +5,23 @@ que no se deducen leyendo el código.
 
 Para ponerse en marcha (instalar, arrancar, desplegar): [NEXT-STEPS.md](NEXT-STEPS.md).
 
+## Lo del negocio: el vault (`Victrozz/fiddleobsidian`)
+
+Todo lo que NO es código vive en un repo privado de Victor y Diego, el vault de
+Obsidian: tiendas (clientes y prospectos, en qué estado está cada una), personas,
+citas, tareas, ideas y documentos (logo de Fiddle, plan ante una brecha…). Para
+cualquier duda sobre el negocio (qué quiere una tienda, quién es quién, qué hay
+pendiente, qué se ha hablado) **míralo ahí antes de suponer o preguntar**. Las
+tareas y el estado del negocio salen de ahí, no de `NEXT-STEPS.md`.
+
+- Leerlo: `gh repo clone Victrozz/fiddleobsidian` (o `gh api` a sus ficheros). Empieza
+  por su `CLAUDE.md` e `Inicio.md`; las fichas de tienda están en `Tiendas/`.
+- **Este repo es público y el vault no.** Nada del vault (nombres, teléfonos, precios,
+  notas de reuniones) se copia aquí: ni en el código, ni en los docs, ni en commits o
+  PRs. Se enlaza o se resume sin datos.
+- Si algo del trabajo aquí cambia el negocio (una tienda pide algo, se cierra una
+  tarea), se apunta en el vault siguiendo sus reglas, no en este repo.
+
 ## Qué es esto
 
 Tarjetas de fidelización en Apple Wallet y Android (tarjeta web con avisos, y
@@ -206,6 +223,18 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
   «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
   en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
+- **«Deshacer cambios» deja la tarjeta como al escanearla** (26-10-2026, `lib/deshacer.js`,
+  `POST /api/accion/deshacer`): con algo hecho en la ficha, un botón debajo de lo que acaba
+  de pasar. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
+  tarjeta desde que se abrió la ficha, y la tarjeta recupera saldo, `visitas`,
+  `ultima_visita` y el `mensaje` que sumar la visita le quitó. Para las cuentas, esa visita
+  no pasó (con el «−» el sello y su corrección se quedan, y la visita cuenta). Cómo estaba
+  lo dice una instantánea que FIRMA el servidor al pintar la ficha (`firmarInstantanea`,
+  caduca a los `MINUTOS_DESHACER_CAMBIOS`): nunca un estado que mande el navegador. Va por
+  la misma fila que las acciones y deja en el historial una línea `deshacer`, que no es de
+  la caja ni una visita. El teléfono del cliente se pone al día sin `antes` (no suena).
+- **Un premio guardado se enseña con SU dibujo** (la cookie, la taza: `premiosDe` lleva la
+  `marca` de su cartilla) y su nombre en grande, no con un icono genérico.
 - **Sin tocarla, la ficha vuelve al escáner** (`volverSinTocar`, Editar vista de caja,
   apagado de partida; lo pidió La Delicantería, con un móvil fijo en el mostrador): a los
   `SEGUNDOS_SIN_TOCAR` (30, fijos) sin toques, scroll ni teclado va a `/<slug>/caja`, con
@@ -423,7 +452,9 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   del embudo y la suma de los estados; «Siguen viniendo» es el «Hoy» del puente; «Premios
   por dar», el grupo «Premio pendiente» y el aviso «Tiene un premio sin recoger» miran lo
   mismo (las dos cartillas y los guardados: `perfil.faltan` es el de la cartilla más cerca y
-  `completa`, cualquiera llena). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
+  `completa`, cualquiera llena); «con la tarjeta en el móvil» de Clientes es iPhone + Android
+  + los dos de «¿En qué móviles la llevan?» (`telefonosDe`, con los `registros` VIVOS por
+  canal: quien la quitó sigue con `instalado`, y va aparte en «La quitaron»). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
   no puede contar dos cosas («Volvieron» del embudo es la segunda visita; en el puente, los
   que vuelven tras irse son «Recuperados»).
 - **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale
@@ -747,6 +778,10 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   es un hallazgo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.
+- **Supabase da como mucho 1000 filas por petición, y sin error**, aunque se pida
+  `.limit(5000)` (26-10-2026: el Resumen perdía los días más viejos).
+  Una lectura que pueda pasar de mil va por `porPaginas` en `store.js`, con un orden
+  que desempate por una clave única. Los ficheros no tienen tope: ahí no se nota.
 - **Nombre y nota del cliente van cifrados** (`lib/cifrado.js`, ver
   [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md)). Se cifran al guardar y se descifran
   en `normalizarCliente`: leer y escribir `clientes` siempre por esas funciones

@@ -352,3 +352,39 @@ export function Cartilla({ c, conNombre }) {
     </div>
   );
 }
+
+// --------------------------------------------------------------- los teléfonos
+/**
+ * En qué teléfonos la llevan (`telefonosDe()` de lib/crm.js): una fila por sitio
+ * con su barra medida contra los que la guardaron alguna vez, como los estados.
+ * Las que siguen en un móvil, del color de la tienda; las que se quitaron,
+ * apagadas. «En los dos» solo sale si hay alguno.
+ */
+export function Telefonos({ t, accent }) {
+  const color = legible(accent);
+  const filas = [
+    { key: "iphone", label: "iPhone", quienes: "En la Cartera de Apple", n: t.iphone, color },
+    { key: "android", label: "Android", quienes: "En Google Wallet o en la tarjeta web, con sus avisos", n: t.android, color },
+    t.ambos > 0 && { key: "ambos", label: "En los dos", quienes: "La misma tarjeta en un iPhone y en un Android", n: t.ambos, color },
+    { key: "quitaron", label: "La quitaron", quienes: "La guardaron y ya no está en su móvil", n: t.quitaron, color: C.tenue },
+  ].filter(Boolean);
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12, maxWidth: 520 }}>
+      {filas.map((f) => (
+        <li key={f.key} style={{ opacity: f.n ? 1 : 0.6 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 14 }}>
+            <span style={{ fontWeight: 600 }}>{f.label}</span>
+            <span style={{ marginLeft: "auto", fontWeight: 650, fontVariantNumeric: "tabular-nums" }}>{numero(f.n)}</span>
+            <span style={{ width: 42, textAlign: "right", fontSize: 12.5, color: C.tenue, fontVariantNumeric: "tabular-nums" }}>
+              {t.guardaron ? Math.round((f.n / t.guardaron) * 100) : 0}%
+            </span>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.suave, marginTop: 2 }}>{f.quienes}</div>
+          <div style={{ height: 6, marginTop: 5, background: C.panelSuave, borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: `${t.guardaron ? (f.n / t.guardaron) * 100 : 0}%`, minWidth: f.n ? 3 : 0, height: "100%", background: f.color, borderRadius: 3 }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}

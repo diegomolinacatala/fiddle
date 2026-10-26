@@ -153,6 +153,23 @@ describe("la fila de la caja", () => {
     expect(t.mandar).not.toHaveBeenCalled();
   });
 
+  it("deshacer cambios va por la misma fila: después de lo que había, antes de lo que venga", async () => {
+    const t = prueba();
+    t.fila.enviar("sellar");
+    t.fila.encolar(() => new Promise((ok) => { t.recibidas.push("deshacer"); ok(); }));
+    t.fila.enviar("sellar2");
+    await tic();
+    expect(t.recibidas).toEqual(["sellar"]);
+    t.contestar();
+    await tic();
+    await tic();
+    expect(t.recibidas).toEqual(["sellar", "deshacer", "sellar2"]);
+    t.contestar();
+    await t.fila.vaciar();
+    expect(t.fila.pendientes).toBe(0);
+    expect(t.alAcabar).toHaveBeenCalledTimes(3);
+  });
+
   it("si una petición lanza, la fila no se atasca", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const mandar = vi.fn().mockRejectedValueOnce(new Error("roto")).mockResolvedValue(undefined);

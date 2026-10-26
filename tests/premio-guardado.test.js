@@ -77,7 +77,7 @@ describe("el recuadro del premio en la caja", () => {
   it("solo sale si hay algo que dar", () => {
     expect(premiosDe(cliente({ sellos: 5 }), nube)).toEqual([]);
     expect(premiosDe(cliente({ sellos: 8 }), nube)).toEqual([
-      { indice: 0, nombre: null, premio: "café gratis", completa: true, guardados: 0, acciones: { dar: "canjear", guardar: "guardar", usar: "usarGuardado" } },
+      { indice: 0, nombre: null, marca: null, premio: "café gratis", completa: true, guardados: 0, acciones: { dar: "canjear", guardar: "guardar", usar: "usarGuardado" } },
     ]);
     expect(premiosDe(cliente({ sellos: 2, guardados: 2 }), nube)[0]).toMatchObject({ completa: false, guardados: 2 });
   });
@@ -88,6 +88,8 @@ describe("el recuadro del premio en la caja", () => {
       ["Cookies", true, 0, "usarGuardado"],
       ["Cafés", false, 1, "usarGuardado2"],
     ]);
+    // Con su dibujo: la caja enseña la cookie o la taza, no un icono de cartera.
+    expect(p.map((x) => x.marca)).toEqual(["galleta", "taza"]);
   });
 });
 
