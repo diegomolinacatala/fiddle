@@ -759,6 +759,10 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   es un hallazgo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.
+- **Supabase da como mucho 1000 filas por petición, y sin error**, aunque se pida
+  `.limit(5000)` (26-10-2026: el Resumen perdía los días más viejos).
+  Una lectura que pueda pasar de mil va por `porPaginas` en `store.js`, con un orden
+  que desempate por una clave única. Los ficheros no tienen tope: ahí no se nota.
 - **Nombre y nota del cliente van cifrados** (`lib/cifrado.js`, ver
   [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md)). Se cifran al guardar y se descifran
   en `normalizarCliente`: leer y escribir `clientes` siempre por esas funciones
