@@ -660,6 +660,37 @@ export function repartoCartillas(clientes, perfiles, negocio) {
   });
 }
 
+/**
+ * En qué teléfonos llevan la tarjeta los que la guardaron alguna vez
+ * (`perfil.instalado`): en un iPhone, en un Android (Google Wallet o la tarjeta
+ * web con sus avisos), en los dos, o ya en ninguno (la quitaron). Cada cliente
+ * cuenta UNA vez: las cuatro suman los que la guardaron, y las tres primeras son
+ * los que la tienen en el móvil HOY (`enMovil`, la cifra de «Clientes»).
+ *
+ * Manda el registro vivo de cada canal, no la fecha de instalación: quien la
+ * quitó conserva `instalado`, pero ya no tiene registro.
+ * @param {object[]} perfiles de perfilDe
+ * @param {{serial:string, telefono:"iphone"|"android"}[]} registros los vivos de la tienda
+ * @returns {{iphone:number, android:number, ambos:number, quitaron:number, enMovil:number, guardaron:number}}
+ */
+export function telefonosDe(perfiles, registros) {
+  const donde = new Map();
+  for (const r of registros) {
+    if (!donde.has(r.serial)) donde.set(r.serial, new Set());
+    donde.get(r.serial).add(r.telefono);
+  }
+  const t = { iphone: 0, android: 0, ambos: 0, quitaron: 0 };
+  for (const p of perfiles) {
+    if (p.descartada || !p.instalado) continue;
+    const d = donde.get(p.serial);
+    if (!d) t.quitaron += 1;
+    else if (d.size > 1) t.ambos += 1;
+    else t[d.has("iphone") ? "iphone" : "android"] += 1;
+  }
+  const enMovil = t.iphone + t.android + t.ambos;
+  return { ...t, enMovil, guardaron: enMovil + t.quitaron };
+}
+
 /** Cuándo empezó cada visita de cada tarjeta (soloVisitas), en ms y en orden. */
 function visitasPorTarjeta(eventos) {
   const por = new Map();

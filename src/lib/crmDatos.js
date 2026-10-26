@@ -1,6 +1,11 @@
-import { listClientes, listEventosDeNegocio, listCampanas, serialesRegistrados, getNegocio } from "./store";
-import { perfilesDe, metricas, conteoGrupos, curvaDeVuelta, puenteActivos, repartoCartillas, efectoCampana, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
+import { listClientes, listEventosDeNegocio, listCampanas, registrosDeTienda, getNegocio } from "./store";
+import { perfilesDe, metricas, conteoGrupos, curvaDeVuelta, puenteActivos, repartoCartillas, efectoCampana, telefonosDe, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
+import { TIPO_WEB } from "./push/suscripcion";
+import { TIPO_GOOGLE } from "./google/pase";
+
+// Los canales de Android (la tarjeta web con sus avisos y Google Wallet); el resto son Pass Type ID de Apple.
+const telefonoDe = (passType) => (passType === TIPO_WEB || passType === TIPO_GOOGLE ? "android" : "iphone");
 
 /**
  * Todo lo que pinta el panel del CRM de una tienda, o null si no existe. Lo usan
@@ -18,12 +23,13 @@ export async function datosCrm(slug) {
   const negocio = await getNegocio(slug);
   if (!negocio) return null;
 
-  const [clientes, eventos, campanas, registrados] = await Promise.all([
+  const [clientes, eventos, campanas, registros] = await Promise.all([
     listClientes(slug),
     listEventosDeNegocio(slug, VENTANA),
     listCampanas(slug),
-    serialesRegistrados(slug),
+    registrosDeTienda(slug),
   ]);
+  const registrados = new Set(registros.map((r) => r.serial));
 
   // `instalado` es la fecha de alta en el Wallet, pero quien manda la verdad
   // de "¿se le puede avisar AHORA?" son los registros vivos de Apple.
@@ -59,6 +65,8 @@ export async function datosCrm(slug) {
     puente: puenteActivos(conRegistro, perfiles, eventos, negocio, { historialDesde, ritmoTienda }),
     vuelta: curvaDeVuelta(conRegistro, eventos, { historialDesde }),
     cartillas: repartoCartillas(clientes, perfiles, negocio),
+    // iPhone o Android: solo las cuentas, nada de quién.
+    telefonos: telefonosDe(perfiles, registros.map((r) => ({ serial: r.serial, telefono: telefonoDe(r.pass_type) }))),
     estados: LISTA_ESTADOS,
     catalogoGrupos: LISTA_GRUPOS,
     // Ficha por cliente: lo guardado + lo calculado, ya cruzado.

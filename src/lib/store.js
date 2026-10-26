@@ -1292,18 +1292,22 @@ export async function listCampanas(negocio, { limite = 20, desde = null } = {}) 
     .slice(0, limite);
 }
 
-/** Seriales de la tienda que tienen la tarjeta en algún teléfono, por cualquier canal (= avisables). */
-export async function serialesRegistrados(negocio) {
+/** Qué tarjeta de la tienda está en qué canal ahora mismo: `{serial, pass_type}` (ver abajo). */
+export async function registrosDeTienda(negocio) {
   if (hasSupabase()) {
     const db = supa();
-    const data = await porPaginas(
-      () => db.from("registros").select("serial").eq("negocio", negocio).order("serial").order("dispositivo").order("pass_type"),
+    return porPaginas(
+      () => db.from("registros").select("serial, pass_type").eq("negocio", negocio).order("serial").order("dispositivo").order("pass_type"),
       "leer registros del negocio",
     );
-    return new Set(data.map((r) => r.serial));
   }
   const registros = await enFila(() => leer("registros", []));
-  return new Set(registros.filter((r) => r.negocio === negocio).map((r) => r.serial));
+  return registros.filter((r) => r.negocio === negocio).map((r) => ({ serial: r.serial, pass_type: r.pass_type }));
+}
+
+/** Seriales de la tienda que tienen la tarjeta en algún teléfono, por cualquier canal (= avisables). */
+export async function serialesRegistrados(negocio) {
+  return new Set((await registrosDeTienda(negocio)).map((r) => r.serial));
 }
 
 // ================= DISPOSITIVOS Y REGISTROS (a quién avisar) =================

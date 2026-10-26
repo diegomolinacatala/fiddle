@@ -447,7 +447,9 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   del embudo y la suma de los estados; «Siguen viniendo» es el «Hoy» del puente; «Premios
   por dar», el grupo «Premio pendiente» y el aviso «Tiene un premio sin recoger» miran lo
   mismo (las dos cartillas y los guardados: `perfil.faltan` es el de la cartilla más cerca y
-  `completa`, cualquiera llena). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
+  `completa`, cualquiera llena); «con la tarjeta en el móvil» de Clientes es iPhone + Android
+  + los dos de «¿En qué móviles la llevan?» (`telefonosDe`, con los `registros` VIVOS por
+  canal: quien la quitó sigue con `instalado`, y va aparte en «La quitaron»). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
   no puede contar dos cosas («Volvieron» del embudo es la segunda visita; en el puente, los
   que vuelven tras irse son «Recuperados»).
 - **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale

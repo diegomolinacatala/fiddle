@@ -4,6 +4,7 @@ import {
   metricas, cambio, serieVisitas, rejillaHoraria, efectoCampana,
   haceTexto, cadenciaTexto, TIPOS_VISITA, UMBRALES, LISTA_GRUPOS, soloVisitas,
   esActivo, mediana, curvaDeVuelta, embudo, repartoCartillas, puenteActivos, resumenSerie, horarioDeRejilla, ideaDeGrupo,
+  telefonosDe,
 } from "@/lib/crm";
 
 // Un "ahora" fijo: los perfiles se miden en días y un test que dependa del
@@ -342,6 +343,26 @@ describe("métricas", () => {
     expect(cambio(4, 2)).toEqual({ unidades: 2 }); // nada de «+100 %»
     expect(cambio(3, 0)).toEqual({ unidades: 3 });
     expect(cambio(5, null)).toBeNull();
+  });
+});
+
+describe("en qué móviles la llevan", () => {
+  it("cada uno UNA vez, y suman los que la guardaron alguna vez", () => {
+    const perfiles = [
+      cli({ serial: "a" }), cli({ serial: "b" }), cli({ serial: "c" }),
+      cli({ serial: "d" }), // la guardó y ya no tiene registro: la quitó
+      cli({ serial: "e", instalado: false }), // nunca la guardó: no cuenta
+    ].map((c) => perfilDe(c, NUBE, AHORA));
+    const t = telefonosDe(perfiles, [
+      { serial: "a", telefono: "iphone" }, { serial: "a", telefono: "iphone" }, // dos iPhone, un cliente
+      { serial: "b", telefono: "android" },
+      { serial: "c", telefono: "iphone" }, { serial: "c", telefono: "android" },
+    ]);
+    expect(t).toEqual({ iphone: 1, android: 1, ambos: 1, quitaron: 1, enMovil: 3, guardaron: 4 });
+  });
+
+  it("la tarjeta descartada no cuenta, y sin nadie todo a cero", () => {
+    expect(telefonosDe([{ serial: "x", instalado: false, descartada: true }], [])).toMatchObject({ enMovil: 0, guardaron: 0 });
   });
 });
 
