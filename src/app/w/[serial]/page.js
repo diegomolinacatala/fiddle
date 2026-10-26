@@ -9,6 +9,7 @@ import { estadoDe } from "@/lib/resumen";
 import { ultimoSelloTexto, fechaHoraTexto, zonaDe, TIPOS_SELLO } from "@/lib/actividad";
 import { hayQueElegir, plantillaDeCaja, COOKIE_QUIEN } from "@/lib/plantilla";
 import { leerQuien } from "@/lib/quien";
+import { firmarInstantanea } from "@/lib/deshacer";
 import TarjetaCaja from "./TarjetaCaja";
 import { negocioDeTarjeta } from "@/lib/tarjeta";
 import SetNombre from "./SetNombre";
@@ -83,7 +84,8 @@ export default async function Page({ params }) {
   }
   // Cuándo fue el último sello, aparte del historial (que puede estar apagado o no
   // llegar tan atrás): «no me has sellado» se zanja mirando la hora.
-  const [eventos, ultimoSello] = await Promise.all([listEventos(serial), ultimoSelloDe(serial, n)]);
+  // Y cómo está ahora, firmado: «Deshacer cambios» la deja así (lib/deshacer.js).
+  const [eventos, ultimoSello, instantanea] = await Promise.all([listEventos(serial), ultimoSelloDe(serial, n), firmarInstantanea(cliente)]);
   const accent = n.tema.accent;
   const e = estadoDe(cliente, n);
   const ultimoSelloLinea = ultimoSelloTexto(ultimoSello, zonaDe(n));
@@ -121,6 +123,7 @@ export default async function Page({ params }) {
         <TarjetaCaja
           serial={serial}
           inicial={clientePublico(cliente)}
+          instantanea={instantanea}
           negocio={{ ...negocioDeTarjeta(n), acciones: n.acciones, caja: n.caja }}
           volver={`/${n.slug}/caja?escanear=1`}
         />

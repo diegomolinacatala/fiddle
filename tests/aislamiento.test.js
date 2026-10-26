@@ -51,6 +51,7 @@ const DEL_PERSONAL = [
   ["accesos/caja", "POST", () => "/api/accesos/caja?b=nube"],
   ["accesos/manager", "POST", () => "/api/accesos/manager?b=nube", () => ({ actual: "x", nueva: "una frase larga" })],
   ["accion", "POST", () => "/api/accion", () => ({ serial: S(), accion: "sellar" })],
+  ["accion/deshacer", "POST", () => "/api/accion/deshacer", () => ({ serial: S(), instantanea: "x" })],
   ["automatizaciones", "GET", () => "/api/automatizaciones?b=nube"],
   ["automatizaciones", "PUT", () => "/api/automatizaciones?b=nube", () => ({ avisosActivos: true })],
   ["automatizaciones", "POST", () => "/api/automatizaciones?b=nube", () => ({ regla: "x" })],

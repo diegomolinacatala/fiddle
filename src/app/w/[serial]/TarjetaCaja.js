@@ -7,7 +7,7 @@ import { ACCIONES, premiosDe, tieneDeshacer, SEGUNDOS_DESHACER } from "@/lib/acc
 import { filasDeCaja, normalizarCaja } from "@/lib/caja";
 import { stripDelPase, comoDataUri, svgBandaOpaca } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
-import { cartillasDe, describirBanda } from "@/lib/cartillas";
+import { cartillasDe, cuentaCorta, describirBanda, CONTADORES, GUARDADOS } from "@/lib/cartillas";
 import { crearFila } from "@/lib/filaCaja";
 import WorkerActions from "./WorkerActions";
 import VueltaSinTocar from "./VueltaSinTocar";
@@ -38,17 +38,32 @@ import { C, panel, RADIO } from "@/app/ui";
 //
 // SIN TOCARLA, AL ESCÁNER (`volverSinTocar`, lib/sinTocar.js): antes de irse
 // sola, la ficha vacía la fila por el camino normal y espera la respuesta.
+//
+// DESHACER CAMBIOS (lib/deshacer.js): con algo hecho en la ficha, un botón la
+// deja como al escanearla. Va por la misma fila (nunca adelanta a un sello) con
+// la `instantanea` que firmó el servidor al abrirla, y el servidor quita lo hecho
+// del historial: para las cuentas, esa visita no pasó.
 // ============================================================================
+
+// Lo que se compara para saber si la tarjeta ya no está como al abrir la ficha.
+const SALDO = [...CONTADORES, ...GUARDADOS, "premios"];
 
 // `demo`: la vista previa del manager (Editar vista de caja). Se pulsa y se ve
 // pasar, pero no se guarda nada ni se navega.
 // `volver`: a dónde ir con "Volver al escáner al sumar" o al pasar el rato sin tocarla.
-export default function TarjetaCaja({ serial, inicial, negocio, demo = false, volver = null }) {
+// `instantanea`: la tarjeta al abrir la ficha, firmada por el servidor, para «Deshacer cambios».
+export default function TarjetaCaja({ serial, inicial, negocio, demo = false, volver = null, instantanea = null }) {
   const router = useRouter();
   const opciones = normalizarCaja(negocio.caja);
   const vuelta = useRef(null);
   const [cliente, setCliente] = useState(inicial);
   const [toast, setToast] = useState(null);
+  // Cómo estaba al abrir la ficha, y lo hecho desde entonces: un refresco de la página
+  // trae otra `inicial` y otra instantanea, pero «deshacer» es volver a la de la apertura.
+  const [alAbrir] = useState(inicial);
+  const [firmada] = useState(instantanea);
+  const [movidas, setMovidas] = useState(0);
+  const [caducada, setCaducada] = useState(false);
   // El mensaje que traía en su tarjeta al llegar (la promo de la racha, "hace
   // tiempo que no te vemos"…): la caja tiene que verlo para aplicarlo. Sumar la
   // visita lo quita del pase, pero aquí se queda a la vista mientras se le atiende.
@@ -111,9 +126,52 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
     const p = fila.soltar();
     if (!p) return;
     setCliente(p.antes);
+    setMovidas((m) => Math.max(0, m - 1));
     setToast({ ok: true, msg: ACCIONES[p.key].deshecho(negocio) });
     navigator.vibrate?.(30);
     refrescarSiLibre();
+  }
+
+  /**
+   * «Deshacer cambios»: la tarjeta, como al abrir la ficha. Aquí al momento, como
+   * todo; el premio que esperaba ya no sale, y la petición va a la fila detrás de
+   * lo que quede por mandar. Lo que se pulse después, se suma a esto.
+   */
+  function deshacerCambios() {
+    cancelarVuelta();
+    fila.soltar();
+    setCliente(alAbrir);
+    setMovidas(0);
+    setToast({ ok: true, msg: "Deshecho. La tarjeta está como al escanearla." });
+    navigator.vibrate?.(30);
+    if (!demo) fila.encolar(mandarDeshacer);
+  }
+  async function mandarDeshacer() {
+    try {
+      const res = await fetch("/api/accion/deshacer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serial, instantanea: firmada }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) {
+        // No se deshizo: la caja ve lo que hay de verdad y el botón vuelve (salvo si ya no vale).
+        fallos.current += 1;
+        fila.soltar();
+        if (data.caducada) setCaducada(true);
+        if (data.cliente) setCliente(data.cliente);
+        setMovidas((m) => Math.max(m, 1));
+        setToast({ ok: false, msg: data.mensaje || data.error || "No se ha podido deshacer. Vuelve a intentarlo." });
+        navigator.vibrate?.([80, 60, 80]);
+      } else if (fila.pendientes === 1) {
+        setCliente(data.cliente);
+      }
+    } catch {
+      fallos.current += 1;
+      setMovidas((m) => Math.max(m, 1));
+      setToast({ ok: false, msg: "Sin conexión. No se ha deshecho: vuelve a intentarlo." });
+      router.refresh();
+    }
   }
   /** El refresco de la página (historial, visitas) solo cuando nada sigue en vuelo. */
   function refrescarSiLibre() {
@@ -166,6 +224,7 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       return;
     }
     setCliente(actual);
+    setMovidas((m) => m + hechas);
     const msg = hechas > 1 ? `${hechas} puntos añadidos · ${r.mensaje.split("· ").pop()}` : r.mensaje;
     navigator.vibrate?.(50);
     if (hechas === 1 && tieneDeshacer(key)) {
@@ -224,6 +283,10 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
   const e = estadoDe(cliente, negocio);
   const conFoto = useConFotoBanda(negocio);
   const banda = stripDelPase(conFoto, cliente);
+  // Con algo hecho en la ficha (también un punto y su «−», que dejan la cuenta igual pero
+  // apuntan una visita), y si hay con qué deshacerlo.
+  const hayCambios = movidas > 0 || SALDO.some((k) => (cliente[k] || 0) !== (alAbrir[k] || 0));
+  const puedeDeshacer = hayCambios && !caducada && (demo || Boolean(firmada));
 
   return (
     <>
@@ -275,12 +338,14 @@ export default function TarjetaCaja({ serial, inicial, negocio, demo = false, vo
       <WorkerActions
         filas={filasDeCaja(negocio)}
         premios={premiosDe(cliente, negocio)}
+        tema={negocio.tema}
         accent={accent}
         ejecutar={ejecutar}
         toast={toast}
         grande={opciones.grande}
         onCancelarVuelta={cancelarVuelta}
         onDeshacer={deshacer}
+        deshacerCambios={puedeDeshacer ? { onClick: deshacerCambios, como: e.esCupon ? null : cuentaCorta(alAbrir, negocio) } : null}
       />
 
       {/* Solo en la ficha de verdad: la vista previa del manager no se va a ningún sitio. */}

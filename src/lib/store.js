@@ -434,7 +434,7 @@ const CAMPOS_CLIENTE =
 const PERSONALES = ["nombre", "nota"];
 
 // El saldo de la tarjeta: lo que mueve la caja y se guarda con guardado optimista.
-const SALDO = ["sellos", "sellos2", "premios", "guardados", "guardados2"];
+export const SALDO = ["sellos", "sellos2", "premios", "guardados", "guardados2"];
 const cifrarCampo = (serial, campo, valor) => cifrar(valor, { serial, campo });
 const descifrarCampo = (c, campo) => descifrar(c[campo] ?? null, { serial: c.serial, campo });
 
@@ -581,6 +581,59 @@ export async function saveCliente(cliente, { esperado } = {}) {
     }
     await escribir("clientes", { ...all, [cliente.serial]: { ...actual, ...patch } });
     return true;
+  });
+}
+
+/**
+ * «Deshacer cambios» de la caja (lib/deshacer.js): la tarjeta vuelve a como estaba
+ * al escanearla, con su saldo, su contador de visitas, su última visita y el mensaje
+ * que sumar la visita le quitó. Optimista como saveCliente: solo si el saldo sigue
+ * siendo `esperado` (lo que se acaba de leer).
+ * @param {string} serial
+ * @param {{sellos:number, sellos2:number, premios:number, guardados:number, guardados2:number,
+ *   visitas:number, ultima_visita:string|null, mensaje:string|null}} antes
+ * @param {{esperado: object}} opciones
+ * @returns {Promise<boolean>} true si se guardó
+ */
+export async function restaurarCliente(serial, antes, { esperado }) {
+  const patch = { actualizado: ahoraISO(), visitas: antes.visitas || 0, ultima_visita: antes.ultima_visita ?? null, mensaje: antes.mensaje ?? null };
+  for (const k of SALDO) patch[k] = antes[k] || 0;
+
+  if (hasSupabase()) {
+    let q = supa().from("clientes").update(patch).eq("serial", serial);
+    for (const k of SALDO) q = q.eq(k, esperado[k] || 0);
+    const filas = sinError(await q.select("serial"), "restaurar cliente");
+    return (filas?.length ?? 0) > 0;
+  }
+  return enFila(async () => {
+    const all = await leer("clientes", {});
+    const actual = all[serial];
+    if (!actual || SALDO.some((k) => (actual[k] || 0) !== (esperado[k] || 0))) return false;
+    await escribir("clientes", { ...all, [serial]: { ...actual, ...patch } });
+    return true;
+  });
+}
+
+/**
+ * Quita del historial lo que hizo la caja en una tarjeta desde `desde` (ISO), solo
+ * de esos `tipos`: lo deshecho no pasó, y no puede contar como visita, sello ni
+ * premio en ninguna cuenta. Lo demás (que instaló el pase, una campaña) se queda.
+ * @returns {Promise<number>} cuántos quitó
+ */
+export async function quitarEventosDesde(serial, desde, tipos) {
+  if (!tipos.length) return 0;
+  if (hasSupabase()) {
+    const filas = sinError(
+      await supa().from("eventos").delete().eq("serial", serial).gte("ts", desde).in("tipo", tipos).select("id"),
+      "quitar eventos",
+    );
+    return filas?.length ?? 0;
+  }
+  return enFila(async () => {
+    const all = await leer("eventos", []);
+    const quedan = all.filter((e) => !(e.serial === serial && e.ts >= desde && tipos.includes(e.tipo)));
+    if (quedan.length !== all.length) await escribir("eventos", quedan);
+    return all.length - quedan.length;
   });
 }
 

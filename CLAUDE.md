@@ -218,6 +218,18 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
   «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
   en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
+- **«Deshacer cambios» deja la tarjeta como al escanearla** (26-10-2026, `lib/deshacer.js`,
+  `POST /api/accion/deshacer`): con algo hecho en la ficha, un botón debajo de lo que acaba
+  de pasar. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
+  tarjeta desde que se abrió la ficha, y la tarjeta recupera saldo, `visitas`,
+  `ultima_visita` y el `mensaje` que sumar la visita le quitó. Para las cuentas, esa visita
+  no pasó (con el «−» el sello y su corrección se quedan, y la visita cuenta). Cómo estaba
+  lo dice una instantánea que FIRMA el servidor al pintar la ficha (`firmarInstantanea`,
+  caduca a los `MINUTOS_DESHACER_CAMBIOS`): nunca un estado que mande el navegador. Va por
+  la misma fila que las acciones y deja en el historial una línea `deshacer`, que no es de
+  la caja ni una visita. El teléfono del cliente se pone al día sin `antes` (no suena).
+- **Un premio guardado se enseña con SU dibujo** (la cookie, la taza: `premiosDe` lleva la
+  `marca` de su cartilla) y su nombre en grande, no con un icono genérico.
 - **Sin tocarla, la ficha vuelve al escáner** (`volverSinTocar`, Editar vista de caja,
   apagado de partida; lo pidió La Delicantería, con un móvil fijo en el mostrador): a los
   `SEGUNDOS_SIN_TOCAR` (30, fijos) sin toques, scroll ni teclado va a `/<slug>/caja`, con
