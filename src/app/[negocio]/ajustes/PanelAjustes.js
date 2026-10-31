@@ -6,6 +6,7 @@ import CambiarClave from "./CambiarClave";
 import Bloque from "../Bloque";
 import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // AJUSTES — lo de la cuenta
@@ -30,9 +31,11 @@ export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = fal
   // Un ordenador ajeno donde se quedó abierta, un móvil perdido: fuera todos, sin
   // cambiar contraseñas. La sesión de quien lo pide se vuelve a firmar en el servidor.
   async function cerrarSesiones() {
-    if (!window.confirm(`¿Cerrar la sesión en todos los dispositivos?
-
-También en el móvil de la caja: habrá que volver a entrar en todos con las contraseñas de siempre. Aquí sigues dentro.`)) return;
+    if (!(await confirmar({
+      titulo: "¿Cerrar la sesión en todos los dispositivos?",
+      texto: "También en el móvil de la caja: habrá que volver a entrar en todos con las contraseñas de siempre. Aquí sigues dentro.",
+      si: "Cerrar las sesiones", accent,
+    }))) return;
     try {
       const res = await fetch(`/api/sesiones?b=${slug}`, { method: "DELETE" });
       const data = await res.json();
@@ -45,9 +48,11 @@ También en el móvil de la caja: habrá que volver a entrar en todos con las co
 
   // Un empleado que se va, un móvil perdido: contraseña nueva y la vieja deja de valer.
   async function cambiarClaveCaja() {
-    if (!window.confirm(`¿Cambiar la contraseña de la caja?
-
-La actual dejará de valer y los móviles que tengan la caja abierta se quedarán fuera. Tendrás que escribir la nueva en el móvil de la caja.`)) return;
+    if (!(await confirmar({
+      titulo: "¿Cambiar la contraseña de la caja?",
+      texto: "La actual dejará de valer y los móviles que tengan la caja abierta se quedarán fuera. Tendrás que escribir la nueva en el móvil de la caja.",
+      si: "Cambiarla", accent,
+    }))) return;
     try {
       const res = await fetch(`/api/accesos/caja?b=${slug}`, { method: "POST" });
       const data = await res.json();

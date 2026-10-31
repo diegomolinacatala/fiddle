@@ -216,7 +216,7 @@ const claveDe = (base, i) => (i === 0 ? base : `${base}${i + 1}`);
  * El recuadro del premio en la caja, cartilla a cartilla: solo las que tienen
  * algo que dar (llena, o con premios guardados). Vacío si la tienda es de
  * cupones o el manager no deja canjear.
- * @returns {{indice:number, nombre:string|null, premio:string, completa:boolean, guardados:number, acciones:{dar:string, guardar:string, usar:string}}[]}
+ * @returns {{indice:number, nombre:string|null, marca:string|null, premio:string, completa:boolean, guardados:number, acciones:{dar:string, guardar:string, usar:string}}[]}
  */
 export function premiosDe(cliente, negocio) {
   if (negocio.tipo === "descuento" || !negocio.acciones.includes("canjear")) return [];
@@ -227,6 +227,8 @@ export function premiosDe(cliente, negocio) {
     .map((c) => ({
       indice: c.indice,
       nombre: negocio.cartillas ? c.nombre : null,
+      // Su dibujo (el de sus casillas); con una sola cartilla, null: la marca de la tienda.
+      marca: c.marca ?? null,
       premio: c.premio,
       completa: c.completa,
       guardados: c.guardados,

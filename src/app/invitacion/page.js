@@ -234,7 +234,7 @@ export default function Invitacion() {
             <Clave id="clave-manager-2" valor={manager2} onChange={escribir(setManager2)} ver={ver} />
             <Coinciden clave={manager} repetida={manager2} />
             {error && <Aviso error={error} />}
-            <button type="submit" disabled={busy} style={principal(accent, listaManager)}>
+            <button type="submit" disabled={busy} aria-busy={(busy && soloManager) || undefined} style={principal(accent, listaManager)}>
               {soloManager ? (busy ? "Guardando…" : "Guardar y entrar") : "Siguiente"}
             </button>
           </form>
@@ -255,7 +255,7 @@ export default function Invitacion() {
             <Clave id="clave-caja-2" valor={caja2} onChange={escribir(setCaja2)} ver={ver} />
             <Coinciden clave={caja} repetida={caja2} />
             {error && <Aviso error={error} />}
-            <button type="submit" disabled={busy} style={principal(accent, lista(caja, caja2) && !busy)}>
+            <button type="submit" disabled={busy} aria-busy={busy || undefined} style={principal(accent, lista(caja, caja2) && !busy)}>
               {busy ? "Guardando…" : "Guardar y entrar"}
             </button>
             <button type="button" onClick={() => { setPaso(1); setError(null); }} style={{ ...botonSecundario, width: "100%", marginTop: 8 }}>

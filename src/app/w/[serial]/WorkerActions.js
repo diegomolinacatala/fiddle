@@ -2,6 +2,7 @@
 
 import Icono from "@/app/Icono";
 import { C, aviso, legible } from "@/app/ui";
+import { svgMarca, comoDataUri } from "@/lib/apple/dibujo";
 
 // ============================================================================
 // LOS BOTONES DE LA CAJA. Solo pintan: qué pasa al pulsar (al instante, y la
@@ -11,9 +12,13 @@ import { C, aviso, legible } from "@/app/ui";
 // El "−" de la izquierda quita uno: está en la misma fila, pequeño, porque
 // corregir es la excepción y no merece un botón igual de grande al lado (con
 // prisa se pulsa el que no es). Las filas salen de filasDeCaja (lib/caja.js).
+//
+// «Deshacer cambios» va al final, debajo de lo que acaba de pasar: con algo
+// hecho en la ficha, la deja como al escanearla (lib/deshacer.js). No es una
+// fila de la caja: no suma ni quita nada que no se acabe de hacer aquí.
 // ============================================================================
 
-export default function WorkerActions({ filas, premios = [], accent = C.texto, ejecutar, toast, grande = false, onCancelarVuelta, onDeshacer }) {
+export default function WorkerActions({ filas, premios = [], tema = null, accent = C.texto, ejecutar, toast, grande = false, onCancelarVuelta, onDeshacer, deshacerCambios = null }) {
   if (!filas.length && !premios.length) {
     return <p style={{ color: C.suave, fontSize: 14, marginTop: 18 }}>El manager no ha activado ninguna acción.</p>;
   }
@@ -22,7 +27,7 @@ export default function WorkerActions({ filas, premios = [], accent = C.texto, e
   return (
     <div style={{ marginTop: 16 }}>
       {premios.map((p) => (
-        <Premio key={p.indice} p={p} accent={accent} ejecutar={ejecutar} />
+        <Premio key={p.indice} p={p} tema={tema} accent={accent} ejecutar={ejecutar} />
       ))}
       <div style={{ display: "grid", gap: 10 }}>
         {filas.map((f) => (f.tipo === "cartilla"
@@ -49,8 +54,29 @@ export default function WorkerActions({ filas, premios = [], accent = C.texto, e
           )}
         </div>
       )}
+      {deshacerCambios && (
+        <button type="button" onClick={deshacerCambios.onClick} style={botonDeshacerCambios}>
+          <Icono nombre="deshacer" tam={19} grosor={2.2} />
+          <span style={{ display: "grid", gap: 1, textAlign: "left" }}>
+            <span style={{ fontSize: 15, fontWeight: 650, color: C.texto }}>Deshacer cambios</span>
+            <span style={{ fontSize: 12.5 }}>
+              Deja la tarjeta como al escanearla{deshacerCambios.como ? ` (${deshacerCambios.como})` : ""}
+            </span>
+          </span>
+        </button>
+      )}
     </div>
   );
+}
+
+/**
+ * El dibujo del premio de una cartilla (la cookie, la taza): el mismo de sus
+ * casillas en la tarjeta. Con una sola cartilla, la marca de la tienda.
+ */
+function DibujoPremio({ tema, marca, tam }) {
+  if (!tema) return <Icono nombre="cartera" tam={tam * 0.7} grosor={2.2} />;
+  const svg = svgMarca(marca ? { ...tema, marca } : tema, 96, { fondo: null, color: "#ffffff", escala: 0.86 });
+  return <img src={comoDataUri(svg)} alt="" width={tam} height={tam} style={{ display: "block" }} />;
 }
 
 // DESHACER, dentro del mismo aviso que confirma el premio: donde ya está mirando
@@ -106,7 +132,7 @@ function FilaCartilla({ f, accent, ejecutar, alto, grande }) {
 // preguntarle al cliente con las mismas palabras: "¿lo quieres ahora o te lo
 // guardo?". Cada botón dice debajo qué pasa con la tarjeta, para que nadie
 // tenga que saberse las reglas. Si la tienda no guarda premios, solo se da.
-function Premio({ p, accent, ejecutar }) {
+function Premio({ p, tema, accent, ejecutar }) {
   const de = p.nombre ? ` de ${p.nombre.toLowerCase()}` : "";
   const boton = (key, texto, detalle, principal) => (
     <button
@@ -140,13 +166,17 @@ function Premio({ p, accent, ejecutar }) {
       )}
       {p.guardados > 0 && (
         <div style={p.completa ? { borderTop: `1px solid ${accent}33`, marginTop: 12, paddingTop: 12 } : null}>
+          {/* Lo guardado se reconoce de un vistazo: el dibujo de SU premio (la cookie, el café)
+              y su nombre en grande. Con dos cartillas, «premio guardado» a secas no dice cuál. */}
           <div style={cabeceraPremio}>
-            <span style={insignia(accent)}><Icono nombre="cartera" tam={22} grosor={2.2} /></span>
+            <span style={{ ...insignia(accent), width: 52, height: 52, borderRadius: 14 }}>
+              <DibujoPremio tema={tema} marca={p.marca} tam={40} />
+            </span>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{p.premio.charAt(0).toUpperCase() + p.premio.slice(1)}</div>
+              <div style={{ fontSize: 14, color: C.suave }}>
                 {p.guardados === 1 ? "Tiene 1 premio guardado" : `Tiene ${p.guardados} premios guardados`}
               </div>
-              <div style={{ fontSize: 14, color: C.suave }}>{p.premio}{p.nombre ? ` (${p.nombre.toLowerCase()})` : ""}</div>
             </div>
           </div>
           {boton(
@@ -176,6 +206,12 @@ const botonPremio = (principal, accent) => ({
   border: principal ? 0 : `1.5px solid ${accent}`,
   background: principal ? accent : C.panel, color: principal ? "#fff" : legible(accent),
 });
+
+const botonDeshacerCambios = {
+  width: "100%", display: "flex", alignItems: "center", gap: 12, marginTop: 12,
+  minHeight: 52, padding: "8px 16px", borderRadius: 14, cursor: "pointer",
+  border: `1px solid ${C.bordeFuerte}`, background: C.panel, color: C.suave,
+};
 
 const botonDeshacer = {
   minHeight: 40, padding: "0 16px", borderRadius: 10, cursor: "pointer",

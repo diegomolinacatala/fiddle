@@ -95,8 +95,6 @@ export const ROTULO_FAMILIA = {
   llenar: "Se llena",
   cerrar: "Se cierra",
   fila: "En fila",
-  ruta: "Un camino",
-  crecer: "Crece",
   marcador: "Marcador",
 };
 
@@ -108,11 +106,7 @@ export const ROTULO_DOBLE = {
 export const ROTULO_MODO = {
   casillas: "Una casilla por punto", relleno: "Se va llenando",
   porciones: "Porciones de una tarta", pizza: "Pizza de verdad", barra: "Barra de progreso",
-  pesas: "Discos en la barra", anillos: "Aro que se cierra",
-  camino: "Camino con paradas", torre: "Torre que se apila", planta: "Planta que crece",
-  luna: "Fases de la luna", aguja: "Marcador con aguja", constelacion: "Constelación",
-  escalera: "Escalones que suben", mosaico: "Mosaico que se destapa", pulso: "Línea de pulso",
-  cifra: "Solo la cifra, enorme",
+  anillos: "Aro que se cierra", cifra: "Solo la cifra, enorme",
 };
 
 /** Las plantillas se leen distinto que las marcas ("taza" vs "Cafetería"). */
@@ -120,9 +114,7 @@ export const ROTULO_PLANTILLA = {
   coffee: "Cafetería", barber: "Barbería", pizza: "Pizzería", moderno: "Neutra (moderna)",
   iced: "Vaso que se llena", panaderia: "Panadería", bar: "Bar", mascotas: "Mascotas",
   gym: "Gimnasio", belleza: "Belleza",
-  nutricion: "Nutrición / suplementos", pizzeria: "Pizzería (porciones)", galletas: "Galletas / cookies", heladeria: "Heladería",
+  pizzeria: "Pizzería (porciones)", galletas: "Galletas / cookies", heladeria: "Heladería",
   estudio: "Estudio (yoga/pilates)", club: "Club de socios",
-  floristeria: "Floristería", nocturno: "Bar de noche", taller: "Taller / lavadero",
-  academia: "Academia", clinica: "Clínica / fisio",
   ...ROTULOS_DE_KITS,
 };

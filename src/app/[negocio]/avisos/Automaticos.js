@@ -9,6 +9,7 @@ import { LISTA_DISPAROS, MAX_REGLAS, RELOJ_VIVO_MIN, reglaNueva, esProgramado } 
 import Limites from "./Limites";
 import { resumenHorario } from "@/lib/horario";
 import { C, panel, campo, h2, botonSecundario, botonPequeno, aviso, RADIO, legible } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // LOS AVISOS AUTOMÁTICOS DE LA TIENDA
@@ -29,7 +30,8 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
   const [abierta, setAbierta] = useState(null);     // id de la regla que se edita
   const [nueva, setNueva] = useState(null);         // regla sin guardar todavía
   const [eligiendo, setEligiendo] = useState(false);
-  const [ocupado, setOcupado] = useState(false);
+  // Qué espera al servidor ("limites", "guardar", "borrar", "enviar"…), para que gire SU botón; null: nada.
+  const [ocupado, setOcupado] = useState(null);
 
   // El historial viaja como listas (JSON); aquí se vuelve a Map, como en el servidor.
   const envios = useMemo(() => ({ porRegla: new Map(datos.envios.porRegla), ultimo: new Map(datos.envios.ultimo), veces: new Map(datos.envios.veces || []) }), [datos.envios]);
@@ -37,10 +39,10 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
   const automaticas = reglas.filter((r) => !esProgramado(r));
   const topes = { pausaDias: n.pausaAvisos, inicioHoy: datos.inicioHoy, limiteDia: n.limiteAvisosDia };
 
-  const guardarLista = (lista, pausaAvisos = n.pausaAvisos) => guardarCambios({ automatizaciones: lista, pausaAvisos });
+  const guardarLista = (lista, que) => guardarCambios({ automatizaciones: lista, pausaAvisos: n.pausaAvisos }, que);
 
-  async function guardarCambios(cambios) {
-    setOcupado(true);
+  async function guardarCambios(cambios, que = "limites") {
+    setOcupado(que);
     try {
       const r = await fetch(`/api/automatizaciones?b=${slug}`, {
         method: "PUT",
@@ -55,7 +57,7 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
       flash("Sin conexión: no se ha guardado");
       return false;
     } finally {
-      setOcupado(false);
+      setOcupado(null);
     }
   }
 
@@ -63,27 +65,27 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
     editar: (id) => { setNueva(null); setEligiendo(false); setAbierta(id); },
     cancelar: () => { setAbierta(null); setNueva(null); },
     async alternar(regla) {
-      const ok = await guardarLista(reglas.map((r) => (r.id === regla.id ? { ...r, activa: !r.activa } : r)));
+      const ok = await guardarLista(reglas.map((r) => (r.id === regla.id ? { ...r, activa: !r.activa } : r)), "alternar");
       if (ok) flash(regla.activa ? `«${regla.nombre}» apagado` : `«${regla.nombre}» encendido`);
     },
     async guardar(regla) {
       const existe = reglas.some((r) => r.id === regla.id);
       const lista = existe ? reglas.map((r) => (r.id === regla.id ? regla : r)) : [...reglas, regla];
-      if (await guardarLista(lista)) {
+      if (await guardarLista(lista, "guardar")) {
         flash(existe ? "Guardado" : `«${regla.nombre}» creado y encendido`);
         acciones.cancelar();
       }
     },
     async borrar(regla) {
-      if (!window.confirm(`¿Borrar «${regla.nombre}»?\n\nDeja de salir. Lo ya enviado sigue en Enviados.`)) return;
-      if (await guardarLista(reglas.filter((r) => r.id !== regla.id))) {
+      if (!(await confirmar({ titulo: `¿Borrar «${regla.nombre}»?`, texto: "Deja de salir. Lo ya enviado sigue en Enviados.", si: "Borrar", peligro: true }))) return;
+      if (await guardarLista(reglas.filter((r) => r.id !== regla.id), "borrar")) {
         flash(`«${regla.nombre}» borrado`);
         acciones.cancelar();
       }
     },
     async enviar(regla, cuantos) {
-      if (!window.confirm(`¿Enviar «${regla.nombre}» ahora a ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"}?\n\nNo espera a su hora. A quien ya se lo dijimos no se le repite.`)) return;
-      setOcupado(true);
+      if (!(await confirmar({ titulo: `¿Enviar «${regla.nombre}» ahora a ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"}?`, texto: "No espera a su hora. A quien ya se lo dijimos no se le repite.", si: "Enviar ahora", accent: n.tema.accent }))) return;
+      setOcupado("enviar");
       try {
         const r = await fetch(`/api/automatizaciones?b=${slug}`, {
           method: "POST",
@@ -97,7 +99,7 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
       } catch {
         flash("Sin conexión: no se ha enviado");
       } finally {
-        setOcupado(false);
+        setOcupado(null);
       }
     },
   };
@@ -108,8 +110,8 @@ export default function Automaticos({ slug, datos, onDatos, flash }) {
     const detalle = activas
       ? `Empiezan a salir ${activas === 1 ? "el aviso encendido" : `los ${activas} avisos encendidos`} a su hora, a los clientes que encajen.`
       : "Aún no hay ninguno encendido: enciende los que quieras en la lista.";
-    if (encender && !window.confirm(`¿Encender los avisos automáticos?\n\n${detalle}`)) return;
-    if (await guardarCambios({ avisosActivos: encender })) {
+    if (encender && !(await confirmar({ titulo: "¿Encender los avisos automáticos?", texto: detalle, si: "Encenderlos", accent: n.tema.accent }))) return;
+    if (await guardarCambios({ avisosActivos: encender }, "todos")) {
       flash(encender ? "Avisos automáticos encendidos" : "Avisos automáticos apagados: no sale ninguno solo");
     }
   }

@@ -43,8 +43,8 @@ export default function SetNombre({ serial, nombre }) {
           maxLength={48}
           style={campo}
         />
-        <button type="submit" disabled={busy} style={botonSecundario}>
-          {busy ? "…" : "Guardar"}
+        <button type="submit" disabled={busy} aria-busy={busy || undefined} style={botonSecundario}>
+          Guardar
         </button>
       </div>
       {toast && <div style={{ marginTop: 8, fontSize: 13, color: C.suave }}>{toast}</div>}

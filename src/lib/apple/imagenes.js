@@ -81,7 +81,10 @@ function strip(negocio, cliente, estado) {
   const usado = (cliente.premios || 0) > 0;
   const sellos = Math.min(cliente.sellos, negocio.meta);
   // Con dos cartillas la banda depende de las dos cuentas (y de sus metas).
-  const segunda = negocio.cartillas ? `:${negocio.cartillas[1].meta}:${cliente.sellos2 || 0}` : "";
+  // Y de los premios guardados: la banda de dos que se llenan los dibuja bajo cada cuenta.
+  const segunda = negocio.cartillas
+    ? `:${negocio.cartillas[1].meta}:${cliente.sellos2 || 0}:g${cliente.guardados || 0}-${cliente.guardados2 || 0}`
+    : "";
   // La línea de abierto/cerrado también es parte del dibujo: otra frase, otra imagen.
   const linea = estado && !esCupon ? `:${estado.abierta ? 1 : 0}${estado.texto}` : "";
   // La huella del diseño, también: otro modo u otro color es otra banda.

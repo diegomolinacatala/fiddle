@@ -77,7 +77,7 @@ describe("el recuadro del premio en la caja", () => {
   it("solo sale si hay algo que dar", () => {
     expect(premiosDe(cliente({ sellos: 5 }), nube)).toEqual([]);
     expect(premiosDe(cliente({ sellos: 8 }), nube)).toEqual([
-      { indice: 0, nombre: null, premio: "café gratis", completa: true, guardados: 0, acciones: { dar: "canjear", guardar: "guardar", usar: "usarGuardado" } },
+      { indice: 0, nombre: null, marca: null, premio: "café gratis", completa: true, guardados: 0, acciones: { dar: "canjear", guardar: "guardar", usar: "usarGuardado" } },
     ]);
     expect(premiosDe(cliente({ sellos: 2, guardados: 2 }), nube)[0]).toMatchObject({ completa: false, guardados: 2 });
   });
@@ -88,6 +88,8 @@ describe("el recuadro del premio en la caja", () => {
       ["Cookies", true, 0, "usarGuardado"],
       ["Cafés", false, 1, "usarGuardado2"],
     ]);
+    // Con su dibujo: la caja enseña la cookie o la taza, no un icono de cartera.
+    expect(p.map((x) => x.marca)).toEqual(["galleta", "taza"]);
   });
 });
 
@@ -103,10 +105,19 @@ describe("el cliente lo ve en su tarjeta", () => {
   it("el pase de Apple lo pone en la cabecera y lo explica en el reverso", () => {
     const { headerFields, backFields } = camposDelPase(cliente({ sellos: 2, guardados: 1, premios: 4 }), nube);
     expect(headerFields).toEqual([{ key: "guardados", label: "GUARDADOS", value: 1 }]);
-    expect(backFields[0]).toMatchObject({ key: "guardados", label: "Premios guardados" });
+    expect(backFields[0]).toMatchObject({ key: "guardadosDetalle", label: "Premios guardados" });
     expect(backFields[0].value).toMatch(/1 × café gratis/);
     // Sin premios guardados, el mismo campo a 0: los 4 canjeados de toda la vida no salen.
     expect(camposDelPase(cliente({ premios: 4 }), nube).headerFields).toEqual([{ key: "guardados", label: "GUARDADOS", value: 0 }]);
+  });
+
+  it("ninguna clave se repite en el pase: passkit tiraría el segundo campo", () => {
+    for (const [c, n] of [[cliente({ guardados: 1, premios: 4 }), nube], [cliente({ guardados: 1, guardados2: 2, mensaje: "Hoy, tostadas" }), deli]]) {
+      const campos = camposDelPase(c, n);
+      const claves = ["headerFields", "primaryFields", "secondaryFields", "auxiliaryFields", "backFields"]
+        .flatMap((g) => (campos[g] || []).map((f) => f.key));
+      expect(claves.length).toBe(new Set(claves).size);
+    }
   });
 
   it("con dos cartillas suma los dos y el reverso dice cuáles", () => {
@@ -142,7 +153,7 @@ describe("el cliente lo ve en su tarjeta", () => {
     const { headerFields, secondaryFields, backFields } = camposDelPase(cliente({ guardados: 2, mensaje: "Hoy, tostadas a mitad de precio" }), deli);
     expect(secondaryFields).toEqual([{ key: "premio", label: "PARA TI", value: "Hoy, tostadas a mitad de precio", changeMessage: "%@" }]);
     expect(headerFields[0]).toMatchObject({ value: 2 });
-    expect(backFields.find((f) => f.key === "guardados").value).toMatch(/2 × cookie gratis/);
+    expect(backFields.find((f) => f.key === "guardadosDetalle").value).toMatch(/2 × cookie gratis/);
   });
 
   it("Android: guardar no se anuncia como canje, y usarlo sí", () => {

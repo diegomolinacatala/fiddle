@@ -33,7 +33,8 @@ import { C, campo, etiqueta, h2, botonPrimario, botonSecundario, botonPequeno, R
 export default function Campana({ negocio, destino, onEnviada, onDatos, flash, pendientes, reloj, grupos, semilla = null }) {
   const esTodos = esPromo(destino.key);
   const [texto, setTexto] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  // Qué botón espera al servidor: "ahora", "quitar" o "hora" (null: ninguno).
+  const [enviando, setEnviando] = useState(null);
   const [hora, setHora] = useState("");
   const max = esTodos ? MAX_TEXTO.todos : MAX_TEXTO.mensaje;
 
@@ -72,7 +73,7 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
   const negocioVista = esTodos ? { ...negocio, promo: texto.trim() || null } : negocio;
 
   async function enviar(cuerpo) {
-    setEnviando(true);
+    setEnviando(cuerpo ? "ahora" : "quitar");
     try {
       const r = await fetch(esTodos ? "/api/promo" : "/api/crm/campana", {
         method: "POST",
@@ -86,12 +87,12 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
     } catch {
       flash("Sin conexión: no se ha enviado");
     } finally {
-      setEnviando(false);
+      setEnviando(null);
     }
   }
 
   async function programar() {
-    setEnviando(true);
+    setEnviando("hora");
     try {
       const r = await fetch("/api/envios", {
         method: "POST",
@@ -106,7 +107,7 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
     } catch {
       flash("Sin conexión: no se ha programado");
     } finally {
-      setEnviando(false);
+      setEnviando(null);
     }
   }
 
@@ -127,7 +128,7 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
   }
 
   const sinNadie = destino.contactables === 0;
-  const bloqueado = enviando || sinNadie || !texto.trim();
+  const bloqueado = Boolean(enviando) || sinNadie || !texto.trim();
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 20, alignItems: "start" }}>
@@ -154,11 +155,11 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
 
         {/* AHORA */}
         <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-          <button onClick={() => enviar(texto.trim())} disabled={bloqueado} style={{ ...botonPrimario(negocio.tema.accent), opacity: bloqueado ? 0.45 : 1, cursor: bloqueado ? "default" : "pointer" }}>
-            {enviando ? "Enviando…" : esTodos ? "Poner ahora en todas" : `Enviar ahora a ${destino.contactables}`}
+          <button onClick={() => enviar(texto.trim())} disabled={bloqueado} aria-busy={enviando === "ahora" || undefined} style={{ ...botonPrimario(negocio.tema.accent), opacity: bloqueado ? 0.45 : 1, cursor: bloqueado ? "default" : "pointer" }}>
+            {enviando === "ahora" ? "Enviando…" : esTodos ? "Poner ahora en todas" : `Enviar ahora a ${destino.contactables}`}
           </button>
           {(!esTodos || negocio.promo) && (
-            <button onClick={() => enviar("")} disabled={enviando} style={botonSecundario} title="Deja el pase como estaba">
+            <button onClick={() => enviar("")} disabled={Boolean(enviando)} aria-busy={enviando === "quitar" || undefined} style={botonSecundario} title="Deja el pase como estaba">
               {esTodos ? "Quitar la promo" : "Quitar el mensaje"}
             </button>
           )}
@@ -182,7 +183,7 @@ export default function Campana({ negocio, destino, onEnviada, onDatos, flash, p
                   </optgroup>
                 )}
               </select>
-              <button onClick={programar} disabled={bloqueado || !horaVale} style={{ ...botonSecundario, opacity: bloqueado || !horaVale ? 0.45 : 1 }}>
+              <button onClick={programar} disabled={bloqueado || !horaVale} aria-busy={enviando === "hora" || undefined} style={{ ...botonSecundario, opacity: bloqueado || !horaVale ? 0.45 : 1 }}>
                 {horaVale ? `Enviar ${cuandoEnvioTexto(hora, negocio.horario)}` : "Enviar a las…"}
               </button>
             </div>

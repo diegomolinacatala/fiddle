@@ -134,7 +134,7 @@ export default function QuienAtiende({ plantilla, ultimo, accent, onEnviar, ocup
             />
           )}
           {error && <div role="alert" style={aviso(false)}>{error}</div>}
-          <button type="submit" disabled={ocupado} style={{ ...botonPrimario(accent), width: "100%", minHeight: 56, fontSize: 17 }}>
+          <button type="submit" disabled={ocupado} aria-busy={ocupado || undefined} style={{ ...botonPrimario(accent), width: "100%", minHeight: 56, fontSize: 17 }}>
             {paso === "crear" ? "Guardar mi PIN" : `Sí, soy ${elegido.nombre}`}
           </button>
           <button type="button" disabled={ocupado} onClick={() => elegir(null)} style={{ ...botonSecundario, width: "100%", minHeight: 46 }}>

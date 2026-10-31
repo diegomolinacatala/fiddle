@@ -10,6 +10,7 @@ import Horario from "./Horario";
 import MapaUbicacion from "./MapaUbicacion";
 import EditorTarjeta from "./EditorTarjeta";
 import EditorCaja from "./EditorCaja";
+import { confirmarTarjetas } from "./confirmarTarjetas";
 import { normalizarCaja } from "@/lib/caja";
 import Recorrido from "@/app/Recorrido";
 import { FilaInterruptor } from "@/app/Interruptor";
@@ -39,6 +40,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
   const [abierto, setAbierto] = useState(null); // "horario" | "mapa" | null: lo plegado que está abierto
   const [editando, setEditando] = useState(false);
   const [editandoCaja, setEditandoCaja] = useState(false);
+  const [guardandoMapa, setGuardandoMapa] = useState(false);
   const temporizador = useRef(null);
 
   useEffect(() => {
@@ -117,7 +119,10 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
   }
 
   async function guardarUbicacion() {
+    if (!(await confirmarTarjetas(accent))) return;
+    setGuardandoMapa(true);
     const data = await guardarPieza({ ubicaciones: ubicacion ? [ubicacion] : [] });
+    setGuardandoMapa(false);
     if (!data) return;
     setN(data);
     setAbierto(null);
@@ -135,6 +140,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
 
   // «● Abierto hasta las…» en la tarjeta: la misma pieza que en Editar tarjeta.
   async function cambiarEnPase(on) {
+    if (!(await confirmarTarjetas(accent))) return;
     const antes = n.tema;
     setN((p) => ({ ...p, tema: { ...p.tema, abierto: on } }));
     const data = await guardarPieza({ tema: { abierto: on } });
@@ -189,11 +195,23 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
               }}
             >
               <Horario
-                slug={negocio} inicial={n.horario} accent={accent} flash={flash} reloj={reloj}
+                slug={negocio} inicial={n.horario} accent={accent} flash={flash}
                 onGuardado={(data) => { setN(data); setAbierto(null); }}
-                enPase={n.tema.abierto !== false} onEnPase={cambiarEnPase}
               />
             </Bloque>
+            {/* Su propia fila, a la vista: dentro del horario plegado o al fondo del editor
+                de la tarjeta nadie lo encontraba (31-10-2026). */}
+            <Bloque
+              data-recorrido="abierto" accent={accent} icono="puerta" titulo="«● Abierto hasta…» en la tarjeta"
+              resumen={!n.horario
+                ? "Pon tu horario y la tarjeta dirá si estás abierto."
+                : n.tema.abierto === false
+                  ? "Apagado: la tarjeta no dice si estás abierto."
+                  : reloj
+                    ? "En el iPhone, sobre los puntos; en Android, en los detalles y en la tarjeta web."
+                    : "En la tarjeta web ya sale. En Wallet, cuando el reloj de los avisos esté en marcha."}
+              interruptor={{ on: Boolean(n.horario) && n.tema.abierto !== false, disabled: !n.horario, onClick: () => cambiarEnPase(n.tema.abierto === false) }}
+            />
             <Bloque
               data-recorrido="ubicacion" accent={accent} icono="ubicacion" titulo="Ubicación"
               resumen={guardada ? "Puesta: el iPhone saca la tarjeta al pasar cerca." : "Sin poner: la tarjeta no aparece sola al acercarse."}
@@ -205,7 +223,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
               }}
             >
               <MapaUbicacion valor={ubicacion} onChange={(v) => setUbicacion(v && { ...ubicacion, ...v })} accent={accent} flash={flash} />
-              <button type="button" onClick={guardarUbicacion} disabled={!mapaCambiado}
+              <button type="button" onClick={guardarUbicacion} disabled={!mapaCambiado || guardandoMapa} aria-busy={guardandoMapa || undefined}
                 style={{ ...botonPrimario(accent), marginTop: 12, opacity: mapaCambiado ? 1 : 0.45 }}>
                 Guardar ubicación
               </button>

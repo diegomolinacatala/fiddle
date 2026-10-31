@@ -12,6 +12,7 @@ import {
 } from "@/lib/automatizaciones";
 import { DIAS, DIAS_CORTOS, relojLocal, diaDeFecha } from "@/lib/horario";
 import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, RADIO, legible } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // AVISOS PROGRAMADOS: "el sábado a las 10, a todos: «hoy, 2x1»"
@@ -35,7 +36,8 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
   const programados = reglas.filter(esProgramado);
   const [abierta, setAbierta] = useState(null);
   const [nueva, setNueva] = useState(null);
-  const [ocupado, setOcupado] = useState(false);
+  // Qué espera al servidor ("limites", "guardar", "borrar", "enviar"…), para que gire SU botón; null: nada.
+  const [ocupado, setOcupado] = useState(null);
   const envios = useMemo(() => ({ porRegla: new Map(datos.envios.porRegla), ultimo: new Map(datos.envios.ultimo), veces: new Map(datos.envios.veces || []) }), [datos.envios]);
   const topes = { pausaDias: n.pausaAvisos, inicioHoy: datos.inicioHoy, limiteDia: n.limiteAvisosDia };
   const sembrado = useRef(false);
@@ -49,8 +51,8 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [semilla, reglas]);
 
-  async function guardarCambios(cambios) {
-    setOcupado(true);
+  async function guardarCambios(cambios, que = "limites") {
+    setOcupado(que);
     try {
       const r = await fetch(`/api/automatizaciones?b=${slug}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cambios) });
       const data = await r.json();
@@ -61,33 +63,33 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
       flash("Sin conexión: no se ha guardado");
       return false;
     } finally {
-      setOcupado(false);
+      setOcupado(null);
     }
   }
-  const guardarLista = (lista) => guardarCambios({ automatizaciones: lista });
+  const guardarLista = (lista, que) => guardarCambios({ automatizaciones: lista }, que);
 
   const acciones = {
     editar: (id) => { setNueva(null); setAbierta(id); },
     cancelar: () => { setAbierta(null); setNueva(null); },
     async alternar(regla) {
-      const ok = await guardarLista(reglas.map((r) => (r.id === regla.id ? { ...r, activa: !r.activa } : r)));
+      const ok = await guardarLista(reglas.map((r) => (r.id === regla.id ? { ...r, activa: !r.activa } : r)), "alternar");
       if (ok) flash(regla.activa ? `«${regla.nombre}» apagado` : `«${regla.nombre}» encendido`);
     },
     async guardar(regla) {
       const existe = reglas.some((r) => r.id === regla.id);
       const lista = existe ? reglas.map((r) => (r.id === regla.id ? regla : r)) : [...reglas, regla];
-      if (await guardarLista(lista)) {
+      if (await guardarLista(lista, "guardar")) {
         flash(existe ? "Guardado" : `«${regla.nombre}» programado`);
         acciones.cancelar();
       }
     },
     async borrar(regla) {
-      if (!window.confirm(`¿Borrar «${regla.nombre}»?\n\nDeja de salir. Lo ya enviado sigue en Enviados.`)) return;
-      if (await guardarLista(reglas.filter((r) => r.id !== regla.id))) { flash(`«${regla.nombre}» borrado`); acciones.cancelar(); }
+      if (!(await confirmar({ titulo: `¿Borrar «${regla.nombre}»?`, texto: "Deja de salir. Lo ya enviado sigue en Enviados.", si: "Borrar", peligro: true }))) return;
+      if (await guardarLista(reglas.filter((r) => r.id !== regla.id), "borrar")) { flash(`«${regla.nombre}» borrado`); acciones.cancelar(); }
     },
     async enviar(regla, cuantos) {
-      if (!window.confirm(`¿Enviar «${regla.nombre}» ahora a ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"}?\n\nNo espera a su hora.`)) return;
-      setOcupado(true);
+      if (!(await confirmar({ titulo: `¿Enviar «${regla.nombre}» ahora a ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"}?`, texto: "No espera a su hora.", si: "Enviar ahora", accent: n.tema.accent }))) return;
+      setOcupado("enviar");
       try {
         const r = await fetch(`/api/automatizaciones?b=${slug}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ regla: regla.id }) });
         const data = await r.json();
@@ -97,7 +99,7 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
       } catch {
         flash("Sin conexión: no se ha enviado");
       } finally {
-        setOcupado(false);
+        setOcupado(null);
       }
     },
   };
@@ -257,20 +259,20 @@ function EditorProgramado({ inicial, negocio, grupos, contextos, envios, topes, 
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${C.borde}`, paddingTop: 14 }}>
-        <button type="button" disabled={ocupado || !valida || !cambiada} onClick={() => acciones.guardar(r)}
+        <button type="button" disabled={ocupado || !valida || !cambiada} onClick={() => acciones.guardar(r)} aria-busy={ocupado === "guardar" || undefined}
           style={{ ...botonPrimario(accent), opacity: ocupado || !valida || !cambiada ? 0.45 : 1 }}>
           {nueva ? "Programar" : "Guardar"}
         </button>
         <button type="button" onClick={acciones.cancelar} style={botonSecundario} disabled={ocupado}>Cancelar</button>
         {!nueva && (
-          <button type="button" disabled={ocupado || cambiada || !llegan.length} onClick={() => acciones.enviar(r, llegan.length)}
+          <button type="button" disabled={ocupado || cambiada || !llegan.length} onClick={() => acciones.enviar(r, llegan.length)} aria-busy={ocupado === "enviar" || undefined}
             style={{ ...botonSecundario, opacity: ocupado || cambiada || !llegan.length ? 0.5 : 1 }}>
             Enviar ahora{llegan.length ? ` a ${llegan.length}` : ""}
           </button>
         )}
         <span style={{ flex: 1 }} />
         {!nueva && (
-          <button type="button" onClick={() => acciones.borrar(r)} disabled={ocupado} style={{ ...botonSecundario, color: C.mal, display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <button type="button" onClick={() => acciones.borrar(r)} disabled={ocupado} aria-busy={ocupado === "borrar" || undefined} style={{ ...botonSecundario, color: C.mal, display: "inline-flex", gap: 6, alignItems: "center" }}>
             <Icono nombre="papelera" tam={16} /> Borrar
           </button>
         )}

@@ -37,6 +37,18 @@ describe("dos cartillas que se llenan", () => {
     const b = stripDelPase(tienda({ doble: "llenar" }), { ...cliente, sellos: 6 }).svg;
     expect(a.match(/clipPath id="([^"]+)"/)[1]).not.toBe(b.match(/clipPath id="([^"]+)"/)[1]);
   });
+
+  it("los premios guardados se dibujan bajo su cuenta, solo si los hay y como mucho tres", () => {
+    const n = tienda({ doble: "llenar" });
+    const banda = (g1, g2) => stripDelPase(n, { ...cliente, guardados: g1, guardados2: g2 }).svg;
+    // Sin guardados, la banda de siempre: nada de huecos claros para los que no tiene.
+    expect(banda(0, 0)).toBe(stripDelPase(n, cliente).svg);
+    expect(banda(1, 0).length).toBeGreaterThan(banda(0, 0).length);
+    expect(banda(2, 0).length).toBeGreaterThan(banda(1, 0).length);
+    // Del cuarto en adelante lo dice su campo («5 gratis»), no la banda. Y ningún recorte de más.
+    expect(banda(5, 4)).toBe(banda(3, 3));
+    expect(banda(3, 3).match(/<clipPath/g)).toHaveLength(2);
+  });
 });
 
 describe("contacto del reverso", () => {

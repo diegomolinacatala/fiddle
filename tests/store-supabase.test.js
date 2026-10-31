@@ -170,8 +170,42 @@ describe("store con Supabase", () => {
     const lista = await store.listClientes("nube");
     expect(lista[0]).toMatchObject({ serial: "s1", nombre: null, actualizado: "c" });
     // Sin las tarjetas fusionadas en otra ni las que se pidió borrar: ya no son clientes.
-    expect(metodos(0)).toEqual(["select", "is", "is", "order", "eq"]);
+    expect(metodos(0)).toEqual(["select", "is", "is", "order", "order", "eq", "range"]);
     expect(llamadas[0].cadena.filter((c) => c[0] === "is").map((c) => c[1])).toEqual(["fusionado_en", "borrado_en"]);
+  });
+
+  // PostgREST corta en 1000 filas aunque se pida más, y no da error: el Resumen de
+  // una tienda con mucho movimiento solo veía sus últimos días.
+  const filas = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+
+  it("listEventosDeNegocio lee por páginas lo que pasa de 1000, sin repetir ni enseñar el id", async () => {
+    const evento = (id) => ({ id, serial: `s${id}`, tipo: "sellar", mensaje: "Punto", actor: "caja", empleado: null, ts: "2026-10-20T10:00:00Z" });
+    // La segunda página empieza por la última de la primera: entró un sello entre las dos.
+    encolar("eventos", { data: filas(1000, (i) => evento(3000 - i)), error: null }, { data: filas(3, (i) => evento(2001 - i)), error: null });
+    const eventos = await store.listEventosDeNegocio("nube");
+    expect(eventos).toHaveLength(1002);
+    expect(eventos[0]).not.toHaveProperty("id");
+    expect(new Set(eventos.map((e) => e.serial)).size).toBe(1002);
+    expect(llamadas.map((l) => l.cadena.find((c) => c[0] === "range"))).toEqual([["range", 0, 999], ["range", 1000, 1999]]);
+    // Orden total: por hora y, a la misma hora, por id.
+    expect(llamadas[0].cadena.filter((c) => c[0] === "order")).toEqual([["order", "ts", { ascending: false }], ["order", "id", { ascending: false }]]);
+  });
+
+  it("listEventosDeNegocio no pide más allá del límite", async () => {
+    encolar("eventos", { data: filas(1000, (i) => ({ id: 5000 - i, ts: "t" })), error: null }, { data: filas(500, (i) => ({ id: 4000 - i, ts: "t" })), error: null });
+    expect(await store.listEventosDeNegocio("nube", { limite: 1500 })).toHaveLength(1500);
+    expect(llamadas.map((l) => l.cadena.find((c) => c[0] === "range"))).toEqual([["range", 0, 999], ["range", 1000, 1499]]);
+  });
+
+  it("serialesRegistrados y listClientes también siguen pasada la primera página", async () => {
+    encolar("registros", { data: filas(1000, (i) => ({ serial: `r${i}` })), error: null }, { data: [{ serial: "r1000" }], error: null });
+    expect((await store.serialesRegistrados("nube")).size).toBe(1001);
+
+    llamadas.length = 0;
+    // Justo 1000: hace falta preguntar otra vez para saber que no hay más.
+    encolar("clientes", { data: filas(1000, (i) => ({ serial: `c${i}`, negocio: "nube" })), error: null }, { data: [], error: null });
+    expect(await store.listClientes("nube")).toHaveLength(1000);
+    expect(llamadas).toHaveLength(2);
   });
 
   it("ultimoEvento pide UNA fila de esos tipos, la más reciente", async () => {

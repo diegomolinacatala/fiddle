@@ -33,8 +33,9 @@ const cabeceras = [
 const nextConfig = {
   // Firma de pases (node-forge), imágenes (sharp, binario nativo) y avisos web
   // (web-push, cifrado con crypto de Node): se cargan tal
-  // cual desde node_modules en el servidor en vez de empaquetarse.
-  serverExternalPackages: ["passkit-generator", "sharp", "web-push"],
+  // cual desde node_modules en el servidor en vez de empaquetarse. node-forge
+  // también: lib/apple/firmaNativa.js retoca el MISMO forge que usa passkit.
+  serverExternalPackages: ["passkit-generator", "node-forge", "sharp", "web-push"],
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: cabeceras }];

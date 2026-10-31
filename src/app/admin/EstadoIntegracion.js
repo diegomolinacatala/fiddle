@@ -70,7 +70,7 @@ export default function EstadoIntegracion({ accent }) {
       titulo: "Datos de clientes cifrados",
       detalle: errorCifrar ? `${estado.cifrado?.detalle} · ${errorCifrar}` : estado.cifrado?.detalle || "Sin datos",
       accion: estado.cifrado?.pendientes > 0
-        && <button type="button" onClick={cifrarPendientes} disabled={cifrando} style={botonCifrar(accent)}>{cifrando ? "Cifrando…" : "Cifrar ahora"}</button>,
+        && <button type="button" onClick={cifrarPendientes} disabled={cifrando} aria-busy={cifrando || undefined} style={botonCifrar(accent)}>{cifrando ? "Cifrando…" : "Cifrar ahora"}</button>,
     },
     { ok: estado.authSecret, titulo: "Login seguro", detalle: estado.authSecret ? "AUTH_SECRET configurado" : "Secreto de demo: configura AUTH_SECRET" },
   ];

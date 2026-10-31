@@ -5,6 +5,23 @@ que no se deducen leyendo el código.
 
 Para ponerse en marcha (instalar, arrancar, desplegar): [NEXT-STEPS.md](NEXT-STEPS.md).
 
+## Lo del negocio: el vault (`Victrozz/fiddleobsidian`)
+
+Todo lo que NO es código vive en un repo privado de Victor y Diego, el vault de
+Obsidian: tiendas (clientes y prospectos, en qué estado está cada una), personas,
+citas, tareas, ideas y documentos (logo de Fiddle, plan ante una brecha…). Para
+cualquier duda sobre el negocio (qué quiere una tienda, quién es quién, qué hay
+pendiente, qué se ha hablado) **míralo ahí antes de suponer o preguntar**. Las
+tareas y el estado del negocio salen de ahí, no de `NEXT-STEPS.md`.
+
+- Leerlo: `gh repo clone Victrozz/fiddleobsidian` (o `gh api` a sus ficheros). Empieza
+  por su `CLAUDE.md` e `Inicio.md`; las fichas de tienda están en `Tiendas/`.
+- **Este repo es público y el vault no.** Nada del vault (nombres, teléfonos, precios,
+  notas de reuniones) se copia aquí: ni en el código, ni en los docs, ni en commits o
+  PRs. Se enlaza o se resume sin datos.
+- Si algo del trabajo aquí cambia el negocio (una tienda pide algo, se cierra una
+  tarea), se apunta en el vault siguiendo sus reglas, no en este repo.
+
 ## Qué es esto
 
 Tarjetas de fidelización en Apple Wallet y Android (tarjeta web con avisos, y
@@ -61,19 +78,29 @@ comprobar siempre que de verdad desplegó.
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
-  su cuadrado, título, una línea de cómo está y UN botón pequeño debajo. Lo que se pone
+  su cuadrado, título, una línea de cómo está y UN botón pequeño debajo (o, si se enciende
+  y se apaga, `interruptor` a la derecha en vez del botón). Lo que se pone
   una vez (horario, mapa) va plegado. Nada de títulos, colores o botones distintos
   para cosas del mismo nivel.
 - **Encender/apagar = interruptor** (`app/Interruptor.js`), nunca una casilla: una
   casilla vacía no se lee como "apagado".
+- **Nunca la ventana del navegador** (31-10-2026, lo pidió Víctor): ni `window.confirm`, ni
+  `alert`, ni `prompt`. Se ve distinta en cada móvil y parece un error. Para preguntar,
+  `await confirmar({ titulo, texto, si, peligro, accent })` de `app/Dialogo.js` (devuelve
+  true/false como confirm); para un texto que copiar a mano, `ensenarParaCopiar`.
 - **Lo que se VE en la tarjeta se cambia tocándolo en ella**: Tienda → "Editar tarjeta"
   (`manager/EditorTarjeta.js`). Cada trozo de `PaseVista` abre su panel (`seccionDe`).
   Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. Enseña
-  Apple y Google A LA VEZ (con sitio): lo de una sola plataforma lo dice su panel. El
+  Apple y Google A LA VEZ (con sitio): lo de una sola plataforma lo dice su panel.
+  **Guardar algo que se ve en la tarjeta pregunta antes** (`confirmarTarjetas`, 31-10-2026):
+  pone al día la de todos los clientes (en silencio, pero tarda y gasta CPU). Lo hacen el
+  editor, «Abierto hasta…» y la ubicación; un sitio nuevo que guarde algo de `PASE`
+  (`/api/negocio`) pregunta igual. El
   manager NO cambia cupón ↔ cartilla (el pase de Apple no puede cambiar de tipo).
-  Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene también su
-  interruptor en Tienda → Horario, que es donde se piensa en ello. La tarjeta web lo
-  respeta igual que Wallet.
+  Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene su PROPIA FILA en
+  Tienda, con interruptor (31-10-2026: dentro del horario plegado o al fondo del editor
+  nadie lo encontraba); en el editor solo sale al tocar su línea en la vista previa. La
+  tarjeta web lo respeta igual que Wallet.
 - **En Apple no hay "detrás"**: la (i) abre la hoja de información de la tarjeta. La
   vista previa la abre con su botón «ⓘ Información», que tiene que verse tocable.
 
@@ -81,6 +108,9 @@ comprobar siempre que de verdad desplegó.
 
 - Con imagen de banda (*strip*), **iOS junta `secondaryFields` y
   `auxiliaryFields` en UNA fila**. Por eso el pase lleva pocos campos: no caben.
+- **Cada campo del pase con su clave, y ninguna repetida** (hay un test): con dos iguales
+  passkit tira la segunda en silencio («another field already owns this key»). Así se perdía
+  el «Premios guardados» del reverso, que compartía `guardados` con la cabecera.
 - **El nombre del cliente NO va en el pase**, ni en Apple ni en Google (nada de
   `accountName`), ni en lo que llega al navegador por el serial (`clienteDeTarjeta`). Lo
   sabe él y lo ve la caja; el serial va en el QR.
@@ -206,6 +236,18 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   si el móvil muere en esos segundos, el premio dado no queda apuntado. No meter un
   «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
   en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
+- **«Deshacer cambios» deja la tarjeta como al escanearla** (26-10-2026, `lib/deshacer.js`,
+  `POST /api/accion/deshacer`): con algo hecho en la ficha, un botón debajo de lo que acaba
+  de pasar. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
+  tarjeta desde que se abrió la ficha, y la tarjeta recupera saldo, `visitas`,
+  `ultima_visita` y el `mensaje` que sumar la visita le quitó. Para las cuentas, esa visita
+  no pasó (con el «−» el sello y su corrección se quedan, y la visita cuenta). Cómo estaba
+  lo dice una instantánea que FIRMA el servidor al pintar la ficha (`firmarInstantanea`,
+  caduca a los `MINUTOS_DESHACER_CAMBIOS`): nunca un estado que mande el navegador. Va por
+  la misma fila que las acciones y deja en el historial una línea `deshacer`, que no es de
+  la caja ni una visita. El teléfono del cliente se pone al día sin `antes` (no suena).
+- **Un premio guardado se enseña con SU dibujo** (la cookie, la taza: `premiosDe` lleva la
+  `marca` de su cartilla) y su nombre en grande, no con un icono genérico.
 - **Sin tocarla, la ficha vuelve al escáner** (`volverSinTocar`, Editar vista de caja,
   apagado de partida; lo pidió La Delicantería, con un móvil fijo en el mostrador): a los
   `SEGUNDOS_SIN_TOCAR` (30, fijos) sin toques, scroll ni teclado va a `/<slug>/caja`, con
@@ -287,6 +329,12 @@ el campo de cada una bajo la banda dice «2 gratis» en vez de «Faltan 3» (eso
 casillas) y en Google cada cartilla tiene su hueco de puntos («Cookies 3/8 · 2 gratis»,
 `puntosDe`). Al guardar suena; mientras le quede uno guardado, sellar esa cartilla no suena.
 
+Con las dos que se llenan lado a lado (La Delicantería), **los guardados se dibujan bajo la
+cuenta de su cartilla** (31-10-2026, `svgStripLlenar`): hasta `GUARDADOS_A_LA_VISTA` (3)
+galletas o tazas llenas, solo las que tiene (nada de huecos claros), pegadas a la raya como la
+cuenta; los demás los dice su campo. Por eso la clave de la banda en caché
+(`lib/apple/imagenes.js`) lleva `guardados` y `guardados2`.
+
 ## Android
 
 Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WALLET.md).
@@ -326,7 +374,18 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 
 - **Añadir una marca** = una entrada en `DIBUJOS` (SVG de un color en un lienzo
   512x512). Sale sola en el logo, el icono, los sellos, el modo relleno y el
-  selector del admin. Si se usa en modo relleno, añadirla también a `CAJA`.
+  selector del admin. Si se usa en modo relleno, añadirla también a `CAJA` con su tinta
+  de arriba abajo Y de lado a lado (`[y0, y1, x0, x1]`, rasterizándola): el ancho coloca
+  en fila los premios guardados.
+- **Los modos son los básicos** (31-10-2026): casillas, relleno, porciones, pizza, barra,
+  anillos y cifra. La luna, la constelación, la planta, la torre, las pesas, el pulso, la
+  aguja, el camino, la escalera y el mosaico se quitaron por recargados, con sus seis
+  plantillas (nutrición, floristería, bar de noche, taller, academia, clínica). Lo guardado
+  con uno de ellos se pinta con su sustituto (`MODOS_RETIRADOS`, `resolverModo`) y al
+  guardar ya queda así. Antes de añadir uno, que no sea un adorno.
+- **La pizza es UNA pizza redonda** (`bandaPizza`): sin huecos entre trozos, los ganados
+  con todo y los que faltan desvaídos, con los cortes finos. Los ingredientes van por toda
+  la pizza (no por porción) en sitios fijos: igual con 6 trozos que con 12.
 - **Dos cartillas**: `tema.doble` = `filas` (una encima de otra) o `lados`; y CADA
   cartilla su `modo` y su `forma` (cualquiera de MODOS, como una tienda de una). Cada
   modo se pinta en su trozo con la caja que aguanta (`ASPECTO` en dibujo.js: un modo
@@ -423,7 +482,9 @@ nada se mide en días sueltos, sino en `retraso` = días sin venir ÷ su cadenci
   del embudo y la suma de los estados; «Siguen viniendo» es el «Hoy» del puente; «Premios
   por dar», el grupo «Premio pendiente» y el aviso «Tiene un premio sin recoger» miran lo
   mismo (las dos cartillas y los guardados: `perfil.faltan` es el de la cartilla más cerca y
-  `completa`, cualquiera llena). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
+  `completa`, cualquiera llena); «con la tarjeta en el móvil» de Clientes es iPhone + Android
+  + los dos de «¿En qué móviles la llevan?» (`telefonosDe`, con los `registros` VIVOS por
+  canal: quien la quitó sigue con `instalado`, y va aparte en «La quitaron»). Una cifra nueva tiene que cuadrar igual, y un mismo nombre
   no puede contar dos cosas («Volvieron» del embudo es la segunda visita; en el puente, los
   que vuelven tras irse son «Recuperados»).
 - **El Resumen pregunta si la tarjeta funciona**: el embudo (`embudo`, cada escalón sale
@@ -717,6 +778,11 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   de `pagina` ya se sale. Y `pagina` lleva `gridTemplateColumns: "minmax(0, 1fr)"`: sin
   eso, una tabla ancha hace crecer la rejilla y se desborda TODA la página, no la tabla.
 - Tablas anchas dentro de `overflowX: "auto"`. Filas de botones con `flexWrap`.
+- **Un botón que espera al servidor lleva `aria-busy`** (31-10-2026): gira a la izquierda del
+  texto y no se ve apagado (la regla está en `app/layout.js`). Lo pidió Víctor tras entrar con mala
+  cobertura: «Entrando…» en gris y quieto parecía la página rota. Si varios botones comparten un
+  `ocupado`, gira solo el que se tocó (`ocupado` dice qué espera, no solo que algo espera). Si
+  el botón lleva a otra página, sigue girando hasta que llega: no se apaga tras el `router.push`.
 - **Recorrido de bienvenida** (`app/Recorrido.js`): cada paso señala un elemento con
   `data-recorrido="<ancla>"`. Mover o quitar ese atributo no rompe nada visible: el paso
   se salta en silencio. Al tocar manager o caja, mirar que las anclas siguen.
@@ -747,6 +813,10 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   es un hallazgo.
 - El store tiene **dos backends** tras la misma API: Supabase o ficheros locales
   (`.data/`, sin variables de entorno). Todo cambio en `store.js` vale para los dos.
+- **Supabase da como mucho 1000 filas por petición, y sin error**, aunque se pida
+  `.limit(5000)` (26-10-2026: el Resumen perdía los días más viejos).
+  Una lectura que pueda pasar de mil va por `porPaginas` en `store.js`, con un orden
+  que desempate por una clave única. Los ficheros no tienen tope: ahí no se nota.
 - **Nombre y nota del cliente van cifrados** (`lib/cifrado.js`, ver
   [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md)). Se cifran al guardar y se descifran
   en `normalizarCliente`: leer y escribir `clientes` siempre por esas funciones

@@ -82,19 +82,22 @@ function LoginForm() {
         // Bloqueado: la contraseña no se ha mirado, que no la vuelva a teclear a ciegas.
         if (res.status === 429) setAyuda(true);
         else setClave("");
+        setBusy(false);
         return;
       }
       try {
         localStorage.setItem(CLAVE_RECORDADOS, JSON.stringify(recordarUsuario(recordados, { negocio: data.negocio, rol: data.rol })));
       } catch {}
       // El servidor decide a dónde: `next` solo si es de esta tienda (ver /api/login).
+      // El botón sigue girando hasta que llegue la página: router.push no espera a
+      // cargarla y, con mala cobertura, volver a «Entrar» parecía que no había hecho nada.
       router.push(data.destino);
       router.refresh();
-    } catch (err) {
-      setError({ texto: String(err?.message || err), status: 0 });
-    } finally {
-      setBusy(false);
+      return;
+    } catch {
+      setError({ texto: "Sin conexión: no se ha podido entrar. Prueba otra vez.", status: 0 });
     }
+    setBusy(false);
   }
 
   function usar(acceso) {
@@ -172,7 +175,7 @@ function LoginForm() {
             </button>
           </div>
 
-          <button type="submit" disabled={!listo} style={{ ...entrarBtn, opacity: listo ? 1 : 0.45, cursor: listo ? "pointer" : "default" }}>
+          <button type="submit" disabled={!listo} aria-busy={busy || undefined} style={{ ...entrarBtn, opacity: listo ? 1 : 0.45, cursor: listo ? "pointer" : "default" }}>
             {busy ? "Entrando…" : "Entrar"}
           </button>
 

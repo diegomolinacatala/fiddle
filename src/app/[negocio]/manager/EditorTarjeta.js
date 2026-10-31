@@ -16,6 +16,9 @@ import {
   ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA, ROTULO_DOBLE,
 } from "@/app/admin/vistas";
 import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
+import { confirmarTarjetas } from "./confirmarTarjetas";
+import { confirmar } from "@/app/Dialogo";
+import { FilaInterruptor } from "@/app/Interruptor";
 
 // ============================================================================
 // EDITOR DE LA TARJETA (manager)
@@ -72,7 +75,7 @@ export function seccionDe(clave) {
   if (k === "como" || k === "reverso.como") return "reverso";
   if (k === "promo" || k.startsWith("mensaje.")) return "promo";
   if (/^(reverso|enlace)\.(telefono|web|instagram|contacto)$/.test(k)) return "contacto";
-  if (["canjeados", "guardados", "nivel", "reverso.guardados"].includes(k)) return "contador";
+  if (["canjeados", "guardados", "nivel", "reverso.guardadosDetalle"].includes(k)) return "contador";
   return "fijo"; // QR, código, titular, estado del cupón, privacidad
 }
 
@@ -209,12 +212,13 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
     if (r) lado.current = e.clientX < r.left + r.width / 2 ? "izq" : "der";
   }
 
-  function salir() {
-    if (cambiado && !window.confirm("¿Salir sin guardar? Los cambios de la tarjeta se pierden.")) return;
+  async function salir() {
+    if (cambiado && !(await confirmar({ titulo: "¿Salir sin guardar?", texto: "Los cambios de la tarjeta se pierden.", si: "Salir sin guardar", no: "Seguir editando", peligro: true }))) return;
     onCerrar();
   }
 
   async function guardar() {
+    if (!(await confirmarTarjetas(d.tema.accent))) return;
     setGuardando(true);
     setError(null);
     try {
@@ -285,7 +289,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
         </div>
         {cambiado && <button type="button" onClick={() => { setD(deInicio); setActivo(null); }} style={chip}>Deshacer todo</button>}
         <button type="button" onClick={salir} style={botonSecundario}>Cancelar</button>
-        <button type="button" onClick={guardar} disabled={!listo || guardando} title={contactoLimpio.error || undefined}
+        <button type="button" onClick={guardar} disabled={!listo || guardando} aria-busy={guardando || undefined} title={contactoLimpio.error || undefined}
           style={{ ...botonPrimario(d.tema.accent), opacity: listo ? 1 : 0.5, cursor: listo ? "pointer" : "default" }}>
           {guardando ? "Guardando…" : "Guardar"}
         </button>
@@ -638,8 +642,8 @@ function PanelLogo({ clave, d, set, setTema, kit }) {
                   <img src={comoDataUri(vistaMarca({ ...tc, texto: t.texto || "AB" }, m))} alt="" style={miniatura} />
                 </Tuyo>
               ))}
-              <Subir onClick={() => entradaLogo.current?.click()} texto={subiendo === "logo" ? "Subiendo…" : "Imagen de logo"} />
-              <Subir onClick={() => entradaIcono.current?.click()} texto={subiendo === "icono" ? "Subiendo…" : "Icono propio"} />
+              <Subir onClick={() => entradaLogo.current?.click()} ocupado={subiendo === "logo"} texto={subiendo === "logo" ? "Subiendo…" : "Imagen de logo"} />
+              <Subir onClick={() => entradaIcono.current?.click()} ocupado={subiendo === "icono"} texto={subiendo === "icono" ? "Subiendo…" : "Icono propio"} />
             </div>
             <p style={ayuda}>
               <strong>Imagen de logo:</strong> tu logo tal cual (cuadrado, de al menos {LOGO_MIN}×{LOGO_MIN}). Los puntos siguen siendo un dibujo.{" "}
@@ -726,7 +730,7 @@ function Tuyo({ tipo, id, elegido, onElegir, rotulo, children }) {
   const [error, setError] = useState(null);
   async function quitar(e) {
     e.stopPropagation();
-    if (!window.confirm("¿Quitarlo de «Tuyos»? Si lo quieres otra vez, tendrás que subirlo.")) return;
+    if (!(await confirmar({ titulo: "¿Quitarlo de «Tuyos»?", texto: "Si lo quieres otra vez, tendrás que subirlo.", si: "Quitarlo", peligro: true }))) return;
     const r = await fetch(`/api/propios?b=${slug}&tipo=${tipo}&id=${id}`, { method: "DELETE" });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) return setError(data.error || "No se pudo quitar");
@@ -745,10 +749,11 @@ function Tuyo({ tipo, id, elegido, onElegir, rotulo, children }) {
   );
 }
 
-function Subir({ onClick, texto }) {
+function Subir({ onClick, texto, ocupado = false }) {
   return (
-    <button type="button" onClick={onClick} style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: C.panel }}>
-      <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>+</span>
+    <button type="button" onClick={onClick} disabled={ocupado} aria-busy={ocupado || undefined}
+      style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: C.panel }}>
+      <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>{ocupado ? <span className="giro" /> : "+"}</span>
       <span style={{ fontSize: 11, lineHeight: 1.2, color: C.suave }}>{texto}</span>
     </button>
   );
@@ -870,7 +875,6 @@ function PanelSellos(props) {
         <label style={etiqueta}>Fondo de la banda</label>
         <FondoBanda t={tc} setTema={setTema} />
         <Color titulo="Color de los puntos" ayuda="Cambia también las etiquetas y el logo." valor={colorDelPase(t)} onChange={colorDelPaseA(t, setTema)} />
-        <InterruptorAbierto d={d} setTema={setTema} estado={props.estado} slug={slug} />
       </div>
     </>
   );
@@ -911,7 +915,7 @@ function ElegirDibujo({ kit, tema, valor, onChange, ancho, sinTexto = false }) {
               </Tuyo>
             ))}
             {lista.iconos.length < MAX_PROPIOS.iconos && (
-              <Subir onClick={() => entrada.current?.click()} texto={subiendo ? "Subiendo…" : "Icono propio"} />
+              <Subir onClick={() => entrada.current?.click()} ocupado={subiendo} texto={subiendo ? "Subiendo…" : "Icono propio"} />
             )}
           </div>
         )}
@@ -962,7 +966,7 @@ function FondoBanda({ t, setTema }) {
                 </Tuyo>
               ))}
               {lista.fondos.length < MAX_PROPIOS.fondos && (
-                <Subir onClick={() => entrada.current?.click()} texto={subiendo ? "Subiendo…" : "Foto para la banda"} />
+                <Subir onClick={() => entrada.current?.click()} ocupado={subiendo} texto={subiendo ? "Subiendo…" : "Foto para la banda"} />
               )}
             </div>
             <p style={ayuda}>
@@ -1022,26 +1026,22 @@ function AvisoCartillas({ d, inicial, slug, aDos }) {
   return null;
 }
 
-function InterruptorAbierto({ d, setTema, estado, slug }) {
+// En la tarjeta solo al tocar su línea en la vista previa: su sitio es Tienda, en
+// su propia fila (al fondo de los colores nadie lo encontraba, 31-10-2026).
+function InterruptorAbierto({ d, setTema, estado }) {
   const on = d.tema.abierto !== false;
   return (
-    <div style={{ marginTop: 14 }}>
-      <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
-        <input type="checkbox" checked={on} onChange={(e) => setTema("abierto", e.target.checked)} style={{ marginTop: 3 }} />
-        <span>
-          <strong style={{ fontWeight: 600 }}>«● Abierto hasta las…» en la tarjeta</strong>
-          <span style={{ ...ayuda, display: "block" }}>
-            {!d.horario
-              ? <>Hace falta tu horario: ponlo en la pestaña <a href={`/${slug}/manager`} style={{ color: d.tema.accent }}>Tienda</a>.</>
-              : !estado
-                ? "Sale cuando el reloj de los avisos está en marcha (lo dice la pestaña Avisos)."
-                : on
-                  ? `En Apple va dibujado arriba de la banda (los puntos bajan un poco para dejarle sitio). En Google, el primero de los detalles. Ahora diría: «${estado.texto}».`
-                  : "Apagado: la banda usa todo su alto y Google no lo lleva."}
-          </span>
-        </span>
-      </label>
-    </div>
+    <FilaInterruptor
+      on={on} onClick={() => setTema("abierto", !on)} accent={d.tema.accent} style={{ marginTop: 14 }}
+      titulo="«● Abierto hasta las…» en la tarjeta"
+      texto={!d.horario
+        ? "Hace falta tu horario: ponlo en la pestaña Tienda."
+        : !estado
+          ? "Sale cuando el reloj de los avisos está en marcha (lo dice la pestaña Avisos)."
+          : on
+            ? `En Apple va arriba de la banda; en Google, el primero de los detalles. Ahora diría: «${estado.texto}».`
+            : "Apagado: la banda usa todo su alto y Google no lo lleva."}
+    />
   );
 }
 
@@ -1052,7 +1052,7 @@ function PanelEstado({ d, setTema, estado, slug }) {
         Google no deja cambiar su imagen cada hora, así que en Android la línea va en los detalles, como «Ahora». La
         cambia el reloj de la tienda en todas las tarjetas a la vez.
       </p>
-      <InterruptorAbierto d={d} setTema={setTema} estado={estado} slug={slug} />
+      <InterruptorAbierto d={d} setTema={setTema} estado={estado} />
     </>
   );
 }

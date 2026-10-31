@@ -202,7 +202,7 @@ function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocu
 
       <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${C.borde}`, paddingTop: 14 }}>
         <button
-          type="button" disabled={ocupado || !valida || !cambiada} onClick={() => acciones.guardar(r)}
+          type="button" disabled={ocupado || !valida || !cambiada} onClick={() => acciones.guardar(r)} aria-busy={ocupado === "guardar" || undefined}
           style={{ ...botonPrimario(accent), opacity: ocupado || !valida || !cambiada ? 0.45 : 1 }}
         >
           {nueva ? "Crear aviso" : "Guardar"}
@@ -210,7 +210,7 @@ function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocu
         <button type="button" onClick={acciones.cancelar} style={botonSecundario} disabled={ocupado}>Cancelar</button>
         {!nueva && (
           <button
-            type="button" disabled={ocupado || cambiada || !llegan.length} onClick={() => acciones.enviar(r, llegan.length)}
+            type="button" disabled={ocupado || cambiada || !llegan.length} onClick={() => acciones.enviar(r, llegan.length)} aria-busy={ocupado === "enviar" || undefined}
             style={{ ...botonSecundario, opacity: ocupado || cambiada || !llegan.length ? 0.5 : 1 }}
           >
             Enviar ahora{llegan.length ? ` a ${llegan.length}` : ""}
@@ -219,7 +219,7 @@ function Editor({ inicial, negocio, grupos, contextos, envios, topes, nueva, ocu
         {!nueva && cambiada && <span style={{ fontSize: 12.5, color: C.tenue }}>Guarda los cambios para poder enviarlo ya.</span>}
         <span style={{ flex: 1 }} />
         {!nueva && (
-          <button type="button" onClick={() => acciones.borrar(r)} disabled={ocupado} style={{ ...botonSecundario, color: C.mal, display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <button type="button" onClick={() => acciones.borrar(r)} disabled={ocupado} aria-busy={ocupado === "borrar" || undefined} style={{ ...botonSecundario, color: C.mal, display: "inline-flex", gap: 6, alignItems: "center" }}>
             <Icono nombre="papelera" tam={16} /> Borrar
           </button>
         )}

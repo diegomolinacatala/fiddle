@@ -53,6 +53,7 @@ const TRAZOS = {
     </>
   ),
   volver: <path d="M15 5l-7 7 7 7" />,
+  deshacer: <path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
   descargar: <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M4.5 15.5v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3" />,
   cerrar: <path d="M6 6l12 12M18 6L6 18" />,
   clientes: (

@@ -6,7 +6,7 @@ import { serieVisitas, resumenSerie, rejillaHoraria, horarioDeRejilla, cambio, c
 import { ZONA_POR_DEFECTO } from "@/lib/horario";
 import { observaciones, enlaceDeAccion, suficiencia, textoFalta } from "@/lib/observaciones";
 import { Cifra, Tarjeta, Rejilla, contar, numero } from "./piezas";
-import { Embudo, CurvaVuelta, VisitasPorDia, Estados, Puente, Cartilla, LeyendaCartilla } from "./graficas";
+import { Embudo, CurvaVuelta, VisitasPorDia, Estados, Puente, Cartilla, LeyendaCartilla, Telefonos } from "./graficas";
 import { C, panel, legible, tinte } from "@/app/ui";
 
 // ============================================================================
@@ -20,12 +20,14 @@ import { C, panel, legible, tinte } from "@/app/ui";
 //   ¿vuelven?           el camino de la tarjeta y cuánto tardan en volver
 //   ¿cuándo?            las visitas de cada día y la semana hora a hora
 //   ¿quién?             en qué estado está cada uno y si se gana o se pierde
+//   ¿en qué móviles?    iPhone o Android, y cuántos la quitaron
 //   ¿cuántos puntos?    dónde va cada uno en su cartilla
 //   lo que verás…       lo que aún no se puede decir, y cuándo se podrá
 //
 // Las cifras CUADRAN entre sí a la vista: «Clientes» es el segundo escalón del
 // camino y la suma de los estados; «Siguen viniendo» es el «Hoy» del puente;
-// «Premios por dar» y «Premio pendiente» miran lo mismo. Una cifra nueva tiene
+// «Premios por dar» y «Premio pendiente» miran lo mismo; «con la tarjeta en el
+// móvil» de Clientes es iPhone + Android + los dos. Una cifra nueva tiene
 // que cuadrar igual. Lo que aún no tiene datos no ocupa un panel vacío: va a
 // «Lo que verás con más días», con cuándo saldrá.
 //
@@ -70,7 +72,7 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
   return (
     <div className="resumen" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18 }}>
       <style>{CSS}</style>
-      <Cifras m={m} esCupon={esCupon} accent={accent} dia={dia} zona={zona} />
+      <Cifras m={m} enMovil={d.telefonos?.enMovil ?? m.instalados} esCupon={esCupon} accent={accent} dia={dia} zona={zona} />
 
       {quehacer.length > 0 && <LoQueDicen ideas={quehacer} slug={slug} accent={accent} />}
 
@@ -115,6 +117,14 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
           </Tarjeta>
         )}
       </Fila>
+
+      {d.telefonos?.guardaron > 0 && (
+        <Fila>
+          <Tarjeta id="r-moviles" pregunta="¿En qué móviles la llevan?" {...titularTelefonos(d.telefonos)}>
+            <Telefonos t={d.telefonos} accent={accent} />
+          </Tarjeta>
+        </Fila>
+      )}
 
       {!esCupon && conPuntos.length > 0 && (
         <Tarjeta id="r-puntos" pregunta="¿Cuántos puntos llevan?" pie={<LeyendaCartilla />}>
@@ -169,6 +179,16 @@ function titularDias(dia, serie) {
   };
 }
 
+function titularTelefonos(t) {
+  const detalle = `Los porcentajes son de los ${numero(t.guardaron)} que la han guardado alguna vez.`;
+  if (!t.enMovil) return { titular: `Ahora no la tiene nadie en el móvil: ${contar(t.quitaron, ["la quitó", "la quitaron"])}.` };
+  const donde = [`${numero(t.iphone)} en iPhone`, `${numero(t.android)} en Android`, t.ambos > 0 && `${numero(t.ambos)} en los dos`].filter(Boolean);
+  return {
+    titular: `${contar(t.enMovil, ["cliente la lleva", "clientes la llevan"])} en el móvil: ${donde.slice(0, -1).join(", ")} y ${donde.at(-1)}.`,
+    detalle,
+  };
+}
+
 function titularPuente(p) {
   const diferencia = p.hoy - p.antes;
   return {
@@ -184,14 +204,14 @@ function titularPuente(p) {
  * Las cuatro cifras de cabecera. Con menos de un mes de fiddle, «los últimos 30
  * días» son en realidad «desde el primer día», y la etiqueta lo dice.
  */
-function Cifras({ m, esCupon, accent, dia, zona }) {
+function Cifras({ m, enMovil, esCupon, accent, dia, zona }) {
   const joven = m.inicio && Date.now() - m.inicio < 30 * DIA;
   const desde = m.inicio ? `desde el ${fecha(m.inicio, zona)}` : null;
   const enPct = m.total ? Math.round((m.activos / m.total) * 100) : 0;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 12 }}>
       <Cifra label="Clientes" valor={numero(m.total)} accent={accent}
-        pie={[joven ? desde : `${m.nuevos30 ? "+" : ""}${numero(m.nuevos30)} en 30 días`, `${numero(m.instalados)} con la tarjeta en el móvil`]} />
+        pie={[joven ? desde : `${m.nuevos30 ? "+" : ""}${numero(m.nuevos30)} en 30 días`, `${numero(enMovil)} con la tarjeta en el móvil`]} />
       <Cifra label="Siguen viniendo" valor={numero(m.activos)} accent={C.ok}
         pie={[`el ${enPct}% de tus clientes`, `${contar(m.porEstado.nuevo, ["nuevo", "nuevos"])} y ${numero(m.porEstado.activo)} a su ritmo`]} />
       <Cifra label="Visitas" valor={numero(m.visitas30)} cambio={cambio(m.visitas30, m.visitas30Previas)}

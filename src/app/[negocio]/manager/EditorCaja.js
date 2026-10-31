@@ -7,6 +7,7 @@ import { FilaInterruptor } from "@/app/Interruptor";
 import { LISTA_ACCIONES } from "@/lib/acciones";
 import { OPCIONES_CAJA, normalizarCaja } from "@/lib/caja";
 import { C, botonPrimario, botonSecundario, chipCodigo } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // EDITAR VISTA DE CAJA (manager)
@@ -82,8 +83,8 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
     }
   }
 
-  function salir() {
-    if (cambiado && !window.confirm("¿Salir sin guardar? Los cambios de la caja se pierden.")) return;
+  async function salir() {
+    if (cambiado && !(await confirmar({ titulo: "¿Salir sin guardar?", texto: "Los cambios de la caja se pierden.", si: "Salir sin guardar", no: "Seguir editando", peligro: true }))) return;
     onCerrar();
   }
 
@@ -101,7 +102,7 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
           <div style={{ fontSize: 12, color: C.suave }}>Lo que ve quien atiende al escanear una tarjeta. Pruébala a la derecha.</div>
         </div>
         <button type="button" onClick={salir} style={botonSecundario}>Cancelar</button>
-        <button type="button" onClick={guardar} disabled={!cambiado || guardando}
+        <button type="button" onClick={guardar} disabled={!cambiado || guardando} aria-busy={guardando || undefined}
           style={{ ...botonPrimario(accent), opacity: cambiado ? 1 : 0.5, cursor: cambiado ? "pointer" : "default" }}>
           {guardando ? "Guardando…" : "Guardar"}
         </button>

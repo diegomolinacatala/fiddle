@@ -23,6 +23,25 @@ const base = `${hojaDeColores}
   a { color: inherit; }
   :focus-visible { outline: 2px solid ${C.azul}; outline-offset: 2px; }
   summary { list-style-position: outside; }
+  /* Un botón que espera al servidor lleva aria-busy: gira a la izquierda del texto y no
+     se ve apagado. Con mala cobertura, un botón gris y quieto parecía la página rota. */
+  /* Donde el giro no va junto al texto (subir una imagen), un <span className="giro">. */
+  button[aria-busy="true"] { cursor: progress !important; opacity: 1 !important; }
+  /* Dos reglas iguales y no una lista: un navegador sin :has() tiraría la lista entera. */
+  .giro {
+    display: inline-block; flex-shrink: 0; width: 1em; height: 1em; vertical-align: -0.15em;
+    border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent;
+    animation: espera 0.7s linear infinite; }
+  button[aria-busy="true"]:not(:has(.giro))::before {
+    content: ""; margin-right: 0.5em;
+    display: inline-block; flex-shrink: 0; width: 1em; height: 1em; vertical-align: -0.15em;
+    border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent;
+    animation: espera 0.7s linear infinite; }
+  @keyframes espera { to { transform: rotate(360deg) } }
+  @media (prefers-reduced-motion: reduce) { .giro { animation-duration: 1.6s } }
+  @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation-duration: 1.6s } }
+  /* Las preguntas van en una ventana nuestra (app/Dialogo.js), nunca en la del navegador. */
+  dialog.ventana::backdrop { background: rgb(15 18 22 / 0.5); }
 `;
 
 export default function RootLayout({ children }) {

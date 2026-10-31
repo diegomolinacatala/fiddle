@@ -4,7 +4,8 @@
 // Lo que la ficha manda al servidor sale DE UNO EN UNO: dos sellos seguidos no
 // compiten entre sí en el guardado optimista. Y el premio recién dado (dar,
 // guardar o usar uno guardado) ESPERA `SEGUNDOS_DESHACER` antes de entrar en la
-// fila, por si se deshace (ver TarjetaCaja y lib/acciones.js).
+// fila, por si se deshace (ver TarjetaCaja y lib/acciones.js). «Deshacer
+// cambios» (lib/deshacer.js) va por la misma fila: nunca adelanta a un sello.
 //
 // Aquí solo va la cuenta de lo pendiente: qué espera, cuánto queda por
 // contestar y cómo se vacía. Sin React ni fetch (`mandar` y `mandarAlSalir` los
@@ -33,10 +34,17 @@ export function crearFila({ mandar, mandarAlSalir, alSoltar = () => {}, alAcabar
   let espera = null;
 
   /** A la cola, detrás de lo que ya haya. */
-  function enviar(key) {
+  const enviar = (key) => encolar(() => mandar(key));
+
+  /**
+   * Cualquier petición a la misma fila (deshacer los cambios de la ficha): sale
+   * cuando ha contestado lo de antes, y lo que se pulse después espera a que conteste.
+   * @param {() => Promise<unknown>} tarea atiende sus propios errores, como `mandar`
+   */
+  function encolar(tarea) {
     pendientes += 1;
     cola = cola
-      .then(() => mandar(key))
+      .then(tarea)
       // `mandar` atiende sus propios errores: si aun así lanza, la fila no se puede quedar atascada.
       .catch((e) => console.error("[caja] la petición falló sin respuesta:", e))
       .finally(() => {
@@ -92,7 +100,7 @@ export function crearFila({ mandar, mandarAlSalir, alSoltar = () => {}, alAcabar
   }
 
   return {
-    enviar, esperar, soltar, confirmar, alSalir, vaciar,
+    enviar, encolar, esperar, soltar, confirmar, alSalir, vaciar,
     /** Lo que aún no ha contestado el servidor, contando el premio que espera. */
     get pendientes() { return pendientes; },
     get esperando() { return espera; },
