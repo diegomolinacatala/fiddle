@@ -6,6 +6,7 @@ import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
 import { negocioDelPersonal } from "@/lib/tarjeta";
 import PanelAjustes from "./PanelAjustes";
+import { relojVivo } from "@/lib/relojAvisos";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,9 @@ export default async function Page({ params }) {
   // Lo que ve aquí el admin son los clientes de otro: queda apuntado (docs/RGPD.md, 6.9).
   await apuntarEntradaAdmin(sesion, slug, "Ajustes");
 
-  let n;
+  let n, reloj;
   try {
-    n = await negocioDePeticion(slug);
+    [n, reloj] = await Promise.all([negocioDePeticion(slug), relojVivo()]);
   } catch (e) {
     console.error(`[ajustes ${slug}] no se pudo leer la base de datos:`, e);
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
@@ -30,7 +31,7 @@ export default async function Page({ params }) {
     <PanelAjustes
       slug={slug} negocio={negocioDelPersonal(n)}
       usuarios={{ manager: usuarioDe(slug, "manager"), caja: usuarioDe(slug, "caja") }}
-      esAdmin={sesion.rol === "admin"}
+      esAdmin={sesion.rol === "admin"} reloj={reloj}
     />
   );
 }

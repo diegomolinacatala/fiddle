@@ -75,7 +75,8 @@ comprobar siempre que de verdad desplegó.
   (tarjeta, caja, horario, ubicación, QR), **Clientes** (quién viene; exportar va junto
   a la lista y baja lo que se ve), **Avisos** (enviar a todos o a un grupo, ahora o a una hora)
   y **Plantilla** (quién atiende la caja y qué hace cada uno; solo si el admin la enciende). Y aparte,
-  al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
+  al final, **Ajustes**: los interruptores de la tienda («Abierto hasta…», «Pedir el nombre al
+  escanear») y lo de la cuenta (contraseña de la caja, sesiones). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
   su cuadrado, título, una línea de cómo está y UN botón pequeño debajo (o, si se enciende
@@ -98,8 +99,9 @@ comprobar siempre que de verdad desplegó.
   (`/api/negocio`) pregunta igual. El
   manager NO cambia cupón ↔ cartilla (el pase de Apple no puede cambiar de tipo).
   Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene su PROPIA FILA en
-  Tienda, con interruptor (31-10-2026: dentro del horario plegado o al fondo del editor
-  nadie lo encontraba); en el editor solo sale al tocar su línea en la vista previa. La
+  **Ajustes** (el botón de arriba a la derecha), con interruptor, junto a «Pedir el nombre
+  al escanear» (31-10-2026, lo pidió Víctor: es donde busca los ajustes). En el editor
+  solo sale al tocar su línea en la vista previa. La
   tarjeta web lo respeta igual que Wallet.
 - **En Apple no hay "detrás"**: la (i) abre la hoja de información de la tarjeta. La
   vista previa la abre con su botón «ⓘ Información», que tiene que verse tocable.
@@ -132,7 +134,7 @@ comprobar siempre que de verdad desplegó.
 ## El alta: ¿nombre o directo?
 
 El QR y el tag llevan a `/api/tap`. Quien ya tiene tarjeta (cookie) va directo a
-ella. Al resto, según `pedirNombre` de la tienda (Tienda → "Pedir el nombre al
+ella. Al resto, según `pedirNombre` de la tienda (Ajustes → "Pedir el nombre al
 escanear"; **apagado de partida**):
 
 - **Apagado**: el GET crea la tarjeta sin nombre y va directo a la Wallet. Un paso

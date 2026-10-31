@@ -13,7 +13,6 @@ import EditorCaja from "./EditorCaja";
 import { confirmarTarjetas } from "./confirmarTarjetas";
 import { normalizarCaja } from "@/lib/caja";
 import Recorrido from "@/app/Recorrido";
-import { FilaInterruptor } from "@/app/Interruptor";
 import Bloque from "../Bloque";
 import { useGestion } from "../MarcoGestion";
 import Icono from "@/app/Icono";
@@ -59,7 +58,6 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [n.nombre, n.tema]);
 
-  const set = (k, v) => setN((p) => ({ ...p, [k]: v }));
   function flash(m) {
     setMsg(m);
     clearTimeout(temporizador.current);
@@ -129,26 +127,6 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
     flash(`Ubicación guardada${resumenAviso(data.aviso)}`);
   }
 
-  // Se guarda al tocarlo: no sale en el pase, así que no espera a ningún botón.
-  async function cambiarPedirNombre(pedirNombre) {
-    set("pedirNombre", pedirNombre);
-    const data = await guardarPieza({ pedirNombre });
-    if (!data) return set("pedirNombre", !pedirNombre);
-    setN((p) => ({ ...p, pedirNombre: data.pedirNombre }));
-    flash(pedirNombre ? "Al escanear se pedirá el nombre" : "Al escanear irán directos a la Wallet");
-  }
-
-  // «● Abierto hasta las…» en la tarjeta: la misma pieza que en Editar tarjeta.
-  async function cambiarEnPase(on) {
-    if (!(await confirmarTarjetas(accent))) return;
-    const antes = n.tema;
-    setN((p) => ({ ...p, tema: { ...p.tema, abierto: on } }));
-    const data = await guardarPieza({ tema: { abierto: on } });
-    if (!data) return setN((p) => ({ ...p, tema: antes }));
-    setN(data);
-    flash(on ? `La tarjeta dirá si estás abierto${resumenAviso(data.aviso)}` : `La tarjeta ya no dice si estás abierto${resumenAviso(data.aviso)}`);
-  }
-
   async function copiarTap() {
     try { await navigator.clipboard.writeText(tapUrl); flash("Enlace copiado"); }
     catch { flash(tapUrl); }
@@ -199,19 +177,6 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
                 onGuardado={(data) => { setN(data); setAbierto(null); }}
               />
             </Bloque>
-            {/* Su propia fila, a la vista: dentro del horario plegado o al fondo del editor
-                de la tarjeta nadie lo encontraba (31-10-2026). */}
-            <Bloque
-              data-recorrido="abierto" accent={accent} icono="puerta" titulo="«● Abierto hasta…» en la tarjeta"
-              resumen={!n.horario
-                ? "Pon tu horario y la tarjeta dirá si estás abierto."
-                : n.tema.abierto === false
-                  ? "Apagado: la tarjeta no dice si estás abierto."
-                  : reloj
-                    ? "En el iPhone, sobre los puntos; en Android, en los detalles y en la tarjeta web."
-                    : "En la tarjeta web ya sale. En Wallet, cuando el reloj de los avisos esté en marcha."}
-              interruptor={{ on: Boolean(n.horario) && n.tema.abierto !== false, disabled: !n.horario, onClick: () => cambiarEnPase(n.tema.abierto === false) }}
-            />
             <Bloque
               data-recorrido="ubicacion" accent={accent} icono="ubicacion" titulo="Ubicación"
               resumen={guardada ? "Puesta: el iPhone saca la tarjeta al pasar cerca." : "Sin poner: la tarjeta no aparece sola al acercarse."}
@@ -283,13 +248,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
               </div>
             </div>
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
-
-            <FilaInterruptor
-              data-recorrido="pedir-nombre" style={{ marginTop: 14 }}
-              on={Boolean(n.pedirNombre)} onClick={() => cambiarPedirNombre(!n.pedirNombre)} accent={accent}
-              titulo="Pedir el nombre al escanear"
-              texto="Un paso más antes de la Wallet, pero la caja sabe quién es cada uno. El nombre es para reconocerle en caja: no sale en su tarjeta y se guarda cifrado."
-            />
+            {/* «Pedir el nombre al escanear» y «Abierto hasta…» viven en Ajustes (31-10-2026). */}
           </section>
         </div>
 
