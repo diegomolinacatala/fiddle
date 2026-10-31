@@ -7,6 +7,7 @@ import Bloque from "../Bloque";
 import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 import { confirmar } from "@/app/Dialogo";
+import { confirmarTarjetas } from "../manager/confirmarTarjetas";
 
 // ============================================================================
 // AJUSTES — lo de la cuenta
@@ -15,10 +16,15 @@ import { confirmar } from "@/app/Dialogo";
 // vista cada vez que se entraba a cambiar la tarjeta. Es lo de "se va un
 // empleado": se toca casi nunca y no debe estar en medio. Las mismas filas que
 // en Tienda (Bloque.js). Aquí también la propia contraseña del dueño (dando la
-// actual) y «Cerrar todas las sesiones», que es lo de la cuenta.
+// actual) y «Cerrar todas las sesiones», que es lo de la cuenta. Y, arriba,
+// «● Abierto hasta…» en la tarjeta: es donde lo busca el dueño (31-10-2026), no
+// dentro del horario ni al fondo del editor de la tarjeta.
 // ============================================================================
 
-export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = false }) {
+export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = false, reloj = false }) {
+  const [enPase, setEnPase] = useState(n.tema.abierto !== false);
+  const [guardandoEnPase, setGuardandoEnPase] = useState(false);
+  const [pedirNombre, setPedirNombre] = useState(Boolean(n.pedirNombre));
   const [claveCaja, setClaveCaja] = useState(null); // contraseña nueva de la caja, se ve una vez
   const [cambiandoClave, setCambiandoClave] = useState(false); // el formulario de «Cambiar mi contraseña»
   const [msg, setMsg] = useState(null);
@@ -63,6 +69,44 @@ export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = fal
     }
   }
 
+  // Se guarda al tocarlo, tras avisar: pone al día la tarjeta de todos los clientes.
+  async function cambiarEnPase() {
+    const on = !enPase;
+    if (!(await confirmarTarjetas(accent))) return;
+    setGuardandoEnPase(true);
+    try {
+      const res = await fetch(`/api/negocio?b=${slug}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tema: { abierto: on } }),
+      });
+      const data = await res.json();
+      if (!res.ok) return flash(data.error || "No se pudo guardar");
+      setEnPase(data.tema?.abierto !== false);
+      flash(on ? "La tarjeta dirá si estás abierto" : "La tarjeta ya no dice si estás abierto");
+    } catch {
+      flash("Sin conexión: no se ha guardado");
+    } finally {
+      setGuardandoEnPase(false);
+    }
+  }
+
+  // No sale en el pase: se guarda al tocarlo, sin preguntar.
+  async function cambiarPedirNombre() {
+    const on = !pedirNombre;
+    setPedirNombre(on);
+    try {
+      const res = await fetch(`/api/negocio?b=${slug}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedirNombre: on }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setPedirNombre(!on); return flash(data.error || "No se pudo guardar"); }
+      setPedirNombre(Boolean(data.pedirNombre));
+      flash(on ? "Al escanear se pedirá el nombre" : "Al escanear irán directos a la Wallet");
+    } catch {
+      setPedirNombre(!on);
+      flash("Sin conexión: no se ha guardado");
+    }
+  }
+
   const urlCaja = `${origin}/${slug}/caja`;
   async function copiarCaja() {
     try { await navigator.clipboard.writeText(urlCaja); flash("Enlace de la caja copiado"); } catch { flash(urlCaja); }
@@ -73,7 +117,23 @@ export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = fal
 
         <section style={{ ...panel, maxWidth: 640, marginTop: 20, paddingTop: 6, paddingBottom: 6 }}>
           <Bloque
-            primero accent={accent} icono="candado" titulo="Contraseña de la caja"
+            primero data-recorrido="abierto" accent={accent} icono="reloj" titulo="«● Abierto hasta…» en la tarjeta"
+            resumen={!n.horario
+              ? "Pon tu horario en Tienda y la tarjeta dirá si estás abierto."
+              : !enPase
+                ? "Apagado: la tarjeta no dice si estás abierto."
+                : reloj
+                  ? "En el iPhone, sobre los puntos; en Android, en los detalles y en la tarjeta web."
+                  : "En la tarjeta web ya sale. En Wallet, cuando el reloj de los avisos esté en marcha."}
+            interruptor={{ on: Boolean(n.horario) && enPase, disabled: !n.horario || guardandoEnPase, onClick: cambiarEnPase }}
+          />
+          <Bloque
+            data-recorrido="pedir-nombre" accent={accent} icono="clientes" titulo="Pedir el nombre al escanear"
+            resumen="Un paso más antes de la Wallet, pero la caja sabe quién es cada uno. El nombre es para reconocerle en caja: no sale en su tarjeta y se guarda cifrado."
+            interruptor={{ on: pedirNombre, onClick: cambiarPedirNombre }}
+          />
+          <Bloque
+            accent={accent} icono="candado" titulo="Contraseña de la caja"
             resumen={<>Usuario <strong style={{ color: C.texto }}>{usuarios.caja}</strong>. Si se va alguien o se pierde el móvil, cámbiala: la vieja deja de valer y ese móvil se queda fuera.</>}
             accion={{ texto: "Cambiar contraseña", icono: "editar", onClick: cambiarClaveCaja }}
             abierto={Boolean(claveCaja)}
