@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { botonPequeno } from "@/app/ui";
 
@@ -9,8 +10,10 @@ import { botonPequeno } from "@/app/ui";
 // del dueño y fallaba con su propia contraseña hasta quedar bloqueada.
 export default function LogoutButton({ negocio, rol = "manager", style }) {
   const router = useRouter();
+  const [saliendo, setSaliendo] = useState(false);
 
   async function salir() {
+    setSaliendo(true);
     await fetch("/api/logout", { method: "POST" }).catch(() => {});
     const sitio = rol === "caja" ? "caja" : "manager";
     router.push(negocio ? `/login?b=${encodeURIComponent(negocio)}&next=${encodeURIComponent(`/${negocio}/${sitio}`)}` : "/login");
@@ -18,7 +21,7 @@ export default function LogoutButton({ negocio, rol = "manager", style }) {
   }
 
   return (
-    <button onClick={salir} style={{ ...botonPequeno, flexShrink: 0, ...style }}>
+    <button onClick={salir} disabled={saliendo} aria-busy={saliendo || undefined} style={{ ...botonPequeno, flexShrink: 0, ...style }}>
       Salir
     </button>
   );

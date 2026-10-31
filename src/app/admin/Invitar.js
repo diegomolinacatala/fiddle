@@ -108,8 +108,8 @@ export default function Invitar({ slug, alcance = "alta", onCreado = null }) {
         <>
           {estado && alcance === "alta" && <Situacion estado={estado} />}
           {/* Hasta saber cómo está el enlace, el botón espera: no se crea uno sin mirar. */}
-          <button type="button" onClick={crear} disabled={busy || (!estado && !error)} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Icono nombre="correo" tam={16} />
+          <button type="button" onClick={crear} disabled={busy || (!estado && !error)} aria-busy={busy || undefined} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {!busy && <Icono nombre="correo" tam={16} />}
             {" "}
             {busy ? "Creando…" : !estado && !error ? "Mirando el enlace…" : estado?.pendiente ? "Crear otro (el pendiente dejará de valer)" : textos.boton}
           </button>

@@ -743,6 +743,11 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   de `pagina` ya se sale. Y `pagina` lleva `gridTemplateColumns: "minmax(0, 1fr)"`: sin
   eso, una tabla ancha hace crecer la rejilla y se desborda TODA la página, no la tabla.
 - Tablas anchas dentro de `overflowX: "auto"`. Filas de botones con `flexWrap`.
+- **Un botón que espera al servidor lleva `aria-busy`** (31-10-2026): gira a la izquierda del
+  texto y no se ve apagado (la regla está en `app/layout.js`). Lo pidió Víctor tras entrar con mala
+  cobertura: «Entrando…» en gris y quieto parecía la página rota. Si varios botones comparten un
+  `ocupado`, gira solo el que se tocó (`ocupado` dice qué espera, no solo que algo espera). Si
+  el botón lleva a otra página, sigue girando hasta que llega: no se apaga tras el `router.push`.
 - **Recorrido de bienvenida** (`app/Recorrido.js`): cada paso señala un elemento con
   `data-recorrido="<ancla>"`. Mover o quitar ese atributo no rompe nada visible: el paso
   se salta en silencio. Al tocar manager o caja, mirar que las anclas siguen.

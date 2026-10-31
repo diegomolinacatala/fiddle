@@ -22,7 +22,8 @@ export default function TusDatos({ serial, tienda }) {
   const t = tienda.tema;
   const accent = colorDelPase(t);
   const [estado, setEstado] = useState({ fase: "cargando" });
-  const [ocupado, setOcupado] = useState(false);
+  // Lo que espera al servidor ("promos", "descargar", "borrar"); null: nada.
+  const [ocupado, setOcupado] = useState(null);
   const [confirmar, setConfirmar] = useState(false);
   const [error, setError] = useState(null);
 
@@ -48,25 +49,25 @@ export default function TusDatos({ serial, tienda }) {
       .catch((e) => setEstado({ fase: e.status === 403 ? "sin-acceso" : e.status === 410 ? "borrada" : "error", mensaje: e.message }));
   }, [pedir]);
 
-  async function hacer(fn) {
+  async function hacer(que, fn) {
     if (ocupado) return;
-    setOcupado(true);
+    setOcupado(que);
     setError(null);
     try {
       await fn();
     } catch (e) {
       setError(e instanceof TypeError ? "Sin conexión. Prueba otra vez." : e.message);
     } finally {
-      setOcupado(false);
+      setOcupado(null);
     }
   }
 
-  const cambiarPromos = () => hacer(async () => {
+  const cambiarPromos = () => hacer("promos", async () => {
     const d = await (await pedir({ accion: "promos", quiere: !estado.promos })).json();
     setEstado((x) => ({ ...x, promos: d.promos }));
   });
 
-  const descargar = () => hacer(async () => {
+  const descargar = () => hacer("descargar", async () => {
     const blob = await (await pedir({ accion: "descargar" })).blob();
     const url = URL.createObjectURL(blob);
     const a = Object.assign(document.createElement("a"), { href: url, download: `datos-tarjeta-${estado.codigo || tienda.slug}.json` });
@@ -76,7 +77,7 @@ export default function TusDatos({ serial, tienda }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
 
-  const borrar = () => hacer(async () => {
+  const borrar = () => hacer("borrar", async () => {
     await pedir({ accion: "borrar" });
     setEstado({ fase: "borrada-ahora" });
   });
@@ -122,17 +123,17 @@ export default function TusDatos({ serial, tienda }) {
                 texto={estado.promos
                   ? "Te llegan sus ofertas y avisos. Los de tus puntos y premios, siempre."
                   : "No te llegan ofertas ni avisos de la tienda. Los de tus puntos y premios, sí."}>
-                <Interruptor on={estado.promos} onClick={cambiarPromos} accent={accent} disabled={ocupado} etiqueta="Promos de la tienda" />
+                <Interruptor on={estado.promos} onClick={cambiarPromos} accent={accent} disabled={Boolean(ocupado)} etiqueta="Promos de la tienda" />
               </Fila>
 
               <Fila icono="descargar" accent={accent} titulo="Descargar mis datos" texto="Todo lo que guardamos de ti: tu tarjeta, tu historial y los avisos que te llegaron.">
-                <button type="button" onClick={descargar} disabled={ocupado} style={botonSuave}>Descargar</button>
+                <button type="button" onClick={descargar} disabled={Boolean(ocupado)} aria-busy={ocupado === "descargar" || undefined} style={botonSuave}>Descargar</button>
               </Fila>
 
               <div style={{ borderTop: "1px solid #e4e7ec", paddingTop: 12 }}>
                 {!confirmar ? (
                   <Fila icono="papelera" accent="#b42318" titulo="Borrar mi tarjeta" texto="Se borran tus puntos, tus premios y tus datos. No se puede deshacer.">
-                    <button type="button" onClick={() => setConfirmar(true)} disabled={ocupado} style={{ ...botonSuave, color: "#b42318" }}>Borrar</button>
+                    <button type="button" onClick={() => setConfirmar(true)} disabled={Boolean(ocupado)} style={{ ...botonSuave, color: "#b42318" }}>Borrar</button>
                   </Fila>
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
@@ -140,8 +141,8 @@ export default function TusDatos({ serial, tienda }) {
                       <strong>¿Seguro?</strong> Pierdes los puntos y premios que tengas en {tienda.nombre}, y no se pueden recuperar.
                     </p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="button" onClick={borrar} disabled={ocupado} style={botonPeligro}>{ocupado ? "Borrando…" : "Sí, borrar mi tarjeta"}</button>
-                      <button type="button" onClick={() => setConfirmar(false)} disabled={ocupado} style={botonSuave}>Cancelar</button>
+                      <button type="button" onClick={borrar} disabled={Boolean(ocupado)} aria-busy={ocupado === "borrar" || undefined} style={botonPeligro}>{ocupado === "borrar" ? "Borrando…" : "Sí, borrar mi tarjeta"}</button>
+                      <button type="button" onClick={() => setConfirmar(false)} disabled={Boolean(ocupado)} style={botonSuave}>Cancelar</button>
                     </div>
                   </div>
                 )}

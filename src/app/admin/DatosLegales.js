@@ -49,7 +49,7 @@ export default function DatosLegales({ slug, legal, accent, onGuardado, flash })
       <input value={d.direccion || ""} onChange={set("direccion")} placeholder="Calle Mayor 1, 28001 Madrid" style={campo} />
       <label style={etiqueta}>Email (derechos de sus clientes y avisos de brecha)</label>
       <input type="email" value={d.email || ""} onChange={set("email")} placeholder="privacidad@tienda.es" style={campo} />
-      <button type="button" onClick={guardar} disabled={guardando} style={{ ...botonPrimario(accent), marginTop: 14 }}>
+      <button type="button" onClick={guardar} disabled={guardando} aria-busy={guardando || undefined} style={{ ...botonPrimario(accent), marginTop: 14 }}>
         {guardando ? "Guardando…" : "Guardar datos legales"}
       </button>
     </section>

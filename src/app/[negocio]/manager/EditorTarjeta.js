@@ -285,7 +285,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
         </div>
         {cambiado && <button type="button" onClick={() => { setD(deInicio); setActivo(null); }} style={chip}>Deshacer todo</button>}
         <button type="button" onClick={salir} style={botonSecundario}>Cancelar</button>
-        <button type="button" onClick={guardar} disabled={!listo || guardando} title={contactoLimpio.error || undefined}
+        <button type="button" onClick={guardar} disabled={!listo || guardando} aria-busy={guardando || undefined} title={contactoLimpio.error || undefined}
           style={{ ...botonPrimario(d.tema.accent), opacity: listo ? 1 : 0.5, cursor: listo ? "pointer" : "default" }}>
           {guardando ? "Guardando…" : "Guardar"}
         </button>
@@ -638,8 +638,8 @@ function PanelLogo({ clave, d, set, setTema, kit }) {
                   <img src={comoDataUri(vistaMarca({ ...tc, texto: t.texto || "AB" }, m))} alt="" style={miniatura} />
                 </Tuyo>
               ))}
-              <Subir onClick={() => entradaLogo.current?.click()} texto={subiendo === "logo" ? "Subiendo…" : "Imagen de logo"} />
-              <Subir onClick={() => entradaIcono.current?.click()} texto={subiendo === "icono" ? "Subiendo…" : "Icono propio"} />
+              <Subir onClick={() => entradaLogo.current?.click()} ocupado={subiendo === "logo"} texto={subiendo === "logo" ? "Subiendo…" : "Imagen de logo"} />
+              <Subir onClick={() => entradaIcono.current?.click()} ocupado={subiendo === "icono"} texto={subiendo === "icono" ? "Subiendo…" : "Icono propio"} />
             </div>
             <p style={ayuda}>
               <strong>Imagen de logo:</strong> tu logo tal cual (cuadrado, de al menos {LOGO_MIN}×{LOGO_MIN}). Los puntos siguen siendo un dibujo.{" "}
@@ -745,10 +745,11 @@ function Tuyo({ tipo, id, elegido, onElegir, rotulo, children }) {
   );
 }
 
-function Subir({ onClick, texto }) {
+function Subir({ onClick, texto, ocupado = false }) {
   return (
-    <button type="button" onClick={onClick} style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: C.panel }}>
-      <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>+</span>
+    <button type="button" onClick={onClick} disabled={ocupado} aria-busy={ocupado || undefined}
+      style={{ ...opcion(false), border: `2px dashed ${C.bordeFuerte}`, background: C.panel }}>
+      <span style={{ height: 38, display: "grid", placeItems: "center", fontSize: 26, color: C.suave }}>{ocupado ? <span className="giro" /> : "+"}</span>
       <span style={{ fontSize: 11, lineHeight: 1.2, color: C.suave }}>{texto}</span>
     </button>
   );
@@ -911,7 +912,7 @@ function ElegirDibujo({ kit, tema, valor, onChange, ancho, sinTexto = false }) {
               </Tuyo>
             ))}
             {lista.iconos.length < MAX_PROPIOS.iconos && (
-              <Subir onClick={() => entrada.current?.click()} texto={subiendo ? "Subiendo…" : "Icono propio"} />
+              <Subir onClick={() => entrada.current?.click()} ocupado={subiendo} texto={subiendo ? "Subiendo…" : "Icono propio"} />
             )}
           </div>
         )}
@@ -962,7 +963,7 @@ function FondoBanda({ t, setTema }) {
                 </Tuyo>
               ))}
               {lista.fondos.length < MAX_PROPIOS.fondos && (
-                <Subir onClick={() => entrada.current?.click()} texto={subiendo ? "Subiendo…" : "Foto para la banda"} />
+                <Subir onClick={() => entrada.current?.click()} ocupado={subiendo} texto={subiendo ? "Subiendo…" : "Foto para la banda"} />
               )}
             </div>
             <p style={ayuda}>

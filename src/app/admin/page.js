@@ -410,7 +410,7 @@ function NuevaTienda({ onCreada }) {
 
       {error && <div style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
       <div style={{ marginTop: 14 }}>
-        <button type="submit" disabled={busy} style={botonPrimario(AZUL)}>{busy ? "Creando…" : "Crear tienda"}</button>
+        <button type="submit" disabled={busy} aria-busy={busy || undefined} style={botonPrimario(AZUL)}>{busy ? "Creando…" : "Crear tienda"}</button>
       </div>
     </form>
   );

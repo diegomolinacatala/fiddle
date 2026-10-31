@@ -101,7 +101,7 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
           <div style={{ fontSize: 12, color: C.suave }}>Lo que ve quien atiende al escanear una tarjeta. Pruébala a la derecha.</div>
         </div>
         <button type="button" onClick={salir} style={botonSecundario}>Cancelar</button>
-        <button type="button" onClick={guardar} disabled={!cambiado || guardando}
+        <button type="button" onClick={guardar} disabled={!cambiado || guardando} aria-busy={guardando || undefined}
           style={{ ...botonPrimario(accent), opacity: cambiado ? 1 : 0.5, cursor: cambiado ? "pointer" : "default" }}>
           {guardando ? "Guardando…" : "Guardar"}
         </button>

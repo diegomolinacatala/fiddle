@@ -57,7 +57,7 @@ export default function Limites({ negocio: n, ocupado, guardar, flash, children 
             ))}
           </div>
           <span>al día.</span>
-          {cambiado && <button type="submit" disabled={ocupado} style={botonPequeno}>Guardar</button>}
+          {cambiado && <button type="submit" disabled={Boolean(ocupado)} aria-busy={ocupado === "limites" || undefined} style={botonPequeno}>Guardar</button>}
         </div>
         {avisos.map((t) => (
           <p key={t} role="alert" style={alerta}>

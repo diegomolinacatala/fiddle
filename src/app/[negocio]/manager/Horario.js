@@ -211,7 +211,7 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado, enPa
       )}
 
       <button
-        type="button" onClick={guardar} disabled={guardando || !cambiado || roto}
+        type="button" onClick={guardar} disabled={guardando || !cambiado || roto} aria-busy={guardando || undefined}
         style={{ ...botonPrimario(accent), marginTop: 14, opacity: guardando || !cambiado || roto ? 0.45 : 1 }}
       >
         {guardando ? "Guardando…" : "Guardar horario"}

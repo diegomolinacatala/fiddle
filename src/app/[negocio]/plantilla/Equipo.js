@@ -21,6 +21,9 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
   const [editando, setEditando] = useState(null); // id de quien se está renombrando
   const [nuevo, setNuevo] = useState("");
   const [verBajas, setVerBajas] = useState(false);
+  // El botón que se tocó: `ocupado` es de toda la lista, el giro solo en ese.
+  const [pulsado, setPulsado] = useState(null);
+  const gira = (clave) => (ocupado && pulsado === clave) || undefined;
 
   const activos = plantilla.filter((e) => !e.baja);
   const bajas = plantilla.filter((e) => e.baja);
@@ -29,19 +32,23 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
   async function alta(e) {
     e.preventDefault();
     if (!nombre.trim()) return;
+    setPulsado("alta");
     if (await onAlta(nombre)) setNombre("");
   }
   async function renombrar(e, id) {
     e.preventDefault();
+    setPulsado(`nombre:${id}`);
     if (await onCambiar(id, { nombre: nuevo })) setEditando(null);
   }
   function baja(p) {
     if (!window.confirm(`¿Dar de baja a ${p.nombre}?\n\nDejará de salir en la caja. Lo que hizo se queda con su nombre.`)) return;
+    setPulsado(`baja:${p.id}`);
     onCambiar(p.id, { activo: false });
   }
   // Se le olvidó: nadie puede leerlo, así que se quita y elige otro en la caja.
   function quitarPin(p) {
     if (!window.confirm(`¿Quitar el PIN de ${p.nombre}?\n\nLa próxima vez que se elija en la caja pondrá uno nuevo. Sus móviles volverán a pedírselo.`)) return;
+    setPulsado(`pin:${p.id}`);
     onCambiar(p.id, { quitarPin: true });
   }
 
@@ -60,8 +67,8 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
             disabled={ocupado || activos.length >= MAX_EMPLEADOS}
             style={{ ...campo, flex: "1 1 180px", width: "auto" }}
           />
-          <button type="submit" disabled={ocupado || !nombre.trim() || activos.length >= MAX_EMPLEADOS} style={{ ...botonPrimario(accent), display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Icono nombre="mas" tam={16} grosor={2.4} /> Añadir
+          <button type="submit" disabled={ocupado || !nombre.trim() || activos.length >= MAX_EMPLEADOS} aria-busy={gira("alta")} style={{ ...botonPrimario(accent), display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {!gira("alta") && <Icono nombre="mas" tam={16} grosor={2.4} />} Añadir
           </button>
         </form>
         {activos.length >= MAX_EMPLEADOS && <p style={{ ...parrafo, color: C.mal }}>Como mucho {MAX_EMPLEADOS} personas a la vez.</p>}
@@ -82,7 +89,7 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
                 {editando === p.id ? (
                   <form onSubmit={(e) => renombrar(e, p.id)} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <input value={nuevo} onChange={(e) => setNuevo(e.target.value)} maxLength={MAX_NOMBRE} autoFocus aria-label="Nuevo nombre" style={{ ...campo, flex: "1 1 160px", width: "auto", padding: "0.4rem 0.6rem" }} />
-                    <button type="submit" disabled={ocupado} style={{ ...botonPrimario(accent), padding: "0.4rem 0.8rem" }}>Guardar</button>
+                    <button type="submit" disabled={ocupado} aria-busy={gira(`nombre:${p.id}`)} style={{ ...botonPrimario(accent), padding: "0.4rem 0.8rem" }}>Guardar</button>
                     <button type="button" onClick={() => setEditando(null)} style={botonPequeno}>Cancelar</button>
                   </form>
                 ) : (
@@ -104,8 +111,8 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
                   <button type="button" onClick={() => { setEditando(p.id); setNuevo(p.nombre); }} aria-label={`Renombrar a ${p.nombre}`} title="Renombrar" style={botonIcono}>
                     <Icono nombre="editar" tam={16} />
                   </button>
-                  {p.tienePin && <button type="button" onClick={() => quitarPin(p)} disabled={ocupado} style={botonPequeno}>Quitar el PIN</button>}
-                  <button type="button" onClick={() => baja(p)} disabled={ocupado} style={botonPequeno}>Dar de baja</button>
+                  {p.tienePin && <button type="button" onClick={() => quitarPin(p)} disabled={ocupado} aria-busy={gira(`pin:${p.id}`)} style={botonPequeno}>Quitar el PIN</button>}
+                  <button type="button" onClick={() => baja(p)} disabled={ocupado} aria-busy={gira(`baja:${p.id}`)} style={botonPequeno}>Dar de baja</button>
                 </div>
               )}
             </div>
@@ -125,7 +132,7 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
                 <div style={{ fontSize: 15, fontWeight: 600, color: C.suave }}>{p.nombre}</div>
                 <div style={{ fontSize: 13, color: C.tenue, marginTop: 2 }}>Baja el {fechaCorta(p.baja, zona)}. Sus movimientos siguen en el registro con su nombre.</div>
               </div>
-              <button type="button" onClick={() => onCambiar(p.id, { activo: true })} disabled={ocupado} style={botonPequeno}>Volver a dar de alta</button>
+              <button type="button" onClick={() => { setPulsado(`vuelve:${p.id}`); onCambiar(p.id, { activo: true }); }} disabled={ocupado} aria-busy={gira(`vuelve:${p.id}`)} style={botonPequeno}>Volver a dar de alta</button>
             </div>
           ))}
         </section>

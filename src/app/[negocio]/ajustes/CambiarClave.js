@@ -67,7 +67,7 @@ export default function CambiarClave({ slug, usuario, accent, onHecho }) {
       <Clave id="clave-nueva-2" valor={nueva2} onChange={escribir(setNueva2)} ver={ver} />
       <Coinciden clave={nueva} repetida={nueva2} />
       {error && <div role="alert" style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
-      <button type="submit" disabled={!listo} style={{ ...botonPrimario(accent), marginTop: 14, opacity: listo ? 1 : 0.5, cursor: listo ? "pointer" : "default" }}>
+      <button type="submit" disabled={!listo} aria-busy={busy || undefined} style={{ ...botonPrimario(accent), marginTop: 14, opacity: listo ? 1 : 0.5, cursor: listo ? "pointer" : "default" }}>
         {busy ? "Guardando…" : "Guardar la nueva"}
       </button>
     </form>
