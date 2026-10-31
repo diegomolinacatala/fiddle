@@ -170,16 +170,19 @@ const DIBUJOS = {
   texto: (c, texto) => svgTextoCuadrado(texto, { cx: 256, cy: 256, alto: 300, color: c }),
 };
 
-// Hasta dónde llega la TINTA de cada marca dentro del lienzo de 512, de arriba
-// abajo. Solo hace falta en el modo relleno, para que "la mitad" sea la mitad
-// de la taza y no la mitad del cuadrado que la contiene. Las que no estén aquí
-// usan el margen de siempre.
+// Hasta dónde llega la TINTA de cada marca dentro del lienzo de 512: de arriba
+// abajo y de izquierda a derecha ([y0, y1, x0, x1]). Solo hace falta en el modo
+// relleno, para que "la mitad" sea la mitad de la taza y no la mitad del cuadrado
+// que la contiene, y para poner en fila los premios guardados sin huecos raros.
+// Las que no estén aquí usan el margen de siempre. Los anchos salen de rasterizar
+// cada marca; una marca nueva de relleno los necesita igual.
 const CAJA = {
-  taza: [100, 378], vaso: [40, 478], jarra: [134, 434], copa: [98, 418],
-  helado: [140, 470], galleta: [72, 452], corazon: [110, 436], burger: [126, 400], grano: [90, 422],
-  bote: [86, 455], shaker: [62, 455], manzana: [56, 452], rayo: [52, 460],
+  taza: [100, 378, 132, 416], vaso: [40, 478, 146, 369], jarra: [134, 434, 134, 444], copa: [98, 418, 148, 364],
+  helado: [140, 470, 152, 360], galleta: [72, 452, 65, 446], corazon: [110, 436, 92, 420], burger: [126, 400, 104, 408],
+  grano: [90, 422, 112, 400], bote: [86, 455, 127, 385], shaker: [62, 455, 135, 377], manzana: [56, 452, 119, 393],
+  rayo: [52, 460, 132, 380],
 };
-const CAJA_POR_DEFECTO = [40, 472];
+const CAJA_POR_DEFECTO = [40, 472, 40, 472];
 
 /** Marcas que se saben dibujar, en el orden en que salen en el selector. */
 export const MARCAS = Object.keys(DIBUJOS);
@@ -1400,7 +1403,10 @@ export function svgStripLlenar(temaGuardado, filas, estado = null) {
   const h = alto - arriba;
   const color = tema.accent;
   const hex = String(color || "").replace(/[^0-9a-z]/gi, "");
-  const id = `llenar-${banda(tema)}-${hex}-${filas.map((f) => `${f.marca}${f.meta}-${f.sellos}`).join("-")}`;
+  // Los premios guardados de cada una, dibujados bajo su cuenta (como mucho
+  // GUARDADOS_A_LA_VISTA): solo los que tiene, sin huecos claros para los que no.
+  const enBanda = filas.map((f) => Math.min(GUARDADOS_A_LA_VISTA, Math.max(0, f.guardados || 0)));
+  const id = `llenar-${banda(tema)}-${hex}-${filas.map((f, i) => `${f.marca}${f.meta}-${f.sellos}g${enBanda[i]}`).join("-")}`;
   const cy = h / 2;
   const centro = w / 2;
 
@@ -1425,7 +1431,11 @@ export function svgStripLlenar(temaGuardado, filas, estado = null) {
   const anchoA = (tam, [hechos, total]) => anchoTexto(hechos, tam * 0.36) + tam * 0.36 * 0.04 + anchoTexto(total, tam * 0.2);
   const escala = Math.min(1, ...textos.map((t) => sitio / anchoA(h, t)));
   const grande = h * 0.36 * escala, pequeno = h * 0.2 * escala;
-  const base = cy + (grande * ALTO_MAYUSCULA) / EM / 2;
+  // Con guardados, la cuenta sube para que cifra y dibujitos queden centrados juntos;
+  // las dos a la misma altura aunque solo un lado tenga, como marcadores gemelos.
+  const altoMini = h * 0.13, separa = h * 0.06;
+  const sube = enBanda.some((g) => g > 0) ? (separa + altoMini) / 2 : 0;
+  const base = cy + (grande * ALTO_MAYUSCULA) / EM / 2 - sube;
   const cuentas = textos.map(([hechos, total], i) => {
     const anchoG = anchoTexto(hechos, grande);
     const ancho = anchoG + grande * 0.04 + anchoTexto(total, pequeno);
@@ -1433,9 +1443,42 @@ export function svgStripLlenar(temaGuardado, filas, estado = null) {
     return svgTexto(hechos, { x, y: base, tam: grande, color })
       + svgTexto(total, { x: x + anchoG + grande * 0.04, y: base, tam: pequeno, color, opacidad: 0.6 });
   }).join("");
+  // Pegados a la raya, como la cuenta (el de la izquierda, de la raya hacia fuera),
+  // y colocados por su TINTA: una taza con asa no ocupa lo que su lienzo. Si tres
+  // no caben en el hueco de la cuenta, encogen los dos lados lo mismo.
+  const marcas = filas.map((f) => tintaDeMarca({ ...tema, marca: f.marca }));
+  const separaMini = altoMini * 0.3;
+  const anchoFila = (m, n) => n * altoMini * m.ancho + Math.max(0, n - 1) * separaMini;
+  const encoge = Math.min(1, ...marcas.map((m, i) => (enBanda[i] ? sitio / anchoFila(m, enBanda[i]) : 1)));
+  const alto1 = altoMini * encoge, separa1 = separaMini * encoge;
+  const cyMini = base + separa + altoMini / 2;
+  const guardados = filas.map((f, i) => {
+    const { ancho, centroX, lado } = marcas[i];
+    const tinta = alto1 * ancho;
+    return Array.from({ length: enBanda[i] }, (_, k) => {
+      const borde = i === 0 ? centro - hueco - k * (tinta + separa1) - tinta : centro + hueco + k * (tinta + separa1);
+      const cx = borde + tinta / 2 - centroX * alto1;
+      return colocar({ ...tema, marca: f.marca }, color, cx, cyMini, lado * alto1);
+    }).join("");
+  }).join("");
 
   return svg(w, alto, lineaDeEstado(tema, estado, w)
-    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + dibujos + raya + cuentas}</g>`);
+    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + dibujos + raya + cuentas + guardados}</g>`);
+}
+
+/** Cuántos premios guardados se dibujan bajo la cuenta; los demás los dice su campo («5 gratis»). */
+export const GUARDADOS_A_LA_VISTA = 3;
+
+/**
+ * La tinta de una marca por cada punto de alto: `lado` (el lienzo de 512),
+ * `ancho` y `centroX` (lo que se aparta del centro del lienzo), para colocarla
+ * por lo que se ve y no por el cuadrado que la contiene.
+ */
+function tintaDeMarca(tema) {
+  const { nombre } = marcaDe(tema);
+  const [y0, y1, x0 = CAJA_POR_DEFECTO[2], x1 = CAJA_POR_DEFECTO[3]] = CAJA[nombre] || CAJA_PROPIA[nombre] || CAJA_POR_DEFECTO;
+  const lado = 512 / (y1 - y0);
+  return { lado, ancho: ((x1 - x0) / 512) * lado, centroX: (((x0 + x1) / 2 - 256) / 512) * lado };
 }
 
 // ------------------------------------------------------ abierto / cerrado

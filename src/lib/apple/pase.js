@@ -198,7 +198,9 @@ export function camposDelPase(cliente, negocio) {
     ...(avisoPersonal && !esCupon ? [{ key: "parati", label: "Para ti", value: avisoPersonal }] : []),
     ...(guardados.length
       ? [{
-          key: "guardados",
+          // Otra clave que la de la cabecera: con dos campos «guardados» passkit
+          // tiraba este («another field already owns this key») y no salía.
+          key: "guardadosDetalle",
           label: "Premios guardados",
           value: `${guardados.map((c) => `${c.guardados} × ${c.premio}`).join("\n")}\nPídelo en caja cuando quieras.`,
         }]

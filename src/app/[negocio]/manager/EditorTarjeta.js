@@ -16,6 +16,7 @@ import {
   ROTULO, ROTULO_MODO, ROTULO_FAMILIA, ROTULO_PLANTILLA, ROTULO_DOBLE,
 } from "@/app/admin/vistas";
 import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
+import { confirmarTarjetas } from "./confirmarTarjetas";
 
 // ============================================================================
 // EDITOR DE LA TARJETA (manager)
@@ -72,7 +73,7 @@ export function seccionDe(clave) {
   if (k === "como" || k === "reverso.como") return "reverso";
   if (k === "promo" || k.startsWith("mensaje.")) return "promo";
   if (/^(reverso|enlace)\.(telefono|web|instagram|contacto)$/.test(k)) return "contacto";
-  if (["canjeados", "guardados", "nivel", "reverso.guardados"].includes(k)) return "contador";
+  if (["canjeados", "guardados", "nivel", "reverso.guardadosDetalle"].includes(k)) return "contador";
   return "fijo"; // QR, código, titular, estado del cupón, privacidad
 }
 
@@ -215,6 +216,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
   }
 
   async function guardar() {
+    if (!confirmarTarjetas()) return;
     setGuardando(true);
     setError(null);
     try {

@@ -37,6 +37,6 @@ export const DIBUJOS_PROPIOS = {
 
 /** Hasta dónde llega la tinta de cada una en el lienzo de 512 (como CAJA en dibujo.js), medida rasterizándolas. */
 export const CAJA_PROPIA = {
-  "delicanteria-grano": [64, 442],
-  "delicanteria-d": [28, 480],
+  "delicanteria-grano": [64, 442, 113, 399],
+  "delicanteria-d": [28, 480, 68, 462],
 };

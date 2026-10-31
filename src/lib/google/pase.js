@@ -116,7 +116,7 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDato
   // Google no estaba: sus premios guardados (cuáles, no solo cuántos) y qué se
   // gana con cada cartilla. "Cómo funciona" y el contacto van en la clase; el
   // código, en accountId.
-  const delReverso = backFields.filter((f) => f.key === "guardados" || f.key === "premios" || (f.key === "como" && (cliente.borrado_en || cliente.fusionado_en)));
+  const delReverso = backFields.filter((f) => f.key === "guardadosDetalle" || f.key === "premios" || (f.key === "como" && (cliente.borrado_en || cliente.fusionado_en)));
 
   const objeto = {
     id: idObjeto(issuerId, cliente.serial),

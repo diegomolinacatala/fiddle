@@ -86,7 +86,11 @@ comprobar siempre que de verdad desplegó.
 - **Lo que se VE en la tarjeta se cambia tocándolo en ella**: Tienda → "Editar tarjeta"
   (`manager/EditorTarjeta.js`). Cada trozo de `PaseVista` abre su panel (`seccionDe`).
   Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. Enseña
-  Apple y Google A LA VEZ (con sitio): lo de una sola plataforma lo dice su panel. El
+  Apple y Google A LA VEZ (con sitio): lo de una sola plataforma lo dice su panel.
+  **Guardar algo que se ve en la tarjeta pregunta antes** (`confirmarTarjetas`, 31-10-2026):
+  pone al día la de todos los clientes (en silencio, pero tarda y gasta CPU). Lo hacen el
+  editor, «Abierto hasta…» y la ubicación; un sitio nuevo que guarde algo de `PASE`
+  (`/api/negocio`) pregunta igual. El
   manager NO cambia cupón ↔ cartilla (el pase de Apple no puede cambiar de tipo).
   Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene también su
   interruptor en Tienda → Horario, que es donde se piensa en ello. La tarjeta web lo
@@ -98,6 +102,9 @@ comprobar siempre que de verdad desplegó.
 
 - Con imagen de banda (*strip*), **iOS junta `secondaryFields` y
   `auxiliaryFields` en UNA fila**. Por eso el pase lleva pocos campos: no caben.
+- **Cada campo del pase con su clave, y ninguna repetida** (hay un test): con dos iguales
+  passkit tira la segunda en silencio («another field already owns this key»). Así se perdía
+  el «Premios guardados» del reverso, que compartía `guardados` con la cabecera.
 - **El nombre del cliente NO va en el pase**, ni en Apple ni en Google (nada de
   `accountName`), ni en lo que llega al navegador por el serial (`clienteDeTarjeta`). Lo
   sabe él y lo ve la caja; el serial va en el QR.
@@ -311,6 +318,12 @@ el campo de cada una bajo la banda dice «2 gratis» en vez de «Faltan 3» (eso
 casillas) y en Google cada cartilla tiene su hueco de puntos («Cookies 3/8 · 2 gratis»,
 `puntosDe`). Al guardar suena; mientras le quede uno guardado, sellar esa cartilla no suena.
 
+Con las dos que se llenan lado a lado (La Delicantería), **los guardados se dibujan bajo la
+cuenta de su cartilla** (31-10-2026, `svgStripLlenar`): hasta `GUARDADOS_A_LA_VISTA` (3)
+galletas o tazas llenas, solo las que tiene (nada de huecos claros), pegadas a la raya como la
+cuenta; los demás los dice su campo. Por eso la clave de la banda en caché
+(`lib/apple/imagenes.js`) lleva `guardados` y `guardados2`.
+
 ## Android
 
 Ver [docs/ANDROID.md](docs/ANDROID.md) y [docs/GOOGLE-WALLET.md](docs/GOOGLE-WALLET.md).
@@ -350,7 +363,9 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 
 - **Añadir una marca** = una entrada en `DIBUJOS` (SVG de un color en un lienzo
   512x512). Sale sola en el logo, el icono, los sellos, el modo relleno y el
-  selector del admin. Si se usa en modo relleno, añadirla también a `CAJA`.
+  selector del admin. Si se usa en modo relleno, añadirla también a `CAJA` con su tinta
+  de arriba abajo Y de lado a lado (`[y0, y1, x0, x1]`, rasterizándola): el ancho coloca
+  en fila los premios guardados.
 - **Dos cartillas**: `tema.doble` = `filas` (una encima de otra) o `lados`; y CADA
   cartilla su `modo` y su `forma` (cualquiera de MODOS, como una tienda de una). Cada
   modo se pinta en su trozo con la caja que aguanta (`ASPECTO` en dibujo.js: un modo
