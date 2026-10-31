@@ -128,7 +128,7 @@ describe("temas de antes", () => {
   it("no se cuelan piezas inventadas", () => {
     expect(piezasDeDibujo({ marca: "dragon", forma: "triangulo", banda: "fucsia", modo: "3d" })).toEqual({});
     expect(piezasDeDibujo({ modo: "relleno" })).toEqual({ modo: "relleno" });
-    expect(MODOS).toHaveLength(17);
+    expect(MODOS).toHaveLength(7); // lo básico: la luna y compañía se quitaron (31-10-2026)
     expect(MODOS.slice(0, 2)).toEqual(["casillas", "relleno"]); // los dos de siempre, primeros
     expect(piezasDeDibujo({ marca: "texto", texto: " 68 " })).toEqual({ marca: "texto", texto: "68" });
     expect(temaPorDefecto({ estilo: "coffee", forma: "triangulo" }).forma).toBe("circulo");
@@ -173,14 +173,10 @@ describe("modos de banda", () => {
     expect(contar(lleno, "<circle")).toBeGreaterThan(contar(medio, "<circle"));
   });
 
-  it("los discos de la barra se reparten a los dos lados", () => {
-    // Con 6 discos puestos, tres quedan a la derecha del centro y tres a la izquierda.
-    const svg = svgStripSellos(tema("pesas"), 6, 6);
-    const centro = (375 * 3) / 2;
-    // Los puestos se pintan con el degradado; los que faltan van a trazos.
-    const xs = [...svg.matchAll(/<rect x="([\d.-]+)"[^>]*fill="url\(#[^)]*-br\)"\/>/g)].map((m) => Number(m[1]));
-    expect(xs.filter((x) => x > centro).length).toBe(3);
-    expect(xs.filter((x) => x < centro).length).toBe(3);
+  it("un modo retirado se pinta con su básico, igual que si se hubiera elegido ese", () => {
+    expect(svgStripSellos(tema("luna"), 8, 3)).toBe(svgStripSellos(tema("anillos"), 8, 3));
+    expect(svgStripSellos(tema("pesas"), 8, 3)).toBe(svgStripSellos(tema("barra"), 8, 3));
+    expect(svgStripSellos(tema("loquesea"), 8, 3)).toBe(svgStripSellos(tema("casillas"), 8, 3));
   });
 
   it("la cifra se encoge para no salirse: 20/20 no ocupa más que 3/8", () => {

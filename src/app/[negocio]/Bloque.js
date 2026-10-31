@@ -1,6 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
+import { Interruptor } from "@/app/Interruptor";
 import { C, botonPequeno, RADIO, legible } from "@/app/ui";
 
 // ============================================================================
@@ -21,11 +22,13 @@ import { C, botonPequeno, RADIO, legible } from "@/app/ui";
  * @param {string} props.titulo
  * @param {React.ReactNode} props.resumen  cómo está ahora, en una línea
  * @param {{texto:string, icono?:string, onClick:Function}} [props.accion]
+ * @param {{on:boolean, onClick:Function, disabled?:boolean}} [props.interruptor]
+ *   lo que se enciende y se apaga: el interruptor a la derecha EN VEZ del botón.
  * @param {boolean} [props.abierto]  si lo de dentro (children) se ve
  * @param {boolean} [props.falta]    el resumen en rojo: falta ponerlo
  * @param {string} props.accent
  */
-export default function Bloque({ icono, titulo, resumen, accion = null, abierto = false, falta = false, accent, children = null, primero = false, ...resto }) {
+export default function Bloque({ icono, titulo, resumen, accion = null, interruptor = null, abierto = false, falta = false, accent, children = null, primero = false, ...resto }) {
   return (
     <div {...resto} style={{ padding: "14px 0", borderTop: primero ? "none" : `1px solid ${C.borde}`, scrollMarginTop: 20 }}>
       {/* El botón siempre debajo del resumen, alineado con el texto: al lado
@@ -45,6 +48,9 @@ export default function Bloque({ icono, titulo, resumen, accion = null, abierto 
             </button>
           )}
         </div>
+        {interruptor && (
+          <Interruptor on={interruptor.on} onClick={interruptor.onClick} disabled={interruptor.disabled} accent={accent} etiqueta={titulo} />
+        )}
       </div>
       {abierto && children && <div style={{ marginTop: 14 }}>{children}</div>}
     </div>

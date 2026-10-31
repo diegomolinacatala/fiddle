@@ -200,14 +200,25 @@ export const BANDAS = ["clara", "oscura", "blanca", "degradado", "rayas"];
  * "llenar" es el nombre viejo de "lados con las dos llenándose".
  */
 export const MODOS_DOBLES = ["filas", "lados"];
-/** Cómo se cuentan los sellos en la banda. */
-export const MODOS = [
-  "casillas", "relleno", "porciones", "pizza", "barra", "pesas", "anillos",
-  "camino", "torre", "planta", "luna", "aguja", "constelacion", "escalera", "mosaico", "pulso", "cifra",
-];
+/**
+ * Cómo se cuentan los sellos en la banda. Lo básico, a propósito (31-10-2026):
+ * las fases de la luna, la constelación, la planta y compañía se quitaron por
+ * recargadas. Lo que alguien tuviera guardado con ellos se pinta con el básico
+ * que más se le parece (MODOS_RETIRADOS).
+ */
+export const MODOS = ["casillas", "relleno", "porciones", "pizza", "barra", "anillos", "cifra"];
+
+/** Los modos que ya no se ofrecen, y cuál se pinta en su lugar. */
+export const MODOS_RETIRADOS = {
+  luna: "anillos", constelacion: "casillas", camino: "casillas", planta: "relleno", mosaico: "relleno",
+  torre: "barra", pesas: "barra", pulso: "barra", escalera: "barra", aguja: "cifra",
+};
+
+/** El modo que se pinta para un valor guardado: el mismo, su sustituto si se retiró, o null. */
+export const resolverModo = (modo) => (MODOS.includes(modo) ? modo : MODOS_RETIRADOS[modo] || null);
 
 /**
- * Los modos, agrupados por LO QUE HACEN. Diecisiete opciones de golpe no se
+ * Los modos, agrupados por LO QUE HACEN. Muchas opciones de golpe no se
  * eligen, se sufren: primero se escoge la idea (se llena, se cierra, es un
  * camino…) y dentro de ella la variante. El orden de cada familia importa: el
  * primero es el que representa a la familia en el selector.
@@ -217,12 +228,10 @@ export const MODOS = [
  */
 export const FAMILIAS = {
   casillas: ["casillas"],
-  llenar: ["relleno", "mosaico"],
-  cerrar: ["anillos", "porciones", "pizza", "luna"],
-  fila: ["barra", "escalera", "pesas", "pulso"],
-  ruta: ["camino", "constelacion"],
-  crecer: ["planta", "torre"],
-  marcador: ["aguja", "cifra"],
+  llenar: ["relleno"],
+  cerrar: ["anillos", "porciones", "pizza"],
+  fila: ["barra"],
+  marcador: ["cifra"],
 };
 
 /** Nombres de familia, en el orden del selector. */
@@ -289,7 +298,7 @@ export function piezasDeTema(tema = {}) {
     texto: typeof tema.texto === "string" ? tema.texto : "",
     forma: FORMAS.includes(tema.forma) ? tema.forma : (tema.estilo === "barber" ? "redondeado" : "circulo"),
     banda: BANDAS.includes(tema.banda) || (tema.banda === "foto" && fotoDe(tema)) ? tema.banda : (tema.estilo === "barber" ? "oscura" : "clara"),
-    modo: MODOS.includes(tema.modo) ? tema.modo : "casillas",
+    modo: resolverModo(tema.modo) || "casillas",
     doble: tema.doble === "llenar" ? "lados" : MODOS_DOBLES.includes(tema.doble) ? tema.doble : "filas",
   };
 }
@@ -299,7 +308,8 @@ export function piezasDeTema(tema = {}) {
  * tuviera su modo no lo llevan: casillas, salvo las del viejo "llenar".
  */
 export function modoDeCartilla(tema, cartilla) {
-  if (MODOS.includes(cartilla?.modo)) return cartilla.modo;
+  const guardado = resolverModo(cartilla?.modo);
+  if (guardado) return guardado;
   return tema?.doble === "llenar" ? "relleno" : "casillas";
 }
 
@@ -662,46 +672,93 @@ function bandaPorciones(tema, meta, sellos, w, h) {
 
 // Una pizza de verdad no sale del color de la tienda: una pizza verde no es una
 // pizza. Igual que la marca `pizza`, estos colores son fijos.
-const PIZZA = { masa: "#e8a44a", queso: "#ffd54a", pepperoni: "#c1121f" };
+const PIZZA = {
+  masaClara: "#f4bf6e", masa: "#dc903f", masaOscura: "#a65e20",
+  tomate: "#d0552c", queso: "#ffdf86", quesoClaro: "#fff2bf", quesoBorde: "#f3b944",
+  pepperoni: "#b9321f", pepperoniOscuro: "#861c12", albahaca: "#3d8b3d", albahacaClara: "#7cbf68",
+  corte: "#6e3410",
+};
+
+// Dónde va cada ingrediente, en polares: [fracción del radio, grados desde arriba
+// (en el sentido del reloj), y la albahaca su giro]. Fijos, nada de azar: el
+// dibujo del manager y el del .pkpass tienen que salir idénticos. Repartidos por
+// TODA la pizza y no por porción: así queda igual de bien con 6 trozos que con 12,
+// y alguno cae encima de un corte, como en una de verdad.
+const PEPPERONI = [[0.22, 35], [0.55, 8], [0.62, 70], [0.5, 130], [0.24, 200], [0.62, 185], [0.58, 252], [0.35, 300], [0.66, 322]];
+const ALBAHACA = [[0.42, 100, 35], [0.44, 232, -40], [0.68, 290, 60], [0.12, 120, -10]];
+const BURBUJAS = [[0.4, 60, 0.05], [0.72, 112, 0.035], [0.44, 165, 0.045], [0.74, 222, 0.04], [0.16, 300, 0.04], [0.7, 355, 0.035]];
 
 /**
- * PIZZA — lo mismo que `porciones` pero dibujado como una pizza de verdad:
- * masa, queso y pepperoni en las porciones ganadas, y la silueta punteada de
- * las que faltan. Lo que se ve es una pizza a la que le faltan trozos, que es
- * exactamente lo que le pasa a la cartilla.
+ * PIZZA — una pizza entera, redonda, partida en `meta` trozos: los ganados con
+ * todo (masa, tomate, queso, pepperoni y albahaca) y los que faltan como la misma
+ * pizza muy desvaída. Sin huecos entre trozos (31-10-2026): se lee como UNA pizza
+ * a la que le faltan porciones, no como un abanico. Los cortes son rayas finas.
  */
 function bandaPizza(tema, meta, sellos, w, h) {
   const n = Math.max(1, meta);
   const cx = w * 0.33, cy = h / 2, r = h * 0.42;
-  const sep = n === 1 ? 0 : Math.min(((Math.PI * 2) / n) * 0.06, 0.045);
-  const corte = (rr, i, extra = 0) =>
-    n === 1 ? disco(cx, cy, rr) : sector(cx, cy, rr, RAD(i, n) + sep + extra, RAD(i + 1, n) - sep - extra);
+  const id = idDe(tema, meta, sellos);
+  const llenos = Math.min(Math.max(0, sellos), n);
+  const en = (f, grados) => punto(cx, cy, r * f, ((grados - 90) * Math.PI) / 180);
 
-  const porcion = (i) => {
-    const am = (RAD(i, n) + RAD(i + 1, n)) / 2;
-    // Los pepperonis van SIEMPRE en el mismo sitio: el dibujo del manager y el
-    // del .pkpass tienen que salir idénticos, así que nada de aleatorio.
-    const giro = Math.min(0.22, Math.PI / n / 2.4);
-    const topping = [[0.46, -giro], [0.7, giro]]
-      .map(([f, g]) => {
-        const [x, y] = punto(cx, cy, r * f, am + g);
-        return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(r * 0.085)}" fill="${PIZZA.pepperoni}"/>`;
-      })
-      .join("");
-    return `<path d="${corte(r, i)}" fill="${PIZZA.masa}"/>`
-      + `<path d="${corte(r * 0.84, i, sep * 0.4)}" fill="${PIZZA.queso}"/>`
-      + topping;
-  };
+  // Los trozos ganados van seguidos desde arriba: un solo sector para cada parte.
+  const parte = (desde, hasta) =>
+    hasta - desde >= n ? disco(cx, cy, r * 1.02) : sector(cx, cy, r * 1.02, RAD(desde, n), RAD(hasta, n));
 
-  const trozos = Array.from({ length: n }, (_, i) =>
-    i < sellos
-      ? porcion(i)
-      : `<g opacity="${esOscura(tema) ? 0.13 : 0.15}">${porcion(i)}</g>`
-        + `<path d="${corte(r, i)}" fill="none" stroke="${tenue(tema)}"`
-        + ` stroke-opacity="${opacoHueco(tema)}" stroke-width="3" stroke-dasharray="14 10"/>`,
-  ).join("");
+  const pepperoni = PEPPERONI.map(([f, g]) => {
+    const [x, y] = en(f, g);
+    const rp = r * 0.1;
+    return `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(rp)}" fill="${PIZZA.pepperoni}"`
+      + ` stroke="${PIZZA.pepperoniOscuro}" stroke-width="${n2(rp * 0.14)}"/>`
+      + `<circle cx="${n2(x + rp * 0.3)}" cy="${n2(y + rp * 0.25)}" r="${n2(rp * 0.13)}" fill="${PIZZA.pepperoniOscuro}" opacity="0.55"/>`
+      + `<circle cx="${n2(x - rp * 0.25)}" cy="${n2(y + rp * 0.35)}" r="${n2(rp * 0.1)}" fill="${PIZZA.pepperoniOscuro}" opacity="0.45"/>`
+      + `<ellipse cx="${n2(x - rp * 0.35)}" cy="${n2(y - rp * 0.4)}" rx="${n2(rp * 0.3)}" ry="${n2(rp * 0.16)}" fill="#ffffff" opacity="0.28"/>`;
+  }).join("");
 
-  return trozos + cuenta(sellos, n, tema.accent, w * 0.74, cy, h * 0.32, w * 0.46);
+  const albahaca = ALBAHACA.map(([f, g, giro]) => {
+    const [x, y] = en(f, g);
+    const l = r * 0.11;
+    return `<g transform="translate(${n2(x)} ${n2(y)}) rotate(${giro})">`
+      + `<path d="M 0 ${n2(-l)} Q ${n2(l * 0.62)} 0 0 ${n2(l)} Q ${n2(-l * 0.62)} 0 0 ${n2(-l)} Z" fill="${PIZZA.albahaca}"/>`
+      + `<path d="M 0 ${n2(-l * 0.8)} L 0 ${n2(l * 0.8)}" stroke="${PIZZA.albahacaClara}" stroke-width="${n2(l * 0.09)}" stroke-linecap="round"/></g>`;
+  }).join("");
+
+  const burbujas = BURBUJAS.map(([f, g, t]) => {
+    const [x, y] = en(f, g);
+    return `<ellipse cx="${n2(x)}" cy="${n2(y)}" rx="${n2(r * t * 1.4)}" ry="${n2(r * t)}" fill="${PIZZA.quesoClaro}" opacity="0.8"/>`;
+  }).join("");
+
+  // La pizza entera; luego se recorta en lo ganado y en lo que falta.
+  const pizza = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="url(#${id}-masa)"/>`
+    + `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 0.835)}" fill="${PIZZA.tomate}" opacity="0.85"/>`
+    + `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 0.815)}" fill="url(#${id}-queso)"/>`
+    + burbujas + pepperoni + albahaca;
+
+  const defs = `<defs>`
+    + `<radialGradient id="${id}-masa" cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" gradientUnits="userSpaceOnUse">`
+    + `<stop offset="0.8" stop-color="${PIZZA.masaClara}"/><stop offset="0.92" stop-color="${PIZZA.masa}"/>`
+    + `<stop offset="1" stop-color="${PIZZA.masaOscura}"/></radialGradient>`
+    + `<radialGradient id="${id}-queso" cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 0.815)}" gradientUnits="userSpaceOnUse">`
+    + `<stop offset="0" stop-color="${PIZZA.quesoClaro}"/><stop offset="0.65" stop-color="${PIZZA.queso}"/>`
+    + `<stop offset="1" stop-color="${PIZZA.quesoBorde}"/></radialGradient>`
+    + (llenos > 0 ? `<clipPath id="${id}-hecho"><path d="${parte(0, llenos)}"/></clipPath>` : "")
+    + (llenos < n ? `<clipPath id="${id}-falta"><path d="${parte(llenos, n)}"/></clipPath>` : "")
+    + `</defs>`;
+
+  const hecho = llenos > 0 ? `<g clip-path="url(#${id}-hecho)">${pizza}</g>` : "";
+  const falta = llenos < n
+    ? `<g clip-path="url(#${id}-falta)" opacity="${esOscura(tema) ? 0.2 : 0.17}">${pizza}</g>`
+    : "";
+  // Los cortes, de punta a punta: finos, para que se vea UNA pizza partida.
+  const cortes = n > 1
+    ? Array.from({ length: n }, (_, i) => {
+        const [x, y] = punto(cx, cy, r, RAD(i, n));
+        return `<line x1="${n2(cx)}" y1="${n2(cy)}" x2="${n2(x)}" y2="${n2(y)}" stroke="${PIZZA.corte}"`
+          + ` stroke-opacity="0.4" stroke-width="${n2(Math.max(2, r * 0.016))}" stroke-linecap="round"/>`;
+      }).join("")
+    : "";
+
+  return defs + falta + hecho + cortes + cuenta(sellos, n, tema.accent, w * 0.74, cy, h * 0.32, w * 0.46);
 }
 
 /**
@@ -731,47 +788,6 @@ function bandaBarra(tema, meta, sellos, w, h) {
   return `<defs>${brillo(`${id}-br`, color)}</defs>` + colocar(tema, color, w * 0.105, h / 2, h * 0.56)
     + tramos
     + cuenta(sellos, n, color, w * 0.855, h / 2, h * 0.3, w * 0.28);
-}
-
-/**
- * PESAS — la barra se va cargando de discos, uno por compra, alternando lado
- * para que no quede coja. Pensado para tiendas de NUTRICIÓN y gimnasios, donde
- * la cartilla es de pocas compras grandes (un bote al mes) y no de muchos
- * cafés: ocho círculos vacíos ahí dan sensación de no acabar nunca, y una
- * barra a medio cargar da justo la contraria.
- */
-function bandaPesas(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const cx = w / 2, cy = h / 2;
-  const ranuras = Math.ceil(n / 2);
-  const agarre = w * 0.075;                 // media barra central, sin discos
-  const paso = (w * 0.42 - agarre) / ranuras;
-  const ancho = Math.min(paso * 0.62, h * 0.15);
-  const id = idDe(tema, meta, sellos);
-
-  const disco = (i) => {
-    const j = Math.floor(i / 2);            // qué ranura, de dentro hacia fuera
-    const x = cx + (i % 2 === 0 ? 1 : -1) * (agarre + paso * (j + 0.5));
-    const alto = h * 0.56 * (1 - j * 0.07); // los de fuera, un poco menores
-    const pinta = i < sellos
-      ? `fill="url(#${id}-br)"`
-      : `fill="none" stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="4" stroke-dasharray="12 9"`;
-    return `<rect x="${n2(x - ancho / 2)}" y="${n2(cy - alto / 2)}" width="${n2(ancho)}"`
-      + ` height="${n2(alto)}" rx="${n2(ancho * 0.3)}" ${pinta}/>`;
-  };
-
-  const barra = `<rect x="${n2(w * 0.06)}" y="${n2(cy - h * 0.033)}" width="${n2(w * 0.88)}"`
-    + ` height="${n2(h * 0.066)}" rx="${n2(h * 0.033)}" fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.4 : 0.42}"/>`;
-  const topes = [-1, 1]
-    .map((s) => `<rect x="${n2(cx + s * agarre - w * 0.007)}" y="${n2(cy - h * 0.12)}" width="${n2(w * 0.014)}"`
-      + ` height="${n2(h * 0.24)}" rx="${n2(w * 0.007)}" fill="${tenue(tema)}" fill-opacity="0.55"/>`)
-    .join("");
-
-  return `<defs>${brillo(`${id}-br`, color)}</defs>` + barra + topes
-    + Array.from({ length: n }, (_, i) => disco(i)).join("")
-    // La cuenta, encima y sin rozar los discos (los más altos llegan al 22 % del alto).
-    + cuenta(sellos, n, color, cx, h * 0.115, h * 0.15, w * 0.3);
 }
 
 /**
@@ -821,356 +837,6 @@ function bandaAnillos(tema, meta, sellos, w, h) {
 }
 
 /**
- * Azar REPRODUCIBLE: el mismo índice da siempre el mismo número, aquí y en el
- * navegador. Nada de `Math.random` (cambiaría en cada visita) ni de `Math.sin`
- * (los últimos bits varían entre motores, y el manager y el .pkpass tienen que
- * salir idénticos). Aritmética entera y punto.
- */
-const azar = (i) => {
-  // Mezclador de murmur3: `Math.imul` es multiplicación de 32 bits exacta y está
-  // en la norma, así que sale el mismo número en node y en el navegador. Un LCG
-  // normal valdría para un número suelto, pero al sacar dos seguidos (x e y) los
-  // puntos salen alineados en diagonal en vez de repartidos.
-  let x = (i + 1) | 0;
-  x = Math.imul(x ^ (x >>> 16), 2246822507);
-  x = Math.imul(x ^ (x >>> 13), 3266489909);
-  return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
-};
-
-/**
- * CAMINO — el sello no se acumula, se AVANZA. Una senda con una parada por
- * sello y el premio esperando al final: el gancho deja de ser "llevo 5" y pasa
- * a ser "me faltan 3 para llegar". Vale para cualquier tienda.
- */
-function bandaCamino(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const cy = h / 2, x0 = w * 0.08, x1 = w * 0.72, amp = h * 0.17;
-  const enT = (t) => [x0 + (x1 - x0) * t, cy + amp * Math.sin(t * Math.PI * 2.2)];
-  const tDe = (i) => (n === 1 ? 0.5 : i / (n - 1));
-
-  const muestras = Array.from({ length: 61 }, (_, k) => enT(k / 60));
-  const trozo = (hasta, atributos) =>
-    `<polyline points="${muestras.slice(0, hasta + 1).map(([x, y]) => `${n2(x)},${n2(y)}`).join(" ")}" fill="none" ${atributos}/>`;
-
-  const senda = trozo(60, `stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema) * 0.7}" stroke-width="4" stroke-dasharray="12 10"`);
-  const andado = sellos > 1
-    ? trozo(Math.round(tDe(sellos - 1) * 60), `stroke="${color}" stroke-width="6" stroke-linecap="round"`)
-    : "";
-
-  const paradas = Array.from({ length: n }, (_, i) => {
-    const [x, y] = enT(tDe(i));
-    return i < sellos
-      ? `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.058)}" fill="${color}"/>`
-      : `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.045)}" fill="none" stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="3.5"/>`;
-  }).join("");
-
-  // El premio, al final del camino: se enciende solo cuando se llega.
-  const llegado = sellos >= n;
-  const premio = `<g opacity="${llegado ? 1 : 0.22}">${colocar(tema, color, w * 0.86, cy, h * 0.56)}</g>`;
-  return senda + andado + paradas + premio;
-}
-
-/**
- * TORRE — cada sello APILA una pieza. Ni se llena ni se cierra nada: se
- * construye, y eso se lee como algo que has hecho tú. Tortitas, cajas, libros,
- * cafés de más a menos.
- */
-function bandaTorre(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const columnas = Math.ceil(n / 6);
-  const filas = Math.ceil(n / columnas);
-  const ancho = Math.min(w * 0.12, (w * 0.5) / columnas);
-  const altoPieza = (h * 0.76) / filas;
-  const suelo = h * 0.88;
-  const total = (columnas - 1) * ancho * 1.15 + ancho;
-  const centro = Math.min(w * 0.36, w * 0.68 - total / 2);
-  const x0 = centro - total / 2 + ancho / 2;
-  const id = idDe(tema, meta, sellos);
-
-  const pieza = (i) => {
-    const c = Math.floor(i / filas), f = i % filas;
-    const cx = x0 + c * ancho * 1.15;
-    const y = suelo - (f + 1) * altoPieza;
-    const pinta = i < sellos
-      ? `fill="url(#${id}-br)"`
-      : `fill="none" stroke="${tenue(tema)}" stroke-opacity="${opacoHueco(tema)}" stroke-width="3" stroke-dasharray="10 8"`;
-    return `<rect x="${n2(cx - ancho / 2)}" y="${n2(y + altoPieza * 0.11)}" width="${n2(ancho)}"`
-      + ` height="${n2(altoPieza * 0.78)}" rx="${n2(Math.min(altoPieza * 0.22, 10))}" ${pinta}/>`;
-  };
-
-  const base = `<rect x="${n2(x0 - ancho * 0.82)}" y="${n2(suelo)}" width="${n2(total + ancho * 0.64)}"`
-    + ` height="${n2(h * 0.035)}" rx="${n2(h * 0.017)}" fill="${tenue(tema)}" fill-opacity="0.45"/>`;
-
-  return `<defs>${brillo(`${id}-br`, color)}</defs>` + base + Array.from({ length: n }, (_, i) => pieza(i)).join("")
-    + cuenta(sellos, n, color, w * 0.86, h / 2, h * 0.3, w * 0.24);
-}
-
-/**
- * PLANTA — el único modo en el que la figura CAMBIA de forma y no solo de
- * relleno: sale tallo, salen hojas y, al completar, la marca de la tienda
- * florece arriba. El premio deja de ser una casilla más y pasa a ser que la
- * planta por fin da flor.
- */
-function bandaPlanta(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const parte = Math.min(1, Math.max(0, sellos / n));
-  const cx = w * 0.3, suelo = h * 0.74, techo = h * 0.16;
-  const alto = (suelo - techo) * parte;
-  const punta = suelo - alto;
-
-  // La maceta está desde el primer día, aunque no haya ni un sello.
-  const maceta = `<path d="M ${n2(cx - h * 0.19)} ${n2(suelo)} h ${n2(h * 0.38)} l ${n2(-h * 0.055)} ${n2(h * 0.19)}`
-    + ` h ${n2(-h * 0.27)} z" fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.5 : 0.55}"/>`;
-
-  const tallo = alto > 0
-    ? `<path d="M ${n2(cx)} ${n2(suelo)} Q ${n2(cx + h * 0.06)} ${n2(suelo - alto / 2)} ${n2(cx)} ${n2(punta)}"`
-      + ` fill="none" stroke="${color}" stroke-width="${n2(h * 0.045)}" stroke-linecap="round"/>`
-    : "";
-
-  // Cuatro hojas que van brotando conforme sube el tallo, una a cada lado.
-  const HOJAS = 4;
-  const hojas = Array.from({ length: HOJAS }, (_, k) => {
-    const cuando = (k + 1) / (HOJAS + 1.4);
-    if (parte <= cuando) return "";
-    const y = suelo - (suelo - techo) * cuando;
-    const s = k % 2 === 0 ? 1 : -1;
-    const l = h * 0.18;
-    return `<path d="M ${n2(cx)} ${n2(y)} q ${n2(s * l * 0.7)} ${n2(-l * 0.5)} ${n2(s * l)} ${n2(l * 0.1)}`
-      + ` q ${n2(-s * l * 0.42)} ${n2(l * 0.4)} ${n2(-s * l)} ${n2(-l * 0.1)} z" fill="${color}" fill-opacity="0.85"/>`;
-  }).join("");
-
-  // La flor ES la marca de la tienda: asoma en el último tercio y crece.
-  const abre = Math.max(0, (parte - 0.68) / 0.32);
-  const flor = abre > 0 ? colocar(tema, color, cx, punta - h * 0.12 * abre, h * 0.34 * abre) : "";
-
-  return maceta + tallo + hojas + flor + cuenta(sellos, n, color, w * 0.74, h / 2, h * 0.32, w * 0.46);
-}
-
-/**
- * LUNA — las fases, de nueva a llena. Es la cuenta de siempre contada como algo
- * que pasa solo y que cualquiera sabe leer sin que se lo expliquen. En banda
- * oscura (bares, tatuajes, noche) es donde se luce.
- */
-function bandaLuna(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const parte = Math.min(1, Math.max(0, sellos / n));
-  const cx = w * 0.32, cy = h / 2, r = h * 0.36;
-  const id = idDe(tema, meta, sellos);
-
-  // El terminador es una elipse: su semieje va de r (nueva) a 0 (media) y vuelve
-  // a r (llena), y el sentido del arco se da la vuelta al pasar la mitad.
-  const rx = r * Math.abs(1 - 2 * parte);
-  const dLuz = `M ${n2(cx)} ${n2(cy - r)} A ${n2(r)} ${n2(r)} 0 0 1 ${n2(cx)} ${n2(cy + r)}`
-    + ` A ${n2(rx)} ${n2(r)} 0 0 ${parte < 0.5 ? 0 : 1} ${n2(cx)} ${n2(cy - r)} Z`;
-
-  const defs = `<defs>${halo(`${id}-halo`, color)}${foco(`${id}-luz`, color, cx, cy, r)}`
-    + `<clipPath id="${id}-luna"><path d="${dLuz}"/></clipPath></defs>`;
-
-  // El resplandor crece con la luna: llena, se nota; nueva, no hay nada que brille.
-  const brilla = parte > 0
-    ? `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 2)}" fill="url(#${id}-halo)" opacity="${n2(0.3 + parte * 0.7)}"/>`
-    : "";
-  const cara = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}" fill="${tenue(tema)}" fill-opacity="0.13"`
-    + ` stroke="${tenue(tema)}" stroke-opacity="0.28" stroke-width="3"/>`;
-  const luz = parte > 0 ? `<path d="${dLuz}" fill="url(#${id}-luz)"/>` : "";
-
-  // Cráteres: siempre los mismos y recortados a la parte iluminada, que es la
-  // única donde se verían. Un negro muy flojo vale sobre cualquier color.
-  const CRATERES = [[0.3, -0.3, 0.17], [-0.24, 0.28, 0.13], [0.1, 0.44, 0.09], [0.5, 0.2, 0.1], [-0.06, -0.08, 0.12], [0.34, 0.5, 0.07]];
-  const relieve = parte > 0
-    ? `<g clip-path="url(#${id}-luna)">`
-      + CRATERES.map(([dx, dy, rr]) =>
-        `<circle cx="${n2(cx + dx * r)}" cy="${n2(cy + dy * r)}" r="${n2(rr * r)}" fill="#000" fill-opacity="0.12"/>`
-        + `<circle cx="${n2(cx + dx * r)}" cy="${n2(cy + dy * r - rr * r * 0.16)}" r="${n2(rr * r * 0.86)}" fill="#fff" fill-opacity="0.07"/>`).join("")
-      + `</g>`
-    : "";
-
-  const estrellas = Array.from({ length: 14 }, (_, k) => {
-    const a = azar(k), b = azar(k + 40);
-    const x = w * 0.03 + a * w * 0.62, y = h * 0.07 + b * h * 0.86;
-    if (Math.hypot(x - cx, y - cy) < r * 1.25) return "";
-    const rr = h * 0.012 + a * h * 0.011;
-    // Las más gordas llevan destello en cruz; las demás son puntos y ya.
-    const punta = a > 0.55
-      ? `<path d="M ${n2(x)} ${n2(y - rr * 3)} L ${n2(x + rr * 0.55)} ${n2(y - rr * 0.55)} L ${n2(x + rr * 3)} ${n2(y)}`
-        + ` L ${n2(x + rr * 0.55)} ${n2(y + rr * 0.55)} L ${n2(x)} ${n2(y + rr * 3)} L ${n2(x - rr * 0.55)} ${n2(y + rr * 0.55)}`
-        + ` L ${n2(x - rr * 3)} ${n2(y)} L ${n2(x - rr * 0.55)} ${n2(y - rr * 0.55)} Z"`
-        + ` fill="${tenue(tema)}" fill-opacity="${n2(0.3 + b * 0.4)}"/>`
-      : `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(rr)}" fill="${tenue(tema)}" fill-opacity="${n2(0.25 + b * 0.35)}"/>`;
-    return punta;
-  }).join("");
-
-  return defs + brilla + estrellas + cara + luz + relieve
-    + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
-}
-
-/**
- * AGUJA — un marcador con su aguja, como el de la gasolina. Se lee de un golpe
- * y sin contar nada: o está cerca del tope o no lo está. Talleres, túneles de
- * lavado y todo lo que se siente como "recargar" y no como "coleccionar".
- */
-function bandaAguja(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const parte = Math.min(1, Math.max(0, sellos / n));
-  const cx = w * 0.32, cy = h * 0.76, r = h * 0.46, grosor = h * 0.1;
-  const ang = Math.PI + parte * Math.PI;
-
-  const pista = `<path d="${arco(cx, cy, r, Math.PI, Math.PI * 2)}" fill="none" stroke="${tenue(tema)}"`
-    + ` stroke-opacity="0.17" stroke-width="${n2(grosor)}" stroke-linecap="round"/>`;
-  const marcas = n <= 12
-    ? Array.from({ length: n + 1 }, (_, i) => {
-        const a = Math.PI + (i / n) * Math.PI;
-        const [ax, ay] = punto(cx, cy, r - grosor * 0.62, a);
-        const [bx, by] = punto(cx, cy, r + grosor * 0.62, a);
-        return `<line x1="${n2(ax)}" y1="${n2(ay)}" x2="${n2(bx)}" y2="${n2(by)}"`
-          + ` stroke="${tenue(tema)}" stroke-opacity="0.3" stroke-width="2.5"/>`;
-      }).join("")
-    : "";
-  const hecho = parte > 0
-    ? `<path d="${arco(cx, cy, r, Math.PI, ang)}" fill="none" stroke="${color}"`
-      + ` stroke-width="${n2(grosor)}" stroke-linecap="round"/>`
-    : "";
-  const [px, py] = punto(cx, cy, r - grosor, ang);
-  const aguja = `<line x1="${n2(cx)}" y1="${n2(cy)}" x2="${n2(px)}" y2="${n2(py)}" stroke="${color}"`
-    + ` stroke-width="${n2(h * 0.035)}" stroke-linecap="round"/>`
-    + `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(h * 0.055)}" fill="${color}"/>`;
-
-  return pista + marcas + hecho + aguja + cuenta(sellos, n, color, w * 0.78, h / 2, h * 0.32, w * 0.4);
-}
-
-/**
- * CONSTELACION — cada sello enciende una estrella y la une con la anterior. La
- * figura no existe hasta el final: lo que engancha no es contar, es ver
- * aparecer el dibujo. Las posiciones son fijas, no bailan entre visitas.
- */
-function bandaConstelacion(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const donde = (i) => [
-    w * 0.07 + (n === 1 ? 0.5 : i / (n - 1)) * w * 0.64 + (azar(i) - 0.5) * w * 0.045,
-    h * 0.2 + azar(i + 90) * h * 0.6,
-  ];
-  const puntos = Array.from({ length: n }, (_, i) => donde(i));
-
-  const lineas = puntos.slice(1).map(([x, y], k) => {
-    const [ax, ay] = puntos[k];
-    const hecha = k + 1 < sellos;
-    return `<line x1="${n2(ax)}" y1="${n2(ay)}" x2="${n2(x)}" y2="${n2(y)}"`
-      + ` stroke="${hecha ? color : tenue(tema)}" stroke-opacity="${hecha ? 0.65 : 0.15}"`
-      + ` stroke-width="${hecha ? 3.5 : 2}"/>`;
-  }).join("");
-
-  const estrellas = puntos.map(([x, y], i) =>
-    i < sellos
-      ? `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.075)}" fill="${color}" fill-opacity="0.16"/>`
-        + `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.034)}" fill="${color}"/>`
-      : `<circle cx="${n2(x)}" cy="${n2(y)}" r="${n2(h * 0.022)}" fill="${tenue(tema)}" fill-opacity="0.24"/>`,
-  ).join("");
-
-  return lineas + estrellas + cuenta(sellos, n, color, w * 0.86, h / 2, h * 0.3, w * 0.24);
-}
-
-/**
- * ESCALERA — se sube, no se junta. Cada sello es un escalón más alto que el
- * anterior, así que el avance se ve en la ALTURA y no en la cantidad.
- * Academias, gimnasios y todo lo que ya se cuenta por niveles.
- */
-function bandaEscalera(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const x0 = w * 0.06, x1 = w * 0.72;
-  const suelo = h * 0.9, subida = (h * 0.74) / n, ancho = (x1 - x0) / n;
-  const id = idDe(tema, meta, sellos);
-
-  const escalon = (i) => {
-    const alto = subida * (i + 1);
-    const pinta = i < sellos
-      ? `fill="url(#${id}-br)"`
-      : `fill="${tenue(tema)}" fill-opacity="${esOscura(tema) ? 0.12 : 0.11}"`
-        + ` stroke="${tenue(tema)}" stroke-opacity="${n2(opacoHueco(tema) * 0.6)}" stroke-width="2"`;
-    return `<rect x="${n2(x0 + i * ancho + ancho * 0.09)}" y="${n2(suelo - alto)}" width="${n2(ancho * 0.82)}"`
-      + ` height="${n2(alto)}" rx="${n2(Math.min(ancho * 0.16, 8))}" ${pinta}/>`;
-  };
-
-  return `<defs>${brillo(`${id}-br`, color)}</defs>`
-    + Array.from({ length: n }, (_, i) => escalon(i)).join("")
-    + cuenta(sellos, n, color, w * 0.86, h * 0.36, h * 0.28, w * 0.24);
-}
-
-/**
- * MOSAICO — la marca está debajo desde el primer día, tapada, y cada sello
- * destapa un trozo. Es el único modo donde el premio se INTUYE antes de
- * llegar: se ve lo que está saliendo mucho antes de completarlo.
- */
-function bandaMosaico(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const lado = h * 0.8, cx = w * 0.32, cy = h / 2;
-  const columnas = Math.max(1, Math.round(Math.sqrt(n)));
-  const filas = Math.ceil(n / columnas);
-  const tw = lado / columnas, th = lado / filas;
-  const bx = cx - lado / 2, by = cy - lado / 2;
-  const casilla = (i) => `<rect x="${n2(bx + (i % columnas) * tw)}" y="${n2(by + Math.floor(i / columnas) * th)}"`
-    + ` width="${n2(tw)}" height="${n2(th)}"`;
-
-  // Orden de destape fijo pero desordenado: no se abre de izquierda a derecha.
-  const orden = Array.from({ length: columnas * filas }, (_, i) => [i, azar(i * 7 + 3)])
-    .sort((a, b) => a[1] - b[1])
-    .map(([i]) => i);
-  // Al completar se destapa TODO: la rejilla puede tener más casillas que sellos.
-  const abiertas = sellos >= n ? orden : orden.slice(0, sellos);
-
-  const id = idDe(tema, meta, sellos);
-  const fantasma = `<g opacity="${esOscura(tema) ? 0.14 : 0.12}">${colocar(tema, color, cx, cy, lado)}</g>`;
-  const visible = abiertas.length
-    ? `<clipPath id="${id}">${abiertas.map((i) => `${casilla(i)}/>`).join("")}</clipPath>`
-      + `<g clip-path="url(#${id})">${colocar(tema, color, cx, cy, lado)}</g>`
-    : "";
-  const rejilla = Array.from({ length: columnas * filas }, (_, i) =>
-    `${casilla(i)} fill="none" stroke="${tenue(tema)}" stroke-opacity="0.15" stroke-width="2"/>`).join("");
-
-  return fantasma + visible + rejilla + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
-}
-
-/**
- * PULSO — una línea de electro que crece hacia la derecha, un latido por sello.
- * Lo que se enseña es actividad, no inventario: gimnasios, clínicas, fisios y
- * tiendas de nutrición.
- */
-function bandaPulso(tema, meta, sellos, w, h) {
-  const n = Math.max(1, meta);
-  const color = tema.accent;
-  const x0 = w * 0.05, x1 = w * 0.74, cy = h / 2;
-  const paso = (x1 - x0) / n;
-
-  // Un latido: llano, bajadita, pico, rebote y llano otra vez.
-  const latido = (i) => {
-    const p = (f) => n2(x0 + (i + f) * paso);
-    return `${p(0.12)},${n2(cy)} ${p(0.3)},${n2(cy + h * 0.1)} ${p(0.46)},${n2(cy - h * 0.33)}`
-      + ` ${p(0.62)},${n2(cy + h * 0.19)} ${p(0.78)},${n2(cy)}`;
-  };
-  const traza = (desde, hasta) => `${n2(x0 + desde * paso)},${n2(cy)} `
-    + Array.from({ length: hasta - desde }, (_, k) => latido(desde + k)).join(" ")
-    + ` ${n2(x0 + hasta * paso)},${n2(cy)}`;
-
-  const porVenir = sellos < n
-    ? `<polyline points="${traza(sellos, n)}" fill="none" stroke="${tenue(tema)}" stroke-opacity="0.18"`
-      + ` stroke-width="3" stroke-dasharray="10 8"/>`
-    : "";
-  const hecho = sellos > 0
-    ? `<polyline points="${traza(0, sellos)}" fill="none" stroke="${color}" stroke-width="${n2(h * 0.045)}"`
-      + ` stroke-linecap="round" stroke-linejoin="round"/>`
-    : "";
-
-  return porVenir + hecho + cuenta(sellos, n, color, w * 0.86, cy, h * 0.28, w * 0.24);
-}
-
-/**
  * CIFRA — sin dibujo ninguno: el número, enorme, y una raya fina debajo. Para
  * marcas que no quieren monerías y para cartillas largas, donde cualquier
  * figura se convierte en confeti.
@@ -1210,17 +876,7 @@ const PINTAR_BANDA = {
   porciones: bandaPorciones,
   pizza: bandaPizza,
   barra: bandaBarra,
-  pesas: bandaPesas,
   anillos: bandaAnillos,
-  camino: bandaCamino,
-  torre: bandaTorre,
-  planta: bandaPlanta,
-  luna: bandaLuna,
-  aguja: bandaAguja,
-  constelacion: bandaConstelacion,
-  escalera: bandaEscalera,
-  mosaico: bandaMosaico,
-  pulso: bandaPulso,
   cifra: bandaCifra,
 };
 
@@ -1321,9 +977,8 @@ function filaCasillas(tema, f, x, y, ancho, alto) {
 // las hojas de prueba: las de dibujo redondo, entre 2,6 y 3,6; la barra lleva
 // la marca a la izquierda y pide 3; las de fila se estiran lo que haga falta.
 const ASPECTO = {
-  relleno: [2.5, 3.6], porciones: [2.6, 3.6], pizza: [2.6, 3.6], anillos: [2.6, 3.6], luna: [2.6, 3.6],
-  mosaico: [2.6, 3.6], aguja: [2.2, 3.6], planta: [2.2, 3.6], torre: [1.6, 3.8], cifra: [1, 4.5],
-  barra: [3, Infinity], pulso: [2.6, Infinity], escalera: [1.6, Infinity],
+  relleno: [2.5, 3.6], porciones: [2.6, 3.6], pizza: [2.6, 3.6], anillos: [2.6, 3.6], cifra: [1, 4.5],
+  barra: [3, Infinity],
 };
 
 function trozoDeBanda(tema, modo, f, x0, y0, anchoCaja, altoCaja, sufijo) {

@@ -78,11 +78,16 @@ comprobar siempre que de verdad desplegó.
   al final, **Ajustes**: lo de la cuenta (contraseña de la caja). Antes de añadir un
   botón, mirar si esa acción ya vive en otra pestaña.
 - **Tienda y Ajustes se arman con filas iguales** (`app/[negocio]/Bloque.js`): icono en
-  su cuadrado, título, una línea de cómo está y UN botón pequeño debajo. Lo que se pone
+  su cuadrado, título, una línea de cómo está y UN botón pequeño debajo (o, si se enciende
+  y se apaga, `interruptor` a la derecha en vez del botón). Lo que se pone
   una vez (horario, mapa) va plegado. Nada de títulos, colores o botones distintos
   para cosas del mismo nivel.
 - **Encender/apagar = interruptor** (`app/Interruptor.js`), nunca una casilla: una
   casilla vacía no se lee como "apagado".
+- **Nunca la ventana del navegador** (31-10-2026, lo pidió Víctor): ni `window.confirm`, ni
+  `alert`, ni `prompt`. Se ve distinta en cada móvil y parece un error. Para preguntar,
+  `await confirmar({ titulo, texto, si, peligro, accent })` de `app/Dialogo.js` (devuelve
+  true/false como confirm); para un texto que copiar a mano, `ensenarParaCopiar`.
 - **Lo que se VE en la tarjeta se cambia tocándolo en ella**: Tienda → "Editar tarjeta"
   (`manager/EditorTarjeta.js`). Cada trozo de `PaseVista` abre su panel (`seccionDe`).
   Un dato nuevo del pase = su control en ese panel, no un campo suelto en Tienda. Enseña
@@ -92,9 +97,10 @@ comprobar siempre que de verdad desplegó.
   editor, «Abierto hasta…» y la ubicación; un sitio nuevo que guarde algo de `PASE`
   (`/api/negocio`) pregunta igual. El
   manager NO cambia cupón ↔ cartilla (el pase de Apple no puede cambiar de tipo).
-  Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene también su
-  interruptor en Tienda → Horario, que es donde se piensa en ello. La tarjeta web lo
-  respeta igual que Wallet.
+  Excepción a propósito: «● Abierto hasta…» (`tema.abierto`) tiene su PROPIA FILA en
+  Tienda, con interruptor (31-10-2026: dentro del horario plegado o al fondo del editor
+  nadie lo encontraba); en el editor solo sale al tocar su línea en la vista previa. La
+  tarjeta web lo respeta igual que Wallet.
 - **En Apple no hay "detrás"**: la (i) abre la hoja de información de la tarjeta. La
   vista previa la abre con su botón «ⓘ Información», que tiene que verse tocable.
 
@@ -366,6 +372,15 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
   selector del admin. Si se usa en modo relleno, añadirla también a `CAJA` con su tinta
   de arriba abajo Y de lado a lado (`[y0, y1, x0, x1]`, rasterizándola): el ancho coloca
   en fila los premios guardados.
+- **Los modos son los básicos** (31-10-2026): casillas, relleno, porciones, pizza, barra,
+  anillos y cifra. La luna, la constelación, la planta, la torre, las pesas, el pulso, la
+  aguja, el camino, la escalera y el mosaico se quitaron por recargados, con sus seis
+  plantillas (nutrición, floristería, bar de noche, taller, academia, clínica). Lo guardado
+  con uno de ellos se pinta con su sustituto (`MODOS_RETIRADOS`, `resolverModo`) y al
+  guardar ya queda así. Antes de añadir uno, que no sea un adorno.
+- **La pizza es UNA pizza redonda** (`bandaPizza`): sin huecos entre trozos, los ganados
+  con todo y los que faltan desvaídos, con los cortes finos. Los ingredientes van por toda
+  la pizza (no por porción) en sitios fijos: igual con 6 trozos que con 12.
 - **Dos cartillas**: `tema.doble` = `filas` (una encima de otra) o `lados`; y CADA
   cartilla su `modo` y su `forma` (cualquiera de MODOS, como una tienda de una). Cada
   modo se pinta en su trozo con la caja que aguanta (`ASPECTO` en dibujo.js: un modo

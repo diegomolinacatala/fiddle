@@ -2,7 +2,7 @@
 
 import { normalizarLegal } from "./legal";
 import { normalizarTextoMarca } from "./apple/glifos";
-import { FORMAS, BANDAS, MODOS, MODOS_DOBLES, resolverMarca } from "./apple/dibujo";
+import { FORMAS, BANDAS, MODOS_DOBLES, resolverMarca, resolverModo } from "./apple/dibujo";
 import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
@@ -144,7 +144,8 @@ export function normalizarCartillas(lista) {
     if (!nombre || !premio || !marca || !(meta >= 1 && meta <= MAX_META_CARTILLA)) return null;
     // Cómo cuenta y con qué casilla: cada una la suya. Sin ellos, los del tema.
     const extra = {};
-    if (MODOS.includes(c.modo)) extra.modo = c.modo;
+    // Uno retirado (la luna…) se guarda ya como su sustituto.
+    if (resolverModo(c.modo)) extra.modo = resolverModo(c.modo);
     if (FORMAS.includes(c.forma)) extra.forma = c.forma;
     out.push({ nombre, marca, meta, premio, ...extra });
   }
@@ -165,7 +166,7 @@ export function piezasDeDibujo(origen) {
   if (FORMAS.includes(o.forma)) piezas.forma = o.forma;
   // "foto": la de la tienda (tema.fondoFoto, lib/propios.js); si es suya lo mira el servidor.
   if (BANDAS.includes(o.banda) || o.banda === "foto") piezas.banda = o.banda;
-  if (MODOS.includes(o.modo)) piezas.modo = o.modo;
+  if (resolverModo(o.modo)) piezas.modo = resolverModo(o.modo);
   if (MODOS_DOBLES.includes(o.doble) || o.doble === "llenar") piezas.doble = o.doble;
   // La línea "● Abierto hasta las 14:00" en la banda: encendida salvo que se apague.
   if (typeof o.abierto === "boolean") piezas.abierto = o.abierto;

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Icono from "@/app/Icono";
-import { FilaInterruptor } from "@/app/Interruptor";
 import { DIAS, DIAS_CORTOS, ZONA_POR_DEFECTO, MAX_TRAMOS, aMinutos, aHora, fechaLocal } from "@/lib/horario";
 import CalendarioCerrados from "./CalendarioCerrados";
 import { C, campo, botonPrimario, RADIO, legible } from "@/app/ui";
@@ -24,9 +23,8 @@ import { C, campo, botonPrimario, RADIO, legible } from "@/app/ui";
 // festivos van en un calendario aparte. Lo que se guarda es siempre lo mismo
 // (siete días, cada uno con sus tramos o cerrado): el tipo se deduce al abrir.
 //
-// Debajo, si el pase lo dice: «● Abierto hasta las…» (tema.abierto). Es la
-// misma pieza que se toca en la tarjeta (Editar tarjeta), puesta también aquí
-// porque es donde se piensa en el horario. Se guarda al tocarla.
+// «● Abierto hasta las…» (tema.abierto) NO va aquí dentro: tiene su propia fila
+// en Tienda, a la vista (PanelManager).
 // ============================================================================
 
 // Para una tienda que aún no lo ha puesto: un punto de partida, no un horario inventado.
@@ -75,11 +73,9 @@ function partir(t) {
 }
 
 /**
- * @param {{slug:string, inicial:object|null, accent:string, flash:Function, onGuardado:Function,
- *   enPase:boolean, onEnPase:(on:boolean)=>void, reloj:boolean}} props
- *   `enPase`: si el pase dice «Abierto hasta…» (tema.abierto). `reloj`: si el reloj de los avisos anda.
+ * @param {{slug:string, inicial:object|null, accent:string, flash:Function, onGuardado:Function}} props
  */
-export default function Horario({ slug, inicial, accent, flash, onGuardado, enPase, onEnPase, reloj }) {
+export default function Horario({ slug, inicial, accent, flash, onGuardado }) {
   const [h, setH] = useState(inicial || PARTIDA);
   const [modo, setModo] = useState(() => modoDe((inicial || PARTIDA).semana));
   const [bases, setBases] = useState(() => basesDe((inicial || PARTIDA).semana));
@@ -217,17 +213,6 @@ export default function Horario({ slug, inicial, accent, flash, onGuardado, enPa
         {guardando ? "Guardando…" : "Guardar horario"}
       </button>
 
-      {inicial && (
-        <FilaInterruptor
-          on={enPase} onClick={() => onEnPase(!enPase)} accent={accent} style={{ marginTop: 16 }}
-          titulo="«● Abierto hasta las…» en la tarjeta"
-          texto={!enPase
-            ? "Apagado: la tarjeta no dice si estás abierto."
-            : reloj
-              ? "En el iPhone, sobre los puntos; en Android, en los detalles y en la tarjeta web."
-              : "En la tarjeta web ya sale. En Wallet, cuando el reloj de los avisos esté en marcha."}
-        />
-      )}
     </div>
   );
 }

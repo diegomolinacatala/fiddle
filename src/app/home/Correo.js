@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Icono from "@/app/Icono";
 import { CORREO, enlaceCorreo, enlaceGmail } from "./datos";
+import { ensenarParaCopiar } from "@/app/Dialogo";
 
 // ============================================================================
 // ESCRIBIRNOS POR CORREO
@@ -37,7 +38,7 @@ export default function Correo({ children }) {
   async function copiar() {
     if (!(await alPortapapeles(CORREO))) {
       // Ni con permiso ni a la antigua: que la copie a mano.
-      window.prompt("Copia nuestra dirección de correo:", CORREO);
+      ensenarParaCopiar({ titulo: "Copia nuestra dirección de correo", valor: CORREO, claro: true });
       return;
     }
     setCopiado(true);

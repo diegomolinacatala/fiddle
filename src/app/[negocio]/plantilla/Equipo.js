@@ -4,6 +4,7 @@ import { useState } from "react";
 import Icono from "@/app/Icono";
 import { MAX_NOMBRE, MAX_EMPLEADOS } from "@/lib/plantilla";
 import { C, panel, campo, h2, botonPrimario, botonPequeno, RADIO } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // EQUIPO: la lista de quien atiende la caja
@@ -40,14 +41,14 @@ export default function Equipo({ plantilla, cuentas, dias, accent, colorDe, zona
     setPulsado(`nombre:${id}`);
     if (await onCambiar(id, { nombre: nuevo })) setEditando(null);
   }
-  function baja(p) {
-    if (!window.confirm(`¿Dar de baja a ${p.nombre}?\n\nDejará de salir en la caja. Lo que hizo se queda con su nombre.`)) return;
+  async function baja(p) {
+    if (!(await confirmar({ titulo: `¿Dar de baja a ${p.nombre}?`, texto: "Dejará de salir en la caja. Lo que hizo se queda con su nombre.", si: "Dar de baja", peligro: true }))) return;
     setPulsado(`baja:${p.id}`);
     onCambiar(p.id, { activo: false });
   }
   // Se le olvidó: nadie puede leerlo, así que se quita y elige otro en la caja.
-  function quitarPin(p) {
-    if (!window.confirm(`¿Quitar el PIN de ${p.nombre}?\n\nLa próxima vez que se elija en la caja pondrá uno nuevo. Sus móviles volverán a pedírselo.`)) return;
+  async function quitarPin(p) {
+    if (!(await confirmar({ titulo: `¿Quitar el PIN de ${p.nombre}?`, texto: "La próxima vez que se elija en la caja pondrá uno nuevo. Sus móviles volverán a pedírselo.", si: "Quitar el PIN", accent }))) return;
     setPulsado(`pin:${p.id}`);
     onCambiar(p.id, { quitarPin: true });
   }

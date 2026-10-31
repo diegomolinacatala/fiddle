@@ -12,6 +12,7 @@ import {
 } from "@/lib/automatizaciones";
 import { DIAS, DIAS_CORTOS, relojLocal, diaDeFecha } from "@/lib/horario";
 import { C, panel, campo, etiqueta, botonPrimario, botonSecundario, RADIO, legible } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // AVISOS PROGRAMADOS: "el sábado a las 10, a todos: «hoy, 2x1»"
@@ -83,11 +84,11 @@ export default function Programados({ slug, datos, onDatos, flash, semilla = nul
       }
     },
     async borrar(regla) {
-      if (!window.confirm(`¿Borrar «${regla.nombre}»?\n\nDeja de salir. Lo ya enviado sigue en Enviados.`)) return;
+      if (!(await confirmar({ titulo: `¿Borrar «${regla.nombre}»?`, texto: "Deja de salir. Lo ya enviado sigue en Enviados.", si: "Borrar", peligro: true }))) return;
       if (await guardarLista(reglas.filter((r) => r.id !== regla.id), "borrar")) { flash(`«${regla.nombre}» borrado`); acciones.cancelar(); }
     },
     async enviar(regla, cuantos) {
-      if (!window.confirm(`¿Enviar «${regla.nombre}» ahora a ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"}?\n\nNo espera a su hora.`)) return;
+      if (!(await confirmar({ titulo: `¿Enviar «${regla.nombre}» ahora a ${cuantos} ${cuantos === 1 ? "cliente" : "clientes"}?`, texto: "No espera a su hora.", si: "Enviar ahora", accent: n.tema.accent }))) return;
       setOcupado("enviar");
       try {
         const r = await fetch(`/api/automatizaciones?b=${slug}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ regla: regla.id }) });

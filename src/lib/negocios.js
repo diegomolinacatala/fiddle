@@ -20,7 +20,7 @@
 // una combinación de partida con nombre; a partir de ahí cada tienda cambia lo
 // que quiera sin tocar código.
 export { MARCAS, FORMAS, BANDAS, MODOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
-import { FORMAS, BANDAS, MODOS, piezasDeTema, resolverMarca } from "./apple/dibujo";
+import { FORMAS, BANDAS, piezasDeTema, resolverMarca, resolverModo } from "./apple/dibujo";
 import { ESTILOS_DE_KITS, kitDe } from "./kits";
 import { normalizarCartillas } from "./validacion";
 import { normalizarContacto } from "./contacto";
@@ -170,23 +170,6 @@ const PLANTILLAS_DE_ESTILO = {
     accent: "#c46a9b",
     atras: "Un punto por cita. Al completar la cartilla, tratamiento de regalo.",
   },
-  // Nutrición y suplementos: pocas compras grandes (un bote al mes), no muchas
-  // visitas pequeñas. La barra que se carga de discos da sensación de avance
-  // donde ocho círculos vacíos darían pereza.
-  nutricion: {
-    estilo: "nutricion",
-    emoji: "\u{1F4AA}",
-    marca: "bote",
-    forma: "cuadrado",
-    banda: "oscura",
-    modo: "pesas",
-    pageBg: "linear-gradient(160deg,#0b0f0d,#13201a)",
-    pageInk: "#e8f5ee",
-    cardBg: "#0f1512",
-    ink: "#eafaf1",
-    accent: "#00e07a",
-    atras: "Un disco por compra. Al cargar la barra, el siguiente bote va a mitad de precio.",
-  },
   pizzeria: {
     estilo: "pizzeria",
     emoji: "\u{1F355}",
@@ -261,77 +244,6 @@ const PLANTILLAS_DE_ESTILO = {
     accent: "#c9a24b",
     atras: "Cada visita avanza la barra. Al completarla, premio de socio.",
   },
-  floristeria: {
-    estilo: "floristeria",
-    emoji: "\u{1F33F}",
-    marca: "flor",
-    forma: "circulo",
-    banda: "degradado",
-    modo: "planta",
-    pageBg: "linear-gradient(135deg,#f0f6ec 0%,#dbe9d4 55%,#bcd4b2 100%)",
-    pageInk: "#25331f",
-    cardBg: "#f8fbf5",
-    ink: "#25331f",
-    accent: "#5f8f52",
-    atras: "Cada compra hace crecer la planta. Cuando florece, ramo de regalo.",
-  },
-  // Bar de noche, tatuajes, copas: la cuenta contada como fases de la luna.
-  nocturno: {
-    estilo: "nocturno",
-    emoji: "\u{1F319}",
-    marca: "copa",
-    forma: "circulo",
-    banda: "oscura",
-    modo: "luna",
-    pageBg: "linear-gradient(160deg,#06070d,#141a2e)",
-    pageInk: "#e6e9f5",
-    cardBg: "#0b0d16",
-    ink: "#eef1fb",
-    accent: "#b9c6ff",
-    atras: "Cada visita llena un poco más la luna. Luna llena, ronda invitada.",
-  },
-  taller: {
-    estilo: "taller",
-    emoji: "\u{1F527}",
-    marca: "rayo",
-    forma: "cuadrado",
-    banda: "oscura",
-    modo: "aguja",
-    pageBg: "linear-gradient(160deg,#0d0d0f,#1d1712)",
-    pageInk: "#f0ece6",
-    cardBg: "#141414",
-    ink: "#f5f2ee",
-    accent: "#ff7a18",
-    atras: "Cada servicio sube la aguja. Al tope, revisión gratis.",
-  },
-  academia: {
-    estilo: "academia",
-    emoji: "\u{1F4DA}",
-    marca: "libro",
-    forma: "redondeado",
-    banda: "clara",
-    modo: "escalera",
-    pageBg: "linear-gradient(135deg,#eef2fb 0%,#d9e2f5 55%,#b9c8e8 100%)",
-    pageInk: "#1f2a44",
-    cardBg: "#f7f9fe",
-    ink: "#1f2a44",
-    accent: "#3d5da8",
-    atras: "Una clase, un escalón. Al llegar arriba, sesión de regalo.",
-  },
-  clinica: {
-    estilo: "clinica",
-    emoji: "\u{1FA7A}",
-    marca: "corazon",
-    forma: "circulo",
-    banda: "blanca",
-    modo: "pulso",
-    pageBg: "linear-gradient(135deg,#eaf6fb 0%,#d2ecf5 55%,#aed9ea 100%)",
-    pageInk: "#10333f",
-    cardBg: "#f5fcff",
-    ink: "#10333f",
-    accent: "#0e8ba8",
-    atras: "Cada sesión suma un latido. Al completar, sesión de regalo.",
-  },
 };
 
 // Los diseños de los kits de marca (lib/kits.js) son estilos más, pero de UNA
@@ -364,7 +276,7 @@ export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, mod
     marca: resolverMarca(marca) || undefined,
     forma: FORMAS.includes(forma) ? forma : undefined,
     banda: BANDAS.includes(banda) ? banda : undefined,
-    modo: MODOS.includes(modo) ? modo : undefined,
+    modo: resolverModo(modo) || undefined,
   };
   for (const k of Object.keys(retoques)) if (retoques[k] === undefined || retoques[k] === "") delete retoques[k];
   return completarTema({ ...base, ...retoques });

@@ -7,6 +7,7 @@ import { FilaInterruptor } from "@/app/Interruptor";
 import { LISTA_ACCIONES } from "@/lib/acciones";
 import { OPCIONES_CAJA, normalizarCaja } from "@/lib/caja";
 import { C, botonPrimario, botonSecundario, chipCodigo } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 // ============================================================================
 // EDITAR VISTA DE CAJA (manager)
@@ -82,8 +83,8 @@ export default function EditorCaja({ negocio, slug, onCerrar, onGuardado }) {
     }
   }
 
-  function salir() {
-    if (cambiado && !window.confirm("¿Salir sin guardar? Los cambios de la caja se pierden.")) return;
+  async function salir() {
+    if (cambiado && !(await confirmar({ titulo: "¿Salir sin guardar?", texto: "Los cambios de la caja se pierden.", si: "Salir sin guardar", no: "Seguir editando", peligro: true }))) return;
     onCerrar();
   }
 

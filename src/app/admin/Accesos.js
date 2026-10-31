@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import ClaveNueva from "@/app/ClaveNueva";
 import Invitar from "@/app/admin/Invitar";
 import { C, h2, panel, botonPequeno } from "@/app/ui";
+import { confirmar } from "@/app/Dialogo";
 
 const ROTULO = { manager: "Dueño / manager", caja: "Móvil de la caja" };
 const fecha = (iso) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
@@ -27,7 +28,7 @@ export default function Accesos({ slug }) {
 
   async function generar(a) {
     const aviso = a.desde || a.respaldo ? `\n\nLa contraseña actual de ${a.usuario} dejará de funcionar.` : "";
-    if (!window.confirm(`¿Generar una contraseña nueva para ${a.usuario}?${aviso}`)) return;
+    if (!(await confirmar({ titulo: `¿Generar una contraseña nueva para ${a.usuario}?`, texto: aviso.trim(), si: "Generar" }))) return;
     setError(null);
     const r = await fetch("/api/admin/accesos", {
       method: "POST",

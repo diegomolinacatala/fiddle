@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Icono from "@/app/Icono";
 import { C, campo, botonPequeno, botonPrimario, aviso } from "@/app/ui";
+import { confirmar, ensenarParaCopiar } from "@/app/Dialogo";
 
 // ============================================================================
 // INVITAR AL DUEÑO POR CORREO (ficha de la tienda en /admin)
@@ -62,7 +63,7 @@ export default function Invitar({ slug, alcance = "alta", onCreado = null }) {
     const pregunta = inv || estado?.pendiente
       ? "¿Crear otro enlace? El pendiente dejará de valer: si el dueño ya lo tiene, le fallará."
       : !estado ? "No se ha podido comprobar si hay un enlace pendiente. ¿Crear uno igualmente? Si lo había, dejará de valer." : null;
-    if (pregunta && !window.confirm(pregunta)) return;
+    if (pregunta && !(await confirmar({ titulo: pregunta, si: "Crear el enlace" }))) return;
     setBusy(true);
     setError(null);
     try {
@@ -89,7 +90,7 @@ export default function Invitar({ slug, alcance = "alta", onCreado = null }) {
       await navigator.clipboard.writeText(inv.url);
       setCopiado(true);
     } catch {
-      window.prompt("Copia el enlace:", inv.url);
+      ensenarParaCopiar({ titulo: "Copia el enlace", valor: inv.url });
     }
   }
 

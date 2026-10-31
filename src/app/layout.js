@@ -40,6 +40,8 @@ const base = `${hojaDeColores}
   @keyframes espera { to { transform: rotate(360deg) } }
   @media (prefers-reduced-motion: reduce) { .giro { animation-duration: 1.6s } }
   @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation-duration: 1.6s } }
+  /* Las preguntas van en una ventana nuestra (app/Dialogo.js), nunca en la del navegador. */
+  dialog.ventana::backdrop { background: rgb(15 18 22 / 0.5); }
 `;
 
 export default function RootLayout({ children }) {
