@@ -27,13 +27,19 @@ const base = `${hojaDeColores}
      se ve apagado. Con mala cobertura, un botón gris y quieto parecía la página rota. */
   /* Donde el giro no va junto al texto (subir una imagen), un <span className="giro">. */
   button[aria-busy="true"] { cursor: progress !important; opacity: 1 !important; }
-  .giro, button[aria-busy="true"]:not(:has(.giro))::before {
+  /* Dos reglas iguales y no una lista: un navegador sin :has() tiraría la lista entera. */
+  .giro {
     display: inline-block; flex-shrink: 0; width: 1em; height: 1em; vertical-align: -0.15em;
     border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent;
     animation: espera 0.7s linear infinite; }
-  button[aria-busy="true"]:not(:has(.giro))::before { content: ""; margin-right: 0.5em; }
+  button[aria-busy="true"]:not(:has(.giro))::before {
+    content: ""; margin-right: 0.5em;
+    display: inline-block; flex-shrink: 0; width: 1em; height: 1em; vertical-align: -0.15em;
+    border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent;
+    animation: espera 0.7s linear infinite; }
   @keyframes espera { to { transform: rotate(360deg) } }
-  @media (prefers-reduced-motion: reduce) { .giro, button[aria-busy="true"]::before { animation-duration: 1.6s } }
+  @media (prefers-reduced-motion: reduce) { .giro { animation-duration: 1.6s } }
+  @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation-duration: 1.6s } }
 `;
 
 export default function RootLayout({ children }) {

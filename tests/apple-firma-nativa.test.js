@@ -39,11 +39,15 @@ describe("firma nativa del pase", () => {
     expect(forge.pki.decryptRsaPrivateKey(cadena.keyPem)).toBe(forge.pki.decryptRsaPrivateKey(cadena.keyPem));
   });
 
-  it("con clave cifrada y su frase, igual; con la frase mala, null como siempre", () => {
+  it("con clave cifrada y su frase, igual; con la frase mala, falla como siempre", () => {
     const cifrada = forge.pki.encryptRsaPrivateKey(forge.pki.privateKeyFromPem(cadena.keyPem), "un café por favor");
     const k = forge.pki.decryptRsaPrivateKey(cifrada, "un café por favor");
     expect(k.sign(resumen("hola"))).toBe(descifrarOriginal(cadena.keyPem).sign(resumen("hola")));
-    expect(forge.pki.decryptRsaPrivateKey(cifrada, "otra")).toBeNull();
+    // Con la frase mala forge da null o, según cómo salgan los bytes descifrados
+    // (la sal es aleatoria), lanza «Unparsed DER bytes». Las dos son «no hay clave».
+    let mala;
+    try { mala = forge.pki.decryptRsaPrivateKey(cifrada, "otra"); } catch { mala = null; }
+    expect(mala).toBeNull();
   });
 
   it("passkit firma con ella y la firma vale con el certificado", () => {
