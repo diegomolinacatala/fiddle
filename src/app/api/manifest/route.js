@@ -16,8 +16,17 @@ export const dynamic = "force-dynamic";
 
 const app = { name: NOMBRE_APP, short_name: NOMBRE_APP, display: "standalone", orientation: "portrait", background_color: PALETA.avena, icons: ICONOS_APP };
 
+// En la CDN una hora: cada página de la caja y de la tarjeta lo pide al cargar, y
+// con `no-store` cada una era una función de Vercel. Solo lleva el nombre y el color
+// de la tienda (nada del cliente: el serial ya va en la URL), y un color nuevo que
+// tarde una hora en el icono instalado no se nota. El navegador, sin caché propia.
 const respuesta = (manifest) =>
-  NextResponse.json(manifest, { headers: { "content-type": "application/manifest+json", "cache-control": "no-store" } });
+  NextResponse.json(manifest, {
+    headers: {
+      "content-type": "application/manifest+json",
+      "cache-control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+    },
+  });
 
 export async function GET(request) {
   const q = new URL(request.url).searchParams;

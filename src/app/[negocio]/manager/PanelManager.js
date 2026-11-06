@@ -27,7 +27,7 @@ import { C, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chip
 // la cuenta (la contraseña de la caja) vive en Ajustes; lo que se les DICE a los
 // clientes, en Avisos; la lista de clientes, en Clientes. Cada cosa en un solo
 // sitio. Llega con el negocio ya cargado en el servidor (page.js).
-export default function PanelManager({ negocio, inicial, reloj = false }) {
+export default function PanelManager({ negocio, inicial, reloj = false, recorridoVisto }) {
   const [n, setN] = useState(inicial);
   // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
   const guardada = n.ubicaciones?.[0] || null;
@@ -271,7 +271,7 @@ export default function PanelManager({ negocio, inicial, reloj = false }) {
           />
         )}
         {msg && <div role="status" style={toast}>{msg}</div>}
-        <Recorrido recorrido="manager" accent={accent} />
+        <Recorrido recorrido="manager" accent={accent} visto={recorridoVisto} />
     </>
   );
 }

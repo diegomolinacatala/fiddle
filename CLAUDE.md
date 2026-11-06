@@ -204,9 +204,12 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
 
 - **Vercel corre en `lhr1` (Londres) porque Supabase está en eu-west-2** (`vercel.json`).
   Si la base cambia de región, la de las funciones va con ella.
-- **Manager y CRM cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
+- **Manager, CRM y la caja cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
   cliente) y cada ruta tiene `loading.js` con su esqueleto (`app/Esqueleto.js`).
-  Nada de pantallas que arrancan vacías y piden sus datos con `fetch`.
+  Nada de pantallas que arrancan vacías y piden sus datos con `fetch`. En la caja pesa
+  más: se vuelve a abrir tras cada cliente y cada `fetch` al abrirse era una función de
+  Vercel más (06-11-2026). Por eso también el recorrido llega sabido (`lib/tutorial.js`),
+  «quién atiende» solo se pregunta con gente en la plantilla y el manifest va a la CDN.
 - **La cabecera del dueño vive en el layout** (`[negocio]/MarcoGestion.js`): marca, nombre y
   pestañas no se vuelven a pintar al cambiar de pestaña, y `loading.js` solo pone en gris lo
   de debajo. Las pestañas de dentro (`Solapas`) salen ya con su texto en el loading. Lo que
