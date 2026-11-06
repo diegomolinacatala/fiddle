@@ -283,8 +283,10 @@ body:has(.home){background:${P.papel}}
 .panel-nota a{color:var(--claro);font-weight:600;text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* ---------- precios ---------- */
-.planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:900px;margin:0 auto}
-@media (min-width:760px){.planes{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}}
+/* Tres planes: en fila solo con sitio para los tres; antes, uno debajo de otro (con dos
+   columnas el tercero se quedaba solo abajo). En el móvil se deslizan (estiloMovil.js). */
+.planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:560px;margin:0 auto}
+@media (min-width:1040px){.planes{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;max-width:1160px}}
 .plan{display:flex;flex-direction:column;padding:clamp(26px,3.5vw,38px);border-radius:32px;background:var(--superficie);
   box-shadow:0 0 0 1px var(--linea)}
 .plan-destacado{background:var(--tinta);box-shadow:0 40px 70px -40px ${alfa(P.espresso, 0.6)}}

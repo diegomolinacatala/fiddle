@@ -33,24 +33,31 @@ describe("web de fiddle: contacto y precios", () => {
     expect(url.searchParams.get("body")).toBe("Cuerpo");
   });
 
-  it("dos planes: Tarjetas a 39 € y Completo a 49 €, el segundo destacado", () => {
-    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["tarjetas", 39], ["completo", 49]]);
+  it("tres planes: Esencial a 19 €, Tarjetas a 39 € y Completo a 49 €, el último destacado", () => {
+    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["esencial", 19], ["tarjetas", 39], ["completo", 49]]);
     expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["completo"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
-    // Lo que decidieron para cada uno (13-10-2026).
-    expect(PLANES[0].incluye.join(" ")).toMatch(/sin límite/);
-    expect(PLANES[0].incluye.join(" ")).toMatch(/Promociones al momento, a todos/);
-    expect(PLANES[1].incluye[0]).toBe("Todo lo de Tarjetas");
+    const [esencial, tarjetas, completo] = PLANES.map((p) => p.incluye.join(" "));
+    // Esencial (06-11-2026): hasta 750 tarjetas, sin promociones y la monta la tienda.
+    expect(esencial).toMatch(/750 tarjetas/);
+    expect(esencial).not.toMatch(/Promociones|sin límite|montada/);
+    expect(esencial).toMatch(/La montas tú/);
+    // Tarjetas y Completo (13-10-2026).
+    expect(tarjetas).toMatch(/sin límite/);
+    expect(tarjetas).toMatch(/Promociones al momento, a todos/);
+    expect(PLANES[2].incluye[0]).toBe("Todo lo de Tarjetas");
     for (const cosa of [/estadísticas/, /grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
-      expect(PLANES[1].incluye.join(" ")).toMatch(cosa);
+      expect(completo).toMatch(cosa);
     }
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
   });
 
   it("el mensaje de cada plan dice cuál y cuánto", () => {
-    expect(mensajeDePlan(PLANES[0])).toContain("Tarjetas");
-    expect(mensajeDePlan(PLANES[0])).toContain("39 €");
-    expect(mensajeDePlan(PLANES[1])).toContain("49 €");
+    expect(mensajeDePlan(PLANES[0])).toContain("Esencial");
+    expect(mensajeDePlan(PLANES[0])).toContain("19 €");
+    expect(mensajeDePlan(PLANES[1])).toContain("Tarjetas");
+    expect(mensajeDePlan(PLANES[1])).toContain("39 €");
+    expect(mensajeDePlan(PLANES[2])).toContain("49 €");
   });
 });
 

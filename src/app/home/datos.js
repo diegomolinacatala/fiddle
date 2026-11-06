@@ -26,21 +26,39 @@ export const enlaceCorreo = (asunto = ASUNTO, cuerpo = CUERPO) =>
 export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
   `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CORREO)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
-// Lo que lleva cada plan (decidido el 13-10-2026). «Completo» suma a «Tarjetas»:
-// no repite su lista. Las frases dicen lo que la app hace hoy; nada de promesas
-// que la tienda no vaya a encontrar al entrar.
+// Lo que lleva cada plan (Tarjetas y Completo, 13-10-2026; Esencial, 06-11-2026).
+// «Completo» suma a «Tarjetas»: no repite su lista. Las frases dicen lo que la app
+// hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
+//
+// Esencial es para no perder a quien le parece caro: la tarjeta y la caja, hasta
+// 750 tarjetas, sin promociones y sin montarla nosotros. Aún no se paga sola
+// (Stripe, más adelante): de momento se pide por WhatsApp como los otros.
 export const PLANES = [
+  {
+    id: "esencial",
+    nombre: "Esencial",
+    precio: 19,
+    lema: "Lo justo para tener tu tarjeta.",
+    incluye: [
+      "Hasta 750 tarjetas, en Apple Wallet y Android",
+      "Con tu logo, tus colores y tu premio",
+      "La caja en el móvil de la tienda",
+      "Tu QR para el mostrador",
+      "La montas tú, desde tu panel",
+    ],
+  },
   {
     id: "tarjetas",
     nombre: "Tarjetas",
     precio: 39,
-    lema: "Para empezar con tu tarjeta.",
+    lema: "Sin límite y con promociones.",
     incluye: [
       "Tarjetas sin límite, en Apple Wallet y Android",
       "Con tu logo, tus colores y tu premio",
       "La caja en el móvil de la tienda",
       "Tu QR para el mostrador",
       "Promociones al momento, a todos tus clientes a la vez",
+      "Te la dejamos montada",
     ],
   },
   {

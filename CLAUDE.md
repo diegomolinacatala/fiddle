@@ -733,7 +733,10 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026): Tarjetas, 39 € (tarjetas sin límite y promociones al momento a todos);
+  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 750 tarjetas, sin
+  promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
+  pagará sola con Stripe); Tarjetas, 39 € (tarjetas sin límite, promociones al momento a todos
+  y se la dejamos montada);
   Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados

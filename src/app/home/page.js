@@ -188,7 +188,7 @@ export default async function Home() {
 
         <section id="precios" className="bloque">
           <Encabezado titulo="Un precio claro" centrado>
-            Dos opciones, las dos con la tarjeta completa en iPhone y Android.
+            Tres opciones, todas con tu tarjeta en iPhone y Android.
           </Encabezado>
 
           <Indicador objetivo="planes" nombre="Planes" tipo="pestanas" etiquetas={PLANES.map((p) => `${p.nombre} ${p.precio} €`)} />
@@ -310,7 +310,7 @@ const PREGUNTAS = [
   ],
   [
     "¿Qué necesitas en la tienda?",
-    "Un móvil con cámara para la caja y tu QR en el mostrador. Nosotros te lo dejamos montado.",
+    "Un móvil con cámara para la caja y tu QR en el mostrador. Con Tarjetas y Completo te lo dejamos montado; con Esencial lo montas tú desde tu panel.",
   ],
   [
     "¿Puedes cambiar el diseño o el premio más adelante?",
