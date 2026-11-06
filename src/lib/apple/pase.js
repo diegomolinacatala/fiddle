@@ -15,6 +15,7 @@
 import { cartillasDe, totalGuardados, gratisTexto } from "../cartillas";
 import { enlacesDeContacto } from "../contacto";
 import { colorDelPase } from "./dibujo";
+import { promoDe, tiene } from "../planes";
 
 const MAX_UBICACIONES = 10; // límite de Apple
 
@@ -105,6 +106,8 @@ function camposCupon(cliente, negocio) {
 
 /** Ubicaciones válidas del negocio en formato Apple (máx. 10). */
 export function ubicacionesApple(negocio) {
+  // El aviso al pasar cerca va según el plan (lib/planes.js); las ubicaciones se guardan igual.
+  if (!tiene(negocio, "ubicacion")) return [];
   return (negocio.ubicaciones || [])
     .filter((u) => Number.isFinite(u?.lat) && Number.isFinite(u?.lng))
     .slice(0, MAX_UBICACIONES)
@@ -176,7 +179,7 @@ export function camposDelPase(cliente, negocio) {
   // Su teléfono recibe el refresco, ningún campo visible cambia y no suena.
   const quierePromos = !cliente.promos_no;
   const avisoPersonal = quierePromos ? cliente.mensaje || null : null;
-  const promo = quierePromos ? negocio.promo || null : null;
+  const promo = quierePromos ? promoDe(negocio) : null; // sin promociones en su plan, tampoco (lib/planes.js)
   let { secondaryFields } = campos;
   let auxiliaryFields;
   if (esCupon) {

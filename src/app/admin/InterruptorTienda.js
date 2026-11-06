@@ -11,9 +11,13 @@ import { C, panel, h2 } from "@/app/ui";
 //
 // `encendido` y `apagado`: { titulo, texto, aviso } de cada lado; `aviso` es lo
 // que dice el mensaje de abajo al guardar.
-export default function InterruptorTienda({ slug, clave, on, seccion, icono, encendido, apagado, nota, accent, flash, onCambio }) {
+// `fueraDelPlan`: su plan no lo deja (lib/planes.js). Se ve apagado y no se toca;
+// lo guardado se queda como estaba y vuelve si cambia de plan.
+export default function InterruptorTienda({ slug, clave, on, seccion, icono, encendido, apagado, nota, accent, flash, onCambio, fueraDelPlan = false }) {
   const [guardando, setGuardando] = useState(false);
-  const lado = on ? encendido : apagado;
+  const lado = fueraDelPlan
+    ? { titulo: "No va en su plan", texto: `Para encenderlo, cambia su plan (arriba) o lo que lleva el plan en Plataforma → Planes.${on ? " Lo tenía encendido: vuelve solo." : ""}` }
+    : on ? encendido : apagado;
 
   async function alternar() {
     setGuardando(true);
@@ -37,7 +41,7 @@ export default function InterruptorTienda({ slug, clave, on, seccion, icono, enc
   return (
     <section style={panel}>
       <h2 style={h2}>{seccion}</h2>
-      <FilaInterruptor on={on} onClick={alternar} disabled={guardando} accent={accent} icono={icono} titulo={lado.titulo} texto={lado.texto} />
+      <FilaInterruptor on={on && !fueraDelPlan} onClick={alternar} disabled={guardando || fueraDelPlan} accent={accent} icono={icono} titulo={lado.titulo} texto={lado.texto} />
       {nota && <p style={{ fontSize: 12.5, color: C.tenue, margin: "10px 0 0", lineHeight: 1.4 }}>{nota}</p>}
     </section>
   );

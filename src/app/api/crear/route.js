@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { emitirPase } from "@/lib/wallet";
+import { emitirPase, TiendaLlena } from "@/lib/wallet";
 import { esSlug } from "@/lib/negocios";
 import { getNegocio } from "@/lib/store";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
@@ -27,6 +27,9 @@ export async function POST(request) {
       googleSaveUrl: r.googleSaveUrl,
     });
   } catch (e) {
+    if (e instanceof TiendaLlena) {
+      return jsonError("Tu plan ya no deja dar más tarjetas. Mira en Ajustes → Tu plan cómo ampliarlo.", 409);
+    }
     return errorInterno("crear", e);
   }
 }

@@ -3,6 +3,7 @@ import { puntosDe, estadoDe } from "../resumen";
 import { describirBanda, totalGuardados } from "../cartillas";
 import { rutaLogo, rutaBanda } from "../rutasImagen";
 import { enlacesDeContacto } from "../contacto";
+import { conAbierto, promoDe, tiene } from "../planes";
 
 // ============================================================================
 // GOOGLE WALLET — contenido del pase (LoyaltyClass + LoyaltyObject)
@@ -74,11 +75,11 @@ export function construirClase(negocio, { issuerId, appUrl }) {
       // "Abierto hasta las 18:30": en Apple va dibujado en la banda; Google no deja
       // cambiar su imagen cada hora, así que va el PRIMERO de los detalles. Es de la
       // clase: el reloj lo cambia con una sola llamada para todas las tarjetas.
-      ...(negocio.tema?.abierto !== false && negocio.estadoPase ? [{ id: "estado", header: "Ahora", body: negocio.estadoPase }] : []),
+      ...(conAbierto(negocio) && negocio.estadoPase ? [{ id: "estado", header: "Ahora", body: negocio.estadoPase }] : []),
       ...(negocio.tema?.atras ? [{ id: "como", header: "Cómo funciona", body: negocio.tema.atras }] : []),
     ],
     // Tiendas físicas: Google enseña la tarjeta al acercarse (como las ubicaciones de Apple).
-    merchantLocations: (negocio.ubicaciones || [])
+    merchantLocations: (tiene(negocio, "ubicacion") ? negocio.ubicaciones || [] : [])
       .filter((u) => Number.isFinite(u?.lat) && Number.isFinite(u?.lng))
       .slice(0, 10)
       .map((u) => ({ latitude: u.lat, longitude: u.lng })),
@@ -160,7 +161,7 @@ export function construirObjeto(cliente, negocio, { issuerId, appUrl, enlaceDato
   // en Apple. Solo a quien no dijo que no a las promos.
   const mensajes = conMensajes && !cliente.promos_no && !cliente.borrado_en
     ? [
-        ...(negocio.promo ? [{ id: "promo", header: "Promo", body: negocio.promo, messageType: "TEXT" }] : []),
+        ...(promoDe(negocio) ? [{ id: "promo", header: "Promo", body: promoDe(negocio), messageType: "TEXT" }] : []),
         ...(cliente.mensaje ? [{ id: "para-ti", header: "Para ti", body: cliente.mensaje, messageType: "TEXT" }] : []),
       ].filter((m) => m.id !== sin)
     : [];

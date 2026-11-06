@@ -6,6 +6,7 @@ import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
 import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
 import { UMBRALES } from "./crm";
 import { semillaDe } from "./datosDePrueba";
+import { conPlan, normalizarPlanes } from "./planes";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -25,7 +26,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -124,6 +125,60 @@ function componer(slug, fila) {
   return componerNegocio(slug, fila);
 }
 
+// ---------------------------------------------------------- plataforma
+// Lo que es de fiddle entero (tabla `plataforma`): hoy, qué lleva cada plan
+// (lib/planes.js). Se lee con cada tienda, así que va en memoria un minuto: sin
+// eso, cada petición que lee una tienda pagaría otra lectura de la base. Lo que
+// cambie el admin tarda como mucho eso en llegar a las demás funciones.
+const SEGUNDOS_PLANES = 60;
+let planesEnMemoria = null; // { valor, hasta }
+
+async function leerPlataforma(clave) {
+  if (hasSupabase()) {
+    const fila = sinError(await supa().from("plataforma").select("valor").eq("clave", clave).maybeSingle(), `leer ${clave}`);
+    return fila?.valor ?? null;
+  }
+  return (await enFila(() => leer("plataforma", {})))[clave]?.valor ?? null;
+}
+
+async function escribirPlataforma(clave, valor) {
+  const fila = { clave, valor, actualizado: ahoraISO() };
+  if (hasSupabase()) {
+    sinError(await supa().from("plataforma").upsert(fila), `guardar ${clave}`);
+    return;
+  }
+  await enFila(async () => escribir("plataforma", { ...(await leer("plataforma", {})), [clave]: fila }));
+}
+
+/** Los tres planes como están ahora (los de partida si nadie los ha tocado). */
+export async function planesGlobales() {
+  if (planesEnMemoria && planesEnMemoria.hasta > Date.now()) return planesEnMemoria.valor;
+  let guardado = null;
+  try {
+    guardado = await leerPlataforma("planes");
+  } catch (e) {
+    // Sin la tabla (aún no creada en esa base) o sin base un momento: los de
+    // partida. Ninguna tienda puede quedarse sin abrir por esto.
+    console.error("[planes] no se pudieron leer, van los de partida:", e?.message || e);
+  }
+  const valor = normalizarPlanes(guardado);
+  planesEnMemoria = { valor, hasta: Date.now() + SEGUNDOS_PLANES * 1000 };
+  return valor;
+}
+
+/** Guarda los planes (ya validados con `validarPlanes`). */
+export async function guardarPlanes(planes) {
+  await escribirPlataforma("planes", planes);
+  planesEnMemoria = null;
+  return planesGlobales();
+}
+
+/** Solo tests: olvidar los planes en memoria. */
+export const olvidarPlanes = () => { planesEnMemoria = null; };
+
+// La tienda con lo que le deja su plan (`funciones`, `cupo`: lib/planes.js).
+const conSuPlan = async (n) => (n ? conPlan(n, await planesGlobales()) : n);
+
 const visible = (n, incluirArchivados) => (n && (incluirArchivados || !n.archivado) ? n : null);
 
 /**
@@ -137,9 +192,9 @@ export async function getNegocio(slug, { incluirArchivados = false } = {}) {
       await supa().from("negocios").select("nombre, tipo, config, creado").eq("slug", slug).maybeSingle(),
       "leer negocio",
     );
-    return visible(componer(slug, fila), incluirArchivados);
+    return conSuPlan(visible(componer(slug, fila), incluirArchivados));
   }
-  return enFila(async () => visible(componer(slug, normalizarFila((await leer("negocios", {}))[slug])), incluirArchivados));
+  return conSuPlan(await enFila(async () => visible(componer(slug, normalizarFila((await leer("negocios", {}))[slug])), incluirArchivados)));
 }
 
 // El fichero de demo guardaba antes solo la config. Si no trae `config`, es del
@@ -158,9 +213,11 @@ export async function listNegocios({ incluirArchivados = false } = {}) {
 
   // Semillas que aún no están en la base, para que un arranque limpio no salga vacío.
   const slugs = [...new Set([...Object.keys(SEMILLAS), ...Object.keys(filas)])];
+  const planes = await planesGlobales();
   return slugs
     .map((slug) => visible(componer(slug, filas[slug]), incluirArchivados))
     .filter(Boolean)
+    .map((n) => conPlan(n, planes))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
@@ -179,7 +236,7 @@ export async function crearNegocio({ slug, nombre, tipo, meta, premio, acciones,
       await escribir("negocios", { ...all, [slug]: fila });
     });
   }
-  return { negocio: componer(slug, fila) };
+  return { negocio: await conSuPlan(componer(slug, fila)) };
 }
 
 // Mezcla la config guardada con lo que llega del manager o del admin. Solo
@@ -220,6 +277,8 @@ function fusionarConfig(actual, patch) {
     archivadoEn: patch.archivadoEn !== undefined ? patch.archivadoEn : actual.archivadoEn,
     // Automáticos y programados encendidos para esta tienda: solo lo cambia el admin.
     avisosAvanzados: patch.avisosAvanzados ?? actual.avisosAvanzados,
+    // Su plan (lib/planes.js): solo lo cambia el admin. null = el de por defecto.
+    plan: patch.plan !== undefined ? patch.plan : actual.plan,
     // «Enviar a las…» (lib/envios.js) y lo que la tienda ha subido (lib/propios.js).
     enviosProgramados: patch.enviosProgramados ?? actual.enviosProgramados,
     propios: patch.propios ?? actual.propios,
@@ -244,14 +303,14 @@ export async function saveNegocio(slug, patch) {
 
   if (hasSupabase()) {
     sinError(await supa().from("negocios").upsert(fila), "guardar negocio");
-    return componer(slug, fila);
+    return conSuPlan(componer(slug, fila));
   }
-  return enFila(async () => {
+  return conSuPlan(await enFila(async () => {
     const all = await leer("negocios", {});
     const creado = normalizarFila(all[slug])?.creado ?? ahoraISO();
     await escribir("negocios", { ...all, [slug]: { ...fila, creado } });
     return componer(slug, { ...fila, creado });
-  });
+  }));
 }
 
 // ---------------------------------------------------------- imágenes propias
@@ -694,6 +753,22 @@ export async function listClientes(negocio, { limite } = {}) {
     .sort((a, b) => (b.creado || "").localeCompare(a.creado || ""))
     .map(normalizarCliente);
   return limite ? lista.slice(0, limite) : lista;
+}
+
+/**
+ * Cuántas tarjetas vivas tiene una tienda (ni fusionadas ni borradas): lo que mide
+ * el límite de su plan (lib/planes.js). Solo cuenta: no lee ni descifra ninguna.
+ */
+export async function contarTarjetas(negocio) {
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("clientes").select("serial", { count: "exact", head: true })
+        .eq("negocio", negocio).is("fusionado_en", null).is("borrado_en", null),
+      "contar tarjetas",
+    ) ?? 0;
+  }
+  const all = await enFila(() => leer("clientes", {}));
+  return Object.values(all).filter((c) => c.negocio === negocio && !c.fusionado_en && !c.borrado_en).length;
 }
 
 /**

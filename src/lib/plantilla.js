@@ -18,6 +18,8 @@
 // cifra sale.
 // ============================================================================
 
+import { tiene } from "./planes";
+
 import { relojLocal, fechaLocal, sumarDias, inicioDelDia, tramosDe, aHora, ZONA_POR_DEFECTO } from "./horario";
 import { clasificar } from "./actividad";
 import { BLOQUES, listaDias } from "./observaciones";
@@ -219,7 +221,9 @@ export const hayQueElegir = (sesion, plantilla) => sesion?.rol === "caja" && emp
 // de cada movimiento siguen ahí y vuelven tal cual al encenderla.
 
 /** ¿Tiene esta tienda la plantilla encendida? */
-export const conPlantilla = (negocio) => negocio?.plantillaActiva === true;
+// Y que su plan la deje (lib/planes.js): encendida en una tienda que bajó de plan,
+// se apaga sin borrar nada, como con el interruptor.
+export const conPlantilla = (negocio) => negocio?.plantillaActiva === true && tiene(negocio, "plantilla");
 
 /**
  * La gente que la caja ofrece y reconoce: nadie si la tienda la tiene apagada.

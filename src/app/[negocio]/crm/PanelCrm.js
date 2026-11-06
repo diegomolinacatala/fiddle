@@ -12,7 +12,8 @@ import Ficha from "./Ficha";
 import Exportar, { bajarCsv } from "./Exportar";
 import Actividad from "./Actividad";
 import Solapas from "../Solapas";
-import { PESTANAS } from "./pestanas";
+import { pestanasDe } from "./pestanas";
+import { tiene } from "@/lib/planes";
 import { saldoCorto } from "@/lib/cartillas";
 import { C, panel, campo, h2, botonPequeno, chipCodigo, legible } from "@/app/ui";
 
@@ -52,7 +53,10 @@ const ORDENES = {
 // vacía esperando a otra petición. `cargar()` solo recarga tras un cambio.
 export default function PanelCrm({ slug, inicial }) {
   const [d, setD] = useState(inicial);
-  const [pestana, setPestana] = useState("resumen");
+  // Las que deja su plan (lib/planes.js); se abre en la primera.
+  const pestanas = pestanasDe(inicial.negocio.funciones);
+  const [pestana, setPestana] = useState(pestanas[0][0]);
+  const conGrupos = tiene(inicial.negocio, "grupos");
   const [grupo, setGrupo] = useState("");
   const [verFicha, setVerFicha] = useState(null);
   const [busca, setBusca] = useState("");
@@ -104,7 +108,7 @@ export default function PanelCrm({ slug, inicial }) {
   return (
     <>
 
-        <Solapas pestanas={PESTANAS} activa={pestana} accent={accent} onCambiar={setPestana} />
+        <Solapas pestanas={pestanas} activa={pestana} accent={accent} onCambiar={setPestana} />
 
         {/* ------------------------------------------------------ resumen */}
         {pestana === "resumen" && (
@@ -151,8 +155,8 @@ export default function PanelCrm({ slug, inicial }) {
                 style={{ ...campo, flex: "1 1 220px", width: "auto" }}
               />
               <select value={grupo} onChange={(e) => setGrupo(e.target.value)} aria-label="Grupo" style={{ ...campo, width: "auto" }}>
-                <option value="">Todos los grupos</option>
-                {grupos.map((g) => <option key={g.key} value={g.key} disabled={!g.total}>{g.label} · {g.total}</option>)}
+                <option value="">{conGrupos ? "Todos los grupos" : "Todos"}</option>
+                {conGrupos && grupos.map((g) => <option key={g.key} value={g.key} disabled={!g.total}>{g.label} · {g.total}</option>)}
                 {m.descartadas > 0 && <option value={DESCARTADAS}>Sin guardar ni usar · {m.descartadas}</option>}
               </select>
               <select value={orden} onChange={(e) => setOrden(e.target.value)} aria-label="Orden" style={{ ...campo, width: "auto" }}>

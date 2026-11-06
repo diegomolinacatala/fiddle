@@ -27,6 +27,7 @@ import { normalizarContacto } from "./contacto";
 import { normalizarLegal } from "./legal";
 import { normalizarCaja } from "./caja";
 import { normalizarPlantilla } from "./plantilla";
+import { IDS_PLAN } from "./planes";
 import { normalizarHorario } from "./horario";
 import { normalizarPendientes } from "./envios";
 import { normalizarPropios } from "./propios";
@@ -463,6 +464,9 @@ export function componerNegocio(slug, guardado) {
     // salvo que el admin los encienda para esta tienda. Apagados no se borran: las
     // reglas se quedan guardadas y vuelven tal cual al encenderlos.
     avisosAvanzados: c.avisosAvanzados === true,
+    // Su plan (lib/planes.js), tal como lo eligió el admin; null = el de por defecto
+    // (Completo). Lo que le deja (`funciones`, `cupo`) lo añade el store al leerla.
+    plan: IDS_PLAN.includes(c.plan) ? c.plan : null,
     // Lo que «Enviar a las…» deja esperando a que lo mande el reloj (lib/envios.js).
     enviosProgramados: normalizarPendientes(c.enviosProgramados),
     // Lo que la tienda ha subido para su tarjeta: logos, iconos y fotos de banda

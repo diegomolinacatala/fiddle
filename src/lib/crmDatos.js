@@ -1,6 +1,7 @@
 import { listClientes, listEventosDeNegocio, listCampanas, registrosDeTienda, getNegocio } from "./store";
 import { perfilesDe, metricas, conteoGrupos, curvaDeVuelta, puenteActivos, repartoCartillas, efectoCampana, telefonosDe, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
+import { conAvisosAvanzados, tiene } from "./planes";
 import { TIPO_WEB } from "./push/suscripcion";
 import { TIPO_GOOGLE } from "./google/pase";
 
@@ -55,7 +56,9 @@ export async function datosCrm(slug) {
       // Para las observaciones (qué horas son tranquilas DE LAS QUE ABRE).
       horario: negocio.horario ?? null,
       // Sin automáticos ni programados, «Programarles un aviso» no sale.
-      avisosAvanzados: negocio.avisosAvanzados === true,
+      avisosAvanzados: conAvisosAvanzados(negocio),
+      // Qué pestañas y qué botones de avisar deja su plan (lib/planes.js).
+      funciones: negocio.funciones ?? null,
       // Para poner nombre a quién hizo cada movimiento en Actividad (lib/plantilla.js). Sin hashes de PIN.
       plantilla: plantillaPublica(negocio.plantilla),
     },

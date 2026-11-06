@@ -46,6 +46,9 @@ export const negocioDeTarjeta = (n) =>
     horario: n.horario ?? null,
     // Público a propósito: es lo que la tienda pone en el reverso para que la llamen.
     contacto: n.contacto ?? null,
+    // Lo que su plan deja (lib/planes.js): la tarjeta web esconde igual que Wallet
+    // la promo y el «Abierto hasta…» que no van en él. Solo qué sí y qué no.
+    funciones: n.funciones ?? null,
   };
 
 /**

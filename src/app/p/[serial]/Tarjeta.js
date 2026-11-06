@@ -6,6 +6,7 @@ import CaraDelPase from "@/app/CaraDelPase";
 import { useConFotoBanda } from "@/app/fotoBanda";
 import { colorDelPase, esColorClaro } from "@/lib/apple/dibujo";
 import { estadoDe } from "@/lib/resumen";
+import { conAbierto } from "@/lib/planes";
 import { useTarjetaEnVivo } from "./telefono";
 import Acciones from "./Acciones";
 
@@ -53,8 +54,8 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
       )}
 
       <div style={{ width: "100%", maxWidth: 400 }}>
-        {/* «Abierto hasta…» como en Wallet: si la tienda lo apaga (Tienda → Horario), tampoco aquí. */}
-        <CaraDelPase cliente={cliente} negocio={conFoto} horario={negocio.tema?.abierto === false ? null : negocio.horario} claseBanda={novedad ? "banda nueva" : "banda"}>
+        {/* «Abierto hasta…» como en Wallet: si la tienda lo apaga (Ajustes) o no va en su plan, tampoco aquí. */}
+        <CaraDelPase cliente={cliente} negocio={conFoto} horario={conAbierto(negocio) ? negocio.horario : null} claseBanda={novedad ? "banda nueva" : "banda"}>
           <div style={{ display: "grid", placeItems: "center", padding: "20px 18px 22px" }}>
             <div style={cajaQr}>
               <QrImagen texto={qrTexto} lado={196} />

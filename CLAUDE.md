@@ -315,6 +315,40 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
   números»: cada frase lleva la cifra de la que sale. Una conclusión nueva = una regla ahí.
 - Lo del empleado en su móvil es SOLO lo suyo de hoy; los números del equipo son del manager.
 
+## Los planes: qué puede usar cada tienda
+
+Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el PR a `main`).
+
+- **Tres planes (Esencial, Tarjetas, Completo) y lo que lleva cada uno NO está en el código**:
+  lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave `planes`) y el código solo
+  tiene lo de partida: Esencial sin nada y hasta 750 tarjetas (+50 de margen), Tarjetas con
+  estadísticas y promociones, Completo con todo. Antes de llevarlo a `main`, crear la tabla
+  `plataforma` en Supabase (`schema.sql`); sin ella, valen los de partida y lo dice el log.
+- **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Completo.** Una tienda de antes no
+  pierde nada por un despliegue. La Delicantería va en Completo a propósito.
+- **El plan dice qué PUEDE usarse, no qué está encendido, y nunca borra.** Los avisos automáticos
+  y la plantilla siguen con su interruptor del admin; el «Abierto hasta…» con el suyo en Ajustes.
+  Lo que el plan no deja no sale ni se manda, y vuelve tal cual con otro plan. Por eso el store
+  le pone a la tienda `funciones`, `planId` y `cupo` al leerla (`conPlan`) sin tocar lo guardado:
+  `saveNegocio` mezcla con la tienda leída y escribiría lo escondido.
+- **Lo que depende del plan pregunta con `tiene(negocio, "promos")`** (o `conAvisosAvanzados`,
+  `conAbierto`, `promoDe`, `conPlantilla`), nunca por el nombre del plan. Sin `funciones` (una
+  tienda que no pasó por el store, un test) es Completo. Una función nueva = una entrada en
+  `FUNCIONES` (sale sola en el admin) y su `tiene` donde se usa, en el servidor y en la pantalla.
+- **Lo escondido, igual en todas partes**: la promo en el pase de Apple, el objeto de Google y la
+  tarjeta web (`negocioDeTarjeta` lleva `funciones`); el «Abierto hasta…» con `estadoDeTienda`; el
+  aviso al pasar cerca en `ubicacionesApple` y en Google. Enviar: a todos y «solo ese día» son
+  `promos`, lo demás `grupos` (`funcionDeDestino`, `fueraDelPlan` en `lib/campanas.js`). En
+  Clientes, el Resumen es `estadisticas` y Grupos va con `grupos` (`pestanasDe`).
+- **El límite de tarjetas cuenta las vivas** (`contarTarjetas`, ni borradas ni fusionadas: lo
+  mismo que «clientes» en el admin, no lo que el CRM llama clientes). Avisa al dueño al 90 % y al
+  llegar (Ajustes → Tu plan); se siguen dando hasta el límite + el margen y entonces el cliente
+  nuevo ve «pregunta en el mostrador» (`TEXTO_LLENA`, sin hablar de planes). Las que ya existen
+  funcionan siempre. Solo se cuenta si el plan tiene límite: a las demás no les cuesta nada.
+- Los planes van un minuto en memoria (`planesGlobales`): se leen con cada tienda. Cambiar un plan
+  no empuja los pases de nadie (serían miles de firmas): lo recogen al ponerse al día. Cambiar el
+  plan de UNA tienda sí la pone al día en silencio.
+
 ## El premio: dar o guardar
 
 Con la cartilla llena la caja pregunta "¿lo quiere ahora o se lo guardas?"
@@ -735,12 +769,12 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
   (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 750 tarjetas, sin
   promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
-  pagará sola con Stripe); Tarjetas, 39 € (tarjetas sin límite, promociones al momento a todos
-  y se la dejamos montada);
-  Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
+  pagará sola con Stripe); Tarjetas, 39 € (tarjetas sin límite, promociones al momento a todos,
+  estadísticas y se la dejamos montada);
+  Completo, 49 € (además grupos, automáticos y programados, «Abierto
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
-  app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados
-  y la plantilla en `/admin/<slug>`; lo demás lo ve cualquier tienda).
+  app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
+  esta página no lo lee, así que si cambia allí se cambia aquí a mano.
 - **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
   con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
   Al lado, «Copiar».

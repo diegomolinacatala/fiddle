@@ -180,7 +180,7 @@ export default async function Home() {
             <Indicador objetivo="panel-piezas" nombre="Partes del panel" tipo="pestanas" etiquetas={PIEZAS_DEL_PANEL} />
             <Panel />
             <p className="panel-nota">
-              Las estadísticas, los grupos y el aviso al pasar cerca van en el plan Completo.{" "}
+              Las estadísticas van desde el plan Tarjetas; los grupos y el aviso al pasar cerca, en el Completo.{" "}
               <a href="#precios">Ver precios</a>
             </p>
           </div>

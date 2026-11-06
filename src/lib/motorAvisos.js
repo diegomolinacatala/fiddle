@@ -9,6 +9,7 @@ import { enviarPendientes } from "./campanas";
 import { enviosVisibles } from "./envios";
 import { perfilesDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
 import { relojLocal, estadoDeTienda, inicioDelDia } from "./horario";
+import { conAvisosAvanzados } from "./planes";
 import {
   contextoDe, fechasDeVisita, enviosDe, conEnvio, elegibles, candidatos, tocaAhora, porRetirar,
   renderTexto, grupoDeRegla, etiquetaEnvio, MAX_POR_REGLA,
@@ -135,8 +136,10 @@ export async function repasarNegocio(negocio, { ahora = Date.now(), soloRegla = 
   // Y por encima de todo, `avisosAvanzados` (lo enciende el admin): apagado, ni
   // automáticos ni programados salen, tampoco a mano. No basta con esconder las
   // pestañas: una regla encendida antes de apagarlos seguiría sonando.
-  const solos = negocio.avisosAvanzados && negocio.avisosActivos && negocio.horario;
-  const tocan = !negocio.avisosAvanzados ? []
+  // Y que su plan los deje (lib/planes.js): encendidos en una tienda que bajó de plan, tampoco.
+  const avanzados = conAvisosAvanzados(negocio);
+  const solos = avanzados && negocio.avisosActivos && negocio.horario;
+  const tocan = !avanzados ? []
     : soloRegla ? reglas.filter((r) => r.id === soloRegla)
     : solos ? reglas.filter((r) => r.activa && tocaAhora(r, negocio.horario, reloj)) : [];
   const resultado = { negocio: negocio.slug, retirados: 0, envios: [] };
@@ -241,7 +244,9 @@ export async function datosAvisos(slug, ahora = Date.now()) {
       cartillas: negocio.cartillas ?? null, tema: negocio.tema, promo: negocio.promo,
       horario: negocio.horario, automatizaciones: reglas, pausaAvisos: negocio.pausaAvisos,
       avisosActivos: negocio.avisosActivos, limiteAvisosDia: negocio.limiteAvisosDia,
-      avisosAvanzados: negocio.avisosAvanzados,
+      avisosAvanzados: conAvisosAvanzados(negocio),
+      // Qué deja su plan (lib/planes.js): Enviar solo ofrece lo que se puede mandar.
+      funciones: negocio.funciones ?? null,
     },
     // Lo que espera a su hora (Enviar → «Enviar a las…»).
     pendientes: enviosVisibles(negocio.enviosProgramados),

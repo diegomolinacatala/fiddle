@@ -16,6 +16,7 @@ import Recorrido from "@/app/Recorrido";
 import Bloque from "../Bloque";
 import { useGestion } from "../MarcoGestion";
 import Icono from "@/app/Icono";
+import { conAbierto, tiene } from "@/lib/planes";
 import { C, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chipCodigo, RADIO } from "@/app/ui";
 
 // La pestaña TIENDA: cómo es la tarjeta (cartillas y premios), qué botones
@@ -136,7 +137,7 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
   // servidor: sin hora, para que el HTML de servidor y el del navegador casen.
   // Sin mirar si está apagada: el editor la necesita para enseñar qué pasa al encenderla.
   const estadoReloj = reloj && origin ? estadoDeTienda({ ...n, tema: { ...n.tema, abierto: true } }, Date.now()) : null;
-  const estadoVista = n.tema.abierto === false ? null : estadoReloj;
+  const estadoVista = conAbierto(n) ? estadoReloj : null; // apagado o fuera de su plan (lib/planes.js)
   const accent = n.tema.accent;
   const tapUrl = `${origin}/api/tap?b=${negocio}`;
   const esCupon = n.tipo === "descuento";
@@ -179,7 +180,10 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
             </Bloque>
             <Bloque
               data-recorrido="ubicacion" accent={accent} icono="ubicacion" titulo="Ubicación"
-              resumen={guardada ? "Puesta: el iPhone saca la tarjeta al pasar cerca." : "Sin poner: la tarjeta no aparece sola al acercarse."}
+              resumen={!tiene(n, "ubicacion")
+                // Se puede poner igual: se guarda y vale en cuanto su plan lo lleve (lib/planes.js).
+                ? "El aviso al pasar cerca no va en tu plan (Ajustes → Tu plan)."
+                : guardada ? "Puesta: el iPhone saca la tarjeta al pasar cerca." : "Sin poner: la tarjeta no aparece sola al acercarse."}
               abierto={abierto === "mapa"}
               accion={{
                 texto: abierto === "mapa" ? (mapaCambiado ? "Descartar" : "Cerrar") : guardada ? "Cambiar" : "Elegir en el mapa",
@@ -220,7 +224,7 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
             )}
 
             <PaseVista negocio={n} cliente={clienteVista} qrTexto={`${origin}/w/${clienteVista.serial}`} estado={estadoVista} />
-            {n.horario && !reloj && n.tema.abierto !== false && (
+            {n.horario && !reloj && conAbierto(n) && (
               <p style={{ ...texto, margin: "10px 0 0" }}>
                 Con el reloj de los avisos en marcha, el pase dirá también si la tienda está abierta.
               </p>

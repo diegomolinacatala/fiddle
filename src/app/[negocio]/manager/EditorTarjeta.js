@@ -19,6 +19,7 @@ import { C, campo, etiqueta, botonPrimario, botonSecundario } from "@/app/ui";
 import { confirmarTarjetas } from "./confirmarTarjetas";
 import { confirmar } from "@/app/Dialogo";
 import { FilaInterruptor } from "@/app/Interruptor";
+import { conAbierto } from "@/lib/planes";
 
 // ============================================================================
 // EDITOR DE LA TARJETA (manager)
@@ -126,7 +127,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
   // Con los iconos subidos dentro del tema: uno recién subido aún no está guardado en él.
   const vista = useMemo(() => ({ ...d, tema: conIconos(d.tema, lista), contacto: ultimoBueno.current }), [d, lista, contactoLimpio.error]);
   // La línea de abierto/cerrado: la del reloj, salvo que se haya apagado aquí.
-  const estadoVista = d.tema.abierto === false ? null : estado;
+  const estadoVista = conAbierto(d) ? estado : null; // apagado o fuera de su plan (lib/planes.js)
 
   // Tres disposiciones: las dos tarjetas a la vez, una con conmutador, o el móvil.
   const disposicion = ancho >= 1180 ? "doble" : ancho >= 860 ? "una" : "movil";

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { emitirPase } from "@/lib/wallet";
+import { emitirPase, TiendaLlena } from "@/lib/wallet";
+import { TEXTO_LLENA } from "@/lib/planes";
 import { getCliente, getNegocio, guardarNombre } from "@/lib/store";
 import { clienteVigente } from "@/lib/unaTarjeta";
 import { hayApple } from "@/lib/apple/config";
@@ -79,6 +80,9 @@ export async function GET(request) {
       : NextResponse.redirect(new URL(destinoDelTap(plataforma, suya.serial), request.url), 302);
     return recordar(respuesta, slug, suya.serial, url);
   } catch (e) {
+    // Sin tarjetas libres en su plan (lib/planes.js): a la página de la tienda,
+    // que se lo dice con sus colores («pregunta en el mostrador»), no un error.
+    if (e instanceof TiendaLlena) return NextResponse.redirect(new URL(`/${slug}`, request.url), 302);
     return errorInterno("tap", e);
   }
 }
@@ -126,6 +130,11 @@ export async function POST(request) {
     const respuesta = esJson ? NextResponse.json({ ok: true, ir }) : NextResponse.redirect(new URL(ir, request.url), 303);
     return recordar(respuesta, slug, cliente.serial, url);
   } catch (e) {
+    if (e instanceof TiendaLlena) {
+      return esJson
+        ? NextResponse.json({ error: TEXTO_LLENA, lleno: true }, { status: 409 })
+        : NextResponse.redirect(new URL(`/${slug}`, request.url), 303);
+    }
     return errorInterno("tap POST", e);
   }
 }

@@ -5,6 +5,7 @@ import { validarReglas, normalizarPausa, normalizarLimiteDia } from "@/lib/autom
 import { esSlug } from "@/lib/negocios";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 import { auditar } from "@/lib/auditoria";
+import { conAvisosAvanzados } from "@/lib/planes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ export async function PUT(request) {
   try {
     const negocio = await getNegocio(slug);
     if (!negocio) return jsonError("Ese negocio no existe", 404);
-    if (!negocio.avisosAvanzados) return jsonError(APAGADOS, 403);
+    if (!conAvisosAvanzados(negocio)) return jsonError(APAGADOS, 403);
     const body = await request.json().catch(() => ({}));
     const patch = {};
     if (body.automatizaciones !== undefined) {
@@ -74,7 +75,7 @@ export async function POST(request) {
     const { regla } = await request.json().catch(() => ({}));
     const negocio = await getNegocio(slug);
     if (!negocio) return jsonError("Ese negocio no existe", 404);
-    if (!negocio.avisosAvanzados) return jsonError(APAGADOS, 403);
+    if (!conAvisosAvanzados(negocio)) return jsonError(APAGADOS, 403);
     if (!negocio.automatizaciones.some((r) => r.id === regla)) return jsonError("Ese aviso no existe. Guárdalo antes de enviarlo.", 404);
     const resultado = await repasarNegocio(negocio, { soloRegla: regla });
     return NextResponse.json({ envio: resultado.envios[0] ?? null, datos: await datosAvisos(slug) });

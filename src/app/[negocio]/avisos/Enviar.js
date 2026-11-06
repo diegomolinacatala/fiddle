@@ -5,6 +5,7 @@ import Icono from "@/app/Icono";
 import Campana from "./Campana";
 import { TODOS, MOMENTO, DESTINOS_ESPECIALES, DURA_GRUPO, infoDestino } from "@/lib/envios";
 import { C, panel, RADIO, legible } from "@/app/ui";
+import { tiene } from "@/lib/planes";
 
 // ============================================================================
 // ENVIAR: primero a quién, luego qué y cuándo (ahora o a una hora)
@@ -25,16 +26,33 @@ export default function Enviar({ datos, flash, onDatos, onEnviado, llegada = {} 
   const [elegido, setElegido] = useState(llegada.grupo || TODOS);
   useEffect(() => { if (llegada.grupo) setElegido(llegada.grupo); }, [llegada.grupo]);
 
-  const especiales = [TODOS, MOMENTO].map((key) => ({
+  // Lo que deja su plan (lib/planes.js): a todos es una promoción; a un grupo, otra cosa.
+  // El servidor lo vuelve a mirar al mandar (lib/campanas.js, fueraDelPlan).
+  const conPromos = tiene(n, "promos");
+  const conGrupos = tiene(n, "grupos");
+  if (!conPromos && !conGrupos) {
+    return (
+      <section style={panel}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", color: C.suave, fontSize: 14, lineHeight: 1.5 }}>
+          <Icono nombre="megafono" tam={18} />
+          <span>Mandar promociones y avisos a tus clientes no va en tu plan. Si quieres hacerlo, mira <strong>Ajustes → Tu plan</strong>.</span>
+        </div>
+      </section>
+    );
+  }
+
+  const especiales = (conPromos ? [TODOS, MOMENTO] : []).map((key) => ({
     key, ...DESTINOS_ESPECIALES[key],
     descripcion: key === TODOS && n.promo ? `Ahora mismo pone: «${n.promo}».` : DESTINOS_ESPECIALES[key].descripcion,
     total: datos.total, contactables: datos.contactables,
   }));
   // Un grupo vacío no se ofrece (en el móvil empujaría el mensaje hacia abajo)…
   // salvo que sea el que se ha pedido: entonces se ve, vacío, y se dice por qué.
-  const grupos = datos.grupos.filter((g) => g.total > 0 || g.key === llegada.grupo).map((g) => ({ ...g, dura: DURA_GRUPO }));
+  const grupos = conGrupos ? datos.grupos.filter((g) => g.total > 0 || g.key === llegada.grupo).map((g) => ({ ...g, dura: DURA_GRUPO })) : [];
   const destinos = [...especiales, ...grupos];
   const destino = destinos.find((g) => g.key === elegido) || destinos[0];
+  // Solo con grupos (sin promos) y ninguno con gente: nada que elegir todavía.
+  if (!destino) return <section style={{ ...panel, color: C.suave, fontSize: 14 }}>Ahora mismo ningún grupo tiene clientes a los que avisar.</section>;
   const desconocido = llegada.grupo && !infoDestino(llegada.grupo);
 
   return (

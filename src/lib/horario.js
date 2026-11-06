@@ -24,7 +24,9 @@
 // pantalla pide ponerlo.
 // ============================================================================
 
-export const DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+import { conAbierto } from "./planes";
+
+export const DIAS =["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 export const DIAS_CORTOS = ["L", "M", "X", "J", "V", "S", "D"];
 export const ZONA_POR_DEFECTO = "Europe/Madrid";
 
@@ -322,7 +324,8 @@ export function estadoAhora(horario, ms) {
  * tarjeta → la banda → "Abierto ahora"). Apagada, ningún pase la lleva y el
  * reloj no empuja nada por ella. Todo lo que pinte o firme un pase pasa por aquí.
  */
-export const estadoDeTienda = (negocio, ms) => (negocio?.tema?.abierto === false ? null : estadoParaPase(negocio?.horario, ms));
+// Apagado en Ajustes, o fuera de su plan (lib/planes.js): sin línea.
+export const estadoDeTienda = (negocio, ms) => (conAbierto(negocio) ? estadoParaPase(negocio?.horario, ms) : null);
 
 export function estadoParaPase(horario, ms) {
   if (!horario) return null;

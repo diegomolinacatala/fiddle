@@ -5,6 +5,8 @@ import Icono from "@/app/Icono";
 import { serieVisitas, resumenSerie, rejillaHoraria, horarioDeRejilla, cambio, cadenciaTexto } from "@/lib/crm";
 import { ZONA_POR_DEFECTO } from "@/lib/horario";
 import { observaciones, enlaceDeAccion, suficiencia, textoFalta } from "@/lib/observaciones";
+import { tiene } from "@/lib/planes";
+import { funcionDeDestino } from "@/lib/envios";
 import { Cifra, Tarjeta, Rejilla, contar, numero } from "./piezas";
 import { Embudo, CurvaVuelta, VisitasPorDia, Estados, Puente, Cartilla, LeyendaCartilla, Telefonos } from "./graficas";
 import { C, panel, legible, tinte } from "@/app/ui";
@@ -242,7 +244,8 @@ function LoQueDicen({ ideas, slug, accent }) {
               <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>{o.texto}</div>
               {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 3, lineHeight: 1.45 }}>{o.detalle}</div>}
             </div>
-            {o.accion && (
+            {/* Solo si su plan deja mandar ahí (lib/planes.js): sin eso, el botón llevaría a un Enviar que no lo ofrece. */}
+            {o.accion && (o.accion.tipo !== "grupo" && o.accion.tipo !== "enviar" || tiene(d.negocio, funcionDeDestino(o.accion.grupo))) && (
               <a className="accion" href={enlaceDeAccion(slug, o.accion, o.texto)} style={botonAccion}>
                 {o.accion.label}
               </a>

@@ -30,6 +30,9 @@ export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
 // «Completo» suma a «Tarjetas»: no repite su lista. Las frases dicen lo que la app
 // hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
 //
+// Lo que la app deja usar a cada plan lo decide el admin en /admin → Planes
+// (lib/planes.js) y esta página NO lo lee: si cambia allí, se cambia aquí a mano.
+//
 // Esencial es para no perder a quien le parece caro: la tarjeta y la caja, hasta
 // 750 tarjetas, sin promociones y sin montarla nosotros. Aún no se paga sola
 // (Stripe, más adelante): de momento se pide por WhatsApp como los otros.
@@ -58,6 +61,7 @@ export const PLANES = [
       "La caja en el móvil de la tienda",
       "Tu QR para el mostrador",
       "Promociones al momento, a todos tus clientes a la vez",
+      "Las estadísticas de tus clientes",
       "Te la dejamos montada",
     ],
   },
@@ -69,7 +73,6 @@ export const PLANES = [
     destacado: true,
     incluye: [
       "Todo lo de Tarjetas",
-      "Las estadísticas de tus clientes",
       "Tus clientes por grupos, y avisos a cada grupo",
       "Avisos automáticos y programados",
       "«Abierto hasta…» en la tarjeta",

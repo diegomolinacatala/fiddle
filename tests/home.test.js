@@ -46,7 +46,9 @@ describe("web de fiddle: contacto y precios", () => {
     expect(tarjetas).toMatch(/sin límite/);
     expect(tarjetas).toMatch(/Promociones al momento, a todos/);
     expect(PLANES[2].incluye[0]).toBe("Todo lo de Tarjetas");
-    for (const cosa of [/estadísticas/, /grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
+    // Las estadísticas van desde Tarjetas (06-11-2026, como los planes de lib/planes.js).
+    expect(tarjetas).toMatch(/estadísticas/);
+    for (const cosa of [/grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
       expect(completo).toMatch(cosa);
     }
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
