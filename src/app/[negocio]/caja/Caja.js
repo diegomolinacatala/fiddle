@@ -10,6 +10,7 @@ import MarcaTienda from "@/app/MarcaTienda";
 import Icono from "@/app/Icono";
 import Recorrido, { BotonAyuda } from "@/app/Recorrido";
 import { useInstalar } from "@/app/instalable";
+import { useEnVivo } from "@/app/useEnVivo";
 import { normalizarCodigo } from "@/lib/codigo";
 import { horaDeHoyTexto, zonaDe } from "@/lib/actividad";
 import { C, pagina, panel, campo, titulo, subtitulo, botonPrimario, botonSecundario, chipCodigo, aviso, legible } from "@/app/ui";
@@ -29,6 +30,7 @@ export default function Caja({ inicial, conPlantilla, recorridoVisto }) {
   const router = useRouter();
   const n = inicial;
   const [hoyEnCaja, setHoyEnCaja] = useState(null); // { total, lista }: quién ha pasado hoy (atendidosHoy)
+  const [recargaHoy, setRecargaHoy] = useState(0); // sube cuando la huella dice que hay algo nuevo
   const [, setReloj] = useState(0); // para que «hace 3 min» no se quede quieto
   const [valor, setValor] = useState("");
   const [manual, setManual] = useState(false);
@@ -74,7 +76,17 @@ export default function Caja({ inicial, conPlantilla, recorridoVisto }) {
       clearInterval(t);
       document.removeEventListener("visibilitychange", alVolver);
     };
-  }, [negocio]);
+  }, [negocio, recargaHoy]);
+
+  // Y cuando la tienda cambia (otro móvil sella, alguien saca la tarjeta): la huella
+  // (app/useEnVivo.js) lo dice sin leer a nadie. La primera solo se apunta: la lista
+  // acaba de cargarse.
+  const [huella, setHuella] = useState(null);
+  useEnVivo({
+    url: negocio ? `/api/crm/huella?b=${negocio}` : null,
+    huella,
+    alCambiar: (nueva) => { setHuella(nueva); if (huella) setRecargaHoy((x) => x + 1); },
+  });
 
   function cargarQuien(forzar = false) {
     fetch(`/api/plantilla/quien?b=${negocio}`).then((r) => (r.ok ? r.json() : null))

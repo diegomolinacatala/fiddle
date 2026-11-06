@@ -66,6 +66,7 @@ const DEL_PERSONAL = [
   ["crm/cliente/[serial]/datos", "GET", () => `/api/crm/cliente/${S()}/datos`, null, true],
   ["crm/exportar", "POST", () => "/api/crm/exportar", () => ({ b: "nube", cuantos: 1 })],
   ["crm", "GET", () => "/api/crm?b=nube"],
+  ["crm/huella", "GET", () => "/api/crm/huella?b=nube"],
   ["envios", "POST", () => "/api/envios", () => ({ b: "nube", destino: "fantasmas", texto: "hola", cuando: new Date().toISOString() })],
   ["envios", "DELETE", () => "/api/envios", () => ({ b: "nube", id: "x" })],
   ["logo", "POST", () => "/api/logo?b=nube"],

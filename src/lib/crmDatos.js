@@ -1,4 +1,4 @@
-import { listClientes, listEventosDeNegocio, listCampanas, registrosDeTienda, getNegocio } from "./store";
+import { listClientes, listEventosDeNegocio, listCampanas, registrosDeTienda, getNegocio, huellaDeTienda } from "./store";
 import { perfilesDe, metricas, conteoGrupos, curvaDeVuelta, puenteActivos, repartoCartillas, efectoCampana, telefonosDe, LISTA_GRUPOS, LISTA_ESTADOS } from "./crm";
 import { plantillaPublica } from "./plantilla";
 import { conAvisosAvanzados, tiene } from "./planes";
@@ -21,7 +21,9 @@ const telefonoDe = (passType) => (passType === TIPO_WEB || passType === TIPO_GOO
 const VENTANA = { dias: 120, limite: 5000 };
 
 export async function datosCrm(slug) {
-  const negocio = await getNegocio(slug);
+  // La huella ANTES de leer: si algo cambia mientras se lee, la siguiente
+  // pregunta la verá distinta y se recarga (al revés se perdería el cambio).
+  const [negocio, huella] = await Promise.all([getNegocio(slug), huellaDeTienda(slug)]);
   if (!negocio) return null;
 
   const [clientes, eventos, campanas, registros] = await Promise.all([
@@ -50,6 +52,8 @@ export async function datosCrm(slug) {
   const historialDesde = Date.parse(historialCompletoDesde);
 
   return {
+    // Con qué estado de la tienda se calculó esto: la pantalla pregunta por él (app/useEnVivo.js).
+    huella,
     negocio: {
       slug: negocio.slug, nombre: negocio.nombre, tipo: negocio.tipo, meta: negocio.meta,
       premio: negocio.premio, cartillas: negocio.cartillas ?? null, tema: negocio.tema,

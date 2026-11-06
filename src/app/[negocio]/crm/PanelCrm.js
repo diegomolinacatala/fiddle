@@ -1,7 +1,7 @@
 "use client";
 
 import Icono from "@/app/Icono";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cadenciaTexto, GRUPOS, ideaDeGrupo } from "@/lib/crm";
 import { ultimaVezTexto, fechaHoraTexto, zonaDe } from "@/lib/actividad";
 import { enlaceDeAccion } from "@/lib/observaciones";
@@ -15,7 +15,11 @@ import Solapas from "../Solapas";
 import { pestanasDe } from "./pestanas";
 import { tiene } from "@/lib/planes";
 import { saldoCorto } from "@/lib/cartillas";
-import { C, panel, campo, h2, botonPequeno, chipCodigo, legible } from "@/app/ui";
+import { C, panel, campo, h2, botonPequeno, chipCodigo, legible, tinte } from "@/app/ui";
+import { useGestion } from "../MarcoGestion";
+import { useEnVivo } from "@/app/useEnVivo";
+import { Visto } from "@/app/useVisto";
+import Rueda from "@/app/Rueda";
 
 const POR_PAGINA = 50; // con cientos de clientes la tabla se pinta a tramos
 // Filtro de la lista que no es un grupo del CRM: las tarjetas que nadie guardó
@@ -50,17 +54,27 @@ const ORDENES = {
 };
 
 // Llega con los datos ya cargados en el servidor (page.js): nada de pantalla
-// vacía esperando a otra petición. `cargar()` solo recarga tras un cambio.
-export default function PanelCrm({ slug, inicial }) {
+// vacía esperando a otra petición. `cargar()` recarga tras un cambio y cuando
+// la huella de la tienda dice que hay algo nuevo (useEnVivo): con la pantalla
+// abierta, los clientes nuevos entran solos y las cifras ruedan.
+//
+// `deMemoria`: lo pinta loading.js con lo último que se vio en esta visita
+// (MarcoGestion, `memoria`) mientras llega lo del servidor. Ese no pregunta
+// nada ni guarda nada: en un segundo lo sustituye el de verdad, que arranca en
+// la misma pestaña, el mismo filtro y la misma búsqueda.
+export default function PanelCrm({ slug, inicial, deMemoria = false }) {
+  const g = useGestion();
+  const clave = `crm:${slug}`;
+  const recuerdo = g?.memoria?.get(clave);
   const [d, setD] = useState(inicial);
   // Las que deja su plan (lib/planes.js); se abre en la primera.
   const pestanas = pestanasDe(inicial.negocio.funciones);
-  const [pestana, setPestana] = useState(pestanas[0][0]);
+  const [pestana, setPestana] = useState(() => (pestanas.some(([k]) => k === recuerdo?.pestana) ? recuerdo.pestana : pestanas[0][0]));
   const conGrupos = tiene(inicial.negocio, "grupos");
-  const [grupo, setGrupo] = useState("");
+  const [grupo, setGrupo] = useState(recuerdo?.grupo ?? "");
   const [verFicha, setVerFicha] = useState(null);
-  const [busca, setBusca] = useState("");
-  const [orden, setOrden] = useState("reciente");
+  const [busca, setBusca] = useState(recuerdo?.busca ?? "");
+  const [orden, setOrden] = useState(recuerdo?.orden ?? "reciente");
   const [mostrar, setMostrar] = useState(POR_PAGINA);
   const [msg, setMsg] = useState(null);
 
@@ -77,6 +91,33 @@ export default function PanelCrm({ slug, inicial }) {
   }
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3500); }
+
+  useEnVivo({ url: `/api/crm/huella?b=${slug}`, huella: d.huella, alCambiar: cargar, activo: !deMemoria });
+
+  // Para volver a esta pestaña sin esqueleto (ver arriba).
+  useEffect(() => {
+    if (!deMemoria) g?.memoria?.set(clave, { d, pestana, grupo, busca, orden });
+  }, [d, pestana, grupo, busca, orden, deMemoria, clave, g?.memoria]);
+
+  // Los clientes que no estaban la última vez que se miró en esta visita (al volver
+  // a la pestaña) o que llegan con ella abierta: entran en la lista iluminados.
+  const conocidos = useRef(null);
+  const [nuevos, setNuevos] = useState(() => new Set());
+  useEffect(() => {
+    if (deMemoria) return;
+    const ahora = d.clientes.map((c) => c.serial);
+    if (!conocidos.current) {
+      conocidos.current = new Set((recuerdo?.d ?? inicial).clientes.map((c) => c.serial));
+    }
+    const llegan = ahora.filter((s) => !conocidos.current.has(s));
+    ahora.forEach((s) => conocidos.current.add(s));
+    if (!llegan.length) return undefined;
+    setNuevos((antes) => new Set([...antes, ...llegan]));
+    // Pasado el brillo dejan de ser nuevos: al filtrar o pasar de página no vuelven a entrar.
+    setTimeout(() => setNuevos((antes) => new Set([...antes].filter((s) => !llegan.includes(s)))), 3000);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d]);
 
   const [grupoVisto, setGrupoVisto] = useState(null);
 
@@ -122,22 +163,26 @@ export default function PanelCrm({ slug, inicial }) {
               Cada cliente puede estar en varios grupos a la vez: quien está a un punto del premio también puede llevar
               semanas sin venir. Toca uno para ver quién hay y escribirles.
             </p>
+            <Visto id={`${slug}:grupos`} valor={grupos.map(({ key, total, contactables }) => ({ key, total, contactables }))}>
+              {(cuentas) => (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 12 }}>
-              {grupos.map((g) => (
+              {grupos.map((g, i) => (
                 <button key={g.key} type="button" disabled={!g.total} onClick={() => setGrupoVisto(g.key === grupoVisto ? null : g.key)}
                   style={tarjetaGrupo(g.key === grupoVisto, accent, g.total)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ color: legible(accent), display: "inline-flex" }}><Icono nombre={g.icon} tam={18} /></span>
                     <strong style={{ fontSize: 14, fontWeight: 650 }}>{g.label}</strong>
-                    <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}>{g.total}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}><Rueda texto={cuentas[i]?.total ?? g.total} valor={cuentas[i]?.total ?? g.total} /></span>
                   </div>
                   <p style={{ fontSize: 12.5, color: C.suave, margin: "6px 0 0", textAlign: "left" }}>{g.descripcion}</p>
                   <div style={{ fontSize: 11.5, color: C.tenue, marginTop: 6, textAlign: "left" }}>
-                    {g.contactables} avisable{g.contactables === 1 ? "" : "s"}
+                    {cuentas[i]?.contactables ?? g.contactables} avisable{g.contactables === 1 ? "" : "s"}
                   </div>
                 </button>
               ))}
             </div>
+              )}
+            </Visto>
             {grupoVisto && <DetalleGrupo g={grupos.find((x) => x.key === grupoVisto)} d={d} n={n} slug={slug} accent={accent}
               onVerFicha={setVerFicha} onVerLista={(k) => { setGrupo(k); setPestana("clientes"); }} />}
           </div>
@@ -180,7 +225,8 @@ export default function PanelCrm({ slug, inicial }) {
                 </thead>
                 <tbody>
                   {lista.slice(0, mostrar).map((c) => (
-                    <tr key={c.serial} onClick={() => setVerFicha(c.serial)} style={{ cursor: "pointer", opacity: c.perfil.descartada ? 0.6 : 1 }}>
+                    <tr key={c.serial} onClick={() => setVerFicha(c.serial)} className={nuevos.has(c.serial) ? "fila-nueva" : undefined}
+                      style={{ cursor: "pointer", opacity: c.perfil.descartada ? 0.6 : 1, "--fila-nueva": tinte(accent, 22) }}>
                       <td style={td}><span style={chipCodigo(accent)}>{c.codigo}</span></td>
                       <td style={td}>
                         {c.nombre || <span style={{ color: C.tenue }}>sin nombre</span>}

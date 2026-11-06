@@ -214,6 +214,18 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
   pestañas no se vuelven a pintar al cambiar de pestaña, y `loading.js` solo pone en gris lo
   de debajo. Las pestañas de dentro (`Solapas`) salen ya con su texto en el loading. Lo que
   cambie en Tienda (nombre, tema) sube con `useGestion().actualizar`.
+- **Clientes vuelve sin esqueleto y se pone al día solo** (06-11-2026, lo pidió Víctor). El
+  layout guarda lo último que pintó en esta visita (`memoria` de `MarcoGestion`, solo en
+  memoria: lleva nombres) y su `loading.js` lo pinta mientras el servidor calcula. Con la
+  pantalla abierta, `useEnVivo` pregunta cada 30 s por `/api/crm/huella` (`huellaDeTienda`:
+  tres consultas de una fila) y solo si cambió pide el CRM entero; los clientes nuevos entran
+  iluminados. «Hoy en la caja» pregunta igual. Nada de `staleTimes` global: la ficha `/w/…`
+  cacheada enseñaría puntos viejos.
+- **Las cifras ruedan desde lo último que vio ESE dispositivo** (`useVisto`, `Visto`,
+  `NumeroVisto`, `Rueda`; la cuenta pura en `lib/animar.js`): en localStorage, por tienda,
+  solo cuentas (nunca un nombre); la primera vez, desde cero; lo de abajo, al bajar hasta
+  ello. Una fecha o una ventana que no deba moverse va en `FIJOS`. Una cifra nueva del
+  Resumen va dentro de un `Visto`.
 - **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
   la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
   siendo PURA y sin imports del servidor.

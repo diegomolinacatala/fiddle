@@ -15,6 +15,7 @@ import Planes from "@/app/admin/Planes";
 import { PLANES_DE_PARTIDA, PLAN_POR_DEFECTO } from "@/lib/planes";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
+import { NumeroVisto } from "@/app/useVisto";
 
 // ============================================================================
 // ADMIN DE LA PLATAFORMA — lista de tiendas
@@ -153,7 +154,7 @@ export default function Admin() {
                 </div>
                 <div style={{ fontSize: 12, color: C.tenue, marginTop: 2 }}>
                   Plan {PLANES_DE_PARTIDA[n.planId || PLAN_POR_DEFECTO].nombre}{n.plan ? "" : " (sin elegir)"}
-                  {" · "}{n.clientes} cliente{n.clientes === 1 ? "" : "s"}{n.cupo ? ` de ${n.cupo.max}` : ""}
+                  {" · "}<NumeroVisto id={`admin:${n.slug}:clientes`} valor={n.clientes} /> cliente{n.clientes === 1 ? "" : "s"}{n.cupo ? ` de ${n.cupo.max}` : ""}
                   {n.brief ? " · con brief" : " · sin brief"}
                   {Object.keys(n.notas || {}).length ? ` · ${Object.keys(n.notas).length} comentario(s)` : ""}
                 </div>

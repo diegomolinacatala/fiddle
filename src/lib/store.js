@@ -772,6 +772,41 @@ export async function contarTarjetas(negocio) {
 }
 
 /**
+ * Una firma corta de cómo está una tienda AHORA, para que una pantalla abierta
+ * sepa si hay algo nuevo sin volver a leerlo todo (el panel del CRM pregunta cada
+ * medio minuto, app/useEnVivo.js). Cambia con una tarjeta nueva o borrada (cuántas
+ * hay), con cualquier cambio en una (`actualizado`: sellos, nombre, mensaje) y con
+ * cualquier movimiento (el último evento: visitas, instalar, quitar). Tres
+ * consultas de una fila, con índice: leer el CRM entero son miles.
+ * @param {string} negocio
+ * @returns {Promise<string>}
+ */
+export async function huellaDeTienda(negocio) {
+  if (hasSupabase()) {
+    const db = supa();
+    const [cuantas, cliente, evento] = await Promise.all([
+      db.from("clientes").select("serial", { count: "exact", head: true })
+        .eq("negocio", negocio).is("fusionado_en", null).is("borrado_en", null),
+      db.from("clientes").select("actualizado").eq("negocio", negocio)
+        .order("actualizado", { ascending: false }).limit(1).maybeSingle(),
+      db.from("eventos").select("ts").eq("negocio", negocio)
+        .order("ts", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    const n = sinError(cuantas, "huella: contar") ?? 0;
+    const a = sinError(cliente, "huella: último cambio")?.actualizado ?? "";
+    const t = sinError(evento, "huella: último evento")?.ts ?? "";
+    return `${n}|${a}|${t}`;
+  }
+  const [clientes, eventos] = await enFila(() => Promise.all([leer("clientes", {}), leer("eventos", [])]));
+  const mios = Object.values(clientes).filter((c) => c.negocio === negocio);
+  const seriales = new Set(mios.map((c) => c.serial));
+  const n = mios.filter((c) => !c.fusionado_en && !c.borrado_en).length;
+  const a = mios.reduce((max, c) => ((c.actualizado || c.creado || "") > max ? c.actualizado || c.creado : max), "");
+  const t = eventos.reduce((max, e) => ((e.negocio === negocio || seriales.has(e.serial)) && e.ts > max ? e.ts : max), "");
+  return `${n}|${a}|${t}`;
+}
+
+/**
  * Solo las tarjetas vigentes de esos seriales, de esa tienda: para cuando ya se
  * sabe a quién se busca (los que han pasado hoy por la caja) y leer la tienda
  * entera sería descifrar cientos de nombres para quedarse con quince. Pocos
