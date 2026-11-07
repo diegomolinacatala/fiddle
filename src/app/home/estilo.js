@@ -169,13 +169,12 @@ body:has(.home){background:${P.papel}}
   mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 .cinta-pista{display:flex;width:max-content}
 .cinta-tanda{display:flex;gap:var(--hueco);padding-right:var(--hueco)}
-/* Del ancho y la letra de la del móvil (.movil): la misma tarjeta, más pequeña. */
-.cinta-tarjeta{flex-shrink:0;width:276px;zoom:.66;font-family:var(--apple)}
+.cinta-tarjeta{flex-shrink:0;width:300px;zoom:.62}
 .cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important}
 .portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
 .cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
 .bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
-@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.56}}
+@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.52}}
 
 /* un aviso de la pantalla de bloqueo */
 .aviso{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;align-items:center;padding:11px 14px 12px 11px;

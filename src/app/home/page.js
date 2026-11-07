@@ -108,7 +108,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <Cinta disenos={CINTAS[0]} qr={qr} />
+        <Cinta disenos={CINTAS[0]} />
 
         <section id="como-funciona" className="bloque">
           <Encabezado titulo="Cero fricción">
@@ -224,7 +224,7 @@ export default async function Home() {
           </p>
         </section>
 
-        <Cinta disenos={CINTAS[1]} qr={qr} />
+        <Cinta disenos={CINTAS[1]} />
 
         <section id="preguntas" className="bloque bloque-estrecho">
           <Encabezado titulo="Preguntas" />
