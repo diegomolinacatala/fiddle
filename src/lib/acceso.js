@@ -17,6 +17,7 @@ import { RESERVADOS } from "./negocios";
 // Públicas a propósito:
 //   /  /login  /api/login  /api/logout     entrada
 //   /home                                  la web de fiddle (precios y contacto)
+//   /home/tarjeta                          «Diseña tu tarjeta», el probador de la web
 //   /api/tap                               el cliente emite su pase (sin login)
 //   /p/<serial>  /api/pase/<serial>        el cliente ve / descarga SU pase
 //   /p/<serial>/listo                      lo abre en iPhone y dice «Todo listo»
@@ -39,6 +40,7 @@ import { RESERVADOS } from "./negocios";
 const PUBLICAS = [
   /^\/$/,
   /^\/home$/,
+  /^\/home\/tarjeta$/, // «Diseña tu tarjeta», el probador de la web
   /^\/login$/,
   /^\/privacidad$/,
   /^\/invitacion$/,

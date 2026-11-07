@@ -26,8 +26,8 @@ export const enlaceCorreo = (asunto = ASUNTO, cuerpo = CUERPO) =>
 export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
   `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CORREO)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
-// Lo que lleva cada plan (Tarjetas y Completo, 13-10-2026; Esencial, 06-11-2026).
-// «Completo» suma a «Tarjetas»: no repite su lista. Las frases dicen lo que la app
+// Lo que lleva cada plan (Plus y Pro, 13-10-2026, que se llamaban Tarjetas y Completo
+// hasta el 07-11-2026; Esencial, 06-11-2026). «Pro» suma a «Plus»: no repite su lista. Las frases dicen lo que la app
 // hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
 //
 // Lo que la app deja usar a cada plan lo decide el admin en /admin → Planes
@@ -51,8 +51,8 @@ export const PLANES = [
     ],
   },
   {
-    id: "tarjetas",
-    nombre: "Tarjetas",
+    id: "plus",
+    nombre: "Plus",
     precio: 39,
     lema: "Sin límite y con promociones.",
     incluye: [
@@ -66,13 +66,13 @@ export const PLANES = [
     ],
   },
   {
-    id: "completo",
-    nombre: "Completo",
+    id: "pro",
+    nombre: "Pro",
     precio: 49,
     lema: "Para que vuelvan más.",
     destacado: true,
     incluye: [
-      "Todo lo de Tarjetas",
+      "Todo lo de Plus",
       "Tus clientes por grupos, y avisos a cada grupo",
       "Avisos automáticos y programados",
       "«Abierto hasta…» en la tarjeta",

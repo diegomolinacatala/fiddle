@@ -16,6 +16,7 @@ import AbiertoAhora from "@/app/AbiertoAhora";
 //
 // `claseBanda`: la tarjeta web la cambia para animar la banda con cada sello.
 // `children`: lo que va dentro de la tarjeta, debajo de los campos.
+// `data-parte` (cabecera, banda, campos): lo que encuadra la cámara de /home/tarjeta.
 // `horario`: si viene, "Abierto hasta las 18:30" bajo el nombre (AbiertoAhora).
 // Solo lo pasa la tarjeta web: el pase de Wallet no puede llevarlo, y en el alta
 // el cliente está en la tienda.
@@ -33,7 +34,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
 
   return (
     <article style={{ ...tarjeta, background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
-      <header style={cabecera}>
+      <header style={cabecera} data-parte="cabecera">
         <LogoApple tema={t} tam={30} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong style={nombreTienda}>{negocio.nombre}</strong>
@@ -47,7 +48,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
         ))}
       </header>
 
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative" }} data-parte="banda">
         {/* key: cada sello nuevo vuelve a montar la banda y la animación se ve */}
         <img
           key={`${cliente.sellos}-${cliente.sellos2}-${cliente.premios}`}
@@ -65,7 +66,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
       </div>
 
       {campos.length > 0 && (
-        <div style={{ display: "flex", gap: 16, padding: children ? "14px 18px 0" : "14px 18px 18px" }}>
+        <div style={{ display: "flex", gap: 16, padding: children ? "14px 18px 0" : "14px 18px 18px" }} data-parte="campos">
           {campos.map((f) => (
             <div key={f.key} style={{ flex: 1, minWidth: 0 }}>
               <div style={etiqueta(colorDelPase(t))}>{f.label}</div>

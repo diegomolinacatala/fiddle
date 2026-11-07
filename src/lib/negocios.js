@@ -465,7 +465,7 @@ export function componerNegocio(slug, guardado) {
     // reglas se quedan guardadas y vuelven tal cual al encenderlos.
     avisosAvanzados: c.avisosAvanzados === true,
     // Su plan (lib/planes.js), tal como lo eligió el admin; null = el de por defecto
-    // (Completo). Lo que le deja (`funciones`, `cupo`) lo añade el store al leerla.
+    // (Pro). Lo que le deja (`funciones`, `cupo`) lo añade el store al leerla.
     plan: IDS_PLAN.includes(c.plan) ? c.plan : null,
     // Lo que «Enviar a las…» deja esperando a que lo mande el reloj (lib/envios.js).
     enviosProgramados: normalizarPendientes(c.enviosProgramados),

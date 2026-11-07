@@ -28,19 +28,19 @@ const enPlan = (plan, extra = {}) => conPlan({ ...base, ...extra, plan }, planes
 const cliente = { serial: "s1", sellos: 2, premios: 0, codigo: "K7M", auth_token: "x".repeat(24) };
 
 describe("los planes de partida", () => {
-  it("Esencial sin nada y con 750 tarjetas; Tarjetas con estadísticas y promos; Completo con todo", () => {
+  it("Esencial sin nada y con 750 tarjetas; Plus con estadísticas y promos; Pro con todo", () => {
     expect(planes.esencial.maxTarjetas).toBe(750);
     expect(Object.values(planes.esencial.funciones).every((v) => v === false)).toBe(true);
-    expect(Object.entries(planes.tarjetas.funciones).filter(([, v]) => v).map(([k]) => k).sort()).toEqual(["estadisticas", "promos"]);
-    expect(planes.tarjetas.maxTarjetas).toBeNull();
-    expect(Object.values(planes.completo.funciones).every((v) => v === true)).toBe(true);
-    expect(planes.completo.maxTarjetas).toBeNull();
+    expect(Object.entries(planes.plus.funciones).filter(([, v]) => v).map(([k]) => k).sort()).toEqual(["estadisticas", "promos"]);
+    expect(planes.plus.maxTarjetas).toBeNull();
+    expect(Object.values(planes.pro.funciones).every((v) => v === true)).toBe(true);
+    expect(planes.pro.maxTarjetas).toBeNull();
   });
 
-  it("sin plan es Completo: una tienda de antes no pierde nada", () => {
-    expect(PLAN_POR_DEFECTO).toBe("completo");
+  it("sin plan es Pro: una tienda de antes no pierde nada", () => {
+    expect(PLAN_POR_DEFECTO).toBe("pro");
     const sinPlan = conPlan({ ...base, plan: null }, planes);
-    expect(sinPlan.planId).toBe("completo");
+    expect(sinPlan.planId).toBe("pro");
     expect(sinPlan.cupo).toBeNull();
     for (const f of FUNCIONES) expect(tiene(sinPlan, f.id)).toBe(true);
     // Sin `funciones` (no pasó por el store), tampoco se quita nada.
@@ -50,17 +50,17 @@ describe("los planes de partida", () => {
   it("lo guardado manda sobre lo de partida, y lo que no se entiende se queda como estaba", () => {
     const p = normalizarPlanes({
       esencial: { maxTarjetas: 300, margen: 20, funciones: { promos: true } },
-      tarjetas: { maxTarjetas: 0, margen: -5, funciones: { estadisticas: "sí" } },
-      completo: { maxTarjetas: null },
+      plus: { maxTarjetas: 0, margen: -5, funciones: { estadisticas: "sí" } },
+      pro: { maxTarjetas: null },
     });
     expect(p.esencial).toMatchObject({ maxTarjetas: 300, margen: 20 });
     expect(p.esencial.funciones.promos).toBe(true);
     expect(p.esencial.funciones.estadisticas).toBe(false);
     // Un 0 no deja a nadie sin tarjetas; un margen negativo, tampoco.
-    expect(p.tarjetas.maxTarjetas).toBe(PLANES_DE_PARTIDA.tarjetas.maxTarjetas);
-    expect(p.tarjetas.margen).toBe(0);
-    expect(p.tarjetas.funciones.estadisticas).toBe(true);
-    expect(p.completo.maxTarjetas).toBeNull();
+    expect(p.plus.maxTarjetas).toBe(PLANES_DE_PARTIDA.plus.maxTarjetas);
+    expect(p.plus.margen).toBe(0);
+    expect(p.plus.funciones.estadisticas).toBe(true);
+    expect(p.pro.maxTarjetas).toBeNull();
   });
 });
 
@@ -77,9 +77,9 @@ describe("validarPlanes (lo que manda el admin)", () => {
     expect(validarPlanes({ ...entero(), esencial: { ...planes.esencial, maxTarjetas: 0 } }).error).toMatch(/límite/);
     expect(validarPlanes({ ...entero(), esencial: { ...planes.esencial, maxTarjetas: 12.5 } }).error).toMatch(/límite/);
     expect(validarPlanes({ ...entero(), esencial: { ...planes.esencial, margen: -1 } }).error).toMatch(/margen/);
-    const sinPromos = { ...planes.tarjetas.funciones };
+    const sinPromos = { ...planes.plus.funciones };
     delete sinPromos.promos;
-    expect(validarPlanes({ ...entero(), tarjetas: { ...planes.tarjetas, funciones: sinPromos } }).error).toMatch(/Promociones/);
+    expect(validarPlanes({ ...entero(), plus: { ...planes.plus, funciones: sinPromos } }).error).toMatch(/Promociones/);
     expect(validarPlanes({ esencial: planes.esencial }).error).toMatch(/Falta el plan/);
   });
 });
@@ -94,8 +94,8 @@ describe("el límite de tarjetas", () => {
     expect(cupoDe(n, 800).estado).toBe("cerrado");
     expect(quedaCupo(n, 800)).toBe(false);
     // Sin límite, siempre.
-    expect(cupoDe(enPlan("completo"), 1e6)).toBeNull();
-    expect(quedaCupo(enPlan("completo"), 1e6)).toBe(true);
+    expect(cupoDe(enPlan("pro"), 1e6)).toBeNull();
+    expect(quedaCupo(enPlan("pro"), 1e6)).toBe(true);
   });
 });
 
@@ -118,8 +118,8 @@ describe("lo que esconde cada plan", () => {
     expect(n.plantillaActiva).toBe(true);
   });
 
-  it("Completo: todo como siempre", () => {
-    const n = enPlan("completo", conTodo);
+  it("Pro: todo como siempre", () => {
+    const n = enPlan("pro", conTodo);
     expect(camposDelPase(cliente, n).auxiliaryFields[0]).toMatchObject({ key: "promo", value: "2x1 hoy" });
     expect(ubicacionesApple(n)).toHaveLength(1);
     expect(conAvisosAvanzados(n)).toBe(true);
@@ -132,17 +132,17 @@ describe("lo que esconde cada plan", () => {
 
   it("enviar: a todos es una promoción y lo demás un grupo", () => {
     expect(fueraDelPlan(enPlan("esencial"), "todos")?.status).toBe(403);
-    expect(fueraDelPlan(enPlan("tarjetas"), "todos")).toBeNull();
-    expect(fueraDelPlan(enPlan("tarjetas"), "momento")).toBeNull();
-    expect(fueraDelPlan(enPlan("tarjetas"), "en_riesgo")?.status).toBe(403);
-    expect(fueraDelPlan(enPlan("completo"), "en_riesgo")).toBeNull();
+    expect(fueraDelPlan(enPlan("plus"), "todos")).toBeNull();
+    expect(fueraDelPlan(enPlan("plus"), "momento")).toBeNull();
+    expect(fueraDelPlan(enPlan("plus"), "en_riesgo")?.status).toBe(403);
+    expect(fueraDelPlan(enPlan("pro"), "en_riesgo")).toBeNull();
   });
 
   it("Clientes: Resumen con estadísticas y Grupos con los grupos; la lista y la Actividad, siempre", () => {
     const claves = (plan) => pestanasDe(enPlan(plan).funciones).map(([k]) => k);
     expect(claves("esencial")).toEqual(["clientes", "actividad"]);
-    expect(claves("tarjetas")).toEqual(["resumen", "clientes", "actividad"]);
-    expect(claves("completo")).toEqual(["resumen", "grupos", "clientes", "actividad"]);
+    expect(claves("plus")).toEqual(["resumen", "clientes", "actividad"]);
+    expect(claves("pro")).toEqual(["resumen", "grupos", "clientes", "actividad"]);
   });
 });
 
@@ -181,7 +181,7 @@ describe("dar tarjetas con el límite (backend de ficheros)", () => {
     for (let i = 0; i < 3; i++) await emitirPase("nube", { origen: "tap" });
     expect(await store.contarTarjetas("nube")).toBe(3);
     await expect(emitirPase("nube", { origen: "tap" })).rejects.toBeInstanceOf(TiendaLlena);
-    // Otra tienda sin plan elegido (Completo) sigue dando las que quiera.
+    // Otra tienda sin plan elegido (Pro) sigue dando las que quiera.
     await expect(emitirPase("forno", { origen: "tap" })).resolves.toBeTruthy();
   });
 });

@@ -101,6 +101,9 @@ body:has(.home){background:${P.papel}}
 .titular{font-size:clamp(44px,1.3rem + 5.8vw,86px);line-height:.98;font-weight:680;letter-spacing:-.05em;text-wrap:balance}
 .acciones{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:10px}
 .portada-visual{display:grid;justify-items:center}
+.probar{background:var(--superficie);box-shadow:0 10px 26px -16px ${alfa(P.espresso, 0.45)}}
+.probar .flecha{margin-left:2px;transition:transform .3s var(--curva)}
+@media (hover:hover){.probar:hover .flecha{transform:translateX(3px)}}
 @media (min-width:960px){
   .portada{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);padding-top:64px}
   .portada-texto{justify-items:start;text-align:left}
@@ -166,12 +169,13 @@ body:has(.home){background:${P.papel}}
   mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 .cinta-pista{display:flex;width:max-content}
 .cinta-tanda{display:flex;gap:var(--hueco);padding-right:var(--hueco)}
-.cinta-tarjeta{flex-shrink:0;width:300px;zoom:.62}
+/* Del ancho y la letra de la del móvil (.movil): la misma tarjeta, más pequeña. */
+.cinta-tarjeta{flex-shrink:0;width:276px;zoom:.66;font-family:var(--apple)}
 .cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important}
 .portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
 .cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
 .bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
-@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.52}}
+@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.56}}
 
 /* un aviso de la pantalla de bloqueo */
 .aviso{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;align-items:center;padding:11px 14px 12px 11px;

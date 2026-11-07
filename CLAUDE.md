@@ -335,13 +335,13 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 
 Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el PR a `main`).
 
-- **Tres planes (Esencial, Tarjetas, Completo) y lo que lleva cada uno NO está en el código**:
+- **Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026 Tarjetas y Completo) y lo que lleva cada uno NO está en el código**:
   lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave `planes`) y el código solo
-  tiene lo de partida: Esencial sin nada y hasta 750 tarjetas (+50 de margen), Tarjetas con
-  estadísticas y promociones, Completo con todo. Antes de llevarlo a `main`, crear la tabla
+  tiene lo de partida: Esencial sin nada y hasta 750 tarjetas (+50 de margen), Plus con
+  estadísticas y promociones, Pro con todo. Antes de llevarlo a `main`, crear la tabla
   `plataforma` en Supabase (`schema.sql`); sin ella, valen los de partida y lo dice el log.
-- **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Completo.** Una tienda de antes no
-  pierde nada por un despliegue. La Delicantería va en Completo a propósito.
+- **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro.** Una tienda de antes no
+  pierde nada por un despliegue. La Delicantería va en Pro a propósito.
 - **El plan dice qué PUEDE usarse, no qué está encendido, y nunca borra.** Los avisos automáticos
   y la plantilla siguen con su interruptor del admin; el «Abierto hasta…» con el suyo en Ajustes.
   Lo que el plan no deja no sale ni se manda, y vuelve tal cual con otro plan. Por eso el store
@@ -349,7 +349,7 @@ Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el P
   `saveNegocio` mezcla con la tienda leída y escribiría lo escondido.
 - **Lo que depende del plan pregunta con `tiene(negocio, "promos")`** (o `conAvisosAvanzados`,
   `conAbierto`, `promoDe`, `conPlantilla`), nunca por el nombre del plan. Sin `funciones` (una
-  tienda que no pasó por el store, un test) es Completo. Una función nueva = una entrada en
+  tienda que no pasó por el store, un test) es Pro. Una función nueva = una entrada en
   `FUNCIONES` (sale sola en el admin) y su `tiene` donde se usa, en el servidor y en la pantalla.
 - **Lo escondido, igual en todas partes**: la promo en el pase de Apple, el objeto de Google y la
   tarjeta web (`negocioDeTarjeta` lleva `funciones`); el «Abierto hasta…» con `estadoDeTienda`; el
@@ -785,9 +785,9 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
   (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 750 tarjetas, sin
   promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
-  pagará sola con Stripe); Tarjetas, 39 € (tarjetas sin límite, promociones al momento a todos,
+  pagará sola con Stripe); Plus, 39 € (tarjetas sin límite, promociones al momento a todos,
   estadísticas y se la dejamos montada);
-  Completo, 49 € (además grupos, automáticos y programados, «Abierto
+  Pro, 49 € (además grupos, automáticos y programados, «Abierto
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
   esta página no lo lee, así que si cambia allí se cambia aquí a mano.

@@ -61,7 +61,7 @@ export default function Planes({ accent, flash }) {
     <div id="planes" style={{ display: "grid", gap: 14 }}>
       <p style={{ fontSize: 13.5, color: C.suave, margin: 0, lineHeight: 1.5 }}>
         Lo que lleva cada plan, para todas las tiendas. El plan de cada una se elige en su ficha; una tienda sin plan
-        elegido cuenta como Completo. Apagar algo aquí no borra nada en ninguna tienda: vuelve al encenderlo.
+        elegido cuenta como Pro. Apagar algo aquí no borra nada en ninguna tienda: vuelve al encenderlo.
         Lo que dice la web de precios no cambia solo: si cambias un plan, cámbialo también allí.
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 14, alignItems: "start" }}>

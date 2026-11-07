@@ -43,7 +43,7 @@ export default function PlanTienda({ n, accent, flash, onCambio }) {
       <h2 style={h2}>Plan</h2>
       <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="plan-tienda">Su plan</label>
       <select id="plan-tienda" value={actual || ""} onChange={(e) => elegir(e.target.value)} disabled={guardando} aria-busy={guardando || undefined} style={campo}>
-        {/* Sin plan guardado cuenta como Completo: que se vea, y que se pueda fijar. */}
+        {/* Sin plan guardado cuenta como Pro: que se vea, y que se pueda fijar. */}
         {!actual && <option value="">Sin elegir (cuenta como {PLANES_DE_PARTIDA[PLAN_POR_DEFECTO].nombre})</option>}
         {IDS_PLAN.map((id) => <option key={id} value={id}>{PLANES_DE_PARTIDA[id].nombre}</option>)}
       </select>

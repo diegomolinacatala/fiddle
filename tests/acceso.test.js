@@ -12,7 +12,7 @@ const regla = (ruta, method = "GET") => {
 
 describe("reglaDeRuta", () => {
   it("rutas públicas", () => {
-    for (const r of ["/", "/home", "/login", "/api/login", "/api/logout", "/api/tap?b=nube", "/p/abc", "/p/abc/listo", "/api/pase/abc",
+    for (const r of ["/", "/home", "/home/tarjeta", "/login", "/api/login", "/api/logout", "/api/tap?b=nube", "/p/abc", "/p/abc/listo", "/api/pase/abc",
       "/api/wallet/v1/log", "/api/wallet/v1/devices/d/registrations/pass.x/s", "/api/manifest?b=nube", "/api/negocios",
       "/api/salud", "/nube"]) {
       expect(regla(r), r).toEqual({ tipo: "publica" });

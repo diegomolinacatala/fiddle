@@ -1,13 +1,13 @@
 // ============================================================================
 // PLANES: qué puede usar cada tienda según lo que paga
 // ----------------------------------------------------------------------------
-// Tres planes (Esencial, Tarjetas, Completo). Lo que lleva cada uno NO está fijo
+// Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026, Tarjetas y Completo). Lo que lleva cada uno NO está fijo
 // en el código: lo cambia el admin en /admin → Planes y se guarda en la tabla
 // `plataforma` (clave "planes"). Aquí solo está lo de partida y las reglas.
 //
 // - Cada tienda tiene su plan (`negocio.plan`, lo elige el admin en su ficha).
-//   **Sin plan es Completo**: una tienda de antes, o una que nadie ha tocado, no
-//   pierde nada por un despliegue. La Delicantería va en Completo a propósito.
+//   **Sin plan es Pro**: una tienda de antes, o una que nadie ha tocado, no
+//   pierde nada por un despliegue. La Delicantería va en Pro a propósito.
 // - Un plan dice qué PUEDE encenderse, no qué está encendido: los avisos
 //   automáticos y la plantilla siguen teniendo su interruptor en el admin
 //   (`avisosAvanzados`, `plantillaActiva`), y el «Abierto hasta…» el suyo en
@@ -36,16 +36,16 @@ export const FUNCIONES = [
 ];
 const IDS_FUNCION = FUNCIONES.map((f) => f.id);
 
-export const IDS_PLAN = ["esencial", "tarjetas", "completo"];
-export const PLAN_POR_DEFECTO = "completo";
+export const IDS_PLAN = ["esencial", "plus", "pro"];
+export const PLAN_POR_DEFECTO = "pro";
 
 const todas = (valor) => Object.fromEntries(IDS_FUNCION.map((id) => [id, valor]));
 
-/** Lo de partida (06-11-2026): Esencial sin nada, Tarjetas con estadísticas y promos, Completo con todo. */
+/** Lo de partida (06-11-2026): Esencial sin nada, Plus con estadísticas y promos, Pro con todo. */
 export const PLANES_DE_PARTIDA = {
   esencial: { nombre: "Esencial", maxTarjetas: 750, margen: 50, funciones: todas(false) },
-  tarjetas: { nombre: "Tarjetas", maxTarjetas: null, margen: 0, funciones: { ...todas(false), estadisticas: true, promos: true } },
-  completo: { nombre: "Completo", maxTarjetas: null, margen: 0, funciones: todas(true) },
+  plus: { nombre: "Plus", maxTarjetas: null, margen: 0, funciones: { ...todas(false), estadisticas: true, promos: true } },
+  pro: { nombre: "Pro", maxTarjetas: null, margen: 0, funciones: todas(true) },
 };
 
 export const MAX_LIMITE = 1_000_000;
@@ -124,7 +124,7 @@ export function conPlan(negocio, planes) {
 
 /**
  * ¿La deja su plan? Sin `funciones` (una tienda que no pasó por el store, un test)
- * cuenta como Completo: ante la duda, no se quita nada a nadie.
+ * cuenta como Pro: ante la duda, no se quita nada a nadie.
  */
 export const tiene = (negocio, funcion) => negocio?.funciones?.[funcion] !== false;
 

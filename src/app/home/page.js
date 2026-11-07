@@ -97,8 +97,9 @@ export default async function Home() {
               <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
                 Hablemos por WhatsApp
               </a>
-              <a href="#precios" className="boton-suave">
-                Ver precios
+              {/* Probar la suya (/home/tarjeta). «Precios» sigue en la cabecera y el menú. */}
+              <a href="/home/tarjeta" className="boton-suave probar">
+                Diseña tu tarjeta <Flecha />
               </a>
             </div>
           </div>
@@ -107,7 +108,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <Cinta disenos={CINTAS[0]} />
+        <Cinta disenos={CINTAS[0]} qr={qr} />
 
         <section id="como-funciona" className="bloque">
           <Encabezado titulo="Cero fricción">
@@ -180,7 +181,7 @@ export default async function Home() {
             <Indicador objetivo="panel-piezas" nombre="Partes del panel" tipo="pestanas" etiquetas={PIEZAS_DEL_PANEL} />
             <Panel />
             <p className="panel-nota">
-              Las estadísticas van desde el plan Tarjetas; los grupos y el aviso al pasar cerca, en el Completo.{" "}
+              Las estadísticas van desde el plan Plus; los grupos y el aviso al pasar cerca, en el Pro.{" "}
               <a href="#precios">Ver precios</a>
             </p>
           </div>
@@ -223,7 +224,7 @@ export default async function Home() {
           </p>
         </section>
 
-        <Cinta disenos={CINTAS[1]} />
+        <Cinta disenos={CINTAS[1]} qr={qr} />
 
         <section id="preguntas" className="bloque bloque-estrecho">
           <Encabezado titulo="Preguntas" />
@@ -310,7 +311,7 @@ const PREGUNTAS = [
   ],
   [
     "¿Qué necesitas en la tienda?",
-    "Un móvil con cámara para la caja y tu QR en el mostrador. Con Tarjetas y Completo te lo dejamos montado; con Esencial lo montas tú desde tu panel.",
+    "Un móvil con cámara para la caja y tu QR en el mostrador. Con Plus y Pro te lo dejamos montado; con Esencial lo montas tú desde tu panel.",
   ],
   [
     "¿Puedes cambiar el diseño o el premio más adelante?",

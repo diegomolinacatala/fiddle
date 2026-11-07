@@ -29,8 +29,8 @@ const ESTADOS = {
  * Una tienda de ejemplo y su cliente, ya recortados como los ve el navegador.
  * @param {{ slug: string, nombre: string, premio: string, tema: object, cartillas?: object[] }} tienda
  */
-export function ejemplo({ slug, nombre, premio, tema, cartillas }, sellos, { sellos2 = 0, estado = null } = {}) {
-  const config = { meta: 8, premio, tema, ...(cartillas ? { cartillas } : {}) };
+export function ejemplo({ slug, nombre, premio, tema, cartillas }, sellos, { sellos2 = 0, estado = null, meta = 8 } = {}) {
+  const config = { meta, premio, tema, ...(cartillas ? { cartillas } : {}) };
   const negocio = componerNegocio(slug, { nombre, tipo: "sellos", config });
   const cliente = { serial: `ejemplo-${slug}`, codigo: "K7P", sellos, sellos2, premios: 0 };
   return { negocio: negocioDeTarjeta(negocio), cliente: clienteDeTarjeta(cliente), estado: estado ? ESTADOS[estado] : null };

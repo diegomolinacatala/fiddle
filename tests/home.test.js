@@ -8,6 +8,11 @@ import { svgViolin, svgIconoViolin } from "@/lib/violin";
 import { ESTILOS_GENERALES } from "@/lib/negocios";
 import { stripDelPase, esColorClaro, colorDelPase } from "@/lib/apple/dibujo";
 import { pedir, entrar, INICIO, paradaMasCercana } from "@/app/home/posicion";
+import { MARCAS as MARCAS_DIBUJO, MODOS as MODOS_DIBUJO, FORMAS as FORMAS_DIBUJO } from "@/lib/apple/dibujo";
+import {
+  PALETAS, ICONOS, MODOS as MODOS_PROBADOR, FORMAS as FORMAS_PROBADOR, FONDOS, SECCIONES, INICIAL, MAX_NOMBRE, NOMBRE_POR_DEFECTO,
+  ZOOM_MAX, ENTERA_MAX, limpiar, temaDe, tarjetaDe, sumarPunto, mensajeDe, encuadre, regionDe,
+} from "@/app/home/tarjeta/opciones";
 
 describe("web de fiddle: contacto y precios", () => {
   it("WhatsApp abre el chat con el mensaje escrito, sin «+» ni espacios en el número", () => {
@@ -33,23 +38,23 @@ describe("web de fiddle: contacto y precios", () => {
     expect(url.searchParams.get("body")).toBe("Cuerpo");
   });
 
-  it("tres planes: Esencial a 19 €, Tarjetas a 39 € y Completo a 49 €, el último destacado", () => {
-    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["esencial", 19], ["tarjetas", 39], ["completo", 49]]);
-    expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["completo"]);
+  it("tres planes: Esencial a 19 €, Plus a 39 € y Pro a 49 €, el último destacado", () => {
+    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["esencial", 19], ["plus", 39], ["pro", 49]]);
+    expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["pro"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
-    const [esencial, tarjetas, completo] = PLANES.map((p) => p.incluye.join(" "));
+    const [esencial, plus, pro] = PLANES.map((p) => p.incluye.join(" "));
     // Esencial (06-11-2026): hasta 750 tarjetas, sin promociones y la monta la tienda.
     expect(esencial).toMatch(/750 tarjetas/);
     expect(esencial).not.toMatch(/Promociones|sin límite|montada/);
     expect(esencial).toMatch(/La montas tú/);
-    // Tarjetas y Completo (13-10-2026).
-    expect(tarjetas).toMatch(/sin límite/);
-    expect(tarjetas).toMatch(/Promociones al momento, a todos/);
-    expect(PLANES[2].incluye[0]).toBe("Todo lo de Tarjetas");
-    // Las estadísticas van desde Tarjetas (06-11-2026, como los planes de lib/planes.js).
-    expect(tarjetas).toMatch(/estadísticas/);
+    // Plus y Pro (13-10-2026; antes Tarjetas y Completo).
+    expect(plus).toMatch(/sin límite/);
+    expect(plus).toMatch(/Promociones al momento, a todos/);
+    expect(PLANES[2].incluye[0]).toBe("Todo lo de Plus");
+    // Las estadísticas van desde Plus (06-11-2026, como los planes de lib/planes.js).
+    expect(plus).toMatch(/estadísticas/);
     for (const cosa of [/grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
-      expect(completo).toMatch(cosa);
+      expect(pro).toMatch(cosa);
     }
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
   });
@@ -57,9 +62,10 @@ describe("web de fiddle: contacto y precios", () => {
   it("el mensaje de cada plan dice cuál y cuánto", () => {
     expect(mensajeDePlan(PLANES[0])).toContain("Esencial");
     expect(mensajeDePlan(PLANES[0])).toContain("19 €");
-    expect(mensajeDePlan(PLANES[1])).toContain("Tarjetas");
+    expect(mensajeDePlan(PLANES[1])).toContain("Plus");
     expect(mensajeDePlan(PLANES[1])).toContain("39 €");
     expect(mensajeDePlan(PLANES[2])).toContain("49 €");
+    expect(mensajeDePlan(PLANES[2])).toContain("plan Pro");
   });
 });
 
@@ -215,5 +221,82 @@ describe("web de fiddle: las filas que se deslizan en el móvil", () => {
   it("si no hay nada que deslizar, la primera", () => {
     expect(paradaMasCercana({ paradas, desplazado: 0, maximo: 0 })).toBe(0);
     expect(paradaMasCercana({ paradas: [], desplazado: 0, maximo: 100 })).toBe(0);
+  });
+});
+
+describe("web de fiddle: «Diseña tu tarjeta»", () => {
+  it("cada opción existe en el dibujo del pase", () => {
+    for (const i of ICONOS) expect(MARCAS_DIBUJO, i.id).toContain(i.id);
+    for (const m of MODOS_PROBADOR) expect(MODOS_DIBUJO, m.id).toContain(m.id);
+    for (const f of FORMAS_PROBADOR) expect(FORMAS_DIBUJO, f.id).toContain(f.id);
+    for (const p of PALETAS) {
+      for (const color of [p.cardBg, p.ink, p.accent, p.detalle].filter(Boolean)) expect(color, p.id).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
+  it("los colores se leen en el pase, y la banda nunca es la de barbería", () => {
+    for (const p of PALETAS) {
+      for (const fondo of FONDOS) {
+        const tema = temaDe({ paleta: p.id, fondo: fondo.id });
+        expect(tema.banda).not.toBe("oscura");
+        expect(esColorClaro(tema.accent), `${p.id}: accent claro`).toBe(false);
+        expect(contraste(colorDelPase(tema), tema.cardBg), `${p.id}: etiquetas`).toBeGreaterThanOrEqual(3);
+        expect(contraste(tema.ink, tema.cardBg), `${p.id}: texto`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("lo que llega del navegador se limpia: nada fuera de las listas", () => {
+    const e = limpiar({ paleta: "x", icono: "pizza", modo: "luna", premio: "<b>", meta: 99, puntos: 50, nombre: "a".repeat(80) });
+    expect(e).toMatchObject({ paleta: PALETAS[0].id, icono: ICONOS[0].id, modo: "casillas", premio: INICIAL.premio, meta: 8, puntos: 8 });
+    expect(e.nombre).toHaveLength(MAX_NOMBRE);
+    expect(limpiar({ meta: 6, puntos: 9 }).puntos).toBe(6);
+  });
+
+  it("la tarjeta sale de las funciones del pase, sin nombre de cliente ni brief", () => {
+    const { negocio, cliente } = tarjetaDe({ ...INICIAL, nombre: "  " });
+    expect(negocio.nombre).toBe(NOMBRE_POR_DEFECTO);
+    expect(cliente).not.toHaveProperty("nombre");
+    expect(negocio).not.toHaveProperty("brief");
+    expect(stripDelPase(negocio, cliente).svg).toContain("<svg");
+    expect(tarjetaDe({ ...INICIAL, nombre: "Café Ruzafa" }).negocio.nombre).toBe("Café Ruzafa");
+    expect(tarjetaDe({ ...INICIAL, meta: 10 }).negocio.meta).toBe(10);
+  });
+
+  it("«Sumar punto» vuelve a empezar al completarla", () => {
+    expect(sumarPunto(7, 8)).toBe(8);
+    expect(sumarPunto(8, 8)).toBe(0);
+  });
+
+  it("el mensaje de WhatsApp dice lo elegido", () => {
+    const texto = mensajeDe({ ...INICIAL, paleta: "matcha", nombre: "Café Ruzafa", modo: "relleno", meta: 6 });
+    expect(texto).toContain("para Café Ruzafa");
+    expect(texto).toContain("colores Matcha");
+    expect(texto).toContain("se llena");
+    expect(texto).toContain("café gratis cada 6 puntos");
+    expect(mensajeDe(INICIAL)).toContain("(círculo)");
+  });
+
+  it("la cámara: la tarjeta entera cabe y una parte queda en el centro", () => {
+    const tarjeta = { w: 340, h: 500 };
+    const todo = encuadre(null, tarjeta, { w: 800, h: 800 });
+    expect(todo.y).toBe(0);
+    expect(todo.s * tarjeta.h).toBeLessThanOrEqual(800 * 0.8 + 0.5);
+    expect(encuadre(null, tarjeta, { w: 2000, h: 2000 }).s).toBe(ENTERA_MAX);
+    // La cabecera (arriba) baja: el desplazamiento la lleva al centro.
+    const cabecera = encuadre({ top: 0, height: 60 }, tarjeta, { w: 900, h: 800 });
+    expect(cabecera.s).toBe(ZOOM_MAX);
+    expect(cabecera.y).toBeCloseTo((250 - 30) * ZOOM_MAX, 1);
+    // En un móvil estrecho, no se sale por los lados.
+    expect(encuadre({ top: 0, height: 60 }, tarjeta, { w: 375, h: 400 }).s * tarjeta.w).toBeLessThanOrEqual(375 * 0.9 + 0.5);
+    expect(encuadre(null, { w: 0, h: 0 }, { w: 375, h: 400 })).toEqual({ s: 1, y: 0 });
+  });
+
+  it("varias partes se encuadran juntas; «todo» o una que no está, la tarjeta entera", () => {
+    const medidas = { cabecera: { top: 0, height: 60 }, banda: { top: 60, height: 120 } };
+    expect(regionDe("cabecera banda", medidas)).toEqual({ top: 0, height: 180 });
+    expect(regionDe("todo", medidas)).toBeNull();
+    expect(regionDe("campos", medidas)).toBeNull();
+    for (const s of SECCIONES) expect(s.parte === "todo" || s.parte.split(" ").every((p) => ["cabecera", "banda", "campos"].includes(p))).toBe(true);
   });
 });

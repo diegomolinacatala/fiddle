@@ -8,8 +8,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Lo que lleva cada plan (lib/planes.js), para todas las tiendas a la vez.
-//   GET  -> { esencial, tarjetas, completo }   cada uno { nombre, maxTarjetas, margen, funciones }
-//   PUT  { esencial, tarjetas, completo }      los tres enteros, ya revisados en la pantalla
+//   GET  -> { esencial, plus, pro }   cada uno { nombre, maxTarjetas, margen, funciones }
+//   PUT  { esencial, plus, pro }      los tres enteros, ya revisados en la pantalla
 // Solo el admin. Lo que se cambia aquí llega a las demás funciones en un minuto como
 // mucho (la memoria del store) y a los pases la próxima vez que se pongan al día:
 // no se empujan los de todas las tiendas, que serían miles de firmas de golpe.

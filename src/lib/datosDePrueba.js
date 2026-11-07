@@ -277,8 +277,8 @@ export function generar(ahora = Date.now()) {
         // para ver la pestaña. Apagarla desde el admin de dev no dura (cada función
         // de Vercel tiene su /tmp): para verla apagada, en local.
         plantillaActiva: true,
-        // El plan de arriba (lib/planes.js): como La Delicantería, que va en Completo a propósito.
-        plan: "completo",
+        // El plan de arriba (lib/planes.js): como La Delicantería, que va en Pro a propósito.
+        plan: "pro",
         plantilla: [
           { id: QUIEN.sebas, nombre: "Sebas", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
           { id: QUIEN.andreina, nombre: "Andreina", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
