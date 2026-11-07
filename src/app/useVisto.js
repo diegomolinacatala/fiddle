@@ -28,6 +28,15 @@ const useAntesDePintar = typeof window === "undefined" ? useEffect : useLayoutEf
 export function useVisto(id, valor) {
   const ref = useRef(null);
   const [mostrado, setMostrado] = useState(valor);
+  // Para las cifras que ruedan (Rueda): no a medio camino, sino el de antes hasta que
+  // arranca y el de llegada desde ese momento. La rueda gira sola de uno a otro; si
+  // se le cambiara en cada fotograma, volvería a arrancar sesenta veces por segundo.
+  const [final, setFinal] = useState(valor);
+  // La rueda no gira hasta que tiene puesto lo de antes: el primer cambio (del valor
+  // del servidor a lo último visto) es un salto, no un giro. Sin esto, giraba hacia
+  // atrás (58 → 31) y luego hacia delante (31 → 58), visto fotograma a fotograma.
+  const [gira, setGira] = useState(false);
+  const girando = useRef(false);
   const ahora = useRef(valor); // lo que se ve en este momento (a medio camino, si se mueve)
   const destino = useRef(valor);
   const pendiente = useRef(false);
@@ -38,11 +47,14 @@ export function useVisto(id, valor) {
 
   function arrancar() {
     if (!pendiente.current || !visible.current) return;
+    // Aún con lo de antes sin pintar: en cuanto la rueda pueda girar (efecto de abajo).
+    if (!girando.current) return;
     pendiente.current = false;
     cancelAnimationFrame(vuelta.current);
     const desde = ahora.current;
     const hasta = destino.current;
     guardar(id, hasta);
+    setFinal(hasta);
     const dura = duracionDe(desde, hasta);
     if (!dura) { ahora.current = hasta; setMostrado(hasta); return; }
     const t0 = performance.now();
@@ -63,9 +75,23 @@ export function useVisto(id, valor) {
     const inicio = entre(previo, destino.current, 0);
     ahora.current = inicio;
     setMostrado(inicio);
+    setFinal(inicio);
     pendiente.current = true;
-    arrancar();
   }, [id]);
+
+  // Ya pintado lo de antes (sin girar): desde aquí la rueda gira, y si el bloque ya se ve, arranca.
+  // En dos tiempos: primero la rueda se entera de que puede girar (un render con el
+  // mismo valor) y solo después le llega el nuevo. Los dos en el mismo render y saltaba.
+  useEffect(() => {
+    const t = setTimeout(() => setGira(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!gira) return;
+    girando.current = true;
+    arrancar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gira]);
 
   // Se mueve cuando se ve: lo de abajo, al bajar hasta ello.
   useEffect(() => {
@@ -84,23 +110,27 @@ export function useVisto(id, valor) {
   const primera = useRef(true);
   useEffect(() => {
     if (primera.current) { primera.current = false; return; }
-    if (quieto()) { ahora.current = valor; setMostrado(valor); guardar(id, valor); return; }
+    if (quieto()) { ahora.current = valor; setMostrado(valor); setFinal(valor); guardar(id, valor); return; }
     pendiente.current = true;
     arrancar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firma]);
 
-  return [ref, mostrado];
+  return [ref, mostrado, final, gira];
 }
 
-/** Un bloque que se mueve al verse: `children(valorMostrado)`. Ocupa su hueco de la rejilla entero. */
+/**
+ * Un bloque que se mueve al verse: `children(aMedioCamino, final, gira)`. Las gráficas
+ * usan el primero; las frases, el final; las cifras grandes, `<Rueda valor={final…}
+ * gira={gira} />`. Ocupa su hueco de la rejilla entero.
+ */
 export function Visto({ id, valor, children, style }) {
-  const [ref, v] = useVisto(id, valor);
-  return <div ref={ref} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", minWidth: 0, ...style }}>{children(v)}</div>;
+  const [ref, v, final, gira] = useVisto(id, valor);
+  return <div ref={ref} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", minWidth: 0, ...style }}>{children(v, final, gira)}</div>;
 }
 
 /** Un número suelto en una frase («312 clientes») que rueda desde el último que se vio aquí. */
 export function NumeroVisto({ id, valor }) {
-  const [ref, v] = useVisto(id, valor);
-  return <span ref={ref}><Rueda texto={v.toLocaleString("es-ES")} valor={v} /></span>;
+  const [ref, , final, gira] = useVisto(id, valor);
+  return <span ref={ref}><Rueda valor={final} gira={gira} /></span>;
 }

@@ -37,7 +37,8 @@ import Rueda from "@/app/Rueda";
 //
 // Cada bloque se mueve al verse (Visto, app/useVisto.js): desde lo último que vio
 // este dispositivo hasta lo de ahora, y otra vez si cambia con la pantalla
-// abierta. Es el mismo dato a medio camino: las cuentas no cambian por eso.
+// abierta. Se mueven las gráficas y las cifras grandes (Rueda); las frases van
+// ya con lo de llegada: un número que cuenta dentro de una frase parpadea.
 //
 // Las cuentas son de lib/crm.js; aquí solo se dicen. Las etiquetas de las
 // cifras las copia la web (home/Panel.js): si cambian aquí, también allí.
@@ -81,15 +82,15 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
     <div className="resumen" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18 }}>
       <style>{CSS}</style>
       <Visto id={`${slug}:cifras`} valor={{ m, enMovil: d.telefonos?.enMovil ?? m.instalados }}>
-        {(v) => <Cifras m={v.m} enMovil={v.enMovil} esCupon={esCupon} accent={accent} dia={dia} zona={zona} />}
+        {(v, fin, gira) => <Cifras m={fin.m} fin={fin.m} gira={gira} enMovil={fin.enMovil} esCupon={esCupon} accent={accent} dia={dia} zona={zona} />}
       </Visto>
 
       {quehacer.length > 0 && <LoQueDicen ideas={quehacer} slug={slug} accent={accent} d={d} />}
 
       <Fila>
         <Visto id={`${slug}:camino`} valor={m.embudo}>
-          {(embudo) => (
-            <Tarjeta id="r-camino" pregunta="¿Vuelven?" titular={titularCamino(embudo, esCupon)}
+          {(embudo, fin) => (
+            <Tarjeta id="r-camino" pregunta="¿Vuelven?" titular={titularCamino(fin, esCupon)}
               pie={m.descartadas > 0 && (
                 <button type="button" className="enlace" onClick={onVerDescartadas} style={enlaceSuave}>
                   {m.descartadas === 1 ? "Ver la tarjeta que nadie guardó ni usó" : `Ver las ${m.descartadas} tarjetas que nadie guardó ni usó`}
@@ -101,8 +102,8 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
         </Visto>
         {d.vuelta?.listo && (
           <Visto id={`${slug}:curva`} valor={d.vuelta}>
-            {(vuelta) => (
-              <Tarjeta id="r-curva" pregunta="¿Cuánto tardan en volver?" {...titularCurva(vuelta)}>
+            {(vuelta, fin) => (
+              <Tarjeta id="r-curva" pregunta="¿Cuánto tardan en volver?" {...titularCurva(fin)}>
                 <CurvaVuelta v={vuelta} accent={accent} />
               </Tarjeta>
             )}
@@ -112,8 +113,8 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
 
       <Fila>
         <Visto id={`${slug}:dias`} valor={{ serie, dia }}>
-          {(v) => (
-            <Tarjeta id="r-dias" pregunta="¿Cuántos vienen cada día?" {...titularDias(v.dia, v.serie)}>
+          {(v, fin) => (
+            <Tarjeta id="r-dias" pregunta="¿Cuántos vienen cada día?" {...titularDias(fin.dia, fin.serie)}>
               <VisitasPorDia serie={v.serie} resumen={v.dia} accent={accent} />
             </Tarjeta>
           )}
@@ -133,9 +134,9 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
 
       <Fila>
         <Visto id={`${slug}:quien`} valor={{ activos: m.activos, total: m.total, porEstado: m.porEstado }}>
-          {(v) => (
+          {(v, fin) => (
             <Tarjeta id="r-quien" pregunta="¿Quién sigue viniendo?"
-              titular={`${numero(v.activos)} de tus ${contar(v.total, ["cliente", "clientes"])} siguen viniendo.`}
+              titular={`${numero(fin.activos)} de tus ${contar(fin.total, ["cliente", "clientes"])} siguen viniendo.`}
               detalle={m.cadenciaHabitual ? `El cliente típico vuelve ${cadenciaTexto(m.cadenciaHabitual)}.` : null}>
               <Estados porEstado={v.porEstado} total={v.total} />
             </Tarjeta>
@@ -143,8 +144,8 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
         </Visto>
         {d.puente?.listo && (
           <Visto id={`${slug}:puente`} valor={d.puente}>
-            {(p) => (
-              <Tarjeta id="r-puente" pregunta="¿Ganas o pierdes clientes?" {...titularPuente(p)}>
+            {(p, fin) => (
+              <Tarjeta id="r-puente" pregunta="¿Ganas o pierdes clientes?" {...titularPuente(fin)}>
                 <Puente p={p} accent={accent} />
               </Tarjeta>
             )}
@@ -155,8 +156,8 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
       {d.telefonos?.guardaron > 0 && (
         <Fila>
           <Visto id={`${slug}:moviles`} valor={d.telefonos}>
-            {(t) => (
-              <Tarjeta id="r-moviles" pregunta="¿En qué móviles la llevan?" {...titularTelefonos(t)}>
+            {(t, fin) => (
+              <Tarjeta id="r-moviles" pregunta="¿En qué móviles la llevan?" {...titularTelefonos(fin)}>
                 <Telefonos t={t} accent={accent} />
               </Tarjeta>
             )}
@@ -246,24 +247,24 @@ function titularPuente(p) {
  * Las cuatro cifras de cabecera. Con menos de un mes de fiddle, «los últimos 30
  * días» son en realidad «desde el primer día», y la etiqueta lo dice.
  */
-function Cifras({ m, enMovil, esCupon, accent, dia, zona }) {
+function Cifras({ m, fin, gira, enMovil, esCupon, accent, dia, zona }) {
   const joven = m.inicio && Date.now() - m.inicio < 30 * DIA;
   const desde = m.inicio ? `desde el ${fecha(m.inicio, zona)}` : null;
   const enPct = m.total ? Math.round((m.activos / m.total) * 100) : 0;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 12 }}>
-      <Cifra label="Clientes" valor={<Rueda texto={numero(m.total)} valor={m.total} />} accent={accent}
+      <Cifra label="Clientes" valor={<Rueda valor={fin.total} gira={gira} />} accent={accent}
         pie={[joven ? desde : `${m.nuevos30 ? "+" : ""}${numero(m.nuevos30)} en 30 días`, `${numero(enMovil)} con la tarjeta en el móvil`]} />
-      <Cifra label="Siguen viniendo" valor={<Rueda texto={numero(m.activos)} valor={m.activos} />} accent={C.ok}
+      <Cifra label="Siguen viniendo" valor={<Rueda valor={fin.activos} gira={gira} />} accent={C.ok}
         pie={[`el ${enPct}% de tus clientes`, `${contar(m.porEstado.nuevo, ["nuevo", "nuevos"])} y ${numero(m.porEstado.activo)} a su ritmo`]} />
-      <Cifra label="Visitas" valor={<Rueda texto={numero(m.visitas30)} valor={m.visitas30} />} cambio={cambio(m.visitas30, m.visitas30Previas)}
+      <Cifra label="Visitas" valor={<Rueda valor={fin.visitas30} gira={gira} />} cambio={cambio(m.visitas30, m.visitas30Previas)}
         pie={[
           joven ? desde : "en los últimos 30 días",
           m.visitas30Previas !== null ? "frente a los 30 anteriores" : dia.dias ? `en ${contar(dia.dias, ["día abierto", "días abiertos"])}` : null,
         ]} />
       {esCupon
-        ? <Cifra label="Cupones usados" valor={<Rueda texto={numero(m.premios)} valor={m.premios} />} pie="desde el primer día" />
-        : <Cifra label="Premios por dar" valor={<Rueda texto={numero(m.porDar)} valor={m.porDar} />}
+        ? <Cifra label="Cupones usados" valor={<Rueda valor={fin.premios} gira={gira} />} pie="desde el primer día" />
+        : <Cifra label="Premios por dar" valor={<Rueda valor={fin.porDar} gira={gira} />}
           pie={m.porDar ? [`a ${contar(m.conPremio, ["cliente", "clientes"])}`, "guardados o con la cartilla llena"] : "ninguno pendiente"} />}
     </div>
   );

@@ -164,7 +164,7 @@ export default function PanelCrm({ slug, inicial, deMemoria = false }) {
               semanas sin venir. Toca uno para ver quién hay y escribirles.
             </p>
             <Visto id={`${slug}:grupos`} valor={grupos.map(({ key, total, contactables }) => ({ key, total, contactables }))}>
-              {(cuentas) => (
+              {(cuentas, finales, gira) => (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))", gap: 12 }}>
               {grupos.map((g, i) => (
                 <button key={g.key} type="button" disabled={!g.total} onClick={() => setGrupoVisto(g.key === grupoVisto ? null : g.key)}
@@ -172,7 +172,7 @@ export default function PanelCrm({ slug, inicial, deMemoria = false }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ color: legible(accent), display: "inline-flex" }}><Icono nombre={g.icon} tam={18} /></span>
                     <strong style={{ fontSize: 14, fontWeight: 650 }}>{g.label}</strong>
-                    <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}><Rueda texto={cuentas[i]?.total ?? g.total} valor={cuentas[i]?.total ?? g.total} /></span>
+                    <span style={{ marginLeft: "auto", fontSize: 20, fontWeight: 650 }}><Rueda valor={finales[i]?.total ?? g.total} gira={gira} /></span>
                   </div>
                   <p style={{ fontSize: 12.5, color: C.suave, margin: "6px 0 0", textAlign: "left" }}>{g.descripcion}</p>
                   <div style={{ fontSize: 11.5, color: C.tenue, marginTop: 6, textAlign: "left" }}>

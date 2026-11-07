@@ -42,20 +42,13 @@ const base = `${hojaDeColores}
   @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation-duration: 1.6s } }
   /* Las preguntas van en una ventana nuestra (app/Dialogo.js), nunca en la del navegador. */
   dialog.ventana::backdrop { background: rgb(15 18 22 / 0.5); }
-  /* Las cifras que cambian ruedan: cada cifra nueva entra desde abajo (o desde arriba si
-     baja), como un cuentakilómetros (app/Rueda.js). */
-  .rueda-hueco { display: inline-block; overflow: hidden; vertical-align: bottom; line-height: 1.15; }
-  .rueda-sube, .rueda-baja { display: inline-block; animation: rueda-sube 0.22s cubic-bezier(.2,.8,.3,1) both; }
-  .rueda-baja { animation-name: rueda-baja; }
-  @keyframes rueda-sube { from { transform: translateY(100%); opacity: 0 } }
-  @keyframes rueda-baja { from { transform: translateY(-100%); opacity: 0 } }
   /* Un cliente que llega con la pantalla abierta entra en la lista y se ilumina un momento. */
   .fila-nueva { animation: fila-nueva 2.4s ease-out both; }
   .fila-nueva > td { animation: fila-entra 0.45s cubic-bezier(.2,.8,.3,1) both; }
   @keyframes fila-nueva { from { background: var(--fila-nueva, rgb(0 0 0 / 0.06)) } }
   @keyframes fila-entra { from { transform: translateY(-10px); opacity: 0 } }
   @media (prefers-reduced-motion: reduce) {
-    .rueda-sube, .rueda-baja, .fila-nueva > td { animation: none; }
+    .fila-nueva > td { animation: none; }
   }
 `;
 

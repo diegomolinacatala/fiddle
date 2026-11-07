@@ -225,7 +225,11 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
   `NumeroVisto`, `Rueda`; la cuenta pura en `lib/animar.js`): en localStorage, por tienda,
   solo cuentas (nunca un nombre); la primera vez, desde cero; lo de abajo, al bajar hasta
   ello. Una fecha o una ventana que no deba moverse va en `FIJOS`. Una cifra nueva del
-  Resumen va dentro de un `Visto`.
+  Resumen va dentro de un `Visto`. Las gráficas se mueven a medio camino; las cifras
+  grandes, con `Rueda` (NumberFlow), que recibe SOLO el valor de antes y luego el final
+  (cambiarle el número en cada fotograma era un parpadeo) y no gira hasta `gira` (si no,
+  giraba atrás y luego adelante); las frases van ya con el final. Mirado fotograma a
+  fotograma con Chrome sin ventana (07-11-2026): el panel oculto de Claude no anima.
 - **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
   la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
   siendo PURA y sin imports del servidor.
