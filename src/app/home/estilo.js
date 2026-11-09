@@ -164,17 +164,26 @@ body:has(.home){background:${P.papel}}
 
 /* la cinta de tarjetitas entre secciones (Cinta.js, Desfile.js): rellena el hueco
    que antes era solo margen, así que lo de alrededor se aprieta. */
-.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:10px 0 30px;cursor:default;
+.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:26px 0 54px;margin-bottom:-20px;cursor:default;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.cinta-pista{display:flex;width:max-content}
+.cinta-pista{display:flex;width:max-content;will-change:transform}
 .cinta-tanda{display:flex;gap:var(--hueco);padding-right:var(--hueco)}
-.cinta-tarjeta{flex-shrink:0;width:300px;zoom:.62}
-.cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important}
+/* Con la letra del sistema, como el pase de verdad y el móvil de la portada. */
+.cinta-tarjeta{position:relative;flex-shrink:0;width:300px;zoom:.62;font-family:var(--apple);
+  transform:perspective(900px) rotateX(0deg) rotateY(0deg) scale(1);transition:transform .5s var(--curva)}
+.cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important;transition:box-shadow .5s var(--curva)}
+/* La de debajo del ratón (Desfile.js): se acerca, se inclina hacia él y un brillo lo sigue. */
+.cinta-tarjeta::after{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;opacity:0;mix-blend-mode:soft-light;
+  background:radial-gradient(circle at var(--bx,50%) var(--by,40%),rgba(255,255,255,.6),rgba(255,255,255,0) 55%);transition:opacity .4s}
+.cinta-tarjeta.encima{z-index:2;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.12);
+  transition:transform .18s ease-out}
+.cinta-tarjeta.encima::after{opacity:1}
+.cinta-tarjeta.encima article{box-shadow:0 30px 44px -18px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.1)!important}
 .portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
 .cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
 .bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
-@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.52}}
+@media (max-width:759px){.cinta{--hueco:12px;padding:12px 0 24px}.cinta-tarjeta{zoom:.52}}
 
 /* un aviso de la pantalla de bloqueo */
 .aviso{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;align-items:center;padding:11px 14px 12px 11px;
@@ -396,13 +405,6 @@ body:has(.home){background:${P.papel}}
     .cabecera{animation:borde linear both;animation-timeline:scroll(root);animation-range:0 120px}
   }
 }
-@media (prefers-reduced-motion:no-preference){
-  .cinta-pista.corre{animation:cinta var(--vuelta) linear infinite}
-  .cinta-pista.quieta{animation-play-state:paused}
-}
-@media (prefers-reduced-motion:no-preference) and (hover:hover){.cinta:hover .cinta-pista{animation-play-state:paused}}
-/* Una tanda de las --tandas que lleva la pista (Desfile.js). */
-@keyframes cinta{to{transform:translate3d(calc(-100% / var(--tandas)),0,0)}}
 @media (prefers-reduced-motion:reduce){.movil-tarjeta{transition:none}}
 @keyframes sube{from{opacity:0;transform:translateY(36px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes llega{from{opacity:0;transform:translateY(-16px) scale(.94)}to{opacity:1;transform:none}}

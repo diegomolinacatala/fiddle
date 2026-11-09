@@ -804,7 +804,13 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   con su paleta (NO la de fiddle: se enseña la variedad) y todas «Tu cafetería», nunca un
   nombre inventado que parezca un cliente. El móvil de la portada pasa una cada 2,2 s
   (`CARRUSEL`; quién se ve lo decide `Carrusel.js`) y las dos cintas de tarjetitas que
-  separan secciones (`CINTAS`, `Cinta.js`) no repiten diseño entre sí. Una novedad del
+  separan secciones (`CINTAS`, `Cinta.js`) no repiten diseño entre sí. **Lo básico** (07-11-2026): sobre todo la
+  marca que se llena y dos cartillas lado a lado (la taza a la derecha: a la izquierda su asa
+  pisa la cifra), café y cookies; nada de la banda «oscura» (lleva el poste de barbería),
+  rayas ni porciones. Un diseño nuevo se mira rasterizado antes de entrar. Con el ratón
+  encima, la cinta frena hasta pararse y la tarjeta de debajo se acerca y se inclina
+  (`Desfile.js`, un bucle de rAF: el panel oculto de Claude no lo mueve, se mira en Chrome sin
+  ventana). Una novedad del
   pase que se quiera enseñar = una entrada en `DISENOS`. «● Abierto hasta…» lo escribe
   `estadoParaPase`. Un test fija el contraste de cada una.
 - **En el móvil es otra página** (`estiloMovil.js`, `CONSULTA_MOVIL`: hasta 759 px y el

@@ -87,7 +87,7 @@ describe("web de fiddle: tarjetas de ejemplo", () => {
     expect(porId.vaso.estado).toBeNull();
     // Dos cartillas: el aviso dice de cuál es.
     expect(porId.doble.negocio.cartillas).toHaveLength(2);
-    expect(avisoDe(porId.doble)).toBe("Cafés: Faltan 3");
+    expect(avisoDe(porId.doble)).toBe("Cookies: Faltan 3");
     for (const e of Object.values(porId)) {
       expect(avisoDe(e)).not.toBe("");
       expect(stripDelPase(e.negocio, e.cliente, { estado: e.estado }).svg).toMatch(/^<svg/);
