@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { NumeroVisto } from "@/app/useVisto";
 import ClaveNueva from "@/app/ClaveNueva";
 import CambiarClave from "./CambiarClave";
 import Bloque from "../Bloque";
@@ -8,6 +9,8 @@ import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 import { confirmar } from "@/app/Dialogo";
 import { confirmarTarjetas } from "../manager/confirmarTarjetas";
+import { tiene } from "@/lib/planes";
+import { enlaceWhatsApp } from "@/app/home/datos";
 
 // ============================================================================
 // AJUSTES — lo de la cuenta
@@ -21,7 +24,8 @@ import { confirmarTarjetas } from "../manager/confirmarTarjetas";
 // dentro del horario ni al fondo del editor de la tarjeta.
 // ============================================================================
 
-export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = false, reloj = false }) {
+export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, esAdmin = false, reloj = false }) {
+  const abiertoEnPlan = tiene(n, "abierto");
   const [enPase, setEnPase] = useState(n.tema.abierto !== false);
   const [guardandoEnPase, setGuardandoEnPase] = useState(false);
   const [pedirNombre, setPedirNombre] = useState(Boolean(n.pedirNombre));
@@ -118,20 +122,29 @@ export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = fal
         <section style={{ ...panel, maxWidth: 640, marginTop: 20, paddingTop: 6, paddingBottom: 6 }}>
           <Bloque
             primero data-recorrido="abierto" accent={accent} icono="reloj" titulo="«● Abierto hasta…» en la tarjeta"
-            resumen={!n.horario
+            resumen={!abiertoEnPlan
+              ? "No va en tu plan: la tarjeta no dice si estás abierto. Mira «Tu plan», más abajo."
+              : !n.horario
               ? "Pon tu horario en Tienda y la tarjeta dirá si estás abierto."
               : !enPase
                 ? "Apagado: la tarjeta no dice si estás abierto."
                 : reloj
                   ? "En el iPhone, sobre los puntos; en Android, en los detalles y en la tarjeta web."
                   : "En la tarjeta web ya sale. En Wallet, cuando el reloj de los avisos esté en marcha."}
-            interruptor={{ on: Boolean(n.horario) && enPase, disabled: !n.horario || guardandoEnPase, onClick: cambiarEnPase }}
+            interruptor={{ on: abiertoEnPlan && Boolean(n.horario) && enPase, disabled: !abiertoEnPlan || !n.horario || guardandoEnPase, onClick: cambiarEnPase }}
           />
           <Bloque
             data-recorrido="pedir-nombre" accent={accent} icono="clientes" titulo="Pedir el nombre al escanear"
             resumen="Un paso más antes de la Wallet, pero la caja sabe quién es cada uno. El nombre es para reconocerle en caja: no sale en su tarjeta y se guarda cifrado."
             interruptor={{ on: pedirNombre, onClick: cambiarPedirNombre }}
           />
+          {plan && (
+            <Bloque
+              accent={accent} icono="estrella" titulo={`Tu plan: ${plan.nombre}`}
+              resumen={textoDelPlan(plan, slug)}
+              accion={{ texto: "Hablar de mi plan", icono: "correo", onClick: () => window.open(enlaceWhatsApp(`Hola, soy de ${n.nombre} y quiero hablar de mi plan de fiddle (${plan.nombre}).`), "_blank", "noopener") }}
+            />
+          )}
           <Bloque
             accent={accent} icono="candado" titulo="Contraseña de la caja"
             resumen={<>Usuario <strong style={{ color: C.texto }}>{usuarios.caja}</strong>. Si se va alguien o se pierde el móvil, cámbiala: la vieja deja de valer y ese móvil se queda fuera.</>}
@@ -184,6 +197,17 @@ export default function PanelAjustes({ slug, negocio: n, usuarios, esAdmin = fal
         {msg && <div role="status" style={toast}>{msg}</div>}
     </>
   );
+}
+
+// Cuántas tarjetas lleva, si su plan tiene límite, y qué pasa al llegar (lib/planes.js).
+function textoDelPlan({ cupo }, slug) {
+  if (!cupo) return "Tarjetas sin límite. Si quieres cambiar de plan, escríbenos.";
+  // Las que lleva ruedan desde las que vio aquí la última vez (app/useVisto.js).
+  const cuenta = <><NumeroVisto id={`${slug}:emitidas`} valor={cupo.emitidas} /> de {cupo.max.toLocaleString("es")} tarjetas.</>;
+  if (cupo.estado === "cerrado") return <><span style={{ color: C.mal }}>{cuenta} Ya no se dan tarjetas nuevas:</span> a quien escanea se le dice que pregunte en el mostrador. Las que ya tienen siguen funcionando.</>;
+  if (cupo.estado === "lleno") return <><span style={{ color: C.mal }}>{cuenta} Has llegado al límite.</span> Aún se dan unas pocas más; para no quedarte sin, cambia de plan.</>;
+  if (cupo.estado === "cerca") return <><span style={{ color: C.mal }}>{cuenta}</span> Te queda poco para el límite de tu plan.</>;
+  return <>{cuenta} Si te vas a quedar corto, escríbenos y cambias de plan.</>;
 }
 
 const toast = {

@@ -65,10 +65,15 @@ export function BotonAyuda({ style }) {
   );
 }
 
+// Los que se han cerrado sin recargar la página (la caja quita y vuelve a poner el
+// recorrido al elegir quién atiende).
+const cerradosAqui = new Set();
+
 /**
- * @param {{recorrido: keyof typeof RECORRIDOS, accent?: string}} props
+ * @param {{recorrido: keyof typeof RECORRIDOS, accent?: string, visto?: boolean}} props
+ *   `visto`: si la página ya lo sabe (lib/tutorial.js, en el servidor), no se pregunta.
  */
-export default function Recorrido({ recorrido, accent = C.texto }) {
+export default function Recorrido({ recorrido, accent = C.texto, visto }) {
   const pasos = RECORRIDOS[recorrido];
   const [abierto, setAbierto] = useState(false);
   const [i, setI] = useState(0);
@@ -79,8 +84,11 @@ export default function Recorrido({ recorrido, accent = C.texto }) {
   // ¿Ya lo vio? Si no, arranca solo, con la pantalla ya pintada.
   useEffect(() => {
     let vivo = true;
-    fetch(`/api/tutorial?recorrido=${recorrido}`)
-      .then((r) => (r.ok ? r.json() : { visto: true })) // ante la duda, no molestar
+    // Cerrado en esta pestaña: el `visto` de la página es de antes de cerrarlo.
+    const sabido = cerradosAqui.has(recorrido) ? Promise.resolve({ visto: true })
+      : typeof visto === "boolean" ? Promise.resolve({ visto })
+      : fetch(`/api/tutorial?recorrido=${recorrido}`).then((r) => (r.ok ? r.json() : { visto: true })); // ante la duda, no molestar
+    sabido
       .then((d) => { if (vivo && !d.visto) setTimeout(() => vivo && abrir(), 700); })
       .catch(() => {});
     const alPedir = () => abrir();
@@ -97,6 +105,7 @@ export default function Recorrido({ recorrido, accent = C.texto }) {
   }
 
   const cerrar = useCallback(() => {
+    cerradosAqui.add(recorrido);
     setAbierto(false);
     setRect(null);
     fetch("/api/tutorial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recorrido }) })

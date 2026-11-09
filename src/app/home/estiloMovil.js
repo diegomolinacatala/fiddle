@@ -101,7 +101,7 @@ export const cssMovil = `
   .pasos::-webkit-scrollbar,.panel::-webkit-scrollbar,.planes::-webkit-scrollbar{display:none}
   .pasos > *,.panel > *,.planes > *{flex:0 0 min(86%,380px);scroll-snap-align:start;scroll-snap-stop:always}
   /* Los pasos y el panel miden casi lo mismo y quedan mejor iguales; los planes no:
-     estirado, Tarjetas quedaba con un hueco vacío entre la lista y el botón. */
+     estirado, Plus quedaba con un hueco vacío entre la lista y el botón. */
   .planes{align-items:flex-start}
   /* Las entradas con el scroll miden la página; dentro de una fila que se mueve de
      lado se quedarían a medias. */

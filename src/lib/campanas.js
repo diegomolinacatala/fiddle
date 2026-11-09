@@ -3,9 +3,10 @@ import {
   guardarMensajes, crearCampana, addEventos,
 } from "./store";
 import { perfilesDe } from "./crm";
+import { tiene } from "./planes";
 import { avisarSeriales, notificarNegocio } from "./wallet";
 import {
-  esDestino, esPromo, infoDestino, incluyeDestino, textoDeEnvio, caducidadMomento, repartirPendientes, MOMENTO,
+  esDestino, esPromo, infoDestino, incluyeDestino, textoDeEnvio, caducidadMomento, repartirPendientes, MOMENTO, funcionDeDestino,
 } from "./envios";
 
 // ============================================================================
@@ -22,9 +23,27 @@ import {
 const MAX_DESTINO = 400; // tope por envío: más no cabe en el tiempo de una función serverless
 const ID = () => `env-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+/**
+ * ¿Lo deja su plan (lib/planes.js)? A todos y «solo ese día» son promociones; el
+ * resto, avisos a un grupo. null si sí; si no, el error para la pantalla. Quitar
+ * (texto vacío) no pasa por aquí: recoger lo de antes siempre se puede.
+ */
+export function fueraDelPlan(negocio, destino) {
+  const funcion = funcionDeDestino(destino);
+  if (tiene(negocio, funcion)) return null;
+  return {
+    error: funcion === "promos" ? "Las promociones no van en tu plan. Mira Ajustes → Tu plan." : "Los avisos a un grupo no van en tu plan. Mira Ajustes → Tu plan.",
+    status: 403,
+  };
+}
+
 /** Pone (o quita, con texto vacío) la promo de la tienda en todas sus tarjetas. */
 export async function ponerPromo(slug, texto) {
   const promo = textoDeEnvio("todos", texto);
+  if (promo) {
+    const fuera = fueraDelPlan(await getNegocio(slug), "todos");
+    if (fuera) return fuera;
+  }
   const negocio = await saveNegocio(slug, { promo });
   if (!negocio) return { error: "Ese negocio no existe", status: 404 };
   // Solo una promo NUEVA hace sonar Android; retirarla limpia las tarjetas en silencio.
@@ -41,6 +60,11 @@ export async function ponerPromo(slug, texto) {
 export async function mandarMensaje(negocio, destino, texto, { actor = "manager" } = {}) {
   if (!esDestino(destino) || esPromo(destino)) return { error: `No existe el grupo "${destino}"`, status: 400 };
   const mensaje = textoDeEnvio(destino, texto);
+  // Lo de las reglas automáticas va por mandarRegla (lib/motorAvisos.js), con su propio interruptor.
+  if (mensaje) {
+    const fuera = fueraDelPlan(negocio, destino);
+    if (fuera) return fuera;
+  }
   const [clientes, registrados] = await Promise.all([listClientes(negocio.slug), serialesRegistrados(negocio.slug)]);
   // Todos a la vez (perfilesDe): quien aún no tiene costumbre se mide con la de la tienda, como en Clientes.
   const { perfiles } = perfilesDe(clientes.map((c) => ({ ...c, instalado: c.instalado || (registrados.has(c.serial) ? c.creado : null) })), negocio);

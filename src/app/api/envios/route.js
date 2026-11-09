@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getNegocio } from "@/lib/store";
-import { apuntarPendiente, quitarPendiente } from "@/lib/campanas";
+import { apuntarPendiente, quitarPendiente, fueraDelPlan } from "@/lib/campanas";
 import { esDestino, horaValida, textoDeEnvio, enviosVisibles, MAX_PENDIENTES } from "@/lib/envios";
 import { relojVivo } from "@/lib/relojAvisos";
 import { esSlug } from "@/lib/negocios";
@@ -33,6 +33,8 @@ export async function POST(request) {
     if (respuesta) return respuesta;
 
     if (!esDestino(destino)) return jsonError(`No existe el grupo "${destino}"`, 400);
+    const fuera = fueraDelPlan(negocio, destino);
+    if (fuera) return jsonError(fuera.error, fuera.status);
     const limpio = textoDeEnvio(destino, texto);
     if (!limpio) return jsonError("Escribe el mensaje antes de programarlo", 400);
     if (!negocio.horario) return jsonError("Para enviar a una hora hace falta el horario de la tienda", 409);

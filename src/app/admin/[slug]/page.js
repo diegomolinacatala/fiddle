@@ -10,6 +10,7 @@ import Accesos from "@/app/admin/Accesos";
 import DatosLegales from "@/app/admin/DatosLegales";
 import AvisosAvanzados from "@/app/admin/AvisosAvanzados";
 import PlantillaTienda from "@/app/admin/PlantillaTienda";
+import PlanTienda from "@/app/admin/PlanTienda";
 import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, estilosDelKit, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import { kitDe } from "@/lib/kits";
 import Selector from "@/app/admin/Selector";
@@ -146,9 +147,11 @@ export default function AdminNegocio() {
 
         <div style={{ marginTop: 18 }}><Accesos slug={n.slug} /></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
+          {/* Su plan primero: dice qué se puede encender en los dos de al lado (lib/planes.js). */}
+          <PlanTienda n={n} accent={AZUL} flash={flash} onCambio={(d) => setN((x) => ({ ...x, plan: d.plan, planId: d.planId, funciones: d.funciones, cupo: d.cupo }))} />
+          <AvisosAvanzados slug={n.slug} on={n.avisosAvanzados === true} fueraDelPlan={n.funciones?.avisosAvanzados === false} accent={AZUL} flash={flash} onCambio={(v) => set("avisosAvanzados", v)} />
+          <PlantillaTienda slug={n.slug} on={n.plantillaActiva === true} fueraDelPlan={n.funciones?.plantilla === false} accent={AZUL} flash={flash} onCambio={(v) => set("plantillaActiva", v)} />
           <DatosLegales slug={n.slug} legal={n.legal} accent={AZUL} flash={flash} onGuardado={(legal) => set("legal", legal)} />
-          <AvisosAvanzados slug={n.slug} on={n.avisosAvanzados === true} accent={AZUL} flash={flash} onCambio={(v) => set("avisosAvanzados", v)} />
-          <PlantillaTienda slug={n.slug} on={n.plantillaActiva === true} accent={AZUL} flash={flash} onCambio={(v) => set("plantillaActiva", v)} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>

@@ -11,8 +11,11 @@ import Selector from "@/app/admin/Selector";
 import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
 import ClaveNueva from "@/app/ClaveNueva";
 import Invitar from "@/app/admin/Invitar";
+import Planes from "@/app/admin/Planes";
+import { PLANES_DE_PARTIDA, PLAN_POR_DEFECTO } from "@/lib/planes";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
+import { NumeroVisto } from "@/app/useVisto";
 
 // ============================================================================
 // ADMIN DE LA PLATAFORMA — lista de tiendas
@@ -39,7 +42,9 @@ export default function Admin() {
   const [borrando, setBorrando] = useState(null); // {slug, modo} que se está confirmando
   const [creada, setCreada] = useState(null); // tienda recién creada: sus contraseñas, una vez
 
-  useEffect(() => { cargar(pestana); }, [pestana]);
+  // «Plataforma → Planes» desde la ficha de una tienda llega con #planes.
+  useEffect(() => { if (window.location.hash === "#planes") setPestana("planes"); }, []);
+  useEffect(() => { if (pestana !== "planes") cargar(pestana); }, [pestana]);
 
   async function cargar(cual = pestana) {
     setNegocios(null);
@@ -97,7 +102,7 @@ export default function Admin() {
         <EstadoIntegracion accent={AZUL} />
 
         <div style={{ display: "flex", gap: 8, margin: "18px 0 14px", flexWrap: "wrap" }}>
-          {[["activas", "Tiendas"], ["archivadas", "Archivadas"]].map(([id, texto]) => (
+          {[["activas", "Tiendas"], ["archivadas", "Archivadas"], ["planes", "Planes"]].map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
           ))}
           <a href="/admin/crm" style={solapa(false)}><Icono nombre="clientes" tam={16} /> Clientes</a>
@@ -128,16 +133,18 @@ export default function Admin() {
           </div>
         )}
 
-        {error && <div style={{ ...aviso(false), marginBottom: 14 }}>{error}</div>}
-        {negocios === null && <p style={{ color: C.suave }}>Cargando…</p>}
-        {negocios?.length === 0 && (
+        {pestana === "planes" && <Planes accent={AZUL} flash={flash} />}
+
+        {pestana !== "planes" && error && <div style={{ ...aviso(false), marginBottom: 14 }}>{error}</div>}
+        {pestana !== "planes" && negocios === null && <p style={{ color: C.suave }}>Cargando…</p>}
+        {pestana !== "planes" && negocios?.length === 0 && (
           <p style={{ color: C.suave }}>
             {pestana === "archivadas" ? "No hay tiendas archivadas." : "Todavía no hay tiendas. Crea la primera."}
           </p>
         )}
 
         <div style={{ display: "grid", gap: 12 }}>
-          {negocios?.map((n) => (
+          {pestana !== "planes" && negocios?.map((n) => (
             <div key={n.slug} style={{ ...panel, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
               <MarcaTienda tema={n.tema} tam={40} icono />
               <div style={{ flex: 1, minWidth: 180 }}>
@@ -146,7 +153,8 @@ export default function Admin() {
                   /{n.slug} · {n.tipo === "descuento" ? "cupón" : `cartilla de ${n.meta}`} · {n.premio}
                 </div>
                 <div style={{ fontSize: 12, color: C.tenue, marginTop: 2 }}>
-                  {n.clientes} cliente{n.clientes === 1 ? "" : "s"}
+                  Plan {PLANES_DE_PARTIDA[n.planId || PLAN_POR_DEFECTO].nombre}{n.plan ? "" : " (sin elegir)"}
+                  {" · "}<NumeroVisto id={`admin:${n.slug}:clientes`} valor={n.clientes} /> cliente{n.clientes === 1 ? "" : "s"}{n.cupo ? ` de ${n.cupo.max}` : ""}
                   {n.brief ? " · con brief" : " · sin brief"}
                   {Object.keys(n.notas || {}).length ? ` · ${Object.keys(n.notas).length} comentario(s)` : ""}
                 </div>

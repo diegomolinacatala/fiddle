@@ -23,7 +23,7 @@ export default function AvisosAvanzados(props) {
         texto: "Sin pestañas y sin envíos: ni las reglas que dejó encendidas. Sus reglas se guardan tal cual.",
         aviso: "Automáticos y programados, apagados",
       }}
-      nota="«Enviar» (ahora o a una hora de hoy o de mañana) funciona siempre."
+      nota="«Enviar» (ahora o a una hora de hoy o de mañana) no depende de esto: va con las promociones y los grupos de su plan."
     />
   );
 }

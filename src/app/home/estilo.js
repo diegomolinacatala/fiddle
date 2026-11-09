@@ -101,6 +101,9 @@ body:has(.home){background:${P.papel}}
 .titular{font-size:clamp(44px,1.3rem + 5.8vw,86px);line-height:.98;font-weight:680;letter-spacing:-.05em;text-wrap:balance}
 .acciones{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:10px}
 .portada-visual{display:grid;justify-items:center}
+.probar{background:var(--superficie);box-shadow:0 10px 26px -16px ${alfa(P.espresso, 0.45)}}
+.probar .flecha{margin-left:2px;transition:transform .3s var(--curva)}
+@media (hover:hover){.probar:hover .flecha{transform:translateX(3px)}}
 @media (min-width:960px){
   .portada{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);padding-top:64px}
   .portada-texto{justify-items:start;text-align:left}
@@ -161,17 +164,26 @@ body:has(.home){background:${P.papel}}
 
 /* la cinta de tarjetitas entre secciones (Cinta.js, Desfile.js): rellena el hueco
    que antes era solo margen, así que lo de alrededor se aprieta. */
-.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:10px 0 30px;cursor:default;
+.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:26px 0 54px;margin-bottom:-20px;cursor:default;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.cinta-pista{display:flex;width:max-content}
+.cinta-pista{display:flex;width:max-content;will-change:transform}
 .cinta-tanda{display:flex;gap:var(--hueco);padding-right:var(--hueco)}
-.cinta-tarjeta{flex-shrink:0;width:300px;zoom:.62}
-.cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important}
+/* Con la letra del sistema, como el pase de verdad y el móvil de la portada. */
+.cinta-tarjeta{position:relative;flex-shrink:0;width:300px;zoom:.62;font-family:var(--apple);
+  transform:perspective(900px) rotateX(0deg) rotateY(0deg) scale(1);transition:transform .5s var(--curva)}
+.cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important;transition:box-shadow .5s var(--curva)}
+/* La de debajo del ratón (Desfile.js): se acerca, se inclina hacia él y un brillo lo sigue. */
+.cinta-tarjeta::after{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;opacity:0;mix-blend-mode:soft-light;
+  background:radial-gradient(circle at var(--bx,50%) var(--by,40%),rgba(255,255,255,.6),rgba(255,255,255,0) 55%);transition:opacity .4s}
+.cinta-tarjeta.encima{z-index:2;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.12);
+  transition:transform .18s ease-out}
+.cinta-tarjeta.encima::after{opacity:1}
+.cinta-tarjeta.encima article{box-shadow:0 30px 44px -18px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.1)!important}
 .portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
 .cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
 .bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
-@media (max-width:759px){.cinta{--hueco:12px;padding-bottom:24px}.cinta-tarjeta{zoom:.52}}
+@media (max-width:759px){.cinta{--hueco:12px;padding:12px 0 24px}.cinta-tarjeta{zoom:.52}}
 
 /* un aviso de la pantalla de bloqueo */
 .aviso{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;align-items:center;padding:11px 14px 12px 11px;
@@ -215,6 +227,30 @@ body:has(.home){background:${P.papel}}
 .montaje strong{color:var(--tinta);font-weight:620}
 .montaje-icono{flex-shrink:0;width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:var(--avena);color:var(--marca)}
 @media (max-width:400px){.montaje{flex-direction:column;align-items:flex-start;gap:12px;padding:20px}}
+
+/* ---------- lo de La Delicantería (Cifras.js) ---------- */
+/* Las dos cifras con el mismo peso; la de los segundos, en verde como el primer paso
+   (va de lo mismo: poca fricción). Las barras empiezan en cero: no se exagera la subida. */
+.cifras{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+@media (min-width:900px){.cifras{grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:20px}}
+.cifra{display:grid;align-content:start;gap:6px;padding:30px 28px;border-radius:30px;background:var(--superficie);box-shadow:0 0 0 1px var(--linea)}
+.cifra-rapida{background:linear-gradient(160deg,${P.verdeClaro},${P.verdeHondo});box-shadow:none}
+/* En pantalla ancha mide lo que la de las barras: la cifra arriba y el texto abajo. */
+.cifra-rapida{align-content:space-between;gap:28px}
+.cifra-pie{display:grid;gap:6px}
+.cifra-num{display:flex;align-items:baseline;gap:.12em;margin-bottom:10px;font-size:clamp(76px,2.6rem + 5vw,128px);line-height:.9;font-weight:700;
+  letter-spacing:-.06em;color:var(--marca);font-variant-numeric:tabular-nums}
+.cifra-num span{font-size:.28em;font-weight:640;letter-spacing:-.025em}
+.cifra h3{font-size:21px;font-weight:620;letter-spacing:-.025em;text-wrap:balance}
+.cifra p:not(.cifra-num){color:var(--tinta-2);line-height:1.55;text-wrap:pretty}
+.cifra-barras{list-style:none;margin:22px 0 0;padding:0;height:190px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cifra-barras li{min-height:0;display:flex;flex-direction:column;gap:6px;text-align:center}
+.cifra-barras strong{font-size:15px;font-weight:650;color:var(--tinta-2);font-variant-numeric:tabular-nums}
+.cifra-hueco{flex:1;min-height:0;display:flex;align-items:flex-end}
+.cifra-barra{width:100%;height:var(--h);border-radius:10px 10px 4px 4px;background:${P.verdeHondo}}
+.cifra-semana{font-size:13.5px;color:var(--tinta-3)}
+.cifra-barras .ultima strong{color:var(--marca)}
+.cifra-barras .ultima .cifra-barra{background:var(--marca)}
 
 /* ---------- bandas oscuras ---------- */
 /* Van de lado a lado; lo de dentro, al ancho de las demás. */
@@ -283,8 +319,10 @@ body:has(.home){background:${P.papel}}
 .panel-nota a{color:var(--claro);font-weight:600;text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* ---------- precios ---------- */
-.planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:900px;margin:0 auto}
-@media (min-width:760px){.planes{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}}
+/* Tres planes: en fila solo con sitio para los tres; antes, uno debajo de otro (con dos
+   columnas el tercero se quedaba solo abajo). En el móvil se deslizan (estiloMovil.js). */
+.planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:560px;margin:0 auto}
+@media (min-width:1040px){.planes{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;max-width:1160px}}
 .plan{display:flex;flex-direction:column;padding:clamp(26px,3.5vw,38px);border-radius:32px;background:var(--superficie);
   box-shadow:0 0 0 1px var(--linea)}
 .plan-destacado{background:var(--tinta);box-shadow:0 40px 70px -40px ${alfa(P.espresso, 0.6)}}
@@ -391,13 +429,6 @@ body:has(.home){background:${P.papel}}
     .cabecera{animation:borde linear both;animation-timeline:scroll(root);animation-range:0 120px}
   }
 }
-@media (prefers-reduced-motion:no-preference){
-  .cinta-pista.corre{animation:cinta var(--vuelta) linear infinite}
-  .cinta-pista.quieta{animation-play-state:paused}
-}
-@media (prefers-reduced-motion:no-preference) and (hover:hover){.cinta:hover .cinta-pista{animation-play-state:paused}}
-/* Una tanda de las --tandas que lleva la pista (Desfile.js). */
-@keyframes cinta{to{transform:translate3d(calc(-100% / var(--tandas)),0,0)}}
 @media (prefers-reduced-motion:reduce){.movil-tarjeta{transition:none}}
 @keyframes sube{from{opacity:0;transform:translateY(36px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes llega{from{opacity:0;transform:translateY(-16px) scale(.94)}to{opacity:1;transform:none}}

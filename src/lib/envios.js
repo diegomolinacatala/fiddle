@@ -67,6 +67,9 @@ export const esDestino = (clave) => esGrupo(clave) || (typeof clave === "string"
 /** ¿Va a la promo de la tienda (no al pase de cada uno)? */
 export const esPromo = (clave) => clave === TODOS;
 
+/** Qué función del plan hace falta para mandar ahí (lib/planes.js): a todos es una promoción; lo demás, un grupo. */
+export const funcionDeDestino = (clave) => (clave === TODOS || clave === MOMENTO ? "promos" : "grupos");
+
 /** Cuánto se queda en la tarjeta: lo que se lee en cada destino de la pantalla. */
 export const DURA_GRUPO = "Hasta que vuelva";
 

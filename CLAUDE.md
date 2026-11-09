@@ -209,13 +209,32 @@ Ver [docs/RGPD.md](docs/RGPD.md) (qué hace cada punto) y [`src/lib/legal.js`](s
 
 - **Vercel corre en `lhr1` (Londres) porque Supabase está en eu-west-2** (`vercel.json`).
   Si la base cambia de región, la de las funciones va con ella.
-- **Manager y CRM cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
+- **Manager, CRM y la caja cargan en el servidor** (`page.js` lee y pasa `inicial` al panel de
   cliente) y cada ruta tiene `loading.js` con su esqueleto (`app/Esqueleto.js`).
-  Nada de pantallas que arrancan vacías y piden sus datos con `fetch`.
+  Nada de pantallas que arrancan vacías y piden sus datos con `fetch`. En la caja pesa
+  más: se vuelve a abrir tras cada cliente y cada `fetch` al abrirse era una función de
+  Vercel más (06-11-2026). Por eso también el recorrido llega sabido (`lib/tutorial.js`),
+  «quién atiende» solo se pregunta con gente en la plantilla y el manifest va a la CDN.
 - **La cabecera del dueño vive en el layout** (`[negocio]/MarcoGestion.js`): marca, nombre y
   pestañas no se vuelven a pintar al cambiar de pestaña, y `loading.js` solo pone en gris lo
   de debajo. Las pestañas de dentro (`Solapas`) salen ya con su texto en el loading. Lo que
   cambie en Tienda (nombre, tema) sube con `useGestion().actualizar`.
+- **Clientes vuelve sin esqueleto y se pone al día solo** (06-11-2026, lo pidió Víctor). El
+  layout guarda lo último que pintó en esta visita (`memoria` de `MarcoGestion`, solo en
+  memoria: lleva nombres) y su `loading.js` lo pinta mientras el servidor calcula. Con la
+  pantalla abierta, `useEnVivo` pregunta cada 30 s por `/api/crm/huella` (`huellaDeTienda`:
+  tres consultas de una fila) y solo si cambió pide el CRM entero; los clientes nuevos entran
+  iluminados. «Hoy en la caja» pregunta igual. Nada de `staleTimes` global: la ficha `/w/…`
+  cacheada enseñaría puntos viejos.
+- **Las cifras ruedan desde lo último que vio ESE dispositivo** (`useVisto`, `Visto`,
+  `NumeroVisto`, `Rueda`; la cuenta pura en `lib/animar.js`): en localStorage, por tienda,
+  solo cuentas (nunca un nombre); la primera vez, desde cero; lo de abajo, al bajar hasta
+  ello. Una fecha o una ventana que no deba moverse va en `FIJOS`. Una cifra nueva del
+  Resumen va dentro de un `Visto`. Las gráficas se mueven a medio camino; las cifras
+  grandes, con `Rueda` (NumberFlow), que recibe SOLO el valor de antes y luego el final
+  (cambiarle el número en cada fotograma era un parpadeo) y no gira hasta `gira` (si no,
+  giraba atrás y luego adelante); las frases van ya con el final. Mirado fotograma a
+  fotograma con Chrome sin ventana (07-11-2026): el panel oculto de Claude no anima.
 - **La caja pinta la acción al instante**: aplica `ACCIONES[x].aplicar` en el navegador y
   la petición va detrás, en fila (`TarjetaCaja.js`). Por eso `aplicar` tiene que seguir
   siendo PURA y sin imports del servidor.
@@ -316,6 +335,40 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 - **Las conclusiones son reglas fijas** (`observacionesPlantilla`), como «lo que dicen los
   números»: cada frase lleva la cifra de la que sale. Una conclusión nueva = una regla ahí.
 - Lo del empleado en su móvil es SOLO lo suyo de hoy; los números del equipo son del manager.
+
+## Los planes: qué puede usar cada tienda
+
+Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el PR a `main`).
+
+- **Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026 Tarjetas y Completo) y lo que lleva cada uno NO está en el código**:
+  lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave `planes`) y el código solo
+  tiene lo de partida: Esencial sin nada y hasta 750 tarjetas (+50 de margen), Plus con
+  estadísticas y promociones, Pro con todo. Antes de llevarlo a `main`, crear la tabla
+  `plataforma` en Supabase (`schema.sql`); sin ella, valen los de partida y lo dice el log.
+- **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro.** Una tienda de antes no
+  pierde nada por un despliegue. La Delicantería va en Pro a propósito.
+- **El plan dice qué PUEDE usarse, no qué está encendido, y nunca borra.** Los avisos automáticos
+  y la plantilla siguen con su interruptor del admin; el «Abierto hasta…» con el suyo en Ajustes.
+  Lo que el plan no deja no sale ni se manda, y vuelve tal cual con otro plan. Por eso el store
+  le pone a la tienda `funciones`, `planId` y `cupo` al leerla (`conPlan`) sin tocar lo guardado:
+  `saveNegocio` mezcla con la tienda leída y escribiría lo escondido.
+- **Lo que depende del plan pregunta con `tiene(negocio, "promos")`** (o `conAvisosAvanzados`,
+  `conAbierto`, `promoDe`, `conPlantilla`), nunca por el nombre del plan. Sin `funciones` (una
+  tienda que no pasó por el store, un test) es Pro. Una función nueva = una entrada en
+  `FUNCIONES` (sale sola en el admin) y su `tiene` donde se usa, en el servidor y en la pantalla.
+- **Lo escondido, igual en todas partes**: la promo en el pase de Apple, el objeto de Google y la
+  tarjeta web (`negocioDeTarjeta` lleva `funciones`); el «Abierto hasta…» con `estadoDeTienda`; el
+  aviso al pasar cerca en `ubicacionesApple` y en Google. Enviar: a todos y «solo ese día» son
+  `promos`, lo demás `grupos` (`funcionDeDestino`, `fueraDelPlan` en `lib/campanas.js`). En
+  Clientes, el Resumen es `estadisticas` y Grupos va con `grupos` (`pestanasDe`).
+- **El límite de tarjetas cuenta las vivas** (`contarTarjetas`, ni borradas ni fusionadas: lo
+  mismo que «clientes» en el admin, no lo que el CRM llama clientes). Avisa al dueño al 90 % y al
+  llegar (Ajustes → Tu plan); se siguen dando hasta el límite + el margen y entonces el cliente
+  nuevo ve «pregunta en el mostrador» (`TEXTO_LLENA`, sin hablar de planes). Las que ya existen
+  funcionan siempre. Solo se cuenta si el plan tiene límite: a las demás no les cuesta nada.
+- Los planes van un minuto en memoria (`planesGlobales`): se leen con cada tienda. Cambiar un plan
+  no empuja los pases de nadie (serían miles de firmas): lo recogen al ponerse al día. Cambiar el
+  plan de UNA tienda sí la pone al día en silencio.
 
 ## El premio: dar o guardar
 
@@ -735,11 +788,18 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026): Tarjetas, 39 € (tarjetas sin límite y promociones al momento a todos);
-  Completo, 49 € (además estadísticas, grupos, automáticos y programados, «Abierto
+  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 750 tarjetas, sin
+  promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
+  pagará sola con Stripe); Plus, 39 € (tarjetas sin límite, promociones al momento a todos,
+  estadísticas y se la dejamos montada);
+  Pro, 49 € (además grupos, automáticos y programados, «Abierto
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
-  app hace hoy; la app NO limita nada por plan (Completo = encender los avisos avanzados
-  y la plantilla en `/admin/<slug>`; lo demás lo ve cualquier tienda).
+  app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
+  esta página no lo lee, así que si cambia allí se cambia aquí a mano.
+- **«Ya funciona en una cafetería»** (`home/Cifras.js`, antes de los precios): dos cifras
+  reales de La Delicantería (los segundos hasta tenerla en el Wallet y las visitas por
+  semana), en `DELICANTERIA` de `datos.js` con cómo se sacaron (09-11-2026). Cifras fijas,
+  no se leen de la base. Si se actualizan, solo semanas enteras y sin festivos.
 - **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
   con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
   Al lado, «Copiar».
@@ -753,7 +813,13 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   con su paleta (NO la de fiddle: se enseña la variedad) y todas «Tu cafetería», nunca un
   nombre inventado que parezca un cliente. El móvil de la portada pasa una cada 2,2 s
   (`CARRUSEL`; quién se ve lo decide `Carrusel.js`) y las dos cintas de tarjetitas que
-  separan secciones (`CINTAS`, `Cinta.js`) no repiten diseño entre sí. Una novedad del
+  separan secciones (`CINTAS`, `Cinta.js`) no repiten diseño entre sí. **Lo básico** (07-11-2026): sobre todo la
+  marca que se llena y dos cartillas lado a lado (la taza a la derecha: a la izquierda su asa
+  pisa la cifra), café y cookies; nada de la banda «oscura» (lleva el poste de barbería),
+  rayas ni porciones. Un diseño nuevo se mira rasterizado antes de entrar. Con el ratón
+  encima, la cinta frena hasta pararse y la tarjeta de debajo se acerca y se inclina
+  (`Desfile.js`, un bucle de rAF: el panel oculto de Claude no lo mueve, se mira en Chrome sin
+  ventana). Una novedad del
   pase que se quiera enseñar = una entrada en `DISENOS`. «● Abierto hasta…» lo escribe
   `estadoParaPase`. Un test fija el contraste de cada una.
 - **En el móvil es otra página** (`estiloMovil.js`, `CONSULTA_MOVIL`: hasta 759 px y el

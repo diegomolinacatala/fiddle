@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getCliente } from "@/lib/store";
+import { getCliente, contarTarjetas } from "@/lib/store";
+import { quedaCupo, tiene, TEXTO_LLENA } from "@/lib/planes";
 import { negocioDePeticion } from "./negocioDePeticion";
 import { conFotoBanda } from "@/lib/propiosServidor";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
@@ -61,6 +62,9 @@ export default async function Page({ params, searchParams }) {
   const recordado = nuevo ? null : serialRecordado((await cookies()).get(cookieDeTarjeta(slug))?.value);
   const vigente = recordado ? await clienteVigente(getCliente, recordado).catch(() => null) : null;
   const suya = vigente?.negocio === slug ? vigente : null;
+  // Sin tarjetas libres en su plan (lib/planes.js): quien ya tiene la suya la ve
+  // igual; a los nuevos, «pregunta en el mostrador». Solo se cuenta con límite.
+  const llena = !suya && n.cupo ? !quedaCupo(n, await contarTarjetas(slug).catch(() => 0)) : false;
   const t = n.tema;
 
   // Tinta clara = fondo oscuro: el campo del nombre va en blanco translúcido
@@ -71,7 +75,7 @@ export default async function Page({ params, searchParams }) {
       <div className="centro">
         {suya
           ? <TuTarjeta n={await conFotoBanda(n)} cliente={suya} plataforma={plataformaDe((await headers()).get("user-agent"))} />
-          : <Bienvenida n={n} slug={slug} nuevo={nuevo} />}
+          : <Bienvenida n={n} slug={slug} nuevo={nuevo} llena={llena} />}
       </div>
       <footer className="pie">
         <a href={`/privacidad?b=${slug}`}>Privacidad</a>
@@ -81,7 +85,16 @@ export default async function Page({ params, searchParams }) {
   );
 }
 
-function Bienvenida({ n, slug, nuevo }) {
+function Bienvenida({ n, slug, nuevo, llena }) {
+  if (llena) {
+    return (
+      <header className="entra">
+        <MarcaTienda tema={n.tema} tam={76} icono style={marca} />
+        <h1 className="titulo" style={{ marginTop: 26 }}>{n.nombre}</h1>
+        <p className="promesa"><span>{TEXTO_LLENA}</span></p>
+      </header>
+    );
+  }
   return (
     <>
       <header className="entra">
@@ -95,7 +108,8 @@ function Bienvenida({ n, slug, nuevo }) {
       {/* Lo mínimo del aviso de privacidad donde se recogen los datos (por capas):
           una línea y el enlace al resto. */}
       <p className="letra entra" style={{ animationDelay: "200ms" }}>
-        Guardamos tus puntos{n.pedirNombre ? " y tu nombre" : ""} y te avisamos de sus promos.{" "}
+        {/* Sin promociones en su plan, no se promete ninguna. */}
+        Guardamos tus puntos{n.pedirNombre ? " y tu nombre" : ""}{tiene(n, "promos") ? " y te avisamos de sus promos" : ""}.{" "}
         <a href={`/privacidad?b=${slug}`}>Privacidad</a>
       </p>
     </>

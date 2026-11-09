@@ -235,6 +235,16 @@ create table if not exists intentos (
 create index if not exists intentos_clave_ts on intentos (clave, ts desc);
 -- Limpieza opcional (p.ej. con pg_cron): delete from intentos where ts < now() - interval '1 day';
 
+-- ===================== PLATAFORMA =====================
+-- Lo que es de fiddle entero, no de una tienda. Hoy solo "planes": qué lleva cada
+-- plan y cuántas tarjetas (lib/planes.js), lo cambia el admin en /admin → Planes.
+-- Sin fila, valen los de partida del código.
+create table if not exists plataforma (
+  clave       text primary key,
+  valor       jsonb not null,
+  actualizado timestamptz not null default now()
+);
+
 -- ===================== SEGURIDAD =====================
 -- El backend usa la service_role key (se salta RLS). Activar RLS SIN políticas
 -- cierra estas tablas a la anon key pública: nadie puede leerlas desde fuera.
@@ -251,3 +261,4 @@ alter table invitaciones   enable row level security;
 alter table tutoriales     enable row level security;
 alter table borrados       enable row level security;
 alter table auditoria      enable row level security;
+alter table plataforma     enable row level security;

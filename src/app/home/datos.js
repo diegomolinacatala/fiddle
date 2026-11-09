@@ -26,32 +26,53 @@ export const enlaceCorreo = (asunto = ASUNTO, cuerpo = CUERPO) =>
 export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
   `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CORREO)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
-// Lo que lleva cada plan (decidido el 13-10-2026). «Completo» suma a «Tarjetas»:
-// no repite su lista. Las frases dicen lo que la app hace hoy; nada de promesas
-// que la tienda no vaya a encontrar al entrar.
+// Lo que lleva cada plan (Plus y Pro, 13-10-2026, que se llamaban Tarjetas y Completo
+// hasta el 07-11-2026; Esencial, 06-11-2026). «Pro» suma a «Plus»: no repite su lista. Las frases dicen lo que la app
+// hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
+//
+// Lo que la app deja usar a cada plan lo decide el admin en /admin → Planes
+// (lib/planes.js) y esta página NO lo lee: si cambia allí, se cambia aquí a mano.
+//
+// Esencial es para no perder a quien le parece caro: la tarjeta y la caja, hasta
+// 750 tarjetas, sin promociones y sin montarla nosotros. Aún no se paga sola
+// (Stripe, más adelante): de momento se pide por WhatsApp como los otros.
 export const PLANES = [
   {
-    id: "tarjetas",
-    nombre: "Tarjetas",
+    id: "esencial",
+    nombre: "Esencial",
+    precio: 19,
+    lema: "Lo justo para tener tu tarjeta.",
+    incluye: [
+      "Hasta 750 tarjetas, en Apple Wallet y Android",
+      "Con tu logo, tus colores y tu premio",
+      "La caja en el móvil de la tienda",
+      "Tu QR para el mostrador",
+      "La montas tú, desde tu panel",
+    ],
+  },
+  {
+    id: "plus",
+    nombre: "Plus",
     precio: 39,
-    lema: "Para empezar con tu tarjeta.",
+    lema: "Sin límite y con promociones.",
     incluye: [
       "Tarjetas sin límite, en Apple Wallet y Android",
       "Con tu logo, tus colores y tu premio",
       "La caja en el móvil de la tienda",
       "Tu QR para el mostrador",
       "Promociones al momento, a todos tus clientes a la vez",
+      "Las estadísticas de tus clientes",
+      "Te la dejamos montada",
     ],
   },
   {
-    id: "completo",
-    nombre: "Completo",
+    id: "pro",
+    nombre: "Pro",
     precio: 49,
     lema: "Para que vuelvan más.",
     destacado: true,
     incluye: [
-      "Todo lo de Tarjetas",
-      "Las estadísticas de tus clientes",
+      "Todo lo de Plus",
       "Tus clientes por grupos, y avisos a cada grupo",
       "Avisos automáticos y programados",
       "«Abierto hasta…» en la tarjeta",
@@ -64,3 +85,23 @@ export const PLANES = [
 /** El mensaje de WhatsApp con el plan elegido, para que la conversación empiece por ahí. */
 export const mensajeDePlan = (plan) =>
   `Hola, me interesa el plan ${plan.nombre} de fiddle (${plan.precio} € al mes) para mi cafetería.`;
+
+// Lo que se enseña de La Delicantería (Valencia), primer cliente. Sacado de su base
+// el 09-11-2026 con consultas de solo lectura; Jesús tiene que dar el visto bueno a
+// que salga su nombre. Si se actualiza, se vuelven a sacar las dos cosas a la vez.
+// - segundos: media del escaneo (evento «alta») a tenerla en el Wallet («instalado»)
+//   sin el 5 % de cada punta. Sin recortar sale hora y media: unos pocos la guardan
+//   en casa horas después. La mitad tarda 6 s y el 95 %, menos de un minuto.
+// - semanas: visitas de cada semana (lunes a domingo, hora de Madrid), contadas como
+//   en el panel (sellos a menos de 3 h son una visita). Solo semanas enteras: la del
+//   05-10 no (abrieron el martes 06) y la del 12-10 tampoco (el lunes fue festivo y
+//   casi no abrieron: con ella de partida, el crecimiento salía de +56 %, inflado).
+export const DELICANTERIA = {
+  segundos: 9,
+  mitad: 6,
+  semanas: [
+    { semana: "19 oct", visitas: 352 },
+    { semana: "26 oct", visitas: 427 },
+    { semana: "2 nov", visitas: 455 },
+  ],
+};

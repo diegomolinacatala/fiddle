@@ -12,6 +12,7 @@ import { borrarClientesDeTienda } from "@/lib/derechos";
 import { normalizarLegal } from "@/lib/legal";
 import { prepararPropios } from "@/lib/propiosServidor";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
+import { IDS_PLAN } from "@/lib/planes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,6 +110,17 @@ export async function PUT(request) {
       const guardado = await saveNegocio(slug, { legal });
       await auditar(sesion, slug, "config", "legal");
       return NextResponse.json(guardado);
+    }
+
+    // Su plan (lib/planes.js), solo. Sí se ve en el pase (la promo, el «Abierto
+    // hasta…» y el aviso al pasar cerca van según el plan): se ponen al día en
+    // silencio, como al guardar algo de la tarjeta.
+    if ("plan" in body && Object.keys(body).every((k) => k === "slug" || k === "plan")) {
+      if (!IDS_PLAN.includes(body.plan)) return jsonError("Ese plan no existe", 400);
+      const guardado = await saveNegocio(slug, { plan: body.plan });
+      await auditar(sesion, slug, "config", `plan=${body.plan}`);
+      const aviso = await notificarNegocio(guardado, { cartilla: true });
+      return NextResponse.json({ ...guardado, aviso });
     }
 
     // Un interruptor del admin, solo: tampoco sale en el pase.

@@ -1,8 +1,9 @@
 import { randomBytes, randomUUID } from "crypto";
 import {
   getNegocio, crearCliente, listClientes, tocarClientesDeNegocio,
-  pushTokens, destinosDeAviso, borrarDispositivosPorToken, borrarDispositivos, addEvento,
+  pushTokens, destinosDeAviso, borrarDispositivosPorToken, borrarDispositivos, addEvento, contarTarjetas,
 } from "./store";
+import { quedaCupo } from "./planes";
 import { hayApple, configsDeTienda } from "./apple/config";
 import { enviarAvisos } from "./apple/apns";
 import { hayGoogle, rutaGuardarGoogle, actualizarEnGoogle, mensajeEnGoogle, tiendaEnGoogle } from "./googlewallet";
@@ -34,6 +35,18 @@ export function proveedorWallet() {
 }
 
 /**
+ * La tienda ya no puede dar más tarjetas: llegó al límite de su plan y al margen.
+ * Quien llama decide qué ve cada uno: el cliente, «pregunta en el mostrador»; el
+ * dueño, que su plan está lleno. Las tarjetas que ya existen siguen funcionando.
+ */
+export class TiendaLlena extends Error {
+  constructor(slug) {
+    super(`${slug}: sin tarjetas libres en su plan`);
+    this.name = "TiendaLlena";
+  }
+}
+
+/**
  * Crea un cliente nuevo con su pase (el "tap NFC").
  * El serial es NUESTRO (uuid): va en el QR desde el primer momento.
  * `origen` ("tap" | "manager") queda guardado: el CRM lo usa para saber por
@@ -43,6 +56,9 @@ export function proveedorWallet() {
 export async function emitirPase(slug, { origen = null, nombre = null } = {}) {
   const negocio = await getNegocio(slug);
   if (!negocio) throw new Error(`Negocio desconocido: ${slug}`);
+  // El límite de tarjetas de su plan, con su margen (lib/planes.js). Solo se
+  // cuenta si el plan tiene límite: a las demás no les cuesta ni una consulta.
+  if (negocio.cupo && !quedaCupo(negocio, await contarTarjetas(slug))) throw new TiendaLlena(slug);
 
   const proveedor = proveedorWallet();
   const serial = randomUUID();

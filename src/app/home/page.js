@@ -5,6 +5,7 @@ import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { appUrl } from "@/lib/url";
 import Telefono, { Aviso } from "./Telefono";
 import Panel from "./Panel";
+import Cifras from "./Cifras";
 import Correo from "./Correo";
 import Cinta from "./Cinta";
 import Menu from "./Menu";
@@ -23,7 +24,7 @@ import { cssMovil } from "./estiloMovil";
 // ----------------------------------------------------------------------------
 // Lo que se le enseña a una cafetería que aún no nos conoce, de menos a más: qué
 // es (portada), que va rápido (Cero fricción), lo que ve el dueño (el panel),
-// cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
+// que ya funciona en una cafetería de verdad, cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
 // «Entrar» arriba a la derecha (y al pie).
 //
 // En el móvil (estiloMovil.js) la misma página se ordena distinto: menú
@@ -97,8 +98,9 @@ export default async function Home() {
               <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
                 Hablemos por WhatsApp
               </a>
-              <a href="#precios" className="boton-suave">
-                Ver precios
+              {/* Probar la suya (/home/tarjeta). «Precios» sigue en la cabecera y el menú. */}
+              <a href="/home/tarjeta" className="boton-suave probar">
+                Diseña tu tarjeta <Flecha />
               </a>
             </div>
           </div>
@@ -180,15 +182,23 @@ export default async function Home() {
             <Indicador objetivo="panel-piezas" nombre="Partes del panel" tipo="pestanas" etiquetas={PIEZAS_DEL_PANEL} />
             <Panel />
             <p className="panel-nota">
-              Las estadísticas, los grupos y el aviso al pasar cerca van en el plan Completo.{" "}
+              Las estadísticas van desde el plan Plus; los grupos y el aviso al pasar cerca, en el Pro.{" "}
               <a href="#precios">Ver precios</a>
             </p>
           </div>
         </section>
 
+        {/* Justo antes del precio: lo que ya ha pasado en una cafetería, con su nombre. */}
+        <section id="cifras" className="bloque" aria-labelledby="titulo-cifras">
+          <Encabezado id="titulo-cifras" titulo="Ya funciona en una cafetería">
+            La Delicantería, en Valencia, fue la primera en usar fiddle. Así le fue en sus primeras semanas.
+          </Encabezado>
+          <Cifras />
+        </section>
+
         <section id="precios" className="bloque">
           <Encabezado titulo="Un precio claro" centrado>
-            Dos opciones, las dos con la tarjeta completa en iPhone y Android.
+            Tres opciones, todas con tu tarjeta en iPhone y Android.
           </Encabezado>
 
           <Indicador objetivo="planes" nombre="Planes" tipo="pestanas" etiquetas={PLANES.map((p) => `${p.nombre} ${p.precio} €`)} />
@@ -310,7 +320,7 @@ const PREGUNTAS = [
   ],
   [
     "¿Qué necesitas en la tienda?",
-    "Un móvil con cámara para la caja y tu QR en el mostrador. Nosotros te lo dejamos montado.",
+    "Un móvil con cámara para la caja y tu QR en el mostrador. Con Plus y Pro te lo dejamos montado; con Esencial lo montas tú desde tu panel.",
   ],
   [
     "¿Puedes cambiar el diseño o el premio más adelante?",

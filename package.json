@@ -16,6 +16,7 @@
     "clave-cifrado": "node scripts/clave-cifrado.mjs"
   },
   "dependencies": {
+    "@number-flow/react": "0.6.2",
     "@supabase/supabase-js": "^2.45.0",
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",

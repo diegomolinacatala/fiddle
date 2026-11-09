@@ -8,6 +8,7 @@ import { prepararPropios } from "@/lib/propiosServidor";
 import { negocioDelPersonal } from "@/lib/tarjeta";
 import { jsonError, errorInterno, exigirNegocio } from "@/lib/http";
 import { auditar } from "@/lib/auditoria";
+import { tiene } from "@/lib/planes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,8 @@ export async function PUT(request) {
     if (!actual) return jsonError("negocio desconocido", 404);
     const r = patchNegocio(body, Object.keys(ACCIONES), { cartillasActuales: actual.cartillas, cartillasAparcadas: actual.cartillasAparcadas, ESTILOS, temaPorDefecto });
     if (r.error) return jsonError(r.error, 400);
+    // Poner una promo es una promoción (lib/planes.js); quitarla, siempre se puede.
+    if (r.patch.promo && !tiene(actual, "promos")) return jsonError("Las promociones no van en tu plan. Mira Ajustes → Tu plan.", 403);
     // Lo de su kit y lo que ha subido ella, sí; lo de otra tienda, no (lib/propiosServidor.js).
     const p = await prepararPropios(slug, r.patch, actual);
     if (p.error) return jsonError(p.error, 400);

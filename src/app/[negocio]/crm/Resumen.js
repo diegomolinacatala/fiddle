@@ -5,9 +5,13 @@ import Icono from "@/app/Icono";
 import { serieVisitas, resumenSerie, rejillaHoraria, horarioDeRejilla, cambio, cadenciaTexto } from "@/lib/crm";
 import { ZONA_POR_DEFECTO } from "@/lib/horario";
 import { observaciones, enlaceDeAccion, suficiencia, textoFalta } from "@/lib/observaciones";
+import { tiene } from "@/lib/planes";
+import { funcionDeDestino } from "@/lib/envios";
 import { Cifra, Tarjeta, Rejilla, contar, numero } from "./piezas";
 import { Embudo, CurvaVuelta, VisitasPorDia, Estados, Puente, Cartilla, LeyendaCartilla, Telefonos } from "./graficas";
 import { C, panel, legible, tinte } from "@/app/ui";
+import { Visto } from "@/app/useVisto";
+import Rueda from "@/app/Rueda";
 
 // ============================================================================
 // RESUMEN: ¿CÓMO VA LA TIENDA?
@@ -30,6 +34,11 @@ import { C, panel, legible, tinte } from "@/app/ui";
 // móvil» de Clientes es iPhone + Android + los dos. Una cifra nueva tiene
 // que cuadrar igual. Lo que aún no tiene datos no ocupa un panel vacío: va a
 // «Lo que verás con más días», con cuándo saldrá.
+//
+// Cada bloque se mueve al verse (Visto, app/useVisto.js): desde lo último que vio
+// este dispositivo hasta lo de ahora, y otra vez si cambia con la pantalla
+// abierta. Se mueven las gráficas y las cifras grandes (Rueda); las frases van
+// ya con lo de llegada: un número que cuenta dentro de una frase parpadea.
 //
 // Las cuentas son de lib/crm.js; aquí solo se dicen. Las etiquetas de las
 // cifras las copia la web (home/Panel.js): si cambian aquí, también allí.
@@ -72,66 +81,100 @@ export default function Resumen({ d, slug, accent, onVerDescartadas }) {
   return (
     <div className="resumen" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18 }}>
       <style>{CSS}</style>
-      <Cifras m={m} enMovil={d.telefonos?.enMovil ?? m.instalados} esCupon={esCupon} accent={accent} dia={dia} zona={zona} />
+      <Visto id={`${slug}:cifras`} valor={{ m, enMovil: d.telefonos?.enMovil ?? m.instalados }}>
+        {(v, fin, gira) => <Cifras m={fin.m} fin={fin.m} gira={gira} enMovil={fin.enMovil} esCupon={esCupon} accent={accent} dia={dia} zona={zona} />}
+      </Visto>
 
-      {quehacer.length > 0 && <LoQueDicen ideas={quehacer} slug={slug} accent={accent} />}
+      {quehacer.length > 0 && <LoQueDicen ideas={quehacer} slug={slug} accent={accent} d={d} />}
 
       <Fila>
-        <Tarjeta id="r-camino" pregunta="¿Vuelven?" titular={titularCamino(m.embudo, esCupon)}
-          pie={m.descartadas > 0 && (
-            <button type="button" className="enlace" onClick={onVerDescartadas} style={enlaceSuave}>
-              {m.descartadas === 1 ? "Ver la tarjeta que nadie guardó ni usó" : `Ver las ${m.descartadas} tarjetas que nadie guardó ni usó`}
-            </button>
-          )}>
-          <Embudo pasos={m.embudo} accent={accent} />
-        </Tarjeta>
+        <Visto id={`${slug}:camino`} valor={m.embudo}>
+          {(embudo, fin) => (
+            <Tarjeta id="r-camino" pregunta="¿Vuelven?" titular={titularCamino(fin, esCupon)}
+              pie={m.descartadas > 0 && (
+                <button type="button" className="enlace" onClick={onVerDescartadas} style={enlaceSuave}>
+                  {m.descartadas === 1 ? "Ver la tarjeta que nadie guardó ni usó" : `Ver las ${m.descartadas} tarjetas que nadie guardó ni usó`}
+                </button>
+              )}>
+              <Embudo pasos={embudo} accent={accent} />
+            </Tarjeta>
+          )}
+        </Visto>
         {d.vuelta?.listo && (
-          <Tarjeta id="r-curva" pregunta="¿Cuánto tardan en volver?" {...titularCurva(d.vuelta)}>
-            <CurvaVuelta v={d.vuelta} accent={accent} />
-          </Tarjeta>
+          <Visto id={`${slug}:curva`} valor={d.vuelta}>
+            {(vuelta, fin) => (
+              <Tarjeta id="r-curva" pregunta="¿Cuánto tardan en volver?" {...titularCurva(fin)}>
+                <CurvaVuelta v={vuelta} accent={accent} />
+              </Tarjeta>
+            )}
+          </Visto>
         )}
       </Fila>
 
       <Fila>
-        <Tarjeta id="r-dias" pregunta="¿Cuántos vienen cada día?" {...titularDias(dia, serie)}>
-          <VisitasPorDia serie={serie} resumen={dia} accent={accent} />
-        </Tarjeta>
+        <Visto id={`${slug}:dias`} valor={{ serie, dia }}>
+          {(v, fin) => (
+            <Tarjeta id="r-dias" pregunta="¿Cuántos vienen cada día?" {...titularDias(fin.dia, fin.serie)}>
+              <VisitasPorDia serie={v.serie} resumen={v.dia} accent={accent} />
+            </Tarjeta>
+          )}
+        </Visto>
         {hay.suficiente && (
-          <Tarjeta id="r-horas" pregunta="¿A qué hora viene la gente?"
-            titular={fuerte?.texto || "Así es una semana normal, hora a hora."}
-            detalle="Cada casilla es lo que viene un día normal a esa hora.">
-            <Rejilla rejilla={rejilla.media} media accent={accent} {...horarioDeRejilla(n.horario)} />
-          </Tarjeta>
+          <Visto id={`${slug}:horas`} valor={rejilla.media}>
+            {(media) => (
+              <Tarjeta id="r-horas" pregunta="¿A qué hora viene la gente?"
+                titular={fuerte?.texto || "Así es una semana normal, hora a hora."}
+                detalle="Cada casilla es lo que viene un día normal a esa hora.">
+                <Rejilla rejilla={media} media accent={accent} {...horarioDeRejilla(n.horario)} />
+              </Tarjeta>
+            )}
+          </Visto>
         )}
       </Fila>
 
       <Fila>
-        <Tarjeta id="r-quien" pregunta="¿Quién sigue viniendo?"
-          titular={`${numero(m.activos)} de tus ${contar(m.total, ["cliente", "clientes"])} siguen viniendo.`}
-          detalle={m.cadenciaHabitual ? `El cliente típico vuelve ${cadenciaTexto(m.cadenciaHabitual)}.` : null}>
-          <Estados porEstado={m.porEstado} total={m.total} />
-        </Tarjeta>
+        <Visto id={`${slug}:quien`} valor={{ activos: m.activos, total: m.total, porEstado: m.porEstado }}>
+          {(v, fin) => (
+            <Tarjeta id="r-quien" pregunta="¿Quién sigue viniendo?"
+              titular={`${numero(fin.activos)} de tus ${contar(fin.total, ["cliente", "clientes"])} siguen viniendo.`}
+              detalle={m.cadenciaHabitual ? `El cliente típico vuelve ${cadenciaTexto(m.cadenciaHabitual)}.` : null}>
+              <Estados porEstado={v.porEstado} total={v.total} />
+            </Tarjeta>
+          )}
+        </Visto>
         {d.puente?.listo && (
-          <Tarjeta id="r-puente" pregunta="¿Ganas o pierdes clientes?" {...titularPuente(d.puente)}>
-            <Puente p={d.puente} accent={accent} />
-          </Tarjeta>
+          <Visto id={`${slug}:puente`} valor={d.puente}>
+            {(p, fin) => (
+              <Tarjeta id="r-puente" pregunta="¿Ganas o pierdes clientes?" {...titularPuente(fin)}>
+                <Puente p={p} accent={accent} />
+              </Tarjeta>
+            )}
+          </Visto>
         )}
       </Fila>
 
       {d.telefonos?.guardaron > 0 && (
         <Fila>
-          <Tarjeta id="r-moviles" pregunta="¿En qué móviles la llevan?" {...titularTelefonos(d.telefonos)}>
-            <Telefonos t={d.telefonos} accent={accent} />
-          </Tarjeta>
+          <Visto id={`${slug}:moviles`} valor={d.telefonos}>
+            {(t, fin) => (
+              <Tarjeta id="r-moviles" pregunta="¿En qué móviles la llevan?" {...titularTelefonos(fin)}>
+                <Telefonos t={t} accent={accent} />
+              </Tarjeta>
+            )}
+          </Visto>
         </Fila>
       )}
 
       {!esCupon && conPuntos.length > 0 && (
-        <Tarjeta id="r-puntos" pregunta="¿Cuántos puntos llevan?" pie={<LeyendaCartilla />}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 24 }}>
-            {conPuntos.map((c) => <Cartilla key={c.indice} c={c} conNombre={d.cartillas.length > 1} />)}
-          </div>
-        </Tarjeta>
+        <Visto id={`${slug}:puntos`} valor={conPuntos}>
+          {(lista) => (
+            <Tarjeta id="r-puntos" pregunta="¿Cuántos puntos llevan?" pie={<LeyendaCartilla />}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 24 }}>
+                {lista.map((c) => <Cartilla key={c.indice} c={c} conNombre={d.cartillas.length > 1} />)}
+              </div>
+            </Tarjeta>
+          )}
+        </Visto>
       )}
 
       {pendientes.length > 0 && <Pendientes items={pendientes} accent={accent} />}
@@ -204,31 +247,31 @@ function titularPuente(p) {
  * Las cuatro cifras de cabecera. Con menos de un mes de fiddle, «los últimos 30
  * días» son en realidad «desde el primer día», y la etiqueta lo dice.
  */
-function Cifras({ m, enMovil, esCupon, accent, dia, zona }) {
+function Cifras({ m, fin, gira, enMovil, esCupon, accent, dia, zona }) {
   const joven = m.inicio && Date.now() - m.inicio < 30 * DIA;
   const desde = m.inicio ? `desde el ${fecha(m.inicio, zona)}` : null;
   const enPct = m.total ? Math.round((m.activos / m.total) * 100) : 0;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 12 }}>
-      <Cifra label="Clientes" valor={numero(m.total)} accent={accent}
+      <Cifra label="Clientes" valor={<Rueda valor={fin.total} gira={gira} />} accent={accent}
         pie={[joven ? desde : `${m.nuevos30 ? "+" : ""}${numero(m.nuevos30)} en 30 días`, `${numero(enMovil)} con la tarjeta en el móvil`]} />
-      <Cifra label="Siguen viniendo" valor={numero(m.activos)} accent={C.ok}
+      <Cifra label="Siguen viniendo" valor={<Rueda valor={fin.activos} gira={gira} />} accent={C.ok}
         pie={[`el ${enPct}% de tus clientes`, `${contar(m.porEstado.nuevo, ["nuevo", "nuevos"])} y ${numero(m.porEstado.activo)} a su ritmo`]} />
-      <Cifra label="Visitas" valor={numero(m.visitas30)} cambio={cambio(m.visitas30, m.visitas30Previas)}
+      <Cifra label="Visitas" valor={<Rueda valor={fin.visitas30} gira={gira} />} cambio={cambio(m.visitas30, m.visitas30Previas)}
         pie={[
           joven ? desde : "en los últimos 30 días",
           m.visitas30Previas !== null ? "frente a los 30 anteriores" : dia.dias ? `en ${contar(dia.dias, ["día abierto", "días abiertos"])}` : null,
         ]} />
       {esCupon
-        ? <Cifra label="Cupones usados" valor={numero(m.premios)} pie="desde el primer día" />
-        : <Cifra label="Premios por dar" valor={numero(m.porDar)}
+        ? <Cifra label="Cupones usados" valor={<Rueda valor={fin.premios} gira={gira} />} pie="desde el primer día" />
+        : <Cifra label="Premios por dar" valor={<Rueda valor={fin.porDar} gira={gira} />}
           pie={m.porDar ? [`a ${contar(m.conPremio, ["cliente", "clientes"])}`, "guardados o con la cartilla llena"] : "ninguno pendiente"} />}
     </div>
   );
 }
 
 // --------------------------------------------------------------- qué hacer
-function LoQueDicen({ ideas, slug, accent }) {
+function LoQueDicen({ ideas, slug, accent, d }) {
   return (
     <section aria-labelledby="r-ideas" style={panel}>
       <h2 id="r-ideas" style={{ fontSize: 13, fontWeight: 600, color: C.suave, margin: "0 0 12px" }}>Lo que dicen los números</h2>
@@ -242,7 +285,8 @@ function LoQueDicen({ ideas, slug, accent }) {
               <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>{o.texto}</div>
               {o.detalle && <div style={{ fontSize: 13, color: C.suave, marginTop: 3, lineHeight: 1.45 }}>{o.detalle}</div>}
             </div>
-            {o.accion && (
+            {/* Solo si su plan deja mandar ahí (lib/planes.js): sin eso, el botón llevaría a un Enviar que no lo ofrece. */}
+            {o.accion && (o.accion.tipo !== "grupo" && o.accion.tipo !== "enviar" || tiene(d.negocio, funcionDeDestino(o.accion.grupo))) && (
               <a className="accion" href={enlaceDeAccion(slug, o.accion, o.texto)} style={botonAccion}>
                 {o.accion.label}
               </a>

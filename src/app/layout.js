@@ -42,6 +42,14 @@ const base = `${hojaDeColores}
   @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation-duration: 1.6s } }
   /* Las preguntas van en una ventana nuestra (app/Dialogo.js), nunca en la del navegador. */
   dialog.ventana::backdrop { background: rgb(15 18 22 / 0.5); }
+  /* Un cliente que llega con la pantalla abierta entra en la lista y se ilumina un momento. */
+  .fila-nueva { animation: fila-nueva 2.4s ease-out both; }
+  .fila-nueva > td { animation: fila-entra 0.45s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes fila-nueva { from { background: var(--fila-nueva, rgb(0 0 0 / 0.06)) } }
+  @keyframes fila-entra { from { transform: translateY(-10px); opacity: 0 } }
+  @media (prefers-reduced-motion: reduce) {
+    .fila-nueva > td { animation: none; }
+  }
 `;
 
 export default function RootLayout({ children }) {

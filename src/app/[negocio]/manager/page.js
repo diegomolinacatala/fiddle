@@ -6,6 +6,7 @@ import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
 import { negocioDelPersonal } from "@/lib/tarjeta";
+import { recorridoVisto } from "@/lib/tutorial";
 import PanelManager from "./PanelManager";
 
 export const dynamic = "force-dynamic";
@@ -23,13 +24,15 @@ export default async function Page({ params }) {
 
   let n;
   let reloj;
+  let visto;
   try {
-    [n, reloj] = await Promise.all([negocioDePeticion(slug), relojVivo()]);
+    // `visto`: el recorrido de bienvenida, ya sabido (lib/tutorial.js): sin otra petición desde el navegador.
+    [n, reloj, visto] = await Promise.all([negocioDePeticion(slug), relojVivo(), recorridoVisto(sesion, "manager")]);
   } catch (e) {
     console.error(`[manager ${slug}] no se pudo leer la base de datos:`, e);
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
   }
   if (!n) notFound();
   // `reloj`: si anda, el pase lleva "ABIERTO / CERRADO" y la vista previa también.
-  return <PanelManager negocio={slug} inicial={negocioDelPersonal(n)} reloj={reloj} />;
+  return <PanelManager negocio={slug} inicial={negocioDelPersonal(n)} reloj={reloj} recorridoVisto={visto} />;
 }

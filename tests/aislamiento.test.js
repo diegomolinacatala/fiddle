@@ -66,6 +66,7 @@ const DEL_PERSONAL = [
   ["crm/cliente/[serial]/datos", "GET", () => `/api/crm/cliente/${S()}/datos`, null, true],
   ["crm/exportar", "POST", () => "/api/crm/exportar", () => ({ b: "nube", cuantos: 1 })],
   ["crm", "GET", () => "/api/crm?b=nube"],
+  ["crm/huella", "GET", () => "/api/crm/huella?b=nube"],
   ["envios", "POST", () => "/api/envios", () => ({ b: "nube", destino: "fantasmas", texto: "hola", cuando: new Date().toISOString() })],
   ["envios", "DELETE", () => "/api/envios", () => ({ b: "nube", id: "x" })],
   ["logo", "POST", () => "/api/logo?b=nube"],
@@ -95,6 +96,9 @@ const DEL_ADMIN = [
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", legal: { nif: "B1" } })],
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plantillaActiva: true })],
   ["admin/negocios", "DELETE", () => "/api/admin/negocios?slug=nube&modo=archivar"],
+  ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plan: "esencial" })],
+  ["admin/planes", "GET", () => "/api/admin/planes"],
+  ["admin/planes", "PUT", () => "/api/admin/planes", () => ({})],
   ["estado", "GET", () => "/api/estado"],
 ];
 

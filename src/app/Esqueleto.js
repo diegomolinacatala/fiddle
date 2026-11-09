@@ -48,6 +48,28 @@ export function EsqueletoGestion({ children, margen = 20 }) {
 }
 
 /** Ficha de un cliente en la caja: código, banda y botones. */
+/** La pantalla del escáner de la caja (/<slug>/caja): la cabecera y el escáner. */
+export function EsqueletoEscaner() {
+  return (
+    <main style={pagina} aria-busy="true" aria-label="Cargando">
+      <style>{css}</style>
+      <div style={{ width: "min(430px, 100%)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Hueso w={40} h={40} r={10} />
+          <div style={{ flex: 1 }}>
+            <Hueso w="45%" h={18} style={{ marginBottom: 6 }} />
+            <Hueso w="65%" h={12} />
+          </div>
+        </div>
+        <div style={{ ...panel, marginTop: 16, padding: 16 }}>
+          <Hueso h={300} r={RADIO.fila} />
+          <Hueso h={44} r={RADIO.boton} style={{ marginTop: 10 }} />
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function EsqueletoCaja() {
   return (
     <main style={pagina} aria-busy="true" aria-label="Cargando">
