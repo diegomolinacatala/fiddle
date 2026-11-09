@@ -436,6 +436,9 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 - **La pizza es UNA pizza redonda** (`bandaPizza`): sin huecos entre trozos, los ganados
   con todo y los que faltan desvaídos, con los cortes finos. Los ingredientes van por toda
   la pizza (no por porción) en sitios fijos: igual con 6 trozos que con 12.
+- **La cuenta («5/8») se escribe con `tema.cifras`** (`gruesas`, `normales` o `cuadradas`; `cifrasDe`). Sin
+  elegir, cada banda sigue como estaba: cuadradas, menos las dos cartillas que se llenan lado a
+  lado, que van normales (La Delicantería se queda así a propósito, 10-11-2026). Se elige en Editar tarjeta → puntos y en el Color de «Diseña tu tarjeta».
 - **Dos cartillas**: `tema.doble` = `filas` (una encima de otra) o `lados`; y CADA
   cartilla su `modo` y su `forma` (cualquiera de MODOS, como una tienda de una). Cada
   modo se pinta en su trozo con la caja que aguanta (`ASPECTO` en dibujo.js: un modo
@@ -834,6 +837,20 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
 - Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
   `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
+- **Las medidas de la tarjeta salen de una captura de iPhone** (`WALLET` en `lib/vistaWallet.js`,
+  09-11-2026): 360 × 506 puntos, y la banda a 139 de alto aunque el PNG sea de 123 (Wallet la
+  agranda y recorta los lados). Las usan `CaraDelPase` y `PaseVista`. La letra es la San
+  Francisco donde existe; en Windows y Android, Inter (`FUENTE_PASE`, `app/fuentePase.js`): Apple
+  no deja servir la suya. /p y la página de la tienda no cargan Inter a propósito.
+- **«Diseña tu tarjeta» se contesta de un toque** (`home/tarjeta`, 09-11-2026): elegir pasa solo
+  al siguiente paso; con botón, solo el color (se desliza) y el nombre (se escribe). El orden es
+  `SECCIONES`. El premio sale del icono (`ICONOS`), no se elige.
+- **La tarjeta del probador se pinta al doble y la cámara la encoge** (`RESOLUCION`, el `zoom` de
+  `.prob-tarjeta`): un `transform` agranda lo ya pintado y se veía borroso. Y la sombra es UNA,
+  fuera de las capas del fundido: con una por capa, al quitar la vieja saltaba de golpe.
+- **Quien termina deja un email o un teléfono, sin verificar** (`POST /api/interesados`, tabla
+  `interesados`, contacto cifrado) y sale en `/admin` → Interesados con la tarjeta que diseñó.
+  Antes de llevarlo a `main`, crear la tabla (`schema.sql`).
 
 ## Pantallas en el móvil
 

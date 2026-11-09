@@ -128,7 +128,7 @@ function TuTarjeta({ n, cliente, plataforma }) {
     <>
       <h1 className="titulo entra">{cliente.nombre ? `Hola, ${cliente.nombre}` : n.nombre}</h1>
       <div className="pase sube">
-        <CaraDelPase cliente={clienteDeTarjeta(cliente)} negocio={negocioDeTarjeta(n)} />
+        <CaraDelPase cliente={clienteDeTarjeta(cliente)} negocio={negocioDeTarjeta(n)} ancho={320} />
       </div>
       <div className="wallet entra" style={{ animationDelay: "260ms" }}>
         {apple && <BotonAppleWallet href={apple} />}

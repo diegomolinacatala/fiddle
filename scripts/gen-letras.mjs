@@ -18,6 +18,7 @@ import opentype from "opentype.js";
 
 const require = createRequire(import.meta.url);
 const FUENTE = require.resolve("@fontsource/inter/files/inter-latin-500-normal.woff");
+const FUENTE_GRUESA = require.resolve("@fontsource/inter/files/inter-latin-700-normal.woff");
 const SALIDA = new URL("../src/lib/apple/letras.js", import.meta.url);
 
 const CARACTERES = [
@@ -49,6 +50,22 @@ for (const a of CARACTERES) {
   }
 }
 
+// Las cuentas ("5/8") van en Bold: en la banda, en Medium se quedaban flojas.
+const CIFRAS = "0123456789/";
+const bufGruesa = readFileSync(FUENTE_GRUESA);
+const gruesa = opentype.parse(bufGruesa.buffer.slice(bufGruesa.byteOffset, bufGruesa.byteOffset + bufGruesa.byteLength));
+const glifosGruesos = {};
+const kernGrueso = {};
+for (const c of CIFRAS) {
+  const g = gruesa.charToGlyph(c);
+  if (!g || g.index === 0) throw new Error(`Inter Bold no tiene «${c}»`);
+  glifosGruesos[c] = [Math.round(g.advanceWidth), g.getPath(0, 0, em).toPathData(0)];
+  for (const b of CIFRAS) {
+    const v = gruesa.getKerningValue(g, gruesa.charToGlyph(b));
+    if (v) kernGrueso[c + b] = v;
+  }
+}
+
 const js = `// ============================================================================
 // GENERADO por scripts/gen-letras.mjs — no editar a mano.
 //
@@ -66,6 +83,10 @@ export const GLIFOS = ${JSON.stringify(glifos)};
 
 /** par de caracteres -> ajuste de espaciado (kerning) */
 export const KERN = ${JSON.stringify(kern)};
+
+/** Lo mismo en Inter Bold, solo para las cuentas: cifras y barra. */
+export const GLIFOS_GRUESOS = ${JSON.stringify(glifosGruesos)};
+export const KERN_GRUESO = ${JSON.stringify(kernGrueso)};
 `;
 writeFileSync(SALIDA, js);
 console.log(`letras.js: ${Object.keys(glifos).length} glifos, ${Object.keys(kern).length} pares de kerning, ${(js.length / 1024).toFixed(1)} KB`);

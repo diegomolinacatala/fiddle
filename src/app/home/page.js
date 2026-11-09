@@ -373,6 +373,6 @@ function Flecha() {
 const banda = ({ negocio, cliente }) => comoDataUri(stripDelPase(negocio, cliente).svg);
 
 async function qrDeTexto(texto) {
-  const svg = await QRCode.toString(texto, { type: "svg", margin: 2, errorCorrectionLevel: "M", color: { dark: PALETA.espresso, light: "#ffffff" } });
+  const svg = await QRCode.toString(texto, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#000000", light: "#ffffff" } });
   return comoDataUri(svg);
 }

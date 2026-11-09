@@ -34,6 +34,8 @@ import { RESERVADOS } from "./negocios";
 //                                          Wallet y Android, sin sesión
 //   /invitacion  /api/invitacion           el dueño de una tienda nueva elige sus
 //                                          contraseñas (vale el token del enlace)
+//   /api/interesados                       el último paso de «Diseña tu tarjeta»:
+//                                          deja un contacto, con límite por IP
 //   /api/cron/avisos                       el reloj de los avisos automáticos: no
 //                                          hay sesión, lo protege CRON_SECRET en
 //                                          su handler (sin él, no hace nada)
@@ -45,6 +47,7 @@ const PUBLICAS = [
   /^\/privacidad$/,
   /^\/invitacion$/,
   /^\/api\/invitacion$/,
+  /^\/api\/interesados$/,
   /^\/api\/login$/,
   /^\/api\/logout$/,
   /^\/api\/tap$/,

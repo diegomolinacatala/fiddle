@@ -3,17 +3,21 @@ import { stripDelPase, comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
 import { LogoApple } from "@/app/LogoTienda";
 import { estadoDe } from "@/lib/resumen";
 import { describirBanda } from "@/lib/cartillas";
+import { WALLET as W, FUENTE_PASE, colocarFila, medirAprox } from "@/lib/vistaWallet";
 import AbiertoAhora from "@/app/AbiertoAhora";
 
 // ============================================================================
 // LA CARA DE LA TARJETA
 // ----------------------------------------------------------------------------
-// Cabecera, banda a sangre y campos: la disposición del pase de Apple con la
-// tipografía del sistema. La usan la tarjeta web (/p/<serial>, que le pone el QR
-// debajo) y la página de la tienda al darla de alta. Todo sale de
-// camposDelPase(), stripDelPase() y svgLogo(), los mismos que arman el .pkpass:
-// si se separan, mienten.
+// Cabecera, banda a sangre y campos: la disposición del pase de Apple, con las
+// medidas de un pase de verdad (WALLET en lib/vistaWallet.js). La usan la tarjeta
+// web (/p/<serial>, que le pone el QR debajo), la página de la tienda al darla de
+// alta y la web de fiddle. Todo sale de camposDelPase(), stripDelPase() y svgLogo(),
+// los mismos que arman el .pkpass: si se separan, mienten.
 //
+// `qr` ({ src, codigo }): la tarjeta entera, como en la Cartera: con el alto de
+// Wallet y el código en su caja blanca, pegado abajo.
+// `ancho`: el ancho para el que se reparte la fila de campos (encoge como en iOS).
 // `claseBanda`: la tarjeta web la cambia para animar la banda con cada sello.
 // `children`: lo que va dentro de la tarjeta, debajo de los campos.
 // `data-parte` (cabecera, banda, campos): lo que encuadra la cámara de /home/tarjeta.
@@ -25,17 +29,23 @@ import AbiertoAhora from "@/app/AbiertoAhora";
 // la web de fiddle (/home) para enseñar el pase tal cual.
 // ============================================================================
 
-export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", horario = null, estado = null, children = null }) {
+export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", horario = null, estado = null, qr = null, ancho = W.ancho, children = null }) {
   const t = negocio.tema;
   const e = estadoDe(cliente, negocio);
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = camposDelPase(cliente, negocio);
   const banda = stripDelPase(negocio, cliente, { estado });
   const campos = [...secondaryFields, ...auxiliaryFields];
+  // Una regla de tres y no un canvas: esto también se pinta en el servidor.
+  const fila = colocarFila(campos, {
+    total: ancho - W.margen * 2, hueco: W.hueco, max: W.valor, min: W.valorMin,
+    medir: medirAprox, etiquetas: campos.map((f) => medirAprox(f.label, W.etiqueta)),
+  });
+  const abajo = children || qr ? 0 : 18;
 
   return (
-    <article style={{ ...tarjeta, background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
+    <article style={{ ...tarjeta, ...(qr ? entera : null), background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
       <header style={cabecera} data-parte="cabecera">
-        <LogoApple tema={t} tam={30} style={{ flexShrink: 0 }} />
+        <LogoApple tema={t} tam={W.logo} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong style={nombreTienda}>{negocio.nombre}</strong>
           {horario && <AbiertoAhora horario={horario} />}
@@ -43,19 +53,20 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
         {headerFields.map((f) => (
           <div key={f.key} style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={etiqueta(colorDelPase(t))}>{f.label}</div>
-            <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.15 }}>{f.value}</div>
+            <div style={{ fontSize: W.valorCabecera, fontWeight: 400, lineHeight: 1.1, marginTop: 2 }}>{f.value}</div>
           </div>
         ))}
       </header>
 
-      <div style={{ position: "relative" }} data-parte="banda">
+      {/* Alto de Wallet y `cover`: la banda se pinta más alta que su imagen y pierde los lados. */}
+      <div style={{ position: "relative", flexShrink: 0, aspectRatio: `${W.ancho} / ${W.banda}` }} data-parte="banda">
         {/* key: cada sello nuevo vuelve a montar la banda y la animación se ve */}
         <img
           key={`${cliente.sellos}-${cliente.sellos2}-${cliente.premios}`}
           className={claseBanda}
           src={comoDataUri(banda.svg)}
           alt={e.esCupon ? (e.usado ? "Cupón usado" : "Cupón válido") : describirBanda(cliente, negocio)}
-          style={{ display: "block", width: "100%", height: "auto", aspectRatio: `${banda.ancho} / ${banda.alto}` }}
+          style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
         />
         {primaryFields.length > 0 && (
           <div style={sobreLaBanda}>
@@ -66,35 +77,55 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
       </div>
 
       {campos.length > 0 && (
-        <div style={{ display: "flex", gap: 16, padding: children ? "14px 18px 0" : "14px 18px 18px" }} data-parte="campos">
-          {campos.map((f) => (
-            <div key={f.key} style={{ flex: 1, minWidth: 0 }}>
-              <div style={etiqueta(colorDelPase(t))}>{f.label}</div>
-              <div style={{ fontSize: 16, fontWeight: 500, marginTop: 2, overflowWrap: "anywhere" }}>{f.value}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: W.hueco, padding: `${W.arribaCampos}px ${W.margen}px ${abajo}px` }} data-parte="campos">
+          {campos.map((f, i) => (
+            <div key={f.key} style={{ flex: "0 1 auto", minWidth: 0 }}>
+              <div style={{ ...etiqueta(colorDelPase(t)), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</div>
+              <div style={{ fontSize: fila[i].tam, fontWeight: 400, lineHeight: 1.18, marginTop: 3, letterSpacing: "-0.01em" }}>
+                {fila[i].lineas.map((l, j) => <div key={j} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l}</div>)}
+              </div>
             </div>
           ))}
         </div>
       )}
 
       {children}
+
+      {qr && (
+        <div style={sitioQr}>
+          <div style={cajaQr}>
+            <img src={qr.src} alt="" width={W.qr} height={W.qr} style={{ display: "block", width: "100%", height: "auto" }} />
+            <div style={{ fontSize: W.codigo, lineHeight: 1.2, marginTop: 3 }}>{qr.codigo}</div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
 
 const tarjeta = {
   position: "relative",
-  borderRadius: 22,
+  borderRadius: W.radio,
   overflow: "hidden",
+  fontFamily: FUENTE_PASE,
   boxShadow: "0 22px 44px -18px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.1), inset 0 0 0 1px rgba(255,255,255,.06)",
 };
 
-const cabecera = { display: "flex", alignItems: "center", gap: 10, padding: "14px 18px" };
-const nombreTienda = { display: "block", fontSize: 16, fontWeight: 650, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+// El alto lo pone Wallet: lo que sobra queda entre los campos y el código.
+const entera = { aspectRatio: `${W.ancho} / ${W.alto}`, display: "flex", flexDirection: "column" };
+
+// El brillo de arriba es de Wallet: la cabecera sale un pelo más clara que el resto.
+const cabecera = {
+  display: "flex", alignItems: "center", gap: 12, minHeight: W.cabecera, padding: `0 ${W.margen}px`, flexShrink: 0,
+  background: "linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,0))",
+};
+const nombreTienda = { display: "block", fontSize: W.nombre, fontWeight: 500, lineHeight: 1.2, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 const etiqueta = (color) => ({
-  fontSize: 10.5,
-  fontWeight: 700,
-  letterSpacing: 0.8,
+  fontSize: W.etiqueta,
+  fontWeight: 500,
+  lineHeight: 1.2,
+  letterSpacing: 0.4,
   textTransform: "uppercase",
   color,
 });
@@ -105,8 +136,11 @@ const sobreLaBanda = {
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
-  padding: "0 18px",
+  padding: `0 ${W.margen}px`,
   maxWidth: "64%",
 };
 
 const descuento = { fontSize: 26, fontWeight: 750, color: "#fff", lineHeight: 1.1, textShadow: "0 1px 3px rgba(0,0,0,.3)" };
+
+const sitioQr = { marginTop: "auto", display: "flex", justifyContent: "center", padding: `10px 0 ${W.abajoQr}px` };
+const cajaQr = { width: `${(W.cajaQr / W.ancho) * 100}%`, padding: "8px 9px 5px", borderRadius: 7, background: "#fff", color: "#000", textAlign: "center", boxSizing: "border-box" };

@@ -8,7 +8,8 @@ import { svgBandaOpaca, stripDelPase, comoDataUri, colorDelPase } from "@/lib/ap
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
 import { construirClase, construirObjeto } from "@/lib/google/pase";
 import { enlacesDeContacto } from "@/lib/contacto";
-import { colocarFila, medirAprox } from "@/lib/vistaWallet";
+import { WALLET, FUENTE_PASE, colocarFila, medirAprox } from "@/lib/vistaWallet";
+import { fuentePase } from "@/app/fuentePase";
 import { C } from "@/app/ui";
 
 // ============================================================================
@@ -34,7 +35,9 @@ import { C } from "@/app/ui";
 // ============================================================================
 
 const ANCHO = 300; // ancho de la tarjeta en la vista previa (las medidas salen de aquí)
-const FUENTE_APPLE = '-apple-system, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif';
+// El canvas que mide el texto no entiende var(): ahí va la familia ya resuelta.
+const FUENTE_APPLE = FUENTE_PASE;
+const FUENTE_MEDIR = FUENTE_PASE.replace(/var\([^)]*\)/, fuentePase.style.fontFamily);
 const FUENTE_GOOGLE = '"Google Sans", Roboto, system-ui, sans-serif';
 
 /**
@@ -62,7 +65,7 @@ export default function PaseVista({ negocio: negocioGuardado, cliente, qrTexto, 
   const [caja, escala] = useEscala();
 
   return (
-    <div ref={caja}>
+    <div ref={caja} className={fuentePase.variable}>
       {!plataforma && <div style={conmutador}>
         {[["apple", " Apple Wallet"], ["google", "Google Wallet"]].map(([id, texto]) => (
           <button key={id} type="button" onClick={() => setCual(id)} aria-pressed={cual === id} style={opcion(cual === id)}>
@@ -125,7 +128,7 @@ function useMedir() {
   const [montado, setMontado] = useState(false);
   useEffect(() => setMontado(true), []);
   if (!montado) return (texto, tam) => medirAprox(texto, tam);
-  return (texto, tam, peso = 400, familia = FUENTE_APPLE) => {
+  return (texto, tam, peso = 400, familia = FUENTE_MEDIR) => {
     lienzo ||= document.createElement("canvas").getContext("2d");
     lienzo.font = `${peso} ${tam}px ${familia}`;
     return lienzo.measureText(String(texto ?? "")).width;
@@ -179,11 +182,14 @@ const fondo = (anota, clave) => (anota?.onCampo ? () => anota.onCampo(clave, "Co
 const tocable = (anota) => (anota?.onCampo ? { cursor: "pointer" } : {});
 
 // ---------------------------------------------------------------- Apple
-// Medidas sacadas de una captura de iPhone, pasadas a una tarjeta de 300 px.
+// Las medidas de un pase de verdad (WALLET), pasadas a una tarjeta de 300 px.
+const a300 = (v) => Math.round((v * ANCHO * 10) / WALLET.ancho) / 10;
 const A = {
-  alto: 422, margen: 12, logo: 32, nombre: 14.5,
+  alto: a300(WALLET.alto), radio: a300(WALLET.radio), margen: a300(WALLET.margen), logo: a300(WALLET.logo), nombre: a300(WALLET.nombre),
+  altoCabecera: a300(WALLET.cabecera), banda: a300(WALLET.banda), arribaCampos: a300(WALLET.arribaCampos),
   // valorMin: hasta ahí encoge la fila antes de partir el campo largo en dos líneas.
-  etiqueta: 9.5, valor: 20, valorMin: 8, cabecera: 17, hueco: 12, qr: 112,
+  etiqueta: a300(WALLET.etiqueta), valor: a300(WALLET.valor), valorMin: a300(WALLET.valorMin), cabecera: a300(WALLET.valorCabecera),
+  hueco: a300(WALLET.hueco), qr: Math.round(a300(WALLET.qr)), abajoQr: a300(WALLET.abajoQr),
 };
 
 // Orden real: cabecera (logo + nombre | headerFields), banda a sangre (con la
@@ -198,18 +204,18 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
   return (
     <div
       style={{
-        width: ANCHO, height: A.alto, margin: "0 auto", borderRadius: 11, overflow: "hidden",
+        width: ANCHO, height: A.alto, margin: "0 auto", borderRadius: A.radio, overflow: "hidden",
         background: t.cardBg, color: t.ink, fontFamily: FUENTE_APPLE, display: "flex", flexDirection: "column",
         boxShadow: "0 0 0 1px rgba(255,255,255,.08)", ...tocable(anota),
       }}
       onClick={fondo(anota, "apple.fondo")}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: `10px ${A.margen}px 8px` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: A.altoCabecera, padding: `0 ${A.margen}px`, flexShrink: 0 }}>
         <Anotable clave="apple.logo" etiqueta="Logo" anota={anota} estilo={{ width: "auto", flexShrink: 0 }}>
           <LogoApple tema={t} tam={A.logo} />
         </Anotable>
         <Anotable clave="apple.nombre" etiqueta="Nombre del negocio" anota={anota} estilo={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: A.nombre, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: A.nombre, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {negocio.nombre}
           </div>
         </Anotable>
@@ -223,7 +229,8 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
 
       <div style={{ position: "relative", flexShrink: 0 }}>
         <Anotable clave="apple.banda" etiqueta="Banda (los puntos)" anota={anota} estilo={{ padding: 0, margin: 0, borderRadius: 0 }}>
-          <img src={comoDataUri(strip.svg)} alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`} style={{ display: "block", width: "100%", height: "auto" }} />
+          {/* Wallet la pinta más alta que su imagen y le recorta los lados. */}
+          <img src={comoDataUri(strip.svg)} alt={`Banda del pase, ${strip.ancho}×${strip.alto} puntos`} style={{ display: "block", width: "100%", height: A.banda, objectFit: "cover" }} />
         </Anotable>
         {primaryFields.length > 0 && (
           <div style={sobreLaBanda}>
@@ -239,7 +246,7 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
 
       <FilaApple campos={fila} accent={colorDelPase(t)} anota={anota} medir={medir} />
 
-      <div style={{ marginTop: "auto", display: "grid", placeItems: "center", padding: "8px 0 14px" }}>
+      <div style={{ marginTop: "auto", display: "grid", placeItems: "center", padding: `8px 0 ${A.abajoQr}px` }}>
         <Anotable clave="apple.codigo" etiqueta="QR y código corto" anota={anota} estilo={{ width: "auto" }}>
           <div style={{ background: "#fff", padding: "9px 9px 5px", borderRadius: 6, color: "#000", textAlign: "center" }}>
             <QrImagen texto={qrTexto} lado={A.qr} />
@@ -253,26 +260,25 @@ function TarjetaApple({ negocio, cliente, qrTexto, anota, estado, medir }) {
 
 /**
  * La fila bajo la banda, como la pinta iOS: cada campo mide lo que su texto,
- * el primero a la izquierda y el último a la derecha (space-between). Si no
- * cabe, encoge la fila entera; luego el campo largo pasa a dos líneas y acaba
- * en "…" (lib/vistaWallet.js).
+ * el primero a la izquierda y el último a la derecha (space-between), con el
+ * texto de cada uno alineado a su izquierda. Si no cabe, encoge la fila entera;
+ * luego el campo largo pasa a dos líneas y acaba en "…" (lib/vistaWallet.js).
  */
 function FilaApple({ campos, accent, anota, medir }) {
   if (!campos.length) return null;
-  const mide = (texto, tam, peso) => medir(texto, tam, peso, FUENTE_APPLE);
+  const mide = (texto, tam, peso) => medir(texto, tam, peso, FUENTE_MEDIR);
   const fila = colocarFila(campos, {
     total: ANCHO - A.margen * 2, hueco: A.hueco, max: A.valor, min: A.valorMin,
     medir: (x, tam) => mide(x, tam), etiquetas: campos.map((f) => mide(f.label, A.etiqueta, 600) * 1.08),
   });
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: A.hueco, padding: `11px ${A.margen}px 0` }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: A.hueco, padding: `${A.arribaCampos}px ${A.margen}px 0` }}>
       {campos.map((f, i) => {
         const { ancho, ...v } = fila[i];
-        const derecha = campos.length > 1 && i === campos.length - 1;
         return (
           <Anotable key={f.key} clave={`apple.${f.key}`} etiqueta={f.label} anota={anota}
-            estilo={{ width: ancho, flex: "0 0 auto", minWidth: 0, boxSizing: "content-box", textAlign: derecha ? "right" : "left" }}>
+            estilo={{ width: ancho, flex: "0 0 auto", minWidth: 0, boxSizing: "content-box", textAlign: "left" }}>
             <div style={{ ...etiquetaApple(accent), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</div>
             <div style={{ fontSize: v.tam, lineHeight: 1.18, marginTop: 1 }} title={v.cortado ? String(f.value) : undefined}>
               {v.lineas.map((l, j) => <div key={j} style={{ whiteSpace: "nowrap" }}>{l}</div>)}
@@ -327,8 +333,8 @@ function ReversoApple({ negocio, cliente, qrTexto, anota, medir, origen, estado,
       <div style={{ ...grupoApple, margin: "18px 14px 20px" }}>
         {filas.map((f, i) => {
           const lineas = String(f.value).split("\n");
-          const corto = lineas.every((l) => medir(l, 14, 400, FUENTE_APPLE) <= anchoFila * 0.62)
-            && medir(f.label, 14, 400, FUENTE_APPLE) <= anchoFila * 0.36;
+          const corto = lineas.every((l) => medir(l, 14, 400, FUENTE_MEDIR) <= anchoFila * 0.62)
+            && medir(f.label, 14, 400, FUENTE_MEDIR) <= anchoFila * 0.36;
           const color = contactos.has(f.key) ? "#0a84ff" : "#8e8e93";
           const contenido = corto ? (
             <div style={{ ...filaApple(i === filas.length - 1), display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
@@ -524,7 +530,7 @@ const pantalla = {
   boxSizing: "border-box", border: "1px solid #2a2a2e", boxShadow: "0 10px 30px rgba(16,20,28,.18)",
 };
 
-const etiquetaApple = (color) => ({ fontSize: A.etiqueta, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", color, lineHeight: 1.3 });
+const etiquetaApple = (color) => ({ fontSize: A.etiqueta, fontWeight: 500, letterSpacing: 0.3, textTransform: "uppercase", color, lineHeight: 1.3 });
 
 const sobreLaBanda = { position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 14px" };
 

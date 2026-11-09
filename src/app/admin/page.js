@@ -12,6 +12,7 @@ import EstadoIntegracion from "@/app/admin/EstadoIntegracion";
 import ClaveNueva from "@/app/ClaveNueva";
 import Invitar from "@/app/admin/Invitar";
 import Planes from "@/app/admin/Planes";
+import Interesados from "@/app/admin/Interesados";
 import { PLANES_DE_PARTIDA, PLAN_POR_DEFECTO } from "@/lib/planes";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
@@ -44,7 +45,8 @@ export default function Admin() {
 
   // «Plataforma → Planes» desde la ficha de una tienda llega con #planes.
   useEffect(() => { if (window.location.hash === "#planes") setPestana("planes"); }, []);
-  useEffect(() => { if (pestana !== "planes") cargar(pestana); }, [pestana]);
+  const deTiendas = pestana === "activas" || pestana === "archivadas";
+  useEffect(() => { if (deTiendas) cargar(pestana); }, [pestana]);
 
   async function cargar(cual = pestana) {
     setNegocios(null);
@@ -102,7 +104,7 @@ export default function Admin() {
         <EstadoIntegracion accent={AZUL} />
 
         <div style={{ display: "flex", gap: 8, margin: "18px 0 14px", flexWrap: "wrap" }}>
-          {[["activas", "Tiendas"], ["archivadas", "Archivadas"], ["planes", "Planes"]].map(([id, texto]) => (
+          {[["activas", "Tiendas"], ["archivadas", "Archivadas"], ["planes", "Planes"], ["interesados", "Interesados"]].map(([id, texto]) => (
             <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
           ))}
           <a href="/admin/crm" style={solapa(false)}><Icono nombre="clientes" tam={16} /> Clientes</a>
@@ -134,17 +136,18 @@ export default function Admin() {
         )}
 
         {pestana === "planes" && <Planes accent={AZUL} flash={flash} />}
+        {pestana === "interesados" && <Interesados accent={AZUL} flash={flash} />}
 
-        {pestana !== "planes" && error && <div style={{ ...aviso(false), marginBottom: 14 }}>{error}</div>}
-        {pestana !== "planes" && negocios === null && <p style={{ color: C.suave }}>Cargando…</p>}
-        {pestana !== "planes" && negocios?.length === 0 && (
+        {deTiendas && error && <div style={{ ...aviso(false), marginBottom: 14 }}>{error}</div>}
+        {deTiendas && negocios === null && <p style={{ color: C.suave }}>Cargando…</p>}
+        {deTiendas && negocios?.length === 0 && (
           <p style={{ color: C.suave }}>
             {pestana === "archivadas" ? "No hay tiendas archivadas." : "Todavía no hay tiendas. Crea la primera."}
           </p>
         )}
 
         <div style={{ display: "grid", gap: 12 }}>
-          {pestana !== "planes" && negocios?.map((n) => (
+          {deTiendas && negocios?.map((n) => (
             <div key={n.slug} style={{ ...panel, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
               <MarcaTienda tema={n.tema} tam={40} icono />
               <div style={{ flex: 1, minWidth: 180 }}>

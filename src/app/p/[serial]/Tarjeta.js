@@ -55,7 +55,7 @@ export default function Tarjeta({ serial, inicial, qrTexto, plataforma, appleUrl
 
       <div style={{ width: "100%", maxWidth: 400 }}>
         {/* «Abierto hasta…» como en Wallet: si la tienda lo apaga (Ajustes) o no va en su plan, tampoco aquí. */}
-        <CaraDelPase cliente={cliente} negocio={conFoto} horario={conAbierto(negocio) ? negocio.horario : null} claseBanda={novedad ? "banda nueva" : "banda"}>
+        <CaraDelPase cliente={cliente} negocio={conFoto} horario={conAbierto(negocio) ? negocio.horario : null} claseBanda={novedad ? "banda nueva" : "banda"} ancho={320}>
           <div style={{ display: "grid", placeItems: "center", padding: "20px 18px 22px" }}>
             <div style={cajaQr}>
               <QrImagen texto={qrTexto} lado={196} />

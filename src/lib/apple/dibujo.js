@@ -59,11 +59,11 @@ const DIBUJOS = {
   // ---- cafetería
   taza: (c) => `
     <g stroke="${c}" stroke-width="20" fill="none" stroke-linecap="round">
-      <path d="M212 150 q-16 -24 0 -48"/><path d="M256 150 q-16 -24 0 -48"/><path d="M300 150 q-16 -24 0 -48"/>
+      <path d="M200 166 q-16 -24 0 -48"/><path d="M244 166 q-16 -24 0 -48"/><path d="M288 166 q-16 -24 0 -48"/>
     </g>
     <path d="M152 200 h184 v84 a92 92 0 0 1 -184 0 z" fill="${c}"/>
-    <path d="M336 216 h22 a46 46 0 0 1 0 92 h-22" fill="none" stroke="${c}" stroke-width="24"/>
-    <rect x="132" y="356" width="248" height="20" rx="10" fill="${c}"/>`,
+    <path d="M316 212 h42 a46 46 0 0 1 0 92 h-42" fill="none" stroke="${c}" stroke-width="24"/>
+    <rect x="120" y="356" width="248" height="20" rx="10" fill="${c}"/>`,
   vaso: (c) => `
     <path d="M164 148 h184 l-26 306 q-2 22 -24 22 h-84 q-22 0 -24 -22 z" fill="${c}"/>
     <rect x="146" y="116" width="220" height="32" rx="15" fill="${c}"/>
@@ -177,7 +177,7 @@ const DIBUJOS = {
 // Las que no estén aquí usan el margen de siempre. Los anchos salen de rasterizar
 // cada marca; una marca nueva de relleno los necesita igual.
 const CAJA = {
-  taza: [100, 378, 132, 416], vaso: [40, 478, 146, 369], jarra: [134, 434, 134, 444], copa: [98, 418, 148, 364],
+  taza: [100, 378, 120, 416], vaso: [40, 478, 146, 369], jarra: [134, 434, 134, 444], copa: [98, 418, 148, 364],
   helado: [140, 470, 152, 360], galleta: [72, 452, 65, 446], corazon: [110, 436, 92, 420], burger: [126, 400, 104, 408],
   grano: [90, 422, 112, 400], bote: [86, 455, 127, 385], shaker: [62, 455, 135, 377], manzana: [56, 452, 119, 393],
   rayo: [52, 460, 132, 380],
@@ -200,6 +200,15 @@ export const BANDAS = ["clara", "oscura", "blanca", "degradado", "rayas"];
  * "llenar" es el nombre viejo de "lados con las dos llenándose".
  */
 export const MODOS_DOBLES = ["filas", "lados"];
+
+/**
+ * Cómo se escribe la cuenta ("5/8"), `tema.cifras`: gruesas (Inter Bold), normales
+ * (Inter Medium) o cuadradas. Sin elegir, cada banda sigue con las que llevaba:
+ * cuadradas, menos las dos cartillas que se llenan lado a lado, que van normales.
+ * Una tienda no cambia de letra por un despliegue.
+ */
+export const CIFRAS = ["gruesas", "normales", "cuadradas"];
+export const cifrasDe = (tema, deSiempre = "cuadradas") => (CIFRAS.includes(tema?.cifras) ? tema.cifras : deSiempre);
 /**
  * Cómo se cuentan los sellos en la banda. Lo básico, a propósito (31-10-2026):
  * las fases de la luna, la constelación, la planta y compañía se quitaron por
@@ -571,8 +580,7 @@ function bandaRelleno(tema, meta, sellos, w, h) {
   const dibujo = queSeLlena(tema, cx, cy, h * 0.84, parte, idDe(tema, meta, sellos));
 
   // Cuánto llevas, en cifras: el nivel solo se ve "a ojo".
-  const cuenta = svgTextoCuadrado(`${sellos}/${meta}`, { cx: w * 0.72, cy, alto: h * 0.34, color, max: 6 });
-  return dibujo + cuenta;
+  return dibujo + cuenta(tema, sellos, meta, color, w * 0.72, cy, h * 0.34, w * 0.5);
 }
 
 /**
@@ -630,14 +638,32 @@ const disco = (cx, cy, r) =>
 const tenue = (tema) => (esOscura(tema) ? "#ffffff" : tema.accent);
 const opacoHueco = (tema) => (esOscura(tema) ? 0.26 : 0.38);
 
+// El "/8" va más pequeño que la cifra, apoyado en su misma línea base.
+const PEQUENO = 5 / 9;
+const JUNTO = 0.04;
+const anchoCuentaNormal = (hechos, total, tam, grueso) => anchoTexto(hechos, tam, grueso) + tam * JUNTO + anchoTexto(total, tam * PEQUENO, grueso);
+
+/** "5/8" en la letra normal, desde `x` y sobre la línea base `y`. */
+const trazarCuentaNormal = (hechos, total, color, x, y, tam, grueso) =>
+  svgTexto(hechos, { x, y, tam, color, grueso })
+  + svgTexto(total, { x: x + anchoTexto(hechos, tam, grueso) + tam * JUNTO, y, tam: tam * PEQUENO, color, opacidad: 0.6, grueso });
+
+/** La misma, centrada en (cx, cy) y encogida si no cabe en `ancho`. */
+function cuentaNormal(hechos, total, color, cx, cy, tamMax, ancho, grueso) {
+  const tam = Math.min(tamMax, (tamMax * ancho) / anchoCuentaNormal(hechos, total, tamMax, grueso));
+  return trazarCuentaNormal(hechos, total, color, cx - anchoCuentaNormal(hechos, total, tam, grueso) / 2, cy + (tam * ALTO_MAYUSCULA) / EM / 2, tam, grueso);
+}
+
 /**
- * La cuenta ("3/8"), en la tipografía dibujada de siempre. La tipografía es de
+ * La cuenta ("3/8"), en la letra que tenga la tienda (`tema.cifras`). La cuadrada es de
  * ancho fijo, así que "12/30" ocupa casi el doble que "3/8": con `ancho` se le
  * da el hueco que tiene y se encoge sola hasta caber. Sin eso, una cartilla de
  * 20 se sale de la banda.
  */
-const cuenta = (sellos, meta, color, cx, cy, alto, ancho) => {
+const cuenta = (tema, sellos, meta, color, cx, cy, alto, ancho) => {
   const texto = `${sellos}/${meta}`;
+  const estilo = cifrasDe(tema);
+  if (estilo !== "cuadradas") return cuentaNormal(`${sellos}`, `/${meta}`, color, cx, cy, alto * 1.06, ancho, estilo === "gruesas");
   const cabe = (ancho / anchoDeTexto(texto.length)) * (ALTO_GLIFO + GROSOR);
   return svgTextoCuadrado(texto, { cx, cy, alto: Math.min(alto, cabe), color, max: 6 });
 };
@@ -667,7 +693,7 @@ function bandaPorciones(tema, meta, sellos, w, h) {
   // El aro de fuera cierra la figura: sin él las porciones flotan sueltas.
   const aro = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 1.06)}" fill="none" stroke="${tenue(tema)}" stroke-opacity="0.22" stroke-width="3"/>`;
   return `<defs>${foco(`${id}-tarta`, color, cx, cy, r)}</defs>` + aro + trozos
-    + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+    + cuenta(tema, sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
 }
 
 // Una pizza de verdad no sale del color de la tienda: una pizza verde no es una
@@ -758,7 +784,7 @@ function bandaPizza(tema, meta, sellos, w, h) {
       }).join("")
     : "";
 
-  return defs + falta + hecho + cortes + cuenta(sellos, n, tema.accent, w * 0.74, cy, h * 0.32, w * 0.46);
+  return defs + falta + hecho + cortes + cuenta(tema, sellos, n, tema.accent, w * 0.74, cy, h * 0.32, w * 0.46);
 }
 
 /**
@@ -787,7 +813,7 @@ function bandaBarra(tema, meta, sellos, w, h) {
 
   return `<defs>${brillo(`${id}-br`, color)}</defs>` + colocar(tema, color, w * 0.105, h / 2, h * 0.56)
     + tramos
-    + cuenta(sellos, n, color, w * 0.855, h / 2, h * 0.3, w * 0.28);
+    + cuenta(tema, sellos, n, color, w * 0.855, h / 2, h * 0.3, w * 0.28);
 }
 
 /**
@@ -833,7 +859,7 @@ function bandaAnillos(tema, meta, sellos, w, h) {
     : "";
   return defs + brilla + pista + avance + muescas
     + colocar(tema, color, cx, cy, r * 1.05)
-    + cuenta(sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+    + cuenta(tema, sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
 }
 
 /**
@@ -861,6 +887,9 @@ function bandaCifra(tema, meta, sellos, w, h) {
       ? `<rect x="${n2(w * 0.12)}" y="${n2(h * 0.8)}" width="${n2(w * 0.76 * parte)}" height="${n2(h * 0.055)}"`
         + ` rx="${n2(h * 0.028)}" fill="${color}"/>`
       : "");
+
+  const estilo = cifrasDe(tema);
+  if (estilo !== "cuadradas") return raya + cuentaNormal(grande, resto, color, w * 0.5, cy, altoG * 1.3, w * 0.8, estilo === "gruesas");
 
   return raya
     + svgTextoCuadrado(grande, { cx: izq + anchoG / 2, cy, alto: altoG, color, max: 3 })
@@ -1083,20 +1112,24 @@ export function svgStripLlenar(temaGuardado, filas, estado = null) {
   const hueco = w * 0.04;
   const sitio = w * 0.5 - hueco - w * 0.315;
   const textos = filas.map((f) => [String(Math.min(Math.max(0, f.sellos), f.meta)), `/${f.meta}`]);
-  const anchoA = (tam, [hechos, total]) => anchoTexto(hechos, tam * 0.36) + tam * 0.36 * 0.04 + anchoTexto(total, tam * 0.2);
+  const estilo = cifrasDe(tema, "normales");
+  const grueso = estilo === "gruesas";
+  const anchoA = (tam, [hechos, total]) => anchoCuentaNormal(hechos, total, tam * 0.36, grueso);
   const escala = Math.min(1, ...textos.map((t) => sitio / anchoA(h, t)));
-  const grande = h * 0.36 * escala, pequeno = h * 0.2 * escala;
+  const grande = h * 0.36 * escala;
   // Con guardados, la cuenta sube para que cifra y dibujitos queden centrados juntos;
   // las dos a la misma altura aunque solo un lado tenga, como marcadores gemelos.
   const altoMini = h * 0.13, separa = h * 0.06;
   const sube = enBanda.some((g) => g > 0) ? (separa + altoMini) / 2 : 0;
   const base = cy + (grande * ALTO_MAYUSCULA) / EM / 2 - sube;
   const cuentas = textos.map(([hechos, total], i) => {
-    const anchoG = anchoTexto(hechos, grande);
-    const ancho = anchoG + grande * 0.04 + anchoTexto(total, pequeno);
+    if (estilo === "cuadradas") {
+      const cx = i === 0 ? centro - hueco - sitio / 2 : centro + hueco + sitio / 2;
+      return cuenta(tema, hechos, total.slice(1), color, cx, cy - sube, h * 0.2, sitio);
+    }
+    const ancho = anchoCuentaNormal(hechos, total, grande, grueso);
     const x = i === 0 ? centro - hueco - ancho : centro + hueco;
-    return svgTexto(hechos, { x, y: base, tam: grande, color })
-      + svgTexto(total, { x: x + anchoG + grande * 0.04, y: base, tam: pequeno, color, opacidad: 0.6 });
+    return trazarCuentaNormal(hechos, total, color, x, base, grande, grueso);
   }).join("");
   // Pegados a la raya, como la cuenta (el de la izquierda, de la raya hacia fuera),
   // y colocados por su TINTA: una taza con asa no ocupa lo que su lienzo. Si tres

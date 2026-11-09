@@ -30,7 +30,7 @@ export const css = `
   --ancho:1120px; --curva:cubic-bezier(.16,1,.3,1);
   /* Con viewport-fit=cover (layout.js), en horizontal el notch se come los lados. */
   --margen:max(clamp(20px,4vw,40px),env(safe-area-inset-left),env(safe-area-inset-right));
-  --apple:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  --apple:-apple-system,BlinkMacSystemFont,"SF Pro Text",var(--fuente-pase),"Helvetica Neue",system-ui,sans-serif;
   min-height:100dvh; background:var(--fondo); color:var(--tinta); color-scheme:light;
   font-family:var(--fuente-web),system-ui,-apple-system,"Segoe UI",sans-serif;
   font-size:16px; line-height:1.5; overflow-x:clip; -webkit-font-smoothing:antialiased;
@@ -123,7 +123,8 @@ body:has(.home){background:${P.papel}}
 .movil-mas{display:inline-flex;align-items:center;justify-content:center;gap:3px;width:28px;height:28px;border-radius:50%;background:rgba(0,122,255,.12)}
 .movil-mas i{width:4px;height:4px;border-radius:50%;background:currentColor}
 .movil-tarjetas{position:relative;flex:1}
-.movil-tarjeta{position:absolute;inset:0 0 auto 0;transition:transform .55s var(--curva),opacity .55s var(--curva)}
+/* A la escala del teléfono de mentira (300 de pantalla): la tarjeta se pinta a su tamaño de Wallet y encoge entera. */
+.movil-tarjeta{position:absolute;inset:0 0 auto 0;zoom:.7667;transition:transform .55s var(--curva),opacity .55s var(--curva)}
 .movil-tarjeta.activa{transform:none;opacity:1}
 .movil-tarjeta.sale{transform:translateX(-112%);opacity:0}
 /* Las que esperan se colocan a la derecha sin animar: entran desde ahí. */
@@ -146,9 +147,6 @@ body:has(.home){background:${P.papel}}
 }
 .movil-flecha:focus-visible{opacity:1}
 .movil-flecha:active{transform:scale(.9);opacity:1}
-.movil-qr{display:grid;justify-items:center;gap:8px;padding:16px 18px 18px}
-.movil-qr img{padding:4px;background:#fff;border-radius:10px}
-.movil-qr span{font-size:13px;font-weight:600;letter-spacing:.18em;opacity:.75}
 .movil-aviso{position:absolute;z-index:3;pointer-events:none;left:50%;top:536px;width:calc(100% - 28px);translate:-50% 0}
 @media (min-width:1100px){.movil-aviso{left:-84px;width:300px;translate:none}}
 .movil-pie{display:grid;justify-items:center;gap:4px;margin-top:22px;font-family:var(--fuente-web),system-ui,sans-serif}
@@ -170,11 +168,11 @@ body:has(.home){background:${P.papel}}
 .cinta-pista{display:flex;width:max-content;will-change:transform}
 .cinta-tanda{display:flex;gap:var(--hueco);padding-right:var(--hueco)}
 /* Con la letra del sistema, como el pase de verdad y el móvil de la portada. */
-.cinta-tarjeta{position:relative;flex-shrink:0;width:300px;zoom:.62;font-family:var(--apple);
+.cinta-tarjeta{position:relative;flex-shrink:0;width:360px;zoom:.517;font-family:var(--apple);
   transform:perspective(900px) rotateX(0deg) rotateY(0deg) scale(1);transition:transform .5s var(--curva)}
 .cinta-tarjeta article{box-shadow:0 18px 30px -16px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.08)!important;transition:box-shadow .5s var(--curva)}
 /* La de debajo del ratón (Desfile.js): se acerca, se inclina hacia él y un brillo lo sigue. */
-.cinta-tarjeta::after{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;opacity:0;mix-blend-mode:soft-light;
+.cinta-tarjeta::after{content:"";position:absolute;inset:0;border-radius:13px;pointer-events:none;opacity:0;mix-blend-mode:soft-light;
   background:radial-gradient(circle at var(--bx,50%) var(--by,40%),rgba(255,255,255,.6),rgba(255,255,255,0) 55%);transition:opacity .4s}
 .cinta-tarjeta.encima{z-index:2;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.12);
   transition:transform .18s ease-out}
@@ -183,7 +181,7 @@ body:has(.home){background:${P.papel}}
 .portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
 .cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
 .bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
-@media (max-width:759px){.cinta{--hueco:12px;padding:12px 0 24px}.cinta-tarjeta{zoom:.52}}
+@media (max-width:759px){.cinta{--hueco:12px;padding:12px 0 24px}.cinta-tarjeta{zoom:.433}}
 
 /* un aviso de la pantalla de bloqueo */
 .aviso{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;align-items:center;padding:11px 14px 12px 11px;
