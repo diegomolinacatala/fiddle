@@ -791,6 +791,10 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
   esta página no lo lee, así que si cambia allí se cambia aquí a mano.
+- **«Ya funciona en una cafetería»** (`home/Cifras.js`, antes de los precios): dos cifras
+  reales de La Delicantería (los segundos hasta tenerla en el Wallet y las visitas por
+  semana), en `DELICANTERIA` de `datos.js` con cómo se sacaron (09-11-2026). Cifras fijas,
+  no se leen de la base. Si se actualizan, solo semanas enteras y sin festivos.
 - **El correo de contacto** (`home/Correo.js`): con dedo, `mailto:`; con ratón, Gmail web
   con el correo escrito (un `mailto:` en un ordenador sin app de correo no hace nada).
   Al lado, «Copiar».

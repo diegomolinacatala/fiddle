@@ -228,6 +228,30 @@ body:has(.home){background:${P.papel}}
 .montaje-icono{flex-shrink:0;width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:var(--avena);color:var(--marca)}
 @media (max-width:400px){.montaje{flex-direction:column;align-items:flex-start;gap:12px;padding:20px}}
 
+/* ---------- lo de La Delicantería (Cifras.js) ---------- */
+/* Las dos cifras con el mismo peso; la de los segundos, en verde como el primer paso
+   (va de lo mismo: poca fricción). Las barras empiezan en cero: no se exagera la subida. */
+.cifras{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+@media (min-width:900px){.cifras{grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:20px}}
+.cifra{display:grid;align-content:start;gap:6px;padding:30px 28px;border-radius:30px;background:var(--superficie);box-shadow:0 0 0 1px var(--linea)}
+.cifra-rapida{background:linear-gradient(160deg,${P.verdeClaro},${P.verdeHondo});box-shadow:none}
+/* En pantalla ancha mide lo que la de las barras: la cifra arriba y el texto abajo. */
+.cifra-rapida{align-content:space-between;gap:28px}
+.cifra-pie{display:grid;gap:6px}
+.cifra-num{display:flex;align-items:baseline;gap:.12em;margin-bottom:10px;font-size:clamp(76px,2.6rem + 5vw,128px);line-height:.9;font-weight:700;
+  letter-spacing:-.06em;color:var(--marca);font-variant-numeric:tabular-nums}
+.cifra-num span{font-size:.28em;font-weight:640;letter-spacing:-.025em}
+.cifra h3{font-size:21px;font-weight:620;letter-spacing:-.025em;text-wrap:balance}
+.cifra p:not(.cifra-num){color:var(--tinta-2);line-height:1.55;text-wrap:pretty}
+.cifra-barras{list-style:none;margin:22px 0 0;padding:0;height:190px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cifra-barras li{min-height:0;display:flex;flex-direction:column;gap:6px;text-align:center}
+.cifra-barras strong{font-size:15px;font-weight:650;color:var(--tinta-2);font-variant-numeric:tabular-nums}
+.cifra-hueco{flex:1;min-height:0;display:flex;align-items:flex-end}
+.cifra-barra{width:100%;height:var(--h);border-radius:10px 10px 4px 4px;background:${P.verdeHondo}}
+.cifra-semana{font-size:13.5px;color:var(--tinta-3)}
+.cifra-barras .ultima strong{color:var(--marca)}
+.cifra-barras .ultima .cifra-barra{background:var(--marca)}
+
 /* ---------- bandas oscuras ---------- */
 /* Van de lado a lado; lo de dentro, al ancho de las demás. */
 .oscuro{color:var(--claro)}

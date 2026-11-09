@@ -85,3 +85,23 @@ export const PLANES = [
 /** El mensaje de WhatsApp con el plan elegido, para que la conversación empiece por ahí. */
 export const mensajeDePlan = (plan) =>
   `Hola, me interesa el plan ${plan.nombre} de fiddle (${plan.precio} € al mes) para mi cafetería.`;
+
+// Lo que se enseña de La Delicantería (Valencia), primer cliente. Sacado de su base
+// el 09-11-2026 con consultas de solo lectura; Jesús tiene que dar el visto bueno a
+// que salga su nombre. Si se actualiza, se vuelven a sacar las dos cosas a la vez.
+// - segundos: media del escaneo (evento «alta») a tenerla en el Wallet («instalado»)
+//   sin el 5 % de cada punta. Sin recortar sale hora y media: unos pocos la guardan
+//   en casa horas después. La mitad tarda 6 s y el 95 %, menos de un minuto.
+// - semanas: visitas de cada semana (lunes a domingo, hora de Madrid), contadas como
+//   en el panel (sellos a menos de 3 h son una visita). Solo semanas enteras: la del
+//   05-10 no (abrieron el martes 06) y la del 12-10 tampoco (el lunes fue festivo y
+//   casi no abrieron: con ella de partida, el crecimiento salía de +56 %, inflado).
+export const DELICANTERIA = {
+  segundos: 9,
+  mitad: 6,
+  semanas: [
+    { semana: "19 oct", visitas: 352 },
+    { semana: "26 oct", visitas: 427 },
+    { semana: "2 nov", visitas: 455 },
+  ],
+};
