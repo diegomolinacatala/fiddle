@@ -10,7 +10,7 @@ import { ICONOS_WEB, appleWebApp } from "@/lib/marcaFiddle";
 import { CAPTURAR_INSTALAR } from "@/app/temprano";
 
 // Cada negocio es su propia app instalable (su manifest), pero guardada en el
-// móvil es fiddle: el violín y «fiddle» bajo el icono (lib/marcaFiddle.js).
+// móvil es fiddle: el lacre y «fiddle» bajo el icono (lib/marcaFiddle.js).
 export async function generateMetadata({ params }) {
   const { negocio } = await params;
   const n = await leerNegocio(negocio);

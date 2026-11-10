@@ -476,7 +476,7 @@ el serial solo no basta ([`gestion.js`](../src/lib/gestion.js)). `403` sin llave
 
 ### `GET /api/manifest?p=<serial>`
 Manifest de la tarjeta como app instalable (abre en `/p/<serial>`), con el nombre y el
-violín de fiddle (`lib/marcaFiddle.js`), no los de la tienda. Con `?b=` sigue
+lacre de fiddle (`lib/marcaFiddle.js`), no los de la tienda. Con `?b=` sigue
 siendo el de la caja.
 
 ## Salud

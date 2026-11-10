@@ -56,7 +56,7 @@ comprobar siempre que de verdad desplegó.
   `sellar`: renombrarlos es migrar producción y nadie los ve. Lo guardado antes (eventos
   «Sello 3/8», el «Cómo funciona» que escribió una tienda) se queda como estaba.
 - **Guardada en el móvil, la web es fiddle** (`lib/marcaFiddle.js`): la caja, el panel y
-  la tarjeta web se instalan con el violín y «fiddle» debajo, no con la tienda. Dentro,
+  la tarjeta web se instalan con el lacre y «fiddle» debajo, no con la tienda. Dentro,
   cada pantalla sigue con los colores y el logo de la suya. Los PNG salen de
   `scripts/gen-marca-web.mjs`.
 - **La vista previa sale de las funciones de verdad.** `PaseVista` usa
@@ -826,13 +826,14 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   (`BarraMovil.js`). Lo que se diga en /home se mira a 320, 375 y 430 px y en horizontal.
 - **Los precios entran por tiempo, no con el scroll** (`Aparece.js`): con la entrada de
   `.revela` (opacidad atada al scroll) la tarjeta clara se quedaba sucia a medio bajar.
-- **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
-  mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` («Verde y
+- **La marca**: el lacre de `lib/lacre.js` (desde el 10-11-2026: cera que se derrite, anillo y
+  la f recortada, con el nombre en trazos; las demás propuestas y el violín de antes están en el
+  vault, en «Logo de Fiddle») y la paleta de `app/home/paleta.js` («Verde y
   espresso» desde el 13-10-2026: verde botella para la marca y camel, avena, visón y espresso,
   más el papel y los tintes que salen de ellos). El verde y el espresso se distinguen siempre:
   son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
-  de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa, `docs/marca/fiddle-logo.svg`)
-  sigue en el Perfil de Empresa de Google Wallet hasta que se suba `fiddle-violin-1024.png`.
+  de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa)
+  sigue en el Perfil de Empresa de Google Wallet hasta que se suba `docs/marca/fiddle-lacre-1024.png`.
 - **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
   enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
 - Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de

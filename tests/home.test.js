@@ -4,7 +4,7 @@ import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL, CINTAS, DISENOS } fro
 import { GRUPOS } from "@/lib/crm";
 import { ubicacionesApple } from "@/lib/apple/pase";
 import { PALETA } from "@/app/home/paleta";
-import { svgViolin, svgIconoViolin } from "@/lib/violin";
+import { svgLacre, svgLogoLacre, svgIconoLacre } from "@/lib/lacre";
 import { ESTILOS_GENERALES } from "@/lib/negocios";
 import { stripDelPase, esColorClaro, colorDelPase } from "@/lib/apple/dibujo";
 import { pedir, entrar, INICIO, paradaMasCercana } from "@/app/home/posicion";
@@ -151,9 +151,9 @@ describe("web de fiddle: el panel", () => {
   });
 });
 
-describe("el violín de fiddle", () => {
-  it("recorta la efe con una máscara del id que se le pide", () => {
-    const svg = svgViolin({ color: "#402c0f", id: "efe-pie" });
+describe("el lacre de fiddle", () => {
+  it("recorta el anillo y la f con una máscara del id que se le pide", () => {
+    const svg = svgLacre({ color: "#402c0f", id: "efe-pie" });
     expect(svg).toContain('<mask id="efe-pie"');
     expect(svg).toContain('mask="url(#efe-pie)"');
     expect(svg).toContain('fill="#402c0f"');
@@ -161,9 +161,16 @@ describe("el violín de fiddle", () => {
   });
 
   it("el icono es un SVG cuadrado con su fondo", () => {
-    const svg = svgIconoViolin({ color: "#402c0f", fondo: "#a5a789", radio: 230 });
+    const svg = svgIconoLacre({ color: "#402c0f", fondo: "#a5a789", radio: 230 });
     expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 1024 1024"/);
     expect(svg).toContain('fill="#a5a789"');
+  });
+
+  it("el logo lleva el sello y el nombre, en trazos y del mismo color", () => {
+    const svg = svgLogoLacre({ color: "#402c0f", id: "efe-logo" });
+    expect(svg).toContain('mask="url(#efe-logo)"');
+    expect(svg.match(/fill="#402c0f"/g)).toHaveLength(2);
+    expect(svg).not.toContain("<text");
   });
 });
 

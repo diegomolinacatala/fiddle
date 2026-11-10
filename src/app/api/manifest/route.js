@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 // Manifest PWA. Dos apps instalables distintas:
 //   ?b=<slug>     la CAJA de una tienda (el móvil del mostrador)
 //   ?p=<serial>   la TARJETA de un cliente (su Android, abre directamente en ella)
-// En la pantalla de inicio las dos son fiddle: su violín y su nombre
+// En la pantalla de inicio las dos son fiddle: su lacre y su nombre
 // (lib/marcaFiddle.js). El fondo es la avena del icono, para que al abrirse se
-// vea el violín y no un cuadrado.
+// vea el lacre y no un cuadrado.
 
 const app = { name: NOMBRE_APP, short_name: NOMBRE_APP, display: "standalone", orientation: "portrait", background_color: PALETA.avena, icons: ICONOS_APP };
 

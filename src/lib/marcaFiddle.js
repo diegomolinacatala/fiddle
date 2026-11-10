@@ -2,7 +2,7 @@
 // LA WEB GUARDADA EN EL MÓVIL ES FIDDLE
 // ----------------------------------------------------------------------------
 // Al añadir la web a la pantalla de inicio (la caja, el panel del dueño o la
-// tarjeta web del cliente) sale el violín y pone «fiddle», no la tienda: así se
+// tarjeta web del cliente) sale el lacre y pone «fiddle», no la tienda: así se
 // sabe de quién son las tarjetas y se habla de ellas. Dentro, cada pantalla sigue
 // con los colores y el logo de su tienda.
 //
@@ -14,7 +14,7 @@ export const NOMBRE_APP = "fiddle";
 
 // Los móviles y WhatsApp guardan las imágenes por URL: al cambiar el dibujo, se
 // sube la versión.
-const VERSION = "verde";
+const VERSION = "lacre";
 
 /** URL de una imagen de la marca, con su versión. */
 export const rutaMarca = (archivo) => `/marcas/${archivo}?v=${VERSION}`;

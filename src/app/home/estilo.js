@@ -4,7 +4,7 @@ import { PALETA as P } from "./paleta";
 // ESTILO DE LA WEB DE FIDDLE
 // ----------------------------------------------------------------------------
 // Los colores de la marca salen de paleta.js (los del iPhone, de iOS). Reparto:
-//   papel de fondo, espresso para el texto, verde para el violín y los botones;
+//   papel de fondo, espresso para el texto, verde para el lacre y los botones;
 //   bandas oscuras en verde (el panel) y espresso (contacto y pie).
 //   El punto de los títulos es el sello: camel sobre claro, avena sobre oscuro.
 //   La avena nunca va en texto sobre claro (1,6:1).
