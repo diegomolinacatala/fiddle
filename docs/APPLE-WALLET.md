@@ -142,7 +142,8 @@ REGISTRO (lo hace el iPhone solo al añadir el pase)
 
 ACTUALIZAR (cada sello, canje, nombre, promo, cambio de config)
   saveCliente() marca `actualizado`
-    └─▶ APNs: push VACÍO a cada push_token del pase (cert del Pass Type ID, topic = passTypeId)
+    └─▶ APNs: push VACÍO a cada push_token del pase (cert del Pass Type ID, topic = passTypeId,
+          alert + prioridad 10: con background/5 llegaba más de una hora tarde)
           └─▶ el iPhone pregunta:  GET  /api/wallet/v1/devices/:id/registrations/:passType?passesUpdatedSince=<tag>
                                    GET  /api/wallet/v1/passes/:passType/:serial   (pase nuevo firmado)
                 └─▶ si un campo con changeMessage cambió → notificación en pantalla de bloqueo
@@ -189,6 +190,7 @@ error sale en el log y la acción sigue funcionando). Los tests
 |---------|----------------|
 | Safari: "no se puede descargar el archivo" / el pase no abre | Firma inválida: variables mal pegadas, clave que no corresponde al certificado (repite `npm run apple:env`), o certificado caducado. Mira los logs de Vercel. |
 | El pase se añade pero no se actualiza | `APP_URL` no es HTTPS público; el pase se emitió con otra URL; no hay Supabase (los registros no persisten); revisa que la tabla `registros` tenga filas tras añadir el pase. |
+| La caja suma el punto pero la tarjeta de UN iPhone no cambia | En su iPhone: abrir la tarjeta → «…» (o la ⓘ, según el iOS) → *Detalles del pase* y deslizar hacia abajo. Si se pone al día, el servidor va bien y lo que no llegó fue el aviso: en esa misma pantalla, *Actualizaciones automáticas* tiene que estar encendido (apagarlo y encenderlo vuelve a apuntar el iPhone). Si no cambia, el pase del móvil no es la tarjeta que sella la caja (una vieja que se fusionó): que la añada otra vez desde el QR de la tienda. Los logs de Vercel (Hobby) solo guardan una hora: para verlo, `vercel logs --follow` mientras se da el punto. |
 | Logs `[apns] avisos con error` | `BadCertificate`/`403`: certificado de otro Pass Type ID o caducado. `TopicDisallowed`: `APPLE_PASS_TYPE_ID` (o el `_<SLUG>` de la tienda) no coincide con el certificado. `DeviceTokenNotForTopic`: el token de ese iPhone no vale para ese Pass Type ID; no se borra nada. |
 | Las tarjetas de varias tiendas salen apiladas en el Wallet | Comparten el Pass Type ID general: dale uno propio a la tienda (sección 4). Si ya lo tiene, esas tarjetas se instalaron antes: bórralas y añádelas de nuevo. |
 | Logs `[apple-wallet] ...` | Son errores que manda el propio iPhone (`/api/wallet/v1/log`): suelen decir exactamente qué falla. |

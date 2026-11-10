@@ -8,8 +8,19 @@ import http2 from "node:http2";
 // el pase nuevo. Requisitos de Apple para pases:
 //   - host de PRODUCCIÓN (el sandbox no entrega avisos de pases)
 //   - autenticación TLS con el MISMO certificado + clave con que se firma el pase
-//   - apns-topic = passTypeIdentifier · apns-push-type: background · prioridad 5
+//   - apns-topic = passTypeIdentifier
 //   - cuerpo: {}
+//
+// PRIORIDAD ALTA (alert, 10). Que sepamos, la guía de Wallet no fija estas
+// cabeceras (solo certificado, token y `{}`). Se mandaba como aviso de fondo
+// (background, 5), que Apple entrega "según la batería": puede agruparlo,
+// retrasarlo o no entregarlo. En La Delicantería (21-10-2026) la caja sumaba el
+// punto y la tarjeta del cliente no cambiaba, y los iPhone pedían el pase más de
+// una hora después del aviso: es la causa más probable. La 10 pide entregarlo ya.
+// "background" no admite la 10 (es un error), por eso va como "alert", lo que
+// mandan otros servidores de pases aunque Apple describa "alert" para apps; si
+// APNs lo rechazara, saldría como error en el log (`[apns] avisos con error`).
+// Lo que ve el cliente sigue siendo el `changeMessage` del pase.
 // ============================================================================
 
 export const APNS_HOST = "https://api.push.apple.com";
@@ -28,8 +39,8 @@ function enviarUno(sesion, token, topic) {
       ":method": "POST",
       ":path": `/3/device/${token}`,
       "apns-topic": topic,
-      "apns-push-type": "background",
-      "apns-priority": "5",
+      "apns-push-type": "alert",
+      "apns-priority": "10",
       "content-type": "application/json",
     });
     let estado = 0;

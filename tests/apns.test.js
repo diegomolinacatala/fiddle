@@ -69,8 +69,10 @@ describe("enviarAvisos", () => {
     const p = peticiones.find((x) => x.headers[":path"] === `/3/device/${TOKEN_OK}`);
     expect(p.headers[":method"]).toBe("POST");
     expect(p.headers["apns-topic"]).toBe("pass.dev.sellos");
-    expect(p.headers["apns-push-type"]).toBe("background");
-    expect(p.headers["apns-priority"]).toBe("5");
+    // Prioridad alta: con la 5 el iPhone puede retrasar el aviso horas y el
+    // cliente en el mostrador no ve su punto. Con "background" la 10 es un error.
+    expect(p.headers["apns-push-type"]).toBe("alert");
+    expect(p.headers["apns-priority"]).toBe("10");
     expect(p.cuerpo).toBe("{}");
   });
 
