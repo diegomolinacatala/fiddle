@@ -2,6 +2,7 @@ import { Geist } from "next/font/google";
 import { appUrl } from "@/lib/url";
 import { PALETA } from "./paleta";
 import { ICONOS_WEB, rutaMarca } from "@/lib/marcaFiddle";
+import { fuentePase } from "@/app/fuentePase";
 
 // La letra de la web, solo aquí: el resto de la app sigue con la del sistema.
 // next/font la descarga al compilar y la sirve desde el propio dominio, que es lo
@@ -33,5 +34,5 @@ export const metadata = {
 export const viewport = { themeColor: PALETA.papel, viewportFit: "cover" };
 
 export default function LayoutHome({ children }) {
-  return <div className={geist.variable}>{children}</div>;
+  return <div className={`${geist.variable} ${fuentePase.variable}`}>{children}</div>;
 }

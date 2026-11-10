@@ -56,7 +56,7 @@ comprobar siempre que de verdad desplegó.
   `sellar`: renombrarlos es migrar producción y nadie los ve. Lo guardado antes (eventos
   «Sello 3/8», el «Cómo funciona» que escribió una tienda) se queda como estaba.
 - **Guardada en el móvil, la web es fiddle** (`lib/marcaFiddle.js`): la caja, el panel y
-  la tarjeta web se instalan con el violín y «fiddle» debajo, no con la tienda. Dentro,
+  la tarjeta web se instalan con el lacre y «fiddle» debajo, no con la tienda. Dentro,
   cada pantalla sigue con los colores y el logo de la suya. Los PNG salen de
   `scripts/gen-marca-web.mjs`.
 - **La vista previa sale de las funciones de verdad.** `PaseVista` usa
@@ -441,6 +441,9 @@ y se combinan libres. Un ESTILO solo es una combinación de partida con nombre.
 - **La pizza es UNA pizza redonda** (`bandaPizza`): sin huecos entre trozos, los ganados
   con todo y los que faltan desvaídos, con los cortes finos. Los ingredientes van por toda
   la pizza (no por porción) en sitios fijos: igual con 6 trozos que con 12.
+- **La cuenta («5/8») se escribe con `tema.cifras`** (`gruesas`, `normales` o `cuadradas`; `cifrasDe`). Sin
+  elegir, cada banda sigue como estaba: cuadradas, menos las dos cartillas que se llenan lado a
+  lado, que van normales (La Delicantería se queda así a propósito, 10-11-2026). Se elige en Editar tarjeta → puntos y en el Color de «Diseña tu tarjeta».
 - **Dos cartillas**: `tema.doble` = `filas` (una encima de otra) o `lados`; y CADA
   cartilla su `modo` y su `forma` (cualquiera de MODOS, como una tienda de una). Cada
   modo se pinta en su trozo con la caja que aguanta (`ASPECTO` en dibujo.js: un modo
@@ -796,7 +799,7 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
   esta página no lo lee, así que si cambia allí se cambia aquí a mano.
-- **«Ya funciona en una cafetería»** (`home/Cifras.js`, antes de los precios): dos cifras
+- **«Ya funciona en cafeterías»** (`home/Cifras.js`, antes de los precios): dos cifras
   reales de La Delicantería (los segundos hasta tenerla en el Wallet y las visitas por
   semana), en `DELICANTERIA` de `datos.js` con cómo se sacaron (09-11-2026). Cifras fijas,
   no se leen de la base. Si se actualizan, solo semanas enteras y sin festivos.
@@ -828,17 +831,36 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   (`BarraMovil.js`). Lo que se diga en /home se mira a 320, 375 y 430 px y en horizontal.
 - **Los precios entran por tiempo, no con el scroll** (`Aparece.js`): con la entrada de
   `.revela` (opacidad atada al scroll) la tarjeta clara se quedaba sucia a medio bajar.
-- **La marca (desde el 13-10-2026)**: el violín de `lib/violin.js` (caja, arranque del
-  mástil y UNA efe recortada, que es la «f») y la paleta de `app/home/paleta.js` («Verde y
+- **La marca**: el lacre de `lib/lacre.js` (desde el 10-11-2026: cera que se derrite, anillo y
+  la f recortada, con el nombre en trazos; las demás propuestas y el violín de antes están en el
+  vault, en «Logo de Fiddle») y la paleta de `app/home/paleta.js` («Verde y
   espresso» desde el 13-10-2026: verde botella para la marca y camel, avena, visón y espresso,
   más el papel y los tintes que salen de ellos). El verde y el espresso se distinguen siempre:
   son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
-  de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa, `docs/marca/fiddle-logo.svg`)
-  sigue en el Perfil de Empresa de Google Wallet hasta que se suba `fiddle-violin-1024.png`.
+  de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa)
+  sigue en el Perfil de Empresa de Google Wallet hasta que se suba `docs/marca/fiddle-lacre-1024.png`.
 - **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
   enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
 - Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
   `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
+- **Las medidas de la tarjeta salen de una captura de iPhone** (`WALLET` en `lib/vistaWallet.js`,
+  09-11-2026): 360 × 506 puntos, y la banda a 139 de alto aunque el PNG sea de 123 (Wallet la
+  agranda y recorta los lados). Las usan `CaraDelPase` y `PaseVista`. La letra es la San
+  Francisco donde existe; en Windows y Android, Inter (`FUENTE_PASE`, `app/fuentePase.js`): Apple
+  no deja servir la suya. /p y la página de la tienda no cargan Inter a propósito.
+- **«Diseña tu tarjeta» se contesta de un toque** (`home/tarjeta`, 09-11-2026): elegir pasa solo
+  al siguiente paso; con botón, solo el color (se desliza) y el nombre (se escribe). El orden es
+  `SECCIONES`. El premio sale del icono (`ICONOS`), no se elige.
+- **La tarjeta del probador se pinta al doble y la cámara la encoge** (`RESOLUCION`, el `zoom` de
+  `.prob-tarjeta`): un `transform` agranda lo ya pintado y se veía borroso. Y la sombra es UNA,
+  fuera de las capas del fundido: con una por capa, al quitar la vieja saltaba de golpe.
+- **Quien termina deja un email, un teléfono o los dos, sin verificar** (con uno basta;
+  `leerContactos`, `POST /api/interesados`, tabla `interesados`, cada uno cifrado en su columna)
+  y sale en `/admin` → Interesados con la tarjeta que diseñó. Antes de llevarlo a `main`, crear
+  la tabla (`schema.sql`).
+- **Guardada, el probador se cierra** (10-11-2026, lo pidió Víctor): el panel entero (pestañas,
+  flecha de atrás, pasos) pasa a «Tarjeta guardada» y la tarjeta ya no lleva a ningún paso. Con
+  «Hecho» dentro del último paso se volvía atrás y se mandaba otra vez, una fila por vuelta.
 
 ## Pantallas en el móvil
 

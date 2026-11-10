@@ -17,6 +17,30 @@
 // en el navegador es un canvas y en los tests una regla de tres.
 // ============================================================================
 
+/**
+ * Cómo es un pase en la Cartera, en puntos, medido píxel a píxel en la captura de
+ * un iPhone (09-11-2026): la tarjeta ocupa 360 puntos de ancho y mide 1 : 1,406.
+ * El alto lo fija Wallet, no el contenido, y el código va pegado abajo. Ojo con la
+ * banda: el PNG es de 375×123 pero Wallet la pinta a 139 de alto y recorta los
+ * lados. Las letras no crecen con la tarjeta: en un iPhone más ancho miden lo mismo.
+ * Lo usan CaraDelPase y PaseVista: si una captura nueva dice otra cosa, se cambia aquí.
+ */
+export const WALLET = {
+  ancho: 360, alto: 506, radio: 13, margen: 16,
+  cabecera: 65, banda: 139,
+  logo: 38, nombre: 18,
+  etiqueta: 12, valorCabecera: 21,
+  arribaCampos: 8, valor: 26, valorMin: 10.5, hueco: 14,
+  cajaQr: 155, qr: 137, abajoQr: 14, codigo: 14,
+};
+
+/**
+ * La letra del pase: la San Francisco de verdad donde existe (iPhone y Mac). Apple
+ * no deja servirla en otros sistemas, así que en Windows y Android va Inter, que es
+ * casi igual, si la página la carga (`fuentePase`); si no, la del sistema.
+ */
+export const FUENTE_PASE = '-apple-system, BlinkMacSystemFont, "SF Pro Text", var(--fuente-pase, "Helvetica Neue"), system-ui, sans-serif';
+
 /** Ancho aproximado, para el servidor y el primer pintado (no hay canvas). */
 export const medirAprox = (texto, tam) => String(texto ?? "").length * tam * 0.55;
 

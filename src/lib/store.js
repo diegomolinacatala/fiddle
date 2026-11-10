@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { SEMILLAS, componerNegocio, configInicial, esSlug } from "./negocios";
 import { codigoDesdeSerial, codigoLibre, normalizarCodigo } from "./codigo";
@@ -26,7 +27,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -148,6 +149,51 @@ async function escribirPlataforma(clave, valor) {
     return;
   }
   await enFila(async () => escribir("plataforma", { ...(await leer("plataforma", {})), [clave]: fila }));
+}
+
+// ---------------------------------------------------------- interesados
+// Quien deja su contacto en «Diseña tu tarjeta» (lib/interesados.js): email,
+// teléfono o los dos. Cada uno cifrado, atado a su fila, como el nombre de un
+// cliente; lo elegido, tal cual.
+const leerInteresado = (fila) => ({
+  ...fila,
+  email: descifrar(fila.email, { serial: fila.id, campo: "email" }),
+  telefono: descifrar(fila.telefono, { serial: fila.id, campo: "telefono" }),
+});
+
+export async function addInteresado({ email, telefono, eleccion }) {
+  const id = randomUUID();
+  const fila = {
+    id,
+    email: cifrar(email, { serial: id, campo: "email" }),
+    telefono: cifrar(telefono, { serial: id, campo: "telefono" }),
+    eleccion,
+    creado: ahoraISO(),
+  };
+  if (hasSupabase()) {
+    sinError(await supa().from("interesados").insert(fila), "guardar interesado");
+    return id;
+  }
+  await enFila(async () => escribir("interesados", [...(await leer("interesados", [])), fila]));
+  return id;
+}
+
+/** Los interesados, el último primero. */
+export async function listInteresados() {
+  if (hasSupabase()) {
+    const filas = await porPaginas(() => supa().from("interesados").select("*").order("creado", { ascending: false }).order("id"), "listar interesados");
+    return filas.map(leerInteresado);
+  }
+  const filas = await enFila(() => leer("interesados", []));
+  return filas.map(leerInteresado).sort((a, b) => (a.creado < b.creado ? 1 : -1));
+}
+
+export async function borrarInteresado(id) {
+  if (hasSupabase()) {
+    sinError(await supa().from("interesados").delete().eq("id", id), "borrar interesado");
+    return;
+  }
+  await enFila(async () => escribir("interesados", (await leer("interesados", [])).filter((f) => f.id !== id)));
 }
 
 /** Los tres planes como están ahora (los de partida si nadie los ha tocado). */

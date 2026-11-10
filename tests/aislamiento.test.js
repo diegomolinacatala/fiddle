@@ -90,6 +90,8 @@ const DEL_ADMIN = [
   ["admin/accesos", "POST", () => "/api/admin/accesos", () => ({ slug: "nube", rol: "caja" })],
   ["admin/cifrar", "POST", () => "/api/admin/cifrar"],
   ["admin/crm", "GET", () => "/api/admin/crm"],
+  ["admin/interesados", "GET", () => "/api/admin/interesados"],
+  ["admin/interesados", "DELETE", () => "/api/admin/interesados?id=x"],
   ["admin/invitacion", "GET", () => "/api/admin/invitacion?slug=nube"],
   ["admin/invitacion", "POST", () => "/api/admin/invitacion", () => ({ slug: "nube" })],
   ["admin/negocios", "GET", () => "/api/admin/negocios"],
@@ -104,7 +106,7 @@ const DEL_ADMIN = [
 
 // Públicas a propósito (lib/acceso.js dice por qué cada una) o con su propia llave.
 const PUBLICAS = [
-  "cron/avisos", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "invitacion", "login", "logout", "manifest",
+  "cron/avisos", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
   "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
   "tutorial", "wallet/v1/devices/[dispositivo]/registrations/[passType]/[serial]",
   "wallet/v1/devices/[dispositivo]/registrations/[passType]", "wallet/v1/log", "wallet/v1/passes/[passType]/[serial]",

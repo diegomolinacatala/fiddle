@@ -8,7 +8,7 @@
 //
 //   espresso  el texto y las bandas oscuras       avena  el acento sobre oscuro
 //   visón     el texto secundario                 camel  el acento sobre claro
-//   verde     el violín, los botones y el panel
+//   verde     el lacre, los botones y el panel
 //
 // Una regla que no se rompe: el verde (la marca) y el espresso (la tinta) se
 // distinguen de un vistazo, por tono y por luz. Si se parecieran, la banda del

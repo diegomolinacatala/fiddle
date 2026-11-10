@@ -2,7 +2,7 @@
 
 import { normalizarLegal } from "./legal";
 import { normalizarTextoMarca } from "./apple/glifos";
-import { FORMAS, BANDAS, MODOS_DOBLES, resolverMarca, resolverModo } from "./apple/dibujo";
+import { FORMAS, BANDAS, MODOS_DOBLES, CIFRAS, resolverMarca, resolverModo } from "./apple/dibujo";
 import { CONTADORES } from "./cartillas";
 import { normalizarHorario } from "./horario";
 import { normalizarContacto } from "./contacto";
@@ -168,6 +168,7 @@ export function piezasDeDibujo(origen) {
   if (BANDAS.includes(o.banda) || o.banda === "foto") piezas.banda = o.banda;
   if (resolverModo(o.modo)) piezas.modo = resolverModo(o.modo);
   if (MODOS_DOBLES.includes(o.doble) || o.doble === "llenar") piezas.doble = o.doble;
+  if (CIFRAS.includes(o.cifras)) piezas.cifras = o.cifras;
   // La línea "● Abierto hasta las 14:00" en la banda: encendida salvo que se apague.
   if (typeof o.abierto === "boolean") piezas.abierto = o.abierto;
   // El fondo de la tarjeta en Google Wallet (Google solo deja UN color): el de la

@@ -16,6 +16,8 @@ import { registrarIntento, contarIntentos } from "./store";
 //        (gasta cuota de la tienda): 30 por IP en 10 min.
 // INVITACION /api/invitacion es público (lo abre el dueño antes de tener
 //        contraseña) y cada alta calcula dos scrypt: 20 por IP en 10 min.
+// INTERESADO /api/interesados es público y cada envío guarda una fila: 10 por IP
+//        en 10 min, de sobra para una persona y corta a quien llene la lista.
 //
 // La tarjeta en vivo (/api/tarjeta) se consulta cada pocos segundos por diseño:
 // apuntar cada consulta en la base costaría más que la consulta. Para eso está
@@ -31,6 +33,7 @@ export const LIMITES = {
   push: { max: 20, ventanaMs: 10 * 60 * 1000 },
   google: { max: 30, ventanaMs: 10 * 60 * 1000 },
   invitacion: { max: 20, ventanaMs: 10 * 60 * 1000 },
+  interesado: { max: 10, ventanaMs: 10 * 60 * 1000 },
   // El PIN de la caja (lib/quien.js): 4 cifras son 10.000 combinaciones. 5 fallos
   // por persona e IP, y 30 por persona desde donde sea, cada 15 minutos.
   pinIp: { max: 5, ventanaMs: 15 * 60 * 1000 },
@@ -88,7 +91,7 @@ export async function anotarFalloLogin(slug, ip) {
 
 /**
  * Cuenta un uso de un recurso público y dice si se pasó del límite.
- * @param {"tap"|"log"|"push"|"google"|"invitacion"} recurso
+ * @param {"tap"|"log"|"push"|"google"|"invitacion"|"interesado"} recurso
  * @returns {Promise<boolean>} true si hay que rechazar (429)
  */
 export async function usoExcedido(recurso, ip, ahora = Date.now()) {

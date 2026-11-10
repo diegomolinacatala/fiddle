@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import PaseVista from "@/app/PaseVista";
 import { LogoApple, LogoGoogle } from "@/app/LogoTienda";
 import DisenosDeMarca from "./DisenosDeMarca";
-import { comoDataUri, colorDelPase } from "@/lib/apple/dibujo";
+import { comoDataUri, colorDelPase, cifrasDe, piezasDeTema, modoDeCartilla } from "@/lib/apple/dibujo";
 import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import { kitDe } from "@/lib/kits";
 import { normalizarContacto } from "@/lib/contacto";
@@ -234,7 +234,7 @@ function Editor({ inicial, slug, origin, estado, onCerrar, onGuardado, lista }) 
           tema: {
             estilo: t.estilo, emoji: t.emoji, atras: t.atras,
             accent: t.accent, cardBg: t.cardBg, ink: t.ink, pageInk: t.pageInk, detalle: t.detalle || null,
-            marca: t.marca, texto: t.texto || "", forma: t.forma, banda: t.banda, modo: t.modo, doble: t.doble,
+            marca: t.marca, texto: t.texto || "", forma: t.forma, banda: t.banda, modo: t.modo, doble: t.doble, cifras: t.cifras,
             abierto: t.abierto !== false, google: t.google || "acento", logoImagen: logoImagenDe(t), fondoFoto: fotoDe(t),
           },
           contacto: d.contacto,
@@ -869,6 +869,16 @@ function PanelSellos(props) {
         <>
           <label style={etiqueta}>Casilla de cada punto</label>
           <Opciones opciones={FORMAS} valor={dos ? c.forma || t.forma : t.forma} rotulos={ROTULO} vista={(f) => vistaForma(t, f)} onChange={ponForma} ancho={100} />
+        </>
+      )}
+      {modo !== "casillas" && (
+        <>
+          <label style={etiqueta}>Números</label>
+          <Segmentos
+            valor={cifrasDe(t, dos && piezasDeTema(t).doble === "lados" && d.cartillas.every((x) => modoDeCartilla(t, x) === "relleno") ? "normales" : "cuadradas")}
+            opciones={[["gruesas", "Gruesos"], ["normales", "Normales"], ["cuadradas", "Cuadrados"]]}
+            onChange={(v) => setTema("cifras", v)}
+          />
         </>
       )}
 

@@ -1,7 +1,6 @@
 import QRCode from "qrcode";
 import { comoDataUri } from "@/lib/apple/dibujo";
 import { appUrl } from "@/lib/url";
-import { PALETA } from "../paleta";
 import Probador from "./Probador";
 
 // ============================================================================
@@ -20,6 +19,6 @@ export const metadata = {
 
 export default async function DisenaTuTarjeta() {
   // Como en /home: el QR de ejemplo lleva a la web, no a ninguna tarjeta de verdad.
-  const svg = await QRCode.toString(`${appUrl()}/home`, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: PALETA.espresso, light: "#ffffff" } });
+  const svg = await QRCode.toString(`${appUrl()}/home`, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#000000", light: "#ffffff" } });
   return <Probador qr={comoDataUri(svg)} />;
 }

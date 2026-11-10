@@ -338,7 +338,7 @@ describe("/api/imagen solo dibuja URLs canónicas", () => {
 });
 
 describe("la web guardada en el móvil es fiddle", () => {
-  it("la caja y la tarjeta se instalan con el violín y «fiddle», no con la tienda", async () => {
+  it("la caja y la tarjeta se instalan con el lacre y «fiddle», no con la tienda", async () => {
     vi.resetModules();
     vi.stubEnv("SUPABASE_URL", "");
     vi.stubEnv("APPLE_PASS_TYPE_ID", "");

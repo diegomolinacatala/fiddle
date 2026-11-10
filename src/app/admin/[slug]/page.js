@@ -86,7 +86,7 @@ export default function AdminNegocio() {
           estilo: n.tema.estilo, emoji: n.tema.emoji, accent: n.tema.accent, atras: n.tema.atras,
           cardBg: n.tema.cardBg, ink: n.tema.ink, pageInk: n.tema.pageInk, detalle: n.tema.detalle || null,
           marca: n.tema.marca, texto: n.tema.texto || "", forma: n.tema.forma,
-          banda: n.tema.banda, modo: n.tema.modo, doble: n.tema.doble, google: n.tema.google,
+          banda: n.tema.banda, modo: n.tema.modo, doble: n.tema.doble, cifras: n.tema.cifras, google: n.tema.google,
         },
       }),
     });

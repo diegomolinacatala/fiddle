@@ -18,12 +18,7 @@ export default function Telefono({ qr }) {
     <Carrusel
       titulos={diapositivas.map((d) => d.titulo)}
       tarjetas={diapositivas.map(({ id, ejemplo: { negocio, cliente, estado } }) => (
-        <CaraDelPase key={id} cliente={cliente} negocio={negocio} estado={estado}>
-          <div className="movil-qr">
-            <img src={qr} alt="" width={128} height={128} />
-            <span>{cliente.codigo}</span>
-          </div>
-        </CaraDelPase>
+        <CaraDelPase key={id} cliente={cliente} negocio={negocio} estado={estado} qr={{ src: qr, codigo: cliente.codigo }} />
       ))}
       avisos={diapositivas.map(({ id, ejemplo }) => (
         <Aviso key={id} negocio={ejemplo.negocio} texto={avisoDe(ejemplo)} />

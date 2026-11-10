@@ -4,15 +4,17 @@ import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL, CINTAS, DISENOS } fro
 import { GRUPOS } from "@/lib/crm";
 import { ubicacionesApple } from "@/lib/apple/pase";
 import { PALETA } from "@/app/home/paleta";
-import { svgViolin, svgIconoViolin } from "@/lib/violin";
+import { svgLacre, svgLogoLacre, svgIconoLacre } from "@/lib/lacre";
 import { ESTILOS_GENERALES } from "@/lib/negocios";
 import { stripDelPase, esColorClaro, colorDelPase } from "@/lib/apple/dibujo";
 import { pedir, entrar, INICIO, paradaMasCercana } from "@/app/home/posicion";
 import { MARCAS as MARCAS_DIBUJO, MODOS as MODOS_DIBUJO, FORMAS as FORMAS_DIBUJO } from "@/lib/apple/dibujo";
 import {
-  PALETAS, ICONOS, MODOS as MODOS_PROBADOR, FORMAS as FORMAS_PROBADOR, FONDOS, SECCIONES, INICIAL, MAX_NOMBRE, NOMBRE_POR_DEFECTO,
-  ZOOM_MAX, ENTERA_MAX, limpiar, temaDe, tarjetaDe, sumarPunto, mensajeDe, encuadre, regionDe,
+  PALETAS, ICONOS, MODOS as MODOS_PROBADOR, MODOS_DOS, FONDOS, SECCIONES, INICIAL, MAX_NOMBRE, NOMBRE_POR_DEFECTO,
+  ZOOM_MAX, ENTERA_MAX, limpiar, temaDe, tarjetaDe, encuadre, regionDe,
 } from "@/app/home/tarjeta/opciones";
+import { leerEmail, leerTelefono, leerContactos } from "@/lib/interesados";
+import { cifrasDe } from "@/lib/apple/dibujo";
 
 describe("web de fiddle: contacto y precios", () => {
   it("WhatsApp abre el chat con el mensaje escrito, sin «+» ni espacios en el número", () => {
@@ -149,9 +151,9 @@ describe("web de fiddle: el panel", () => {
   });
 });
 
-describe("el violín de fiddle", () => {
-  it("recorta la efe con una máscara del id que se le pide", () => {
-    const svg = svgViolin({ color: "#402c0f", id: "efe-pie" });
+describe("el lacre de fiddle", () => {
+  it("recorta el anillo y la f con una máscara del id que se le pide", () => {
+    const svg = svgLacre({ color: "#402c0f", id: "efe-pie" });
     expect(svg).toContain('<mask id="efe-pie"');
     expect(svg).toContain('mask="url(#efe-pie)"');
     expect(svg).toContain('fill="#402c0f"');
@@ -159,9 +161,16 @@ describe("el violín de fiddle", () => {
   });
 
   it("el icono es un SVG cuadrado con su fondo", () => {
-    const svg = svgIconoViolin({ color: "#402c0f", fondo: "#a5a789", radio: 230 });
+    const svg = svgIconoLacre({ color: "#402c0f", fondo: "#a5a789", radio: 230 });
     expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 1024 1024"/);
     expect(svg).toContain('fill="#a5a789"');
+  });
+
+  it("el logo lleva el sello y el nombre, en trazos y del mismo color", () => {
+    const svg = svgLogoLacre({ color: "#402c0f", id: "efe-logo" });
+    expect(svg).toContain('mask="url(#efe-logo)"');
+    expect(svg.match(/fill="#402c0f"/g)).toHaveLength(2);
+    expect(svg).not.toContain("<text");
   });
 });
 
@@ -228,7 +237,7 @@ describe("web de fiddle: «Diseña tu tarjeta»", () => {
   it("cada opción existe en el dibujo del pase", () => {
     for (const i of ICONOS) expect(MARCAS_DIBUJO, i.id).toContain(i.id);
     for (const m of MODOS_PROBADOR) expect(MODOS_DIBUJO, m.id).toContain(m.id);
-    for (const f of FORMAS_PROBADOR) expect(FORMAS_DIBUJO, f.id).toContain(f.id);
+    for (const m of MODOS_DOS) expect(MODOS_DIBUJO, m.id).toContain(m.id);
     for (const p of PALETAS) {
       for (const color of [p.cardBg, p.ink, p.accent, p.detalle].filter(Boolean)) expect(color, p.id).toMatch(/^#[0-9a-f]{6}$/);
     }
@@ -247,10 +256,13 @@ describe("web de fiddle: «Diseña tu tarjeta»", () => {
   });
 
   it("lo que llega del navegador se limpia: nada fuera de las listas", () => {
-    const e = limpiar({ paleta: "x", icono: "pizza", modo: "luna", premio: "<b>", meta: 99, puntos: 50, nombre: "a".repeat(80) });
-    expect(e).toMatchObject({ paleta: PALETAS[0].id, icono: ICONOS[0].id, modo: "casillas", premio: INICIAL.premio, meta: 8, puntos: 8 });
+    const e = limpiar({ cartillas: 7, paleta: "x", icono: "pizza", modo: "luna", premio: "<b>", nombre: "a".repeat(80) });
+    expect(e).toMatchObject({ cartillas: 1, paleta: PALETAS[0].id, icono: ICONOS[0].id, modo: INICIAL.modo });
+    expect(e).not.toHaveProperty("premio");
     expect(e.nombre).toHaveLength(MAX_NOMBRE);
-    expect(limpiar({ meta: 6, puntos: 9 }).puntos).toBe(6);
+    // Con dos premios, solo los modos que caben dos veces, y dos iconos distintos.
+    expect(limpiar({ cartillas: 2, modo: "cifra" }).modo).toBe(INICIAL.modo);
+    expect(limpiar({ cartillas: 2, icono: "galleta", icono2: "galleta" }).icono2).toBe("taza");
   });
 
   it("la tarjeta sale de las funciones del pase, sin nombre de cliente ni brief", () => {
@@ -260,21 +272,61 @@ describe("web de fiddle: «Diseña tu tarjeta»", () => {
     expect(negocio).not.toHaveProperty("brief");
     expect(stripDelPase(negocio, cliente).svg).toContain("<svg");
     expect(tarjetaDe({ ...INICIAL, nombre: "Café Ruzafa" }).negocio.nombre).toBe("Café Ruzafa");
-    expect(tarjetaDe({ ...INICIAL, meta: 10 }).negocio.meta).toBe(10);
   });
 
-  it("«Sumar punto» vuelve a empezar al completarla", () => {
-    expect(sumarPunto(7, 8)).toBe(8);
-    expect(sumarPunto(8, 8)).toBe(0);
+  it("los números: las tres letras salen distintas, y sin elegir cada banda sigue como estaba", () => {
+    const banda = (e) => { const { negocio, cliente } = tarjetaDe(e); return stripDelPase(negocio, cliente).svg; };
+    for (const m of MODOS_PROBADOR.filter((x) => x.id !== "casillas")) {
+      const [g, n, c] = ["gruesas", "normales", "cuadradas"].map((cifras) => banda({ ...INICIAL, modo: m.id, cifras }));
+      expect(new Set([g, n, c]).size, m.id).toBe(3);
+    }
+    const dos = (cifras) => banda({ ...INICIAL, cartillas: 2, cifras });
+    expect(new Set([dos("gruesas"), dos("normales"), dos("cuadradas")]).size).toBe(3);
+    // Dos cartillas lado a lado sin elegir letra (La Delicantería): las normales de siempre.
+    const lados = tarjetaDe({ ...INICIAL, cartillas: 2, cifras: "normales" });
+    const sinElegir = { ...lados.negocio, tema: { ...lados.negocio.tema, cifras: undefined } };
+    expect(stripDelPase(sinElegir, lados.cliente).svg).toBe(stripDelPase(lados.negocio, lados.cliente).svg);
+    expect(cifrasDe({})).toBe("cuadradas");
+    expect(cifrasDe({}, "normales")).toBe("normales");
+    expect(cifrasDe({ cifras: "<b>" })).toBe("cuadradas");
+    expect(cifrasDe({ cifras: "normales" })).toBe("normales");
   });
 
-  it("el mensaje de WhatsApp dice lo elegido", () => {
-    const texto = mensajeDe({ ...INICIAL, paleta: "matcha", nombre: "Café Ruzafa", modo: "relleno", meta: 6 });
-    expect(texto).toContain("para Café Ruzafa");
-    expect(texto).toContain("colores Matcha");
-    expect(texto).toContain("se llena");
-    expect(texto).toContain("café gratis cada 6 puntos");
-    expect(mensajeDe(INICIAL)).toContain("(círculo)");
+  it("el premio sale del icono", () => {
+    expect(tarjetaDe({ ...INICIAL, icono: "galleta" }).negocio.premio).toBe("cookie gratis");
+    expect(tarjetaDe({ ...INICIAL, icono: "taza" }).negocio.premio).toBe("café gratis");
+    for (const i of ICONOS) expect(i.premio, i.id).toBeTruthy();
+  });
+
+  it("con dos premios salen dos cartillas, y lado a lado la taza va a la derecha", () => {
+    for (const m of MODOS_DOS) {
+      const { negocio, cliente } = tarjetaDe({ ...INICIAL, cartillas: 2, modo: m.id });
+      expect(negocio.cartillas, m.id).toHaveLength(2);
+      expect(stripDelPase(negocio, cliente).svg, m.id).toContain("<svg");
+    }
+    const { negocio } = tarjetaDe({ ...INICIAL, cartillas: 2, modo: "relleno", icono: "taza", icono2: "galleta" });
+    expect(negocio.cartillas.map((c) => c.marca)).toEqual(["galleta", "taza"]);
+  });
+
+  it("el contacto del final: email, teléfono o los dos, y con uno basta", () => {
+    expect(leerEmail(" hola@cafe.es ")).toBe("hola@cafe.es");
+    expect(leerTelefono("+34 600 123 456")).toBe("+34 600 123 456");
+    for (const malo of ["", "hola", "12345", "a@b", "<b>@x.es y más", 7, null]) {
+      expect(leerEmail(malo), String(malo)).toBeNull();
+      expect(leerTelefono(malo), String(malo)).toBeNull();
+    }
+    expect(leerTelefono("hola@cafe.es")).toBeNull();
+    expect(leerEmail("600123456")).toBeNull();
+
+    expect(leerContactos({ email: "hola@cafe.es", telefono: "  " })).toEqual({ email: "hola@cafe.es", telefono: null, errores: null });
+    expect(leerContactos({ telefono: "600 123 456" })).toEqual({ email: null, telefono: "600 123 456", errores: null });
+    expect(leerContactos({ email: "hola@cafe.es", telefono: "600123456" })).toEqual({ email: "hola@cafe.es", telefono: "600123456", errores: null });
+    expect(leerContactos({}).errores.ninguno).toBeTruthy();
+    expect(leerContactos(undefined).errores.ninguno).toBeTruthy();
+    // Uno bien no tapa el otro mal: se diría guardado sin el que creía haber dejado.
+    const mal = leerContactos({ email: "hola@cafe.es", telefono: "123" });
+    expect(mal.errores).toEqual({ telefono: expect.any(String) });
+    expect(mal.email).toBeNull();
   });
 
   it("la cámara: la tarjeta entera cabe y una parte queda en el centro", () => {

@@ -25,7 +25,7 @@ funcionan a la vez:
    - **Avisos de tus puntos** → Activar. El navegador pide permiso y le llega un
      primer aviso de prueba ("Avisos activados…").
    - **Instalar** → la tarjeta se queda en la pantalla de inicio como una app, con
-     el violín y el nombre de fiddle (`lib/marcaFiddle.js`). Si Chrome no ofrece el botón, sale la instrucción del menú.
+     el lacre y el nombre de fiddle (`lib/marcaFiddle.js`). Si Chrome no ofrece el botón, sale la instrucción del menú.
 4. Mientras la tiene abierta en caja, la tarjeta **se pone al día sola** (cada 3 s
    los primeros minutos, luego cada 10 s, nada si está en segundo plano). Cuando la
    caja suma un punto, el teléfono vibra, la banda se anima y sale "Punto añadido".
