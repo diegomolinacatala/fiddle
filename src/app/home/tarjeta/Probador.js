@@ -6,7 +6,7 @@ import { LogoApple } from "@/app/LogoTienda";
 import LogoFiddle from "@/app/LogoFiddle";
 import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
 import { WALLET } from "@/lib/vistaWallet";
-import { leerContacto } from "@/lib/interesados";
+import { leerContactos, MAX_CONTACTO } from "@/lib/interesados";
 import { PALETA } from "../paleta";
 import {
   PALETAS, ICONOS, MODOS, MODOS_DOS, FONDOS, NUMEROS, SECCIONES, INICIAL, MAX_NOMBRE, NOMBRE_POR_DEFECTO,
@@ -20,8 +20,12 @@ import { css } from "./estilo";
 // Una tarjeta en el centro que se inclina siguiendo el ratón (o el dedo) y una
 // cámara que se acerca a la parte que se está tocando. Cada paso se contesta de
 // un toque y pasa solo al siguiente: tiene que ser rápido y divertido. Solo llevan
-// botón el color (se desliza) y el nombre (se escribe). Al final, un email o un
-// teléfono guarda la tarjeta y nos llega a /admin → Interesados.
+// botón el color (se desliza) y el nombre (se escribe). Al final, un email, un
+// teléfono o los dos guardan la tarjeta y nos llega a /admin → Interesados.
+//
+// Guardada, el probador se cierra: el panel entero (pestañas, flecha de atrás,
+// pasos) da paso a «Tarjeta guardada» y la tarjeta ya no lleva a ningún paso. Si
+// no, se volvía atrás y se mandaba otra vez, una por cada vuelta.
 //
 // - La tarjeta es CaraDelPase con lo elegido (opciones.js → ejemplo de demo.js):
 //   lo que se ve es lo que saldría en el Wallet.
@@ -55,6 +59,7 @@ export default function Probador({ qr }) {
   const [seccion, setSeccion] = useState(0);
   const [sentido, setSentido] = useState(1);
   const [hueco, setHueco] = useState(0); // con dos premios, de qué premio se elige el icono
+  const [enviada, setEnviada] = useState(null); // { email, telefono } al guardarla: ya no se edita
   const quieto = useReducirMovimiento();
 
   const e = limpiar(eleccion);
@@ -95,7 +100,7 @@ export default function Probador({ qr }) {
   const capaArriba = useRef(null);
   const cerca = useRef(false);
   const [camara, setCamara] = useState({ s: 1, y: 0 });
-  const parte = SECCIONES[seccion].parte;
+  const parte = enviada ? "todo" : SECCIONES[seccion].parte;
 
   useLayoutEffect(() => {
     const medir = () => {
@@ -128,7 +133,7 @@ export default function Probador({ qr }) {
   const alSoltar = (ev) => {
     const t = toque.current;
     toque.current = null;
-    if (!t || Math.hypot(ev.clientX - t.x, ev.clientY - t.y) > ARRASTRE) return;
+    if (enviada || !t || Math.hypot(ev.clientX - t.x, ev.clientY - t.y) > ARRASTRE) return;
     const p = ev.target.closest?.("[data-parte]")?.dataset.parte;
     const id = SECCION_DE_PARTE[p];
     if (id) ir(SECCIONES.findIndex((s) => s.id === id));
@@ -164,7 +169,7 @@ export default function Probador({ qr }) {
   const iconoDe = hueco === 0 ? e.icono : e.icono2;
 
   return (
-    <div className={`prob${quieto ? " prob-quieto" : ""}`} style={{ "--tono": tema.accent, "--tono-2": tema.cardBg }}>
+    <div className={`prob${quieto ? " prob-quieto" : ""}${enviada ? " prob-cerrado" : ""}`} style={{ "--tono": tema.accent, "--tono-2": tema.cardBg }}>
       <style>{css}</style>
 
       <header className="prob-arriba">
@@ -205,157 +210,170 @@ export default function Probador({ qr }) {
       </main>
 
       <aside className="prob-panel" aria-label="Diseña tu tarjeta">
-        <Solapas actual={seccion} alElegir={ir} />
+        {enviada ? <Enviada {...enviada} /> : (
+          <>
+            <Solapas actual={seccion} alElegir={ir} />
 
-        <div className="prob-marco">
-          <section key={`${actual.id}-${hueco}`} className={`prob-seccion ${sentido > 0 ? "desde-dcha" : "desde-izda"}`} aria-labelledby="prob-titulo">
-            <div className="prob-cabeza">
-              <h1 id="prob-titulo">{actual.id === "icono" && e.cartillas === 2 ? (hueco === 0 ? "El primer premio" : "Y el segundo") : actual.titulo}</h1>
-              <p>{actual.pista}</p>
+            <div className="prob-marco">
+              <section key={`${actual.id}-${hueco}`} className={`prob-seccion ${sentido > 0 ? "desde-dcha" : "desde-izda"}`} aria-labelledby="prob-titulo">
+                <div className="prob-cabeza">
+                  <h1 id="prob-titulo">{actual.id === "icono" && e.cartillas === 2 ? (hueco === 0 ? "El primer premio" : "Y el segundo") : actual.titulo}</h1>
+                  <p>{actual.pista}</p>
+                </div>
+
+                {actual.id === "cuantas" && (
+                  <div className="prob-cuantas" role="radiogroup" aria-label="Cuántos premios">
+                    {[1, 2].map((n) => {
+                      const { negocio, cliente } = tarjetaDe({ ...e, cartillas: n, modo: "relleno" });
+                      return (
+                        <Opcion key={n} activa={e.cartillas === n} alElegir={() => elegirYSeguir({ cartillas: n })} etiqueta={n === 1 ? "Un premio" : "Dos premios"}>
+                          <span className="prob-foto" aria-hidden="true"><CaraDelPase cliente={cliente} negocio={negocio} /></span>
+                        </Opcion>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {actual.id === "puntos" && <Modos eleccion={e} alElegir={(modo) => elegirYSeguir({ modo })} />}
+
+                {actual.id === "color" && (
+                  <>
+                    <Colores valor={e.paleta} alCambiar={(paleta) => cambiar({ paleta })} quieto={quieto} />
+                    <Grupo titulo="Fondo de la banda">
+                      <Segmentos opciones={FONDOS} valor={e.fondo} alCambiar={(fondo) => cambiar({ fondo })} />
+                    </Grupo>
+                    {e.modo !== "casillas" && (
+                      <Grupo titulo="Números">
+                        <Segmentos opciones={NUMEROS} valor={e.cifras} alCambiar={(cifras) => cambiar({ cifras })} />
+                      </Grupo>
+                    )}
+                  </>
+                )}
+
+                {actual.id === "icono" && (
+                  <div className="prob-rejilla prob-iconos" role="radiogroup" aria-label="Icono">
+                    {ICONOS.filter((ic) => hueco === 0 || ic.id !== e.icono).map((ic) => (
+                      <Opcion key={ic.id} activa={iconoDe === ic.id} alElegir={() => elegirIcono(ic.id)} etiqueta={ic.nombre}>
+                        <span className="prob-icono" style={{ background: tema.cardBg }}>
+                          <LogoApple tema={{ ...tema, marca: ic.id }} tam={34} />
+                        </span>
+                      </Opcion>
+                    ))}
+                  </div>
+                )}
+
+                {actual.id === "nombre" && (
+                  <label className="prob-nombre">
+                    <span className="prob-oculto">El nombre de tu cafetería</span>
+                    <input
+                      value={eleccion.nombre}
+                      onChange={(ev) => setEleccion((a) => ({ ...a, nombre: ev.target.value.slice(0, MAX_NOMBRE) }))}
+                      placeholder={NOMBRE_POR_DEFECTO}
+                      maxLength={MAX_NOMBRE}
+                      autoComplete="organization"
+                      enterKeyHint="next"
+                      onKeyDown={(ev) => ev.key === "Enter" && ir(seccion + 1)}
+                    />
+                    <span className="prob-cuenta">{eleccion.nombre.length}/{MAX_NOMBRE}</span>
+                  </label>
+                )}
+
+                {actual.id === "guardar" && <Guardar eleccion={e} alGuardar={(contacto) => { setEnviada(contacto); latido(); }} />}
+              </section>
             </div>
 
-            {actual.id === "cuantas" && (
-              <div className="prob-cuantas" role="radiogroup" aria-label="Cuántos premios">
-                {[1, 2].map((n) => {
-                  const { negocio, cliente } = tarjetaDe({ ...e, cartillas: n, modo: "relleno" });
-                  return (
-                    <Opcion key={n} activa={e.cartillas === n} alElegir={() => elegirYSeguir({ cartillas: n })} etiqueta={n === 1 ? "Un premio" : "Dos premios"}>
-                      <span className="prob-foto" aria-hidden="true"><CaraDelPase cliente={cliente} negocio={negocio} /></span>
-                    </Opcion>
-                  );
-                })}
-              </div>
-            )}
-
-            {actual.id === "puntos" && <Modos eleccion={e} alElegir={(modo) => elegirYSeguir({ modo })} />}
-
-            {actual.id === "color" && (
-              <>
-                <Colores valor={e.paleta} alCambiar={(paleta) => cambiar({ paleta })} quieto={quieto} />
-                <Grupo titulo="Fondo de la banda">
-                  <Segmentos opciones={FONDOS} valor={e.fondo} alCambiar={(fondo) => cambiar({ fondo })} />
-                </Grupo>
-                {e.modo !== "casillas" && (
-                  <Grupo titulo="Números">
-                    <Segmentos opciones={NUMEROS} valor={e.cifras} alCambiar={(cifras) => cambiar({ cifras })} />
-                  </Grupo>
-                )}
-              </>
-            )}
-
-            {actual.id === "icono" && (
-              <div className="prob-rejilla prob-iconos" role="radiogroup" aria-label="Icono">
-                {ICONOS.filter((ic) => hueco === 0 || ic.id !== e.icono).map((ic) => (
-                  <Opcion key={ic.id} activa={iconoDe === ic.id} alElegir={() => elegirIcono(ic.id)} etiqueta={ic.nombre}>
-                    <span className="prob-icono" style={{ background: tema.cardBg }}>
-                      <LogoApple tema={{ ...tema, marca: ic.id }} tam={34} />
-                    </span>
-                  </Opcion>
-                ))}
-              </div>
-            )}
-
-            {actual.id === "nombre" && (
-              <label className="prob-nombre">
-                <span className="prob-oculto">El nombre de tu cafetería</span>
-                <input
-                  value={eleccion.nombre}
-                  onChange={(ev) => setEleccion((a) => ({ ...a, nombre: ev.target.value.slice(0, MAX_NOMBRE) }))}
-                  placeholder={NOMBRE_POR_DEFECTO}
-                  maxLength={MAX_NOMBRE}
-                  autoComplete="organization"
-                  enterKeyHint="next"
-                  onKeyDown={(ev) => ev.key === "Enter" && ir(seccion + 1)}
-                />
-                <span className="prob-cuenta">{eleccion.nombre.length}/{MAX_NOMBRE}</span>
-              </label>
-            )}
-
-            {actual.id === "guardar" && <Guardar eleccion={e} alGuardar={latido} />}
-          </section>
-        </div>
-
-        <footer className="prob-pie">
-          <button type="button" className="prob-atras" onClick={() => ir(seccion - 1)} disabled={seccion === 0} aria-label="Paso anterior">
-            <Flecha atras />
-          </button>
-          <span className="prob-paso" aria-hidden="true">
-            {SECCIONES.map((s, i) => <i key={s.id} className={i === seccion ? "activo" : i < seccion ? "hecho" : ""} />)}
-          </span>
-          {actual.boton && !ultima ? (
-            <button type="button" className="prob-siguiente" onClick={() => ir(seccion + 1)}>
-              {SECCIONES[seccion + 1].nombre} <Flecha />
-            </button>
-          ) : <span className="prob-sin-boton" aria-hidden="true" />}
-        </footer>
+            <footer className="prob-pie">
+              <button type="button" className="prob-atras" onClick={() => ir(seccion - 1)} disabled={seccion === 0} aria-label="Paso anterior">
+                <Flecha atras />
+              </button>
+              <span className="prob-paso" aria-hidden="true">
+                {SECCIONES.map((s, i) => <i key={s.id} className={i === seccion ? "activo" : i < seccion ? "hecho" : ""} />)}
+              </span>
+              {actual.boton && !ultima ? (
+                <button type="button" className="prob-siguiente" onClick={() => ir(seccion + 1)}>
+                  {SECCIONES[seccion + 1].nombre} <Flecha />
+                </button>
+              ) : <span className="prob-sin-boton" aria-hidden="true" />}
+            </footer>
+          </>
+        )}
       </aside>
     </div>
   );
 }
 
 // ----------------------------------------------------------------------------
-// El último paso: un email o un teléfono, sin verificar. Guarda lo elegido y nos
-// lo enseña en /admin. Lo que se dice aquí tiene que ser verdad de lo que se hace.
+// El último paso: un email, un teléfono o los dos, sin verificar (con uno basta).
+// Guarda lo elegido y nos lo enseña en /admin. Lo que se dice aquí tiene que ser
+// verdad de lo que se hace.
 // ----------------------------------------------------------------------------
+const NO_SE_GUARDO = "No se ha podido guardar. Prueba otra vez.";
+
 function Guardar({ eleccion, alGuardar }) {
-  const [contacto, setContacto] = useState("");
+  const [campos, setCampos] = useState({ email: "", telefono: "" });
   const [enviando, setEnviando] = useState(false);
-  const [hecho, setHecho] = useState(false);
-  const [error, setError] = useState(null);
+  const [errores, setErrores] = useState({}); // { email, telefono, ninguno, servidor }
+  const refs = { email: useRef(null), telefono: useRef(null) };
+
+  const escribir = (campo) => (ev) => {
+    const valor = ev.target.value;
+    setCampos((c) => ({ ...c, [campo]: valor }));
+    setErrores((e) => ({ ...e, [campo]: undefined, ninguno: undefined, servidor: undefined }));
+  };
 
   const enviar = async (ev) => {
     ev.preventDefault();
     if (enviando) return;
-    if (!leerContacto(contacto)) {
-      setError("Escribe un email o un teléfono");
+    const { email, telefono, errores: mal } = leerContactos(campos);
+    if (mal) {
+      setErrores(mal);
+      refs[mal.email || mal.ninguno ? "email" : "telefono"].current?.focus();
       return;
     }
     setEnviando(true);
-    setError(null);
+    setErrores({});
     try {
       const r = await fetch("/api/interesados", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contacto, eleccion }),
+        body: JSON.stringify({ email, telefono, eleccion }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || "No se ha podido guardar. Prueba otra vez.");
-      setHecho(true);
-      alGuardar();
+      if (!r.ok) throw new Error(d.error || NO_SE_GUARDO);
+      // Sin volver a poner `enviando` a false: este formulario ya no se vuelve a ver.
+      alGuardar({ email, telefono });
     } catch (err) {
-      setError(err.message || "No se ha podido guardar. Prueba otra vez.");
-    } finally {
+      setErrores({ servidor: err.message || NO_SE_GUARDO });
       setEnviando(false);
     }
   };
 
-  if (hecho) {
-    return (
-      <div className="prob-hecho" role="status">
-        <span className="prob-hecho-marca" aria-hidden="true"><Hecho /></span>
-        <strong>Tarjeta guardada</strong>
-        <p>Te escribimos a {contacto.trim()} para ponerla en marcha.</p>
-        <a href="/home" className="prob-siguiente">Volver a la web</a>
-      </div>
-    );
-  }
+  const campo = (id, etiqueta, extra) => (
+    <div className="prob-campo">
+      <label className="prob-nombre prob-contacto">
+        <span className="prob-oculto">{etiqueta}</span>
+        <input
+          ref={refs[id]}
+          value={campos[id]}
+          onChange={escribir(id)}
+          placeholder={etiqueta}
+          maxLength={MAX_CONTACTO}
+          enterKeyHint="send"
+          aria-invalid={Boolean(errores[id] || errores.ninguno)}
+          aria-describedby={errores[id] ? `prob-error-${id}` : errores.ninguno ? "prob-error-ninguno" : undefined}
+          {...extra}
+        />
+      </label>
+      {errores[id] && <p id={`prob-error-${id}`} className="prob-error" role="alert">{errores[id]}</p>}
+    </div>
+  );
 
   return (
     <form className="prob-guardar" onSubmit={enviar} noValidate>
-      <label className="prob-nombre">
-        <span className="prob-oculto">Tu email o tu teléfono</span>
-        <input
-          value={contacto}
-          onChange={(ev) => { setContacto(ev.target.value); setError(null); }}
-          placeholder="Email o teléfono"
-          maxLength={120}
-          autoComplete="email"
-          inputMode="email"
-          enterKeyHint="send"
-          aria-invalid={Boolean(error)}
-        />
-      </label>
-      {error && <p className="prob-error" role="alert">{error}</p>}
+      {campo("email", "Email", { type: "email", inputMode: "email", autoComplete: "email", autoCapitalize: "none", spellCheck: false })}
+      {campo("telefono", "Teléfono", { type: "tel", inputMode: "tel", autoComplete: "tel" })}
+      {errores.ninguno && <p id="prob-error-ninguno" className="prob-error" role="alert">{errores.ninguno}</p>}
+      {errores.servidor && <p className="prob-error" role="alert">{errores.servidor}</p>}
       <button type="submit" className="prob-siguiente prob-ancho" disabled={enviando} aria-busy={enviando || undefined}>
         {enviando ? "Guardando…" : "Guardar mi tarjeta"}
       </button>
@@ -363,6 +381,24 @@ function Guardar({ eleccion, alGuardar }) {
         Lo usamos solo para hablarte de tu tarjeta. Si cambias de idea, escríbenos y lo borramos. <a href="/privacidad">Privacidad</a>
       </p>
     </form>
+  );
+}
+
+// Lo que queda al guardarla: sin pestañas ni flecha de atrás, solo volver a la web.
+function Enviada({ email, telefono }) {
+  const titulo = useRef(null);
+  // El botón que se tocó ya no existe: el foco pasa aquí y el lector lo lee.
+  useEffect(() => { titulo.current?.focus({ preventScroll: true }); }, []);
+  const donde = email && telefono ? `a ${email} o al ${telefono}` : email ? `a ${email}` : `al ${telefono}`;
+  return (
+    <div className="prob-marco">
+      <div className="prob-hecho" role="status">
+        <span className="prob-hecho-marca" aria-hidden="true"><Hecho /></span>
+        <h1 ref={titulo} tabIndex={-1}>Tarjeta guardada</h1>
+        <p>Te escribimos {donde} para ponerla en marcha.</p>
+        <a href="/home" className="prob-siguiente">Volver a la web</a>
+      </div>
+    </div>
   );
 }
 

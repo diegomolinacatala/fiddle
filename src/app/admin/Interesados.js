@@ -9,7 +9,7 @@ import { C, panel, botonSecundario } from "@/app/ui";
 // ============================================================================
 // PLATAFORMA → INTERESADOS
 // ----------------------------------------------------------------------------
-// Quien terminó «Diseña tu tarjeta» y dejó un email o un teléfono: con quién hablar
+// Quien terminó «Diseña tu tarjeta» y dejó un email, un teléfono o los dos: con quién hablar
 // y la tarjeta que diseñó, pintada con las funciones de verdad. Sin verificar: lo
 // escribió esa persona. Es lo que ve el admin; no llega a ninguna tienda.
 // ============================================================================
@@ -29,7 +29,8 @@ export default function Interesados({ accent, flash }) {
   }, []);
 
   async function borrar(i) {
-    const si = await confirmar({ titulo: "Borrar este interesado", texto: `Se borra ${i.contacto} y su tarjeta. No se puede deshacer.`, si: "Borrar", peligro: true, accent });
+    const quien = [i.email, i.telefono].filter(Boolean).join(" y ");
+    const si = await confirmar({ titulo: "Borrar este interesado", texto: `Se borra ${quien} y su tarjeta. No se puede deshacer.`, si: "Borrar", peligro: true, accent });
     if (!si) return;
     const r = await fetch(`/api/admin/interesados?id=${encodeURIComponent(i.id)}`, { method: "DELETE" });
     if (!r.ok) return flash("No se pudo borrar");
@@ -51,9 +52,12 @@ export default function Interesados({ accent, flash }) {
               <CaraDelPase cliente={cliente} negocio={negocio} />
             </div>
             <div style={{ flex: 1, minWidth: 180 }}>
-              <a href={i.tipo === "email" ? `mailto:${i.contacto}` : `tel:${i.contacto.replace(/[^\d+]/g, "")}`} style={{ fontWeight: 650, overflowWrap: "anywhere" }}>
-                {i.contacto}
-              </a>
+              {i.email && (
+                <a href={`mailto:${i.email}`} style={{ display: "block", fontWeight: 650, overflowWrap: "anywhere" }}>{i.email}</a>
+              )}
+              {i.telefono && (
+                <a href={`tel:${i.telefono.replace(/[^\d+]/g, "")}`} style={{ display: "block", fontWeight: 650, overflowWrap: "anywhere" }}>{i.telefono}</a>
+              )}
               <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>
                 {i.eleccion.nombre?.trim() || "Sin nombre de tienda"} · {i.eleccion.cartillas === 2 ? "dos premios" : "un premio"}
               </div>

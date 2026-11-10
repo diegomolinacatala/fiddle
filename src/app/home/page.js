@@ -24,7 +24,7 @@ import { cssMovil } from "./estiloMovil";
 // ----------------------------------------------------------------------------
 // Lo que se le enseña a una cafetería que aún no nos conoce, de menos a más: qué
 // es (portada), que va rápido (Cero fricción), lo que ve el dueño (el panel),
-// que ya funciona en una cafetería de verdad, cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
+// que ya funciona en cafeterías de verdad, cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
 // «Entrar» arriba a la derecha (y al pie).
 //
 // En el móvil (estiloMovil.js) la misma página se ordena distinto: menú
@@ -190,7 +190,7 @@ export default async function Home() {
 
         {/* Justo antes del precio: lo que ya ha pasado en una cafetería, con su nombre. */}
         <section id="cifras" className="bloque" aria-labelledby="titulo-cifras">
-          <Encabezado id="titulo-cifras" titulo="Ya funciona en una cafetería">
+          <Encabezado id="titulo-cifras" titulo="Ya funciona en cafeterías">
             La Delicantería, en Valencia, fue la primera en usar fiddle. Así le fue en sus primeras semanas.
           </Encabezado>
           <Cifras />

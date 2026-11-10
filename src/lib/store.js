@@ -152,13 +152,24 @@ async function escribirPlataforma(clave, valor) {
 }
 
 // ---------------------------------------------------------- interesados
-// Quien deja su contacto en «Diseña tu tarjeta» (lib/interesados.js). El contacto
-// va cifrado, atado a su fila, como el nombre de un cliente; lo elegido, tal cual.
-const leerInteresado = (fila) => ({ ...fila, contacto: descifrar(fila.contacto, { serial: fila.id, campo: "contacto" }) });
+// Quien deja su contacto en «Diseña tu tarjeta» (lib/interesados.js): email,
+// teléfono o los dos. Cada uno cifrado, atado a su fila, como el nombre de un
+// cliente; lo elegido, tal cual.
+const leerInteresado = (fila) => ({
+  ...fila,
+  email: descifrar(fila.email, { serial: fila.id, campo: "email" }),
+  telefono: descifrar(fila.telefono, { serial: fila.id, campo: "telefono" }),
+});
 
-export async function addInteresado({ contacto, tipo, eleccion }) {
+export async function addInteresado({ email, telefono, eleccion }) {
   const id = randomUUID();
-  const fila = { id, contacto: cifrar(contacto, { serial: id, campo: "contacto" }), tipo, eleccion, creado: ahoraISO() };
+  const fila = {
+    id,
+    email: cifrar(email, { serial: id, campo: "email" }),
+    telefono: cifrar(telefono, { serial: id, campo: "telefono" }),
+    eleccion,
+    creado: ahoraISO(),
+  };
   if (hasSupabase()) {
     sinError(await supa().from("interesados").insert(fila), "guardar interesado");
     return id;

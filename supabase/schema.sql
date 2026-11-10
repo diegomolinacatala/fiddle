@@ -256,14 +256,15 @@ alter table registros      enable row level security;
 alter table intentos       enable row level security;
 alter table campanas       enable row level security;
 -- ===================== INTERESADOS =====================
--- Quien deja su email o teléfono en «Diseña tu tarjeta» y la tarjeta que diseñó. Se
--- ven en /admin → Interesados. `contacto` va cifrado (lib/cifrado.js).
+-- Quien deja su email, su teléfono o los dos en «Diseña tu tarjeta» y la tarjeta que
+-- diseñó. Se ven en /admin → Interesados. `email` y `telefono` van cifrados (lib/cifrado.js).
 create table if not exists interesados (
   id       text primary key,
-  contacto text not null,
-  tipo     text not null,
+  email    text,
+  telefono text,
   eleccion jsonb not null,
-  creado   timestamptz not null default now()
+  creado   timestamptz not null default now(),
+  check (email is not null or telefono is not null)
 );
 create index if not exists interesados_creado on interesados (creado desc);
 

@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Quien dejó su contacto en «Diseña tu tarjeta» (/admin → Interesados).
-//   GET                -> [{ id, contacto, tipo, eleccion, creado }]  el último primero
+//   GET                -> [{ id, email, telefono, eleccion, creado }]  el último primero; uno de los dos puede ser null
 //   DELETE ?id=<id>    lo borra (quien lo pide, o quien ya no hace falta)
 
 export async function GET(request) {

@@ -105,7 +105,7 @@ export const SECCIONES = [
   { id: "color", nombre: "Color", titulo: "El color", parte: "todo", pista: "Desliza para probar", boton: true },
   { id: "icono", nombre: "Icono", titulo: "El icono", parte: "cabecera banda", pista: "Y con él, el premio que das" },
   { id: "nombre", nombre: "Nombre", titulo: "Tu cafetería", parte: "cabecera", pista: "Así sale arriba, junto al icono", boton: true },
-  { id: "guardar", nombre: "Guardar", titulo: "Guárdala", parte: "todo", pista: "Déjanos un email o un teléfono y hablamos" },
+  { id: "guardar", nombre: "Guardar", titulo: "Guárdala", parte: "todo", pista: "Déjanos un email o un teléfono y hablamos. Con uno basta." },
 ];
 
 export const INICIAL = {

@@ -794,7 +794,7 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
   app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
   esta página no lo lee, así que si cambia allí se cambia aquí a mano.
-- **«Ya funciona en una cafetería»** (`home/Cifras.js`, antes de los precios): dos cifras
+- **«Ya funciona en cafeterías»** (`home/Cifras.js`, antes de los precios): dos cifras
   reales de La Delicantería (los segundos hasta tenerla en el Wallet y las visitas por
   semana), en `DELICANTERIA` de `datos.js` con cómo se sacaron (09-11-2026). Cifras fijas,
   no se leen de la base. Si se actualizan, solo semanas enteras y sin festivos.
@@ -849,9 +849,13 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
 - **La tarjeta del probador se pinta al doble y la cámara la encoge** (`RESOLUCION`, el `zoom` de
   `.prob-tarjeta`): un `transform` agranda lo ya pintado y se veía borroso. Y la sombra es UNA,
   fuera de las capas del fundido: con una por capa, al quitar la vieja saltaba de golpe.
-- **Quien termina deja un email o un teléfono, sin verificar** (`POST /api/interesados`, tabla
-  `interesados`, contacto cifrado) y sale en `/admin` → Interesados con la tarjeta que diseñó.
-  Antes de llevarlo a `main`, crear la tabla (`schema.sql`).
+- **Quien termina deja un email, un teléfono o los dos, sin verificar** (con uno basta;
+  `leerContactos`, `POST /api/interesados`, tabla `interesados`, cada uno cifrado en su columna)
+  y sale en `/admin` → Interesados con la tarjeta que diseñó. Antes de llevarlo a `main`, crear
+  la tabla (`schema.sql`).
+- **Guardada, el probador se cierra** (10-11-2026, lo pidió Víctor): el panel entero (pestañas,
+  flecha de atrás, pasos) pasa a «Tarjeta guardada» y la tarjeta ya no lleva a ningún paso. Con
+  «Hecho» dentro del último paso se volvía atrás y se mandaba otra vez, una fila por vuelta.
 
 ## Pantallas en el móvil
 

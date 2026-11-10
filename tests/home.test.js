@@ -13,7 +13,7 @@ import {
   PALETAS, ICONOS, MODOS as MODOS_PROBADOR, MODOS_DOS, FONDOS, SECCIONES, INICIAL, MAX_NOMBRE, NOMBRE_POR_DEFECTO,
   ZOOM_MAX, ENTERA_MAX, limpiar, temaDe, tarjetaDe, encuadre, regionDe,
 } from "@/app/home/tarjeta/opciones";
-import { leerContacto } from "@/lib/interesados";
+import { leerEmail, leerTelefono, leerContactos } from "@/lib/interesados";
 import { cifrasDe } from "@/lib/apple/dibujo";
 
 describe("web de fiddle: contacto y precios", () => {
@@ -308,10 +308,25 @@ describe("web de fiddle: «Diseña tu tarjeta»", () => {
     expect(negocio.cartillas.map((c) => c.marca)).toEqual(["galleta", "taza"]);
   });
 
-  it("el contacto del final: un email o un teléfono, nada más", () => {
-    expect(leerContacto(" hola@cafe.es ")).toEqual({ valor: "hola@cafe.es", tipo: "email" });
-    expect(leerContacto("+34 600 123 456")).toEqual({ valor: "+34 600 123 456", tipo: "telefono" });
-    for (const malo of ["", "hola", "12345", "a@b", "<b>@x.es y más", 7, null]) expect(leerContacto(malo), String(malo)).toBeNull();
+  it("el contacto del final: email, teléfono o los dos, y con uno basta", () => {
+    expect(leerEmail(" hola@cafe.es ")).toBe("hola@cafe.es");
+    expect(leerTelefono("+34 600 123 456")).toBe("+34 600 123 456");
+    for (const malo of ["", "hola", "12345", "a@b", "<b>@x.es y más", 7, null]) {
+      expect(leerEmail(malo), String(malo)).toBeNull();
+      expect(leerTelefono(malo), String(malo)).toBeNull();
+    }
+    expect(leerTelefono("hola@cafe.es")).toBeNull();
+    expect(leerEmail("600123456")).toBeNull();
+
+    expect(leerContactos({ email: "hola@cafe.es", telefono: "  " })).toEqual({ email: "hola@cafe.es", telefono: null, errores: null });
+    expect(leerContactos({ telefono: "600 123 456" })).toEqual({ email: null, telefono: "600 123 456", errores: null });
+    expect(leerContactos({ email: "hola@cafe.es", telefono: "600123456" })).toEqual({ email: "hola@cafe.es", telefono: "600123456", errores: null });
+    expect(leerContactos({}).errores.ninguno).toBeTruthy();
+    expect(leerContactos(undefined).errores.ninguno).toBeTruthy();
+    // Uno bien no tapa el otro mal: se diría guardado sin el que creía haber dejado.
+    const mal = leerContactos({ email: "hola@cafe.es", telefono: "123" });
+    expect(mal.errores).toEqual({ telefono: expect.any(String) });
+    expect(mal.email).toBeNull();
   });
 
   it("la cámara: la tarjeta entera cabe y una parte queda en el centro", () => {

@@ -154,15 +154,23 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 .prob .prob-nombre input:focus-visible{outline:none}
 .prob-cuenta{position:absolute;right:18px;top:50%;translate:0 -50%;font-size:13px;color:var(--tinta-3);font-variant-numeric:tabular-nums}
 
-/* el último paso */
+/* el último paso: email y teléfono, uno debajo del otro (con uno basta) */
 .prob-guardar{display:grid;gap:10px}
+.prob-campo{display:grid;gap:6px}
+.prob-contacto input{height:54px;padding-right:18px;font-size:18px}
 .prob-error{font-size:14px;font-weight:550;color:#b42318}
 .prob-legal{font-size:12.5px;line-height:1.4;color:var(--tinta-3)}
 .prob-legal a{color:inherit}
-.prob-hecho{display:grid;justify-items:center;gap:6px;text-align:center;padding:8px 0;animation:prob-entra-d .5s var(--curva) both}
+
+/* guardada: el panel entero es esto, y la tarjeta ya no lleva a ningún paso */
+.prob-cerrado .prob-tarjeta [data-parte]{cursor:default}
+.prob-cerrado .prob-marco{display:grid;place-items:center}
+.prob-hecho{display:grid;justify-items:center;gap:6px;text-align:center;padding:36px 24px max(28px,env(safe-area-inset-bottom));
+  animation:prob-entra-d .5s var(--curva) both}
 .prob-hecho-marca{display:grid;place-items:center;width:56px;height:56px;margin-bottom:6px;border-radius:50%;background:var(--marca);color:${P.papel}}
-.prob-hecho strong{font-size:20px;letter-spacing:-.02em}
-.prob-hecho p{color:var(--tinta-2);margin-bottom:12px;overflow-wrap:anywhere}
+.prob-hecho h1{font-size:24px;line-height:1.15;font-weight:660;letter-spacing:-.03em}
+.prob .prob-hecho h1:focus-visible{outline:none}
+.prob-hecho p{color:var(--tinta-2);margin-bottom:14px;overflow-wrap:anywhere}
 
 /* ---------- el pie del panel ---------- */
 .prob-pie{display:flex;align-items:center;gap:12px;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--linea)}
@@ -206,6 +214,9 @@ body:has(.prob){background:${P.papel};overflow:hidden}
   .prob-modos{grid-template-columns:repeat(2,1fr);gap:8px}
   .prob-opcion{padding:8px 6px;border-radius:14px}
   .prob-icono{width:44px;height:44px}
+  .prob-contacto input{height:50px;font-size:17px}
+  .prob-guardar{gap:8px}
+  .prob-hecho{padding:28px 20px max(24px,env(safe-area-inset-bottom))}
 }
 @media (max-width:899.98px) and (orientation:landscape){
   .prob{flex-direction:row}
