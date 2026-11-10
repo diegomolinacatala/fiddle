@@ -34,7 +34,7 @@ export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
 // (lib/planes.js) y esta página NO lo lee: si cambia allí, se cambia aquí a mano.
 //
 // Esencial es para no perder a quien le parece caro: la tarjeta y la caja, hasta
-// 750 tarjetas, sin promociones y sin montarla nosotros. Aún no se paga sola
+// 500 tarjetas, sin promociones y sin montarla nosotros. Aún no se paga sola
 // (Stripe, más adelante): de momento se pide por WhatsApp como los otros.
 export const PLANES = [
   {
@@ -43,7 +43,7 @@ export const PLANES = [
     precio: 19,
     lema: "Lo justo para tener tu tarjeta.",
     incluye: [
-      "Hasta 750 tarjetas, en Apple Wallet y Android",
+      "Hasta 500 tarjetas, en Apple Wallet y Android",
       "Con tu logo, tus colores y tu premio",
       "La caja en el móvil de la tienda",
       "Tu QR para el mostrador",
