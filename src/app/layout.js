@@ -40,6 +40,8 @@ const base = `${hojaDeColores}
   @keyframes espera { to { transform: rotate(360deg) } }
   @media (prefers-reduced-motion: reduce) { .giro { animation-duration: 1.6s } }
   @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation-duration: 1.6s } }
+  /* La tarjeta (CaraDelPase) mide en puntos que encogen con ella; sin container queries, a px. */
+  @supports not (width: 1cqw) { .cara-pase { --pt: 1px !important; } }
   /* Las preguntas van en una ventana nuestra (app/Dialogo.js), nunca en la del navegador. */
   dialog.ventana::backdrop { background: rgb(15 18 22 / 0.5); }
   /* Un cliente que llega con la pantalla abierta entra en la lista y se ilumina un momento. */

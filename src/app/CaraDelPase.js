@@ -43,9 +43,9 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
   const abajo = children || qr ? 0 : 18;
 
   return (
-    <article style={{ ...tarjeta, ...(qr ? entera : null), background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
+    <article className="cara-pase" style={{ ...tarjeta, "--pt": `calc(100cqw / ${ancho})`, ...(qr ? entera : null), background: t.cardBg, color: t.ink }} aria-label={`Tarjeta de ${negocio.nombre}`}>
       <header style={cabecera} data-parte="cabecera">
-        <LogoApple tema={t} tam={W.logo} style={{ flexShrink: 0 }} />
+        <LogoApple tema={t} tam={W.logo} style={{ flexShrink: 0, width: pt(W.logo), height: pt(W.logo) }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <strong style={nombreTienda}>{negocio.nombre}</strong>
           {horario && <AbiertoAhora horario={horario} />}
@@ -53,7 +53,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
         {headerFields.map((f) => (
           <div key={f.key} style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={etiqueta(colorDelPase(t))}>{f.label}</div>
-            <div style={{ fontSize: W.valorCabecera, fontWeight: 400, lineHeight: 1.1, marginTop: 2 }}>{f.value}</div>
+            <div style={{ fontSize: pt(W.valorCabecera), fontWeight: 400, lineHeight: 1.1, marginTop: pt(2) }}>{f.value}</div>
           </div>
         ))}
       </header>
@@ -77,11 +77,11 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
       </div>
 
       {campos.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "space-between", gap: W.hueco, padding: `${W.arribaCampos}px ${W.margen}px ${abajo}px` }} data-parte="campos">
+        <div style={{ display: "flex", justifyContent: "space-between", gap: pt(W.hueco), padding: `${pt(W.arribaCampos)} ${pt(W.margen)} ${pt(abajo)}` }} data-parte="campos">
           {campos.map((f, i) => (
             <div key={f.key} style={{ flex: "0 1 auto", minWidth: 0 }}>
               <div style={{ ...etiqueta(colorDelPase(t)), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</div>
-              <div style={{ fontSize: fila[i].tam, fontWeight: 400, lineHeight: 1.18, marginTop: 3, letterSpacing: "-0.01em" }}>
+              <div style={{ fontSize: pt(fila[i].tam), fontWeight: 400, lineHeight: 1.18, marginTop: pt(3), letterSpacing: "-0.01em" }}>
                 {fila[i].lineas.map((l, j) => <div key={j} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l}</div>)}
               </div>
             </div>
@@ -95,7 +95,7 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
         <div style={sitioQr}>
           <div style={cajaQr}>
             <img src={qr.src} alt="" width={W.qr} height={W.qr} style={{ display: "block", width: "100%", height: "auto" }} />
-            <div style={{ fontSize: W.codigo, lineHeight: 1.2, marginTop: 3 }}>{qr.codigo}</div>
+            <div style={{ fontSize: pt(W.codigo), lineHeight: 1.2, marginTop: pt(3) }}>{qr.codigo}</div>
           </div>
         </div>
       )}
@@ -103,7 +103,15 @@ export default function CaraDelPase({ cliente, negocio, claseBanda = "banda", ho
   );
 }
 
+// Las medidas son puntos de una tarjeta de `ancho` (las de Wallet) y crecen o
+// encogen con lo que mida de verdad: `--pt` es un punto, sacado del ancho del
+// artículo (container query). Con px fijos, en una tarjeta más estrecha que
+// `ancho` (un móvil de 320) las letras no encogían y se cortaban. Donde no hay
+// container queries (iOS 15), app/layout.js deja `--pt` en 1px: como antes.
+const pt = (n) => `calc(${n} * var(--pt, 1px))`;
+
 const tarjeta = {
+  containerType: "inline-size",
   position: "relative",
   borderRadius: W.radio,
   overflow: "hidden",
@@ -116,16 +124,16 @@ const entera = { aspectRatio: `${W.ancho} / ${W.alto}`, display: "flex", flexDir
 
 // El brillo de arriba es de Wallet: la cabecera sale un pelo más clara que el resto.
 const cabecera = {
-  display: "flex", alignItems: "center", gap: 12, minHeight: W.cabecera, padding: `0 ${W.margen}px`, flexShrink: 0,
+  display: "flex", alignItems: "center", gap: pt(12), minHeight: pt(W.cabecera), padding: `0 ${pt(W.margen)}`, flexShrink: 0,
   background: "linear-gradient(rgba(255,255,255,.07), rgba(255,255,255,0))",
 };
-const nombreTienda = { display: "block", fontSize: W.nombre, fontWeight: 500, lineHeight: 1.2, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const nombreTienda = { display: "block", fontSize: pt(W.nombre), fontWeight: 500, lineHeight: 1.2, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 const etiqueta = (color) => ({
-  fontSize: W.etiqueta,
+  fontSize: pt(W.etiqueta),
   fontWeight: 500,
   lineHeight: 1.2,
-  letterSpacing: 0.4,
+  letterSpacing: pt(0.4),
   textTransform: "uppercase",
   color,
 });
@@ -136,11 +144,11 @@ const sobreLaBanda = {
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
-  padding: `0 ${W.margen}px`,
+  padding: `0 ${pt(W.margen)}`,
   maxWidth: "64%",
 };
 
-const descuento = { fontSize: 26, fontWeight: 750, color: "#fff", lineHeight: 1.1, textShadow: "0 1px 3px rgba(0,0,0,.3)" };
+const descuento = { fontSize: pt(26), fontWeight: 750, color: "#fff", lineHeight: 1.1, textShadow: "0 1px 3px rgba(0,0,0,.3)" };
 
-const sitioQr = { marginTop: "auto", display: "flex", justifyContent: "center", padding: `10px 0 ${W.abajoQr}px` };
-const cajaQr = { width: `${(W.cajaQr / W.ancho) * 100}%`, padding: "8px 9px 5px", borderRadius: 7, background: "#fff", color: "#000", textAlign: "center", boxSizing: "border-box" };
+const sitioQr = { marginTop: "auto", display: "flex", justifyContent: "center", padding: `${pt(10)} 0 ${pt(W.abajoQr)}` };
+const cajaQr = { width: `${(W.cajaQr / W.ancho) * 100}%`, padding: `${pt(8)} ${pt(9)} ${pt(5)}`, borderRadius: pt(7), background: "#fff", color: "#000", textAlign: "center", boxSizing: "border-box" };
