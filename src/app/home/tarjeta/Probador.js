@@ -100,6 +100,7 @@ export default function Probador({ qr }) {
   const capaArriba = useRef(null);
   const cerca = useRef(false);
   const [camara, setCamara] = useState({ s: 1, y: 0 });
+  const [lista, setLista] = useState(false); // ya medida: desde aquí la cámara se anima
   const parte = enviada ? "todo" : SECCIONES[seccion].parte;
 
   useLayoutEffect(() => {
@@ -118,6 +119,8 @@ export default function Probador({ qr }) {
       const c = encuadre(regionDe(parte, medidas), { w: WALLET.ancho, h: art.offsetHeight * f }, { w: caja.width, h: caja.height - arriba });
       cerca.current = parte !== "todo";
       setCamara((a) => (a.s === c.s && a.y === c.y ? a : c));
+      // Dos fotogramas: el primero pinta el encuadre sin transición; luego ya se anima.
+      requestAnimationFrame(() => requestAnimationFrame(() => setLista(true)));
     };
     medir();
     const obs = new ResizeObserver(medir);
@@ -127,6 +130,8 @@ export default function Probador({ qr }) {
   }, [parte, capas]);
 
   useInclinacion({ escena, inclina, cerca, quieto });
+  const raiz = useRef(null);
+  useAltoVisible(raiz);
 
   // ---- tocar una parte de la tarjeta (sin arrastrar) lleva a su paso
   const toque = useRef(null);
@@ -169,7 +174,7 @@ export default function Probador({ qr }) {
   const iconoDe = hueco === 0 ? e.icono : e.icono2;
 
   return (
-    <div className={`prob${quieto ? " prob-quieto" : ""}${enviada ? " prob-cerrado" : ""}`} style={{ "--tono": tema.accent, "--tono-2": tema.cardBg }}>
+    <div ref={raiz} className={`prob${quieto ? " prob-quieto" : ""}${enviada ? " prob-cerrado" : ""}${lista ? " prob-lista" : ""}`} style={{ "--tono": tema.accent, "--tono-2": tema.cardBg }}>
       <style>{css}</style>
 
       <header className="prob-arriba">
@@ -286,8 +291,13 @@ export default function Probador({ qr }) {
               <button type="button" className="prob-atras" onClick={() => ir(seccion - 1)} disabled={seccion === 0} aria-label="Paso anterior">
                 <Flecha atras />
               </button>
-              <span className="prob-paso" aria-hidden="true">
-                {SECCIONES.map((s, i) => <i key={s.id} className={i === seccion ? "activo" : i < seccion ? "hecho" : ""} />)}
+              {/* En el móvil no hay pestañas: cada punto lleva a su paso. */}
+              <span className="prob-paso">
+                {SECCIONES.map((s, i) => (
+                  <button key={s.id} type="button" onClick={() => ir(i)} aria-label={s.nombre} aria-current={i === seccion ? "step" : undefined} tabIndex={-1}>
+                    <i className={i === seccion ? "activo" : i < seccion ? "hecho" : ""} />
+                  </button>
+                ))}
               </span>
               {actual.boton && !ultima ? (
                 <button type="button" className="prob-siguiente" onClick={() => ir(seccion + 1)}>
@@ -505,6 +515,31 @@ function useInclinacion({ escena, inclina, cerca, quieto }) {
       document.removeEventListener("visibilitychange", visibilidad);
     };
   }, [escena, inclina, cerca, quieto]);
+}
+
+// ----------------------------------------------------------------------------
+// Con el teclado abierto, el probador mide lo que queda a la vista (visualViewport):
+// en iPhone un `position: fixed` sigue midiendo la pantalla entera y el teclado
+// tapaba el panel con el email o el nombre que se estaba escribiendo.
+// ----------------------------------------------------------------------------
+function useAltoVisible(raiz) {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = raiz.current;
+    if (!vv || !el) return undefined;
+    const ajustar = () => {
+      const tapado = window.innerHeight - vv.height > 80;
+      el.style.height = tapado ? `${vv.height}px` : "";
+      el.style.top = tapado ? `${vv.offsetTop}px` : "";
+      el.style.bottom = tapado ? "auto" : "";
+    };
+    vv.addEventListener("resize", ajustar);
+    vv.addEventListener("scroll", ajustar);
+    return () => {
+      vv.removeEventListener("resize", ajustar);
+      vv.removeEventListener("scroll", ajustar);
+    };
+  }, [raiz]);
 }
 
 function useReducirMovimiento() {

@@ -61,7 +61,9 @@ body:has(.prob){background:${P.papel};overflow:hidden}
     radial-gradient(ellipse 70% 80% at var(--cx) var(--cy),color-mix(in oklab,var(--tono-2) 20%,var(--papel)),var(--papel) 80%)}
 .prob-arriba,.prob-escena{z-index:1}
 .prob-inclina{position:relative;will-change:transform;transform-style:preserve-3d}
-.prob-zoom{transition:transform 1s var(--curva);will-change:transform}
+/* Hasta medir la escena no se ve ni se anima: si no, al abrirla la tarjeta salía enorme y encogía. */
+.prob-zoom{will-change:transform;opacity:0}
+.prob-lista .prob-zoom{opacity:1;transition:transform 1s var(--curva),opacity .3s}
 /* Pintada al doble (RESOLUCION en Probador.js): la cámara la encoge y, al acercarse, no se ve borrosa. */
 .prob-tarjeta{position:relative;width:360px;zoom:2;transform-origin:50% 50%}
 /* La sombra de la tarjeta va una sola vez, en .prob-capas: cada capa con la suya se sumaban. */
@@ -117,7 +119,9 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 
 /* uno o dos premios: la tarjeta de verdad, en pequeño */
 .prob-cuantas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.prob-foto{display:block;width:360px;zoom:.42;pointer-events:none;text-align:left}
+.prob-cuantas .prob-opcion{min-width:0}
+/* La tarjeta encoge sola con su ancho (CaraDelPase mide en puntos): llena su botón. */
+.prob-foto{display:block;width:100%;pointer-events:none;text-align:left}
 .prob-foto article{box-shadow:none!important}
 
 /* segmentos con píldora que se desliza */
@@ -177,7 +181,7 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 .prob-atras{display:grid;place-items:center;width:48px;height:48px;border:0;border-radius:50%;cursor:pointer;background:${alfa(P.espresso, 0.06)};
   transition:opacity .25s,background-color .2s}
 .prob-atras:disabled{opacity:.35;cursor:default}
-.prob-paso{flex:1;display:flex;justify-content:center;gap:6px}
+.prob-paso{flex:1;display:flex;justify-content:center;min-width:0}
 .prob-paso i{width:6px;height:6px;border-radius:99px;background:${alfa(P.espresso, 0.16)};transition:width .45s var(--muelle),background-color .3s}
 .prob-paso i.hecho{background:${alfa(P.espresso, 0.4)}}
 .prob-paso i.activo{width:20px;background:var(--tinta)}
@@ -198,17 +202,20 @@ body:has(.prob){background:${P.papel};overflow:hidden}
   .prob-panel{width:400px;flex:none;margin:16px;border-radius:30px;margin-top:76px}
 }
 /* ---------- móvil: la escena arriba, el panel como una hoja ---------- */
+/* Los puntos del pie son botones (en el ordenador no hacen falta: están las pestañas). */
+.prob-paso button{display:grid;place-items:center;height:44px;padding:0 7px;border:0;background:none;cursor:pointer}
 @media (max-width:899.98px){
-  .prob-escena{padding-top:60px}
-  .prob-panel{flex:none;max-height:min(50dvh,440px);border-radius:28px 28px 0 0}
-  .prob-solapas{margin:10px 10px 0}
+  /* La tarjeta no se mete por debajo del panel al acercarse: se recorta en su escena. */
+  .prob-escena{padding-top:60px;overflow:hidden}
+  /* El panel mide lo que lleva (hasta un 62 % del alto) y la tarjeta se queda con el resto.
+     Sin pestañas: seis nombres no caben en 320 px; los puntos del pie llevan a cada paso. */
+  .prob-panel{flex:none;max-height:62%;border-radius:28px 28px 0 0}
+  .prob-solapas{display:none}
   .prob-seccion{padding:16px 18px 14px;gap:16px}
   .prob-cabeza p{font-size:14px}
   .prob-colores-fila{height:72px}
   .prob-muestra{width:62px}
   .prob-colores-marco{left:calc(50% - 34px);width:68px}
-  .prob-foto{zoom:.4}
-  .prob-solapas-fila button{font-size:13px;padding:0 2px}
   .prob-cabeza h1{font-size:22px}
   .prob-iconos{grid-template-columns:repeat(4,1fr);gap:8px}
   .prob-modos{grid-template-columns:repeat(2,1fr);gap:8px}
@@ -221,6 +228,8 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 @media (max-width:899.98px) and (orientation:landscape){
   .prob{flex-direction:row}
   .prob-panel{max-height:none;width:min(380px,50vw);border-radius:0}
+  .prob-solapas{display:block}
+  .prob-solapas-fila button{font-size:12px;padding:0 2px}
 }
 
 /* ---------- reducir movimiento ---------- */
