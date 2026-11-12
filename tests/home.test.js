@@ -45,8 +45,8 @@ describe("web de fiddle: contacto y precios", () => {
     expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["pro"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
     const [esencial, plus, pro] = PLANES.map((p) => p.incluye.join(" "));
-    // Esencial (06-11-2026): hasta 750 tarjetas, sin promociones y la monta la tienda.
-    expect(esencial).toMatch(/750 tarjetas/);
+    // Esencial: hasta 500 tarjetas (10-11-2026; antes 750), sin promociones y la monta la tienda.
+    expect(esencial).toMatch(/500 tarjetas/);
     expect(esencial).not.toMatch(/Promociones|sin límite|montada/);
     expect(esencial).toMatch(/La montas tú/);
     // Plus y Pro (13-10-2026; antes Tarjetas y Completo).
