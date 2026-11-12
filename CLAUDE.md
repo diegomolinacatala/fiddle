@@ -342,7 +342,7 @@ Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el P
 
 - **Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026 Tarjetas y Completo) y lo que lleva cada uno NO está en el código**:
   lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave `planes`) y el código solo
-  tiene lo de partida: Esencial sin nada y hasta 750 tarjetas (+50 de margen), Plus con
+  tiene lo de partida: Esencial sin nada y hasta 500 tarjetas (+50 de margen), Plus con
   estadísticas y promociones, Pro con todo. Antes de llevarlo a `main`, crear la tabla
   `plataforma` en Supabase (`schema.sql`); sin ella, valen los de partida y lo dice el log.
 - **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro.** Una tienda de antes no
@@ -791,7 +791,7 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 750 tarjetas, sin
+  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 500 tarjetas, sin
   promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
   pagará sola con Stripe); Plus, 39 € (tarjetas sin límite, promociones al momento a todos,
   estadísticas y se la dejamos montada);

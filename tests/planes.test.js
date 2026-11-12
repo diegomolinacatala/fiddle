@@ -28,8 +28,8 @@ const enPlan = (plan, extra = {}) => conPlan({ ...base, ...extra, plan }, planes
 const cliente = { serial: "s1", sellos: 2, premios: 0, codigo: "K7M", auth_token: "x".repeat(24) };
 
 describe("los planes de partida", () => {
-  it("Esencial sin nada y con 750 tarjetas; Plus con estadísticas y promos; Pro con todo", () => {
-    expect(planes.esencial.maxTarjetas).toBe(750);
+  it("Esencial sin nada y con 500 tarjetas; Plus con estadísticas y promos; Pro con todo", () => {
+    expect(planes.esencial.maxTarjetas).toBe(500);
     expect(Object.values(planes.esencial.funciones).every((v) => v === false)).toBe(true);
     expect(Object.entries(planes.plus.funciones).filter(([, v]) => v).map(([k]) => k).sort()).toEqual(["estadisticas", "promos"]);
     expect(planes.plus.maxTarjetas).toBeNull();
@@ -86,13 +86,13 @@ describe("validarPlanes (lo que manda el admin)", () => {
 
 describe("el límite de tarjetas", () => {
   it("avisa al 90 %, llega al límite y se cierra con el margen", () => {
-    const n = enPlan("esencial"); // 750 + 50
+    const n = enPlan("esencial"); // 500 + 50
     expect(cupoDe(n, 100).estado).toBe("libre");
-    expect(cupoDe(n, 675).estado).toBe("cerca");
-    expect(cupoDe(n, 750).estado).toBe("lleno");
-    expect(quedaCupo(n, 799)).toBe(true);
-    expect(cupoDe(n, 800).estado).toBe("cerrado");
-    expect(quedaCupo(n, 800)).toBe(false);
+    expect(cupoDe(n, 450).estado).toBe("cerca");
+    expect(cupoDe(n, 500).estado).toBe("lleno");
+    expect(quedaCupo(n, 549)).toBe(true);
+    expect(cupoDe(n, 550).estado).toBe("cerrado");
+    expect(quedaCupo(n, 550)).toBe(false);
     // Sin límite, siempre.
     expect(cupoDe(enPlan("pro"), 1e6)).toBeNull();
     expect(quedaCupo(enPlan("pro"), 1e6)).toBe(true);

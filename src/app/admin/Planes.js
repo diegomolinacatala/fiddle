@@ -75,7 +75,7 @@ export default function Planes({ accent, flash }) {
                 on={conLimite} accent={accent} icono="credencial"
                 titulo={conLimite ? "Con límite de tarjetas" : "Tarjetas sin límite"}
                 texto={conLimite ? "Avisa al dueño al 90 % y al llegar. Con el margen, se siguen dando unas pocas." : "Las que hagan falta."}
-                onClick={() => poner(id, conLimite ? { maxTarjetas: null, margen: 0 } : { maxTarjetas: 750, margen: 50 })}
+                onClick={() => poner(id, conLimite ? { maxTarjetas: null, margen: 0 } : { maxTarjetas: 500, margen: 50 })}
               />
               {conLimite && (
                 <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
