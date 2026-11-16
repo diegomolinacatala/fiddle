@@ -41,7 +41,6 @@ import { RESERVADOS } from "./negocios";
 //                                          su handler (sin él, no hace nada)
 const PUBLICAS = [
   /^\/$/,
-  /^\/entrar$/, // «Entrar» de la web: con sesión a su sitio, sin ella al login
   /^\/home$/,
   /^\/home\/tarjeta$/, // «Diseña tu tarjeta», el probador de la web
   /^\/login$/,
