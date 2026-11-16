@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icono from "@/app/Icono";
 import { confirmar } from "@/app/Dialogo";
+import { useEnVivo } from "@/app/useEnVivo";
 import { C, RADIO, campo, etiqueta as rotulo, botonPrimario, botonSecundario, botonPequeno, solapa, tinte, legible, aviso } from "@/app/ui";
 import {
   COLUMNAS, HECHA, RESPONSABLES, PERSONAS, COLORES_ETIQUETA, MAX_TITULO, MAX_NOTA, MAX_NOMBRE_ETIQUETA, MAX_ETIQUETAS,
@@ -19,6 +20,9 @@ import {
 // ============================================================================
 
 const HECHAS_A_LA_VISTA = 8;
+// Lo bastante a menudo para que se vea lo que mueve el otro casi al momento; cada
+// pregunta es pequeña (la huella), y solo con el tablero a la vista.
+const SEGUNDOS_EN_VIVO = 5;
 const fechaCorta = (iso) => (iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : "");
 
 export default function Tareas({ accent, flash }) {
@@ -31,15 +35,18 @@ export default function Tareas({ accent, flash }) {
   const [arrastrada, setArrastrada] = useState(null);
   const [destino, setDestino] = useState(null); // { columna, indice } donde caería
   const [todasHechas, setTodasHechas] = useState(false);
-  // Con algo a medio guardar, lo que traiga una recarga aún no lo lleva: no se pinta.
+  // Con algo a medio guardar o una tarjeta en la mano, lo que traiga una recarga no se
+  // pinta: lo primero aún no lo lleva y lo segundo movería el sitio donde se suelta.
   const enVuelo = useRef(0);
+  const enLaMano = useRef(null);
+  enLaMano.current = arrastrada;
 
   const cargar = useCallback(async ({ callado = false } = {}) => {
     try {
       const r = await fetch("/api/admin/tareas", { cache: "no-store" });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "No se pudieron cargar");
-      if (enVuelo.current === 0) setDatos(d);
+      if (enVuelo.current === 0 && !enLaMano.current) setDatos(d);
       setError(null);
     } catch (e) {
       if (!callado) setError(String(e?.message || e));
@@ -47,13 +54,16 @@ export default function Tareas({ accent, flash }) {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
-  // Lo que movió el otro mientras tanto: al volver a la pestaña. Sin preguntar cada
-  // pocos segundos, que cada pregunta es una función de Vercel.
-  useEffect(() => {
-    const alVolver = () => { if (document.visibilityState === "visible") cargar({ callado: true }); };
-    document.addEventListener("visibilitychange", alVolver);
-    return () => document.removeEventListener("visibilitychange", alVolver);
-  }, [cargar]);
+  // Lo que mueve el otro aparece solo: con el tablero a la vista, cada pocos segundos se
+  // pregunta si cambió algo (tres consultas de una fila) y solo entonces se pide entero.
+  // Con la pestaña oculta no pregunta; al volver, enseguida.
+  useEnVivo({
+    url: "/api/admin/tareas?huella=1",
+    huella: datos?.huella,
+    alCambiar: () => cargar({ callado: true }),
+    cada: SEGUNDOS_EN_VIVO * 1000,
+    activo: Boolean(datos),
+  });
 
   async function pedir(url, method, cuerpo) {
     enVuelo.current++;
