@@ -286,6 +286,8 @@ create table if not exists tareas (
 );
 -- `vault` llegó después que la tabla (la de producción se creó sin ella).
 alter table tareas add column if not exists vault jsonb;
+-- Archivar: cuándo se quitó de la vista (null = a la vista). No borra ni toca el vault.
+alter table tareas add column if not exists archivada timestamptz;
 create index if not exists tareas_orden on tareas (orden, id);
 
 alter table tarjetas_de_dispositivo enable row level security;

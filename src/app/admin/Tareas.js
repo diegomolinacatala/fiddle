@@ -4,37 +4,49 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icono from "@/app/Icono";
 import { confirmar } from "@/app/Dialogo";
 import { useEnVivo } from "@/app/useEnVivo";
-import { C, RADIO, campo, etiqueta as rotulo, botonPrimario, botonSecundario, botonPequeno, solapa, tinte, legible, aviso } from "@/app/ui";
+import { C, RADIO, campo, etiqueta as rotulo, botonPrimario, botonSecundario, botonPequeno, solapa, tinte, aviso } from "@/app/ui";
 import {
   COLUMNAS, HECHA, RESPONSABLES, PERSONAS, COLORES_ETIQUETA, MAX_TITULO, MAX_NOTA, MAX_NOMBRE_ETIQUETA, MAX_ETIQUETAS,
-  porColumna, ordenEntre, esDe, personasDe, idDeEtiqueta,
+  porColumna, repartir, esDeClaude, tintaSobre, ordenEntre, esDe, personasDe, idDeEtiqueta,
 } from "@/lib/tareas";
 
 // ============================================================================
 // PLATAFORMA → TAREAS
 // ----------------------------------------------------------------------------
-// El tablero de Víctor y Diego: cuatro columnas (las del vault), quién la lleva y
-// una etiqueta de color que dice de qué va. Se arrastra con el ratón; en el móvil
-// (sin arrastrar fiable) la columna se cambia desde la propia tarea. Mover se pinta
-// al momento y la petición va detrás; si falla, vuelve a donde estaba.
+// El tablero de Víctor y Diego: cuatro columnas (las del vault) y debajo, sin
+// columnas, lo que apuntó Claude desde el vault y nadie ha hecho suyo todavía.
+//
+// Poco a la vista, a propósito (16-11-2026: «abruma»): la tarjeta ES su color (el
+// de la etiqueta la rellena; la fila de arriba hace de leyenda y de filtro) y solo
+// lleva el título y quién. Archivar y borrar salen al pasar el ratón; con el dedo,
+// dentro de la tarea. Una tarea nueva se escribe en la propia columna.
+//
+// Se arrastra con el ratón; en el móvil (sin arrastrar fiable) la columna se cambia
+// desde la tarea. Mover se pinta al momento y la petición va detrás; si falla,
+// vuelve a donde estaba.
 // ============================================================================
 
-const HECHAS_A_LA_VISTA = 8;
+const HECHAS_A_LA_VISTA = 6;
+const DE_CLAUDE_A_LA_VISTA = 12;
 // Lo bastante a menudo para que se vea lo que mueve el otro casi al momento; cada
 // pregunta es pequeña (la huella), y solo con el tablero a la vista.
 const SEGUNDOS_EN_VIVO = 5;
 const fechaCorta = (iso) => (iso ? new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : "");
+const nombreDeColumna = (id) => COLUMNAS.find((c) => c.id === id)?.nombre || "";
 
 export default function Tareas({ accent, flash }) {
   const [datos, setDatos] = useState(null); // { tareas, etiquetas, yo }
   const [error, setError] = useState(null);
   const [quien, setQuien] = useState("todas");
   const [deEtiqueta, setDeEtiqueta] = useState(null);
-  const [abierta, setAbierta] = useState(null); // la tarea en el editor; sin id, una nueva
+  const [abierta, setAbierta] = useState(null); // la tarea en el editor
+  const [anadiendo, setAnadiendo] = useState(null); // la columna donde se está escribiendo una nueva
   const [conEtiquetas, setConEtiquetas] = useState(false);
+  const [conArchivo, setConArchivo] = useState(false);
   const [arrastrada, setArrastrada] = useState(null);
   const [destino, setDestino] = useState(null); // { columna, indice } donde caería
   const [todasHechas, setTodasHechas] = useState(false);
+  const [todasDeClaude, setTodasDeClaude] = useState(false);
   // Con algo a medio guardar o una tarjeta en la mano, lo que traiga una recarga no se
   // pinta: lo primero aún no lo lleva y lo segundo movería el sitio donde se suelta.
   const enVuelo = useRef(0);
@@ -80,6 +92,7 @@ export default function Tareas({ accent, flash }) {
       enVuelo.current--;
     }
   }
+  const cambiar = (id, cuerpo) => pedir(`/api/admin/tareas?id=${encodeURIComponent(id)}`, "PATCH", cuerpo);
 
   const ponTarea = (t) => setDatos((d) => ({
     ...d,
@@ -89,33 +102,78 @@ export default function Tareas({ accent, flash }) {
 
   const etiquetas = datos?.etiquetas || [];
   const etiquetaDe = (id) => etiquetas.find((e) => e.id === id) || null;
-  const columnas = useMemo(() => porColumna(datos?.tareas || []), [datos]);
+  const pilas = useMemo(() => repartir(datos?.tareas || []), [datos]);
+  const columnas = useMemo(() => porColumna(pilas.tablero), [pilas]);
   const seVe = (t) => (quien === "todas" || esDe(t, quien)) && (!deEtiqueta || t.etiqueta === deEtiqueta);
 
   /** Al final de su columna (en «Hecho», arriba: va por fecha). */
   const ordenAlFinal = (columna, sin) => ordenEntre(columnas[columna].filter((t) => t.id !== sin).at(-1)?.orden ?? null, null);
+  /** Subir al tablero una de las de Claude es ponerle autor: el servidor dice quién. */
+  const alSubir = (tarea) => (esDeClaude(tarea) ? { adoptar: true } : {});
+  const yaSubida = (tarea) => (esDeClaude(tarea) ? { autor: datos.yo || "admin" } : {});
 
   async function mover(tarea, columna, orden) {
     const ahora = new Date().toISOString();
-    ponTarea({ ...tarea, columna, orden, terminada: columna === HECHA ? (tarea.columna === HECHA ? tarea.terminada : ahora) : null });
+    ponTarea({
+      ...tarea, ...yaSubida(tarea), columna, orden,
+      terminada: columna === HECHA ? (tarea.columna === HECHA ? tarea.terminada : ahora) : null,
+    });
     try {
-      ponTarea(await pedir(`/api/admin/tareas?id=${encodeURIComponent(tarea.id)}`, "PATCH", { columna, orden }));
+      ponTarea(await cambiar(tarea.id, { columna, orden, ...alSubir(tarea) }));
     } catch (e) {
       ponTarea(tarea);
       flash(e.message);
     }
   }
 
-  async function guardar(cambios) {
-    const vieja = abierta?.id ? datos.tareas.find((t) => t.id === abierta.id) : null;
-    if (vieja) {
-      const cuerpo = { ...cambios };
-      if (cuerpo.columna !== vieja.columna) cuerpo.orden = ordenAlFinal(cuerpo.columna, vieja.id);
-      ponTarea(await pedir(`/api/admin/tareas?id=${encodeURIComponent(vieja.id)}`, "PATCH", cuerpo));
-    } else {
-      ponTarea(await pedir("/api/admin/tareas", "POST", { ...cambios, orden: ordenAlFinal(cambios.columna) }));
+  /** Una de las de Claude pasa al tablero, a la columna que ya tenía. */
+  async function subir(tarea) {
+    const orden = ordenAlFinal(tarea.columna, tarea.id);
+    ponTarea({ ...tarea, ...yaSubida(tarea), orden });
+    try {
+      ponTarea(await cambiar(tarea.id, { orden, adoptar: true }));
+      setAbierta(null);
+    } catch (e) {
+      ponTarea(tarea);
+      flash(e.message);
     }
+  }
+
+  async function crear(columna, titulo) {
+    try {
+      ponTarea(await pedir("/api/admin/tareas", "POST", {
+        titulo, columna, orden: ordenAlFinal(columna),
+        // Con un filtro puesto, lo nuevo nace dentro de él: si no, desaparecería al crearlo.
+        quien: quien !== "todas" ? quien : datos.yo,
+        etiqueta: deEtiqueta,
+      }));
+      return true;
+    } catch (e) {
+      flash(e.message);
+      return false;
+    }
+  }
+
+  async function guardar(cambios) {
+    const vieja = datos.tareas.find((t) => t.id === abierta.id);
+    if (!vieja) throw new Error("Esa tarea ya no existe");
+    const cuerpo = { ...cambios };
+    if (cuerpo.columna !== vieja.columna) cuerpo.orden = ordenAlFinal(cuerpo.columna, vieja.id);
+    ponTarea(await cambiar(vieja.id, cuerpo));
     setAbierta(null);
+  }
+
+  /** Archivar la quita de la vista (ni la borra ni toca el vault); `si` false la devuelve. */
+  async function archivar(tarea, si = true) {
+    ponTarea({ ...tarea, archivada: si ? new Date().toISOString() : null });
+    setAbierta(null);
+    try {
+      ponTarea(await cambiar(tarea.id, { archivada: si }));
+      if (si) flash("Archivada");
+    } catch (e) {
+      ponTarea(tarea);
+      flash(e.message);
+    }
   }
 
   async function borrar(tarea) {
@@ -161,7 +219,10 @@ export default function Tareas({ accent, flash }) {
     setDestino(null);
     if (!tarea || !d || d.columna !== columna) return;
     const resto = visibles.filter((t) => t.id !== tarea.id);
-    if (tarea.columna === columna && (columna === HECHA || visibles.findIndex((t) => t.id === tarea.id) === d.indice)) return;
+    // Una de las de Claude no está en ninguna columna: soltarla siempre es subirla.
+    const enSuSitio = !esDeClaude(tarea) && tarea.columna === columna
+      && (columna === HECHA || visibles.findIndex((t) => t.id === tarea.id) === d.indice);
+    if (enSuSitio) return;
     const orden = columna === HECHA ? tarea.orden : ordenEntre(resto[d.indice - 1]?.orden ?? null, resto[d.indice]?.orden ?? null);
     mover(tarea, columna, orden);
   }
@@ -169,114 +230,105 @@ export default function Tareas({ accent, flash }) {
   if (error) return <div style={aviso(false)}>{error}</div>;
   if (!datos) return <p style={{ color: C.suave }}>Cargando…</p>;
 
-  const abiertasDe = (p) => datos.tareas.filter((t) => t.columna !== HECHA && esDe(t, p)).length;
+  const deArrastre = (t) => ({
+    arrastrada: t.id === arrastrada,
+    onAbrir: () => setAbierta(t),
+    onEmpezar: (e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", t.id); setArrastrada(t.id); },
+    onAcabar: () => { setArrastrada(null); setDestino(null); },
+  });
+  const deClaude = pilas.deClaude.filter(seVe);
+  const deClaudeVisibles = todasDeClaude ? deClaude : deClaude.slice(0, DE_CLAUDE_A_LA_VISTA);
 
   return (
-    <div>
+    <div className="tb">
       <style>{CSS}</style>
 
-      {/* Quién y de qué: la leyenda de colores es también el filtro. */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-        <button type="button" onClick={() => setQuien("todas")} style={solapa(quien === "todas", accent)}>Todas</button>
-        {PERSONAS.map((p) => (
-          <button key={p.id} type="button" onClick={() => setQuien(quien === p.id ? "todas" : p.id)} style={solapa(quien === p.id, accent)}>
-            <Avatar persona={p} tam={18} />
-            {p.nombre}{datos.yo === p.id ? " (tú)" : ""}
-            <span style={{ color: C.tenue, fontWeight: 500 }}>{abiertasDe(p.id)}</span>
-          </button>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
-        {etiquetas.map((e) => {
-          const activa = deEtiqueta === e.id;
-          return (
+      {/* Una sola fila: quién, de qué (la leyenda de colores es también el filtro) y, a la derecha, lo que se toca poco. */}
+      <div style={{ display: "flex", gap: "8px 16px", flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 2 }}>
+          {PERSONAS.map((p) => (
             <button
-              key={e.id} type="button" aria-pressed={activa}
-              onClick={() => setDeEtiqueta(activa ? null : e.id)}
-              style={{
-                ...chipEtiqueta(e.color), cursor: "pointer", fontSize: 13, padding: "4px 10px",
-                border: `1px solid ${activa ? e.color : "transparent"}`,
-                background: activa ? tinte(e.color, 24) : tinte(e.color, 12),
-              }}
+              key={p.id} type="button" className="tb-quieto" aria-pressed={quien === p.id}
+              onClick={() => setQuien(quien === p.id ? "todas" : p.id)}
+              title={quien === p.id ? "Ver las de todos" : `Solo las de ${p.nombre}`}
             >
-              <span style={{ width: 8, height: 8, borderRadius: 3, background: e.color }} />
-              {e.nombre}
+              <Avatar persona={p} tam={20} />
+              {p.nombre}
             </button>
-          );
-        })}
-        <button type="button" onClick={() => setConEtiquetas(true)} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <Icono nombre="editar" tam={14} /> Etiquetas
-        </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", flex: "1 1 240px", minWidth: 0 }}>
+          {etiquetas.map((e) => {
+            const activa = deEtiqueta === e.id;
+            return (
+              <button
+                key={e.id} type="button" className="tb-etiqueta" aria-pressed={activa}
+                onClick={() => setDeEtiqueta(activa ? null : e.id)}
+                style={{ background: e.color, color: tintaSobre(e.color), opacity: deEtiqueta && !activa ? 0.3 : 1 }}
+              >
+                {e.nombre}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", gap: 2 }}>
+          <button type="button" className="tb-quieto" onClick={() => setConEtiquetas(true)} aria-label="Editar etiquetas" title="Editar etiquetas">
+            <Icono nombre="editar" tam={16} />
+          </button>
+          <button type="button" className="tb-quieto" onClick={() => setConArchivo(true)} aria-label="Archivo" title="Archivo">
+            <Icono nombre="archivo" tam={16} />
+            {pilas.archivadas.length > 0 && <span style={{ color: C.tenue, fontWeight: 500 }}>{pilas.archivadas.length}</span>}
+          </button>
+        </div>
       </div>
 
-      <div className="tablero">
+      <div className="tb-tablero">
         {COLUMNAS.map((col) => {
-          let visibles = columnas[col.id].filter(seVe);
-          const ocultas = col.id === HECHA && !todasHechas ? Math.max(0, visibles.length - HECHAS_A_LA_VISTA) : 0;
-          if (ocultas) visibles = visibles.slice(0, HECHAS_A_LA_VISTA);
+          const todas = columnas[col.id].filter(seVe);
+          const ocultas = col.id === HECHA && !todasHechas ? Math.max(0, todas.length - HECHAS_A_LA_VISTA) : 0;
+          const visibles = ocultas ? todas.slice(0, HECHAS_A_LA_VISTA) : todas;
           const sinLaArrastrada = visibles.filter((t) => t.id !== arrastrada);
-          const linea = (i) => destino?.columna === col.id && destino.indice === i && <div key={`linea-${i}`} style={lineaDestino(accent)} />;
+          const encima = destino?.columna === col.id;
+          const linea = (i) => encima && destino.indice === i && <div key={`linea-${i}`} style={lineaDestino(accent)} />;
           let k = 0;
           return (
             <section
               key={col.id}
               aria-label={col.nombre}
+              className="tb-columna"
               onDragOver={(e) => alPasar(e, col.id, sinLaArrastrada)}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDestino(null); }}
               onDrop={(e) => soltar(e, col.id, visibles)}
-              style={{
-                background: C.panelSuave, border: `1px solid ${destino?.columna === col.id ? accent : C.borde}`,
-                borderRadius: RADIO.panel, padding: 10, display: "flex", flexDirection: "column", gap: 8, minWidth: 0,
-              }}
+              style={{ background: encima ? tinte(accent, 9) : C.panelSuave }}
             >
-              <header style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "2px 4px" }}>
-                <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0 }}>{col.nombre}</h3>
-                <span style={{ fontSize: 13, color: C.tenue }}>{columnas[col.id].filter(seVe).length}</span>
+              <header style={{ display: "flex", alignItems: "center", gap: 7, padding: "0 2px 0 4px", minHeight: 26 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 650, margin: 0 }}>{col.nombre}</h3>
+                <span style={{ fontSize: 12, color: C.tenue, flex: 1 }}>{todas.length || ""}</span>
+                {col.id !== HECHA && (
+                  <button
+                    type="button" className="tb-quieto tb-mas" aria-label={`Añadir a ${col.nombre}`} title="Añadir tarea"
+                    onClick={() => setAnadiendo(anadiendo === col.id ? null : col.id)}
+                  >
+                    <Icono nombre="mas" tam={15} />
+                  </button>
+                )}
               </header>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 36 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, minHeight: 34 }}>
                 {visibles.flatMap((t) => {
-                  const esLa = t.id === arrastrada;
-                  const antes = esLa ? null : linea(k++);
+                  const antes = t.id === arrastrada ? null : linea(k++);
                   return [
                     antes,
-                    <Tarjeta
-                      key={t.id} tarea={t} etiqueta={etiquetaDe(t.etiqueta)} arrastrada={esLa}
-                      onAbrir={() => setAbierta(t)}
-                      onEmpezar={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", t.id); setArrastrada(t.id); }}
-                      onAcabar={() => { setArrastrada(null); setDestino(null); }}
-                    />,
+                    <Tarjeta key={t.id} tarea={t} etiqueta={etiquetaDe(t.etiqueta)} {...deArrastre(t)} onArchivar={() => archivar(t)} onBorrar={() => borrar(t)} />,
                   ];
                 })}
                 {linea(k)}
-                {!visibles.length && !destino && (
-                  <p style={{ fontSize: 13, color: C.tenue, margin: "6px 4px" }}>
-                    {col.id === HECHA ? "Lo terminado cae aquí." : "Nada por aquí."}
-                  </p>
-                )}
+                {anadiendo === col.id && <Anadir accent={accent} onCrear={(titulo) => crear(col.id, titulo)} onCerrar={() => setAnadiendo(null)} />}
               </div>
 
-              {ocultas > 0 && (
-                <button type="button" onClick={() => setTodasHechas(true)} style={{ ...botonPequeno, background: "transparent" }}>
-                  Ver {ocultas} más
-                </button>
-              )}
-              {col.id === HECHA && todasHechas && columnas[col.id].filter(seVe).length > HECHAS_A_LA_VISTA && (
-                <button type="button" onClick={() => setTodasHechas(false)} style={{ ...botonPequeno, background: "transparent" }}>
-                  Solo las últimas
-                </button>
-              )}
-              {col.id !== HECHA && (
-                <button
-                  type="button"
-                  onClick={() => setAbierta({
-                    columna: col.id,
-                    quien: quien !== "todas" ? quien : datos.yo,
-                    etiqueta: deEtiqueta,
-                  })}
-                  style={{ ...botonPequeno, background: "transparent", border: `1px dashed ${C.bordeFuerte}`, color: C.suave, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                >
-                  <Icono nombre="mas" tam={14} /> Añadir tarea
+              {col.id === HECHA && todas.length > HECHAS_A_LA_VISTA && (
+                <button type="button" className="tb-quieto" style={{ justifyContent: "center" }} onClick={() => setTodasHechas(!todasHechas)}>
+                  {todasHechas ? "Solo las últimas" : `${ocultas} más`}
                 </button>
               )}
             </section>
@@ -284,11 +336,37 @@ export default function Tareas({ accent, flash }) {
         })}
       </div>
 
+      {/* Lo que apuntó Claude: sin columnas, hasta que alguien lo sube a la suya. */}
+      {pilas.deClaude.length > 0 && (
+        <section aria-label="De Claude" style={{ marginTop: 30 }}>
+          <header style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", margin: "0 4px 10px" }}>
+            <h3 style={{ fontSize: 13, fontWeight: 650, margin: 0 }}>De Claude</h3>
+            <span style={{ fontSize: 12, color: C.tenue }}>{deClaude.length}</span>
+            <span className="tb-pista" style={{ fontSize: 12, color: C.tenue }}>Las apuntó Claude desde el vault. Arrastra una a su columna para quedártela.</span>
+          </header>
+          <div className="tb-claude">
+            {deClaudeVisibles.map((t) => (
+              <Tarjeta
+                key={t.id} tarea={t} etiqueta={etiquetaDe(t.etiqueta)} {...deArrastre(t)}
+                pie={t.columna !== COLUMNAS[0].id ? nombreDeColumna(t.columna) : null}
+                onSubir={() => subir(t)} onArchivar={() => archivar(t)} onBorrar={() => borrar(t)}
+              />
+            ))}
+          </div>
+          {!deClaude.length && <p style={{ fontSize: 13, color: C.tenue, margin: "0 4px" }}>Ninguna con ese filtro.</p>}
+          {deClaude.length > DE_CLAUDE_A_LA_VISTA && (
+            <button type="button" className="tb-quieto" style={{ marginTop: 8 }} onClick={() => setTodasDeClaude(!todasDeClaude)}>
+              {todasDeClaude ? "Ver menos" : `Ver las ${deClaude.length}`}
+            </button>
+          )}
+        </section>
+      )}
+
       {abierta && (
         <EditorTarea
-          key={abierta.id || "nueva"}
+          key={abierta.id}
           tarea={abierta} etiquetas={etiquetas} accent={accent}
-          onGuardar={guardar} onBorrar={borrar} onCerrar={() => setAbierta(null)}
+          onGuardar={guardar} onBorrar={borrar} onArchivar={archivar} onSubir={subir} onCerrar={() => setAbierta(null)}
         />
       )}
       {conEtiquetas && (
@@ -297,13 +375,26 @@ export default function Tareas({ accent, flash }) {
           onGuardar={guardarEtiquetas} onCerrar={() => setConEtiquetas(false)}
         />
       )}
+      {conArchivo && (
+        <Archivo
+          tareas={pilas.archivadas} etiquetaDe={etiquetaDe}
+          onDevolver={(t) => archivar(t, false)} onBorrar={borrar} onCerrar={() => setConArchivo(false)}
+        />
+      )}
     </div>
   );
 }
 
 // ------------------------------------------------------------- una tarjeta
-function Tarjeta({ tarea, etiqueta, arrastrada, onAbrir, onEmpezar, onAcabar }) {
+// El color de la etiqueta la rellena entera. Lo terminado va desvaído (el mismo
+// color, aclarado): «Hecho» no puede pesar más que lo que queda por hacer.
+function Tarjeta({ tarea, etiqueta, pie, arrastrada, onAbrir, onEmpezar, onAcabar, onSubir, onArchivar, onBorrar }) {
   const hecha = tarea.columna === HECHA;
+  const color = etiqueta?.color;
+  const rellena = Boolean(color) && !hecha;
+  const fondo = rellena ? color : color ? `color-mix(in srgb, ${color} 15%, ${C.panel})` : C.panel;
+  const tinta = rellena ? tintaSobre(color) : hecha ? C.suave : C.texto;
+  const accion = (fn) => (e) => { e.stopPropagation(); fn(); };
   return (
     <div
       data-tarea={tarea.id}
@@ -314,44 +405,77 @@ function Tarjeta({ tarea, etiqueta, arrastrada, onAbrir, onEmpezar, onAcabar }) 
       onDragStart={onEmpezar}
       onDragEnd={onAcabar}
       onClick={onAbrir}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(); } }}
-      className="tarea"
+      // Solo la tarjeta: Enter sobre «Archivar» no abre además el editor.
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onAbrir(); } }}
+      className="tb-tarea"
+      title={etiqueta?.nombre}
       style={{
-        background: C.panel,
-        border: `1px solid ${C.borde}`,
-        borderLeft: `4px solid ${etiqueta?.color || C.bordeFuerte}`,
-        borderRadius: RADIO.fila,
-        padding: "9px 10px 9px 11px",
-        cursor: "grab",
+        "--tb-fondo": fondo,
+        background: fondo,
+        color: tinta,
+        border: `1px solid ${color ? "transparent" : C.borde}`,
         opacity: arrastrada ? 0.4 : 1,
-        display: "grid",
-        gap: 6,
       }}
     >
-      {etiqueta && <span style={{ ...chipEtiqueta(etiqueta.color), justifySelf: "start" }}>{etiqueta.nombre}</span>}
-      <div style={{ fontSize: 14, fontWeight: 550, lineHeight: 1.35, overflowWrap: "anywhere", color: hecha ? C.suave : C.texto }}>
-        {tarea.titulo}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 550, lineHeight: 1.35, overflowWrap: "anywhere" }}>{tarea.titulo}</div>
+        {(hecha || pie) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginTop: 3, opacity: 0.8 }}>
+            {hecha ? <><Icono nombre="check" tam={12} /> {fechaCorta(tarea.terminada)}</> : pie}
+          </div>
+        )}
       </div>
-      {(tarea.nota || hecha || tarea.quien) && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.tenue }}>
-          {hecha && <><Icono nombre="check" tam={13} /> {fechaCorta(tarea.terminada)}</>}
-          {tarea.nota && <span title="Tiene nota" style={{ display: "inline-flex" }}><Icono nombre="nota" tam={14} /></span>}
-          <div style={{ flex: 1 }} />
-          <Avatares quien={tarea.quien} />
-        </div>
-      )}
+      {tarea.nota && <span title="Tiene nota" style={{ display: "inline-flex", opacity: 0.75, marginTop: 2 }}><Icono nombre="nota" tam={14} /></span>}
+      <Avatares quien={tarea.quien} sobre={rellena ? tinta : null} />
+
+      <div className="tb-acciones">
+        {onSubir && <button type="button" className="tb-accion" aria-label="Pasar al tablero" title="Pasar al tablero" onClick={accion(onSubir)}><Icono nombre="subir" tam={14} /></button>}
+        <button type="button" className="tb-accion" aria-label="Archivar" title="Archivar" onClick={accion(onArchivar)}><Icono nombre="archivo" tam={14} /></button>
+        <button type="button" className="tb-accion" aria-label="Borrar" title="Borrar" onClick={accion(onBorrar)}><Icono nombre="papelera" tam={14} /></button>
+      </div>
     </div>
   );
 }
 
-function Avatar({ persona, tam = 22, borde = false }) {
+/** Escribir una tarea nueva en su columna: Enter la crea y deja escribir la siguiente. */
+function Anadir({ accent, onCrear, onCerrar }) {
+  const [titulo, setTitulo] = useState("");
+  // Un ref y no un estado: dos Enter seguidos llegan antes de que se vuelva a pintar,
+  // y con el estado se creaba la tarea dos veces.
+  const ocupado = useRef(false);
+  async function enviar(e) {
+    e.preventDefault();
+    if (!titulo.trim() || ocupado.current) return;
+    ocupado.current = true;
+    if (await onCrear(titulo)) setTitulo("");
+    ocupado.current = false;
+  }
+  return (
+    <form onSubmit={enviar}>
+      <input
+        autoFocus value={titulo} maxLength={MAX_TITULO} aria-label="Tarea nueva" placeholder="Qué hay que hacer"
+        onChange={(e) => setTitulo(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape") onCerrar(); }}
+        onBlur={() => { if (!titulo.trim()) onCerrar(); }}
+        style={{
+          width: "100%", boxSizing: "border-box", font: "inherit", fontSize: 14, color: C.texto,
+          background: C.panel, border: `1px solid ${accent}`, borderRadius: 10, padding: "9px 11px", outline: "none",
+        }}
+      />
+    </form>
+  );
+}
+
+// Sobre una tarjeta rellena el avatar va del color de su letra (el azul de Víctor
+// encima del azul de «Producto» no se vería); fuera, con el color de cada uno.
+function Avatar({ persona, tam = 22, sobre = null }) {
   return (
     <span
       title={persona.nombre}
       style={{
-        width: tam, height: tam, borderRadius: "50%", background: persona.color, color: "#fff",
-        display: "inline-grid", placeItems: "center", fontSize: Math.round(tam * 0.5), fontWeight: 700, flexShrink: 0,
-        boxShadow: borde ? `0 0 0 2px ${C.panel}` : "none",
+        width: tam, height: tam, borderRadius: "50%", flexShrink: 0,
+        background: sobre ? tinte(sobre, 24) : persona.color, color: sobre || "#fff",
+        display: "inline-grid", placeItems: "center", fontSize: Math.round(tam * 0.5), fontWeight: 700,
       }}
     >
       {persona.inicial}
@@ -359,12 +483,12 @@ function Avatar({ persona, tam = 22, borde = false }) {
   );
 }
 
-function Avatares({ quien }) {
+function Avatares({ quien, sobre = null }) {
   const personas = personasDe(quien);
   if (!personas.length) return null;
   return (
-    <span style={{ display: "inline-flex" }} aria-label={RESPONSABLES.find((r) => r.id === quien)?.nombre}>
-      {personas.map((p, i) => <span key={p.id} style={{ marginLeft: i ? -6 : 0 }}><Avatar persona={p} borde /></span>)}
+    <span style={{ display: "inline-flex", gap: 2, flexShrink: 0 }} aria-label={RESPONSABLES.find((r) => r.id === quien)?.nombre}>
+      {personas.map((p) => <Avatar key={p.id} persona={p} sobre={sobre} />)}
     </span>
   );
 }
@@ -415,8 +539,7 @@ function Opciones({ opciones, valor, onCambio, accent }) {
   );
 }
 
-function EditorTarea({ tarea, etiquetas, accent, onGuardar, onBorrar, onCerrar }) {
-  const nueva = !tarea.id;
+function EditorTarea({ tarea, etiquetas, accent, onGuardar, onBorrar, onArchivar, onSubir, onCerrar }) {
   const inicial = {
     titulo: tarea.titulo || "",
     nota: tarea.nota || "",
@@ -430,6 +553,7 @@ function EditorTarea({ tarea, etiquetas, accent, onGuardar, onBorrar, onCerrar }
   const [error, setError] = useState(null);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const cambiado = JSON.stringify(f) !== JSON.stringify(inicial);
+  const deClaude = esDeClaude(tarea);
 
   async function enviar(e) {
     e?.preventDefault();
@@ -445,14 +569,10 @@ function EditorTarea({ tarea, etiquetas, accent, onGuardar, onBorrar, onCerrar }
   }
 
   return (
-    <Ventana titulo={nueva ? "Nueva tarea" : "Tarea"} cambiado={cambiado} onCerrar={onCerrar}>
+    <Ventana titulo="Tarea" cambiado={cambiado} onCerrar={onCerrar}>
       <form onSubmit={enviar}>
         <label style={rotulo} htmlFor="tarea-titulo">Qué hay que hacer</label>
-        <input
-          id="tarea-titulo" value={f.titulo} maxLength={MAX_TITULO} data-foco={nueva || undefined}
-          onChange={(e) => set("titulo", e.target.value)} placeholder="Escribir a la cafetería de la esquina"
-          style={campo}
-        />
+        <input id="tarea-titulo" value={f.titulo} maxLength={MAX_TITULO} onChange={(e) => set("titulo", e.target.value)} style={campo} />
 
         <span style={rotulo}>De qué va</span>
         <Opciones
@@ -485,27 +605,55 @@ function EditorTarea({ tarea, etiquetas, accent, onGuardar, onBorrar, onCerrar }
           style={{ ...campo, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
         />
 
-        {!nueva && (
-          <p style={{ fontSize: 12, color: C.tenue, margin: "8px 0 0" }}>
-            Creada el {fechaCorta(tarea.creado)}{tarea.autor ? ` por ${PERSONAS.find((p) => p.id === tarea.autor)?.nombre || tarea.autor}` : ""}
-            {tarea.terminada ? ` · terminada el ${fechaCorta(tarea.terminada)}` : ""}
-          </p>
-        )}
+        <p style={{ fontSize: 12, color: C.tenue, margin: "8px 0 0" }}>
+          Creada el {fechaCorta(tarea.creado)} por {PERSONAS.find((p) => p.id === tarea.autor)?.nombre || (tarea.autor ? tarea.autor : "Claude")}
+          {tarea.terminada ? ` · terminada el ${fechaCorta(tarea.terminada)}` : ""}
+        </p>
         {error && <div style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 18 }}>
-          {!nueva && (
-            <button type="button" onClick={() => onBorrar(tarea)} style={{ ...botonSecundario, color: C.mal, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Icono nombre="papelera" tam={15} /> Borrar
-            </button>
-          )}
-          <div style={{ flex: 1 }} />
-          <button type="button" onClick={onCerrar} style={botonSecundario}>Cancelar</button>
-          <button type="submit" disabled={ocupado} aria-busy={ocupado || undefined} style={botonPrimario(accent)}>
-            {nueva ? "Crear tarea" : "Guardar"}
+          <button type="button" onClick={() => onBorrar(tarea)} aria-label="Borrar" title="Borrar" style={{ ...botonSecundario, color: C.mal, display: "inline-flex", padding: "0.6rem" }}>
+            <Icono nombre="papelera" tam={16} />
           </button>
+          <button type="button" onClick={() => onArchivar(tarea)} aria-label="Archivar" title="Archivar" style={{ ...botonSecundario, display: "inline-flex", padding: "0.6rem" }}>
+            <Icono nombre="archivo" tam={16} />
+          </button>
+          <div style={{ flex: 1 }} />
+          {/* Con el dedo no se arrastra: una de las de Claude se sube al tablero desde aquí. */}
+          {deClaude && !cambiado
+            ? <button type="button" onClick={() => onSubir(tarea)} style={botonPrimario(accent)}>Pasar al tablero</button>
+            : <button type="submit" disabled={ocupado} aria-busy={ocupado || undefined} style={botonPrimario(accent)}>Guardar</button>}
         </div>
       </form>
+    </Ventana>
+  );
+}
+
+// Lo archivado: fuera de la vista, sin borrar. Desde aquí vuelve a donde estaba o se borra del todo.
+function Archivo({ tareas, etiquetaDe, onDevolver, onBorrar, onCerrar }) {
+  return (
+    <Ventana titulo="Archivo" cambiado={false} onCerrar={onCerrar} ancho={480}>
+      {!tareas.length && <p style={{ fontSize: 14, color: C.suave, margin: "10px 0 4px" }}>Nada archivado. Lo que archives sale del tablero y espera aquí.</p>}
+      <div style={{ display: "grid", gap: 2, marginTop: 10, maxHeight: "60vh", overflowY: "auto" }}>
+        {tareas.map((t) => {
+          const e = etiquetaDe(t.etiqueta);
+          return (
+            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+              <span title={e?.nombre} style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, background: e?.color || C.bordeFuerte }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, overflowWrap: "anywhere" }}>{t.titulo}</div>
+                <div style={{ fontSize: 12, color: C.tenue }}>{nombreDeColumna(t.columna)} · archivada el {fechaCorta(t.archivada)}</div>
+              </div>
+              <button type="button" className="tb-quieto" onClick={() => onDevolver(t)} aria-label={`Devolver «${t.titulo}» al tablero`} title="Devolver al tablero">
+                <Icono nombre="deshacer" tam={16} />
+              </button>
+              <button type="button" className="tb-quieto" onClick={() => onBorrar(t)} aria-label={`Borrar «${t.titulo}»`} title="Borrar" style={{ color: C.mal }}>
+                <Icono nombre="papelera" tam={16} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </Ventana>
   );
 }
@@ -620,22 +768,47 @@ function EditorEtiquetas({ etiquetas, tareas, accent, onGuardar, onCerrar }) {
 }
 
 // ------------------------------------------------------------- estilos
-const chipEtiqueta = (color) => ({
-  display: "inline-flex", alignItems: "center", gap: 6,
-  padding: "2px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600,
-  background: tinte(color, 14), color: legible(color),
-});
-
-const lineaDestino = (accent) => ({ height: 3, borderRadius: 2, background: accent, margin: "-2px 2px" });
+const lineaDestino = (accent) => ({ height: 3, borderRadius: 2, background: accent, margin: "-1px 2px" });
 
 // Cuatro columnas en el ordenador; en el móvil, una tras otra deslizando de lado
 // (como Trello): apiladas, «Hecho» quedaba a varias pantallas de distancia.
+// Archivar y borrar solo donde hay ratón: con el dedo se tocarían al ir a abrir la
+// tarea, y ahí están dentro de ella.
 const CSS = `
-  .tablero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: start; }
-  .tablero .tarea:focus-visible { outline: 2px solid ${C.azul}; outline-offset: 2px; }
-  .tablero .tarea:hover { box-shadow: 0 1px 5px rgb(0 0 0 / 0.08); }
+  .tb-tablero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: start; }
+  .tb-columna { border-radius: ${RADIO.panel}px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; transition: background 0.12s; }
+  .tb-claude { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; align-items: start; }
+
+  .tb-tarea { position: relative; display: flex; align-items: flex-start; gap: 8px; border-radius: 10px; padding: 9px 11px; cursor: grab; }
+  .tb-tarea:focus-visible { outline: 2px solid ${C.azul}; outline-offset: 2px; }
+  .tb-acciones {
+    position: absolute; top: 5px; right: 5px; display: flex; gap: 2px; padding-left: 4px;
+    background: var(--tb-fondo); box-shadow: -8px 0 8px var(--tb-fondo); border-radius: 8px;
+    opacity: 0; pointer-events: none; transition: opacity 0.12s;
+  }
+  .tb-tarea:hover .tb-acciones, .tb-tarea:focus-within .tb-acciones { opacity: 1; pointer-events: auto; }
+  .tb-accion {
+    width: 26px; height: 26px; border: 0; border-radius: 7px; padding: 0; cursor: pointer;
+    display: grid; place-items: center; color: inherit; background: color-mix(in srgb, currentColor 14%, transparent);
+  }
+  .tb-accion:hover { background: color-mix(in srgb, currentColor 30%, transparent); }
+  .tb-accion:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+
+  .tb-quieto {
+    display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: ${C.suave};
+    font: inherit; font-size: 13px; font-weight: 600; padding: 5px 8px; border-radius: 8px; cursor: pointer;
+  }
+  .tb-quieto:hover { background: ${C.panelSuave}; color: ${C.texto}; }
+  .tb-quieto[aria-pressed="true"] { background: ${C.panelSuave}; color: ${C.texto}; box-shadow: inset 0 0 0 1px ${C.bordeFuerte}; }
+  .tb-quieto:focus-visible, .tb-etiqueta:focus-visible { outline: 2px solid ${C.azul}; outline-offset: 2px; }
+  .tb-columna .tb-quieto:hover { background: ${C.borde}; }
+  .tb-mas { padding: 5px; }
+  .tb-etiqueta { border: 0; border-radius: 7px; padding: 3px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.12s; }
+
+  @media (hover: none) { .tb-acciones { display: none; } }
   @media (max-width: 759px) {
-    .tablero { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px 8px; scroll-padding: 0 16px; }
-    .tablero > section { flex: 0 0 82%; scroll-snap-align: start; }
+    .tb-tablero { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px 8px; scroll-padding: 0 16px; }
+    .tb-tablero > section { flex: 0 0 82%; scroll-snap-align: start; }
+    .tb-pista { display: none; }
   }
 `;

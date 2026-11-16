@@ -262,8 +262,10 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
   en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
 - **«Deshacer cambios» deja la tarjeta como al escanearla** (26-10-2026, `lib/deshacer.js`,
-  `POST /api/accion/deshacer`): con algo hecho en la ficha, un botón debajo de lo que acaba
-  de pasar. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
+  `POST /api/accion/deshacer`): con algo hecho en la ficha, debajo de lo que acaba de pasar.
+  **Se desliza, no se pulsa** (`app/Deslizar.js`, la cuenta en `lib/deslizar.js`, 12-11-2026):
+  va pegado a «Escanear al siguiente» y en La Delicantería se tocaba sin querer. Un toque solo
+  asoma el tirador; lo demás que no deba pasar con un toque sin querer, con esa misma pieza. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
   tarjeta desde que se abrió la ficha, y la tarjeta recupera saldo, `visitas`,
   `ultima_visita` y el `mensaje` que sumar la visita le quitó. Para las cuentas, esa visita
   no pasó (con el «−» el sello y su corrección se quedan, y la visita cuenta). Cómo estaba
@@ -892,6 +894,9 @@ plataforma: no llega a ninguna tienda.
   con el tablero a la vista, `useEnVivo` pregunta cada 5 s por `GET /api/admin/tareas?huella=1`
   (`huellaDeTareas`: tres consultas de una fila) y solo si cambió pide el tablero entero.
 - Quitar una etiqueta no toca las tareas: salen sin etiqueta.
+- **La tarjeta es su color** (16-11-2026, lo pidió Víctor: «abruma»): la etiqueta la rellena entera (`tintaSobre` elige letra blanca u oscura) y solo lleva título y quién; lo terminado va desvaído. Arriba, UNA fila: quién, las etiquetas (leyenda y filtro) y, a la derecha, editar etiquetas y el archivo. Una tarea nueva se escribe en la propia columna (el «+» de su cabecera).
+- **Lo que mete Claude va abajo, «De Claude»** (`esDeClaude`, `repartir`): las que entran del vault llegan sin `autor` y salen en una rejilla sin columnas hasta que alguien la arrastra a una columna o pulsa «Pasar al tablero» (`adoptar` en el PATCH: el autor lo pone la sesión). Lo creado en el tablero lleva siempre autor.
+- **Archivar no borra** (`archivada`, una fecha): la quita de la vista sin tocar el vault; se devuelve o se borra desde el archivo. Archivar y borrar salen al pasar el ratón; con el dedo, dentro de la tarea. Antes de llevarlo a `main`, añadir la columna `archivada` (`schema.sql`).
 
 ## Pantallas en el móvil
 

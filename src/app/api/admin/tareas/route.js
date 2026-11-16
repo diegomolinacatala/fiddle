@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 //   GET               -> { tareas, etiquetas, yo, huella }   yo: "victor" | "diego" | null (sesión sin nombre)
 //   GET ?huella=1     -> { huella }   lo que pregunta la pantalla abierta cada pocos segundos
 //   POST  {titulo, nota?, etiqueta?, quien?, columna?, orden?}  -> la tarea creada
-//   PATCH ?id=<id>  {lo que cambie}                              -> la tarea como queda
+//   PATCH ?id=<id>  {lo que cambie, archivada?: bool, adoptar?: true} -> la tarea como queda
+//                   (`adoptar`: una de las de Claude pasa a ser de quien la sube al tablero)
 //   DELETE ?id=<id>
 // No va a `auditoria`: es la lista de cosas por hacer de los dos, no un dato de nadie.
 
@@ -37,21 +38,25 @@ export async function POST(request) {
   try {
     const r = leerTarea(await request.json().catch(() => null), { etiquetas: await etiquetasDeTareas() });
     if (r.error) return jsonError(r.error, 400);
-    return NextResponse.json(await crearTarea(r.tarea, { autor: yoDe(sesion) }));
+    // Sin autor sería «de Claude» (así llegan las del vault): lo creado aquí siempre lo lleva.
+    return NextResponse.json(await crearTarea(r.tarea, { autor: yoDe(sesion) || "admin" }));
   } catch (e) {
     return errorInterno("admin tareas POST", e);
   }
 }
 
 export async function PATCH(request) {
-  const { respuesta } = await exigirAdmin(request);
+  const { sesion, respuesta } = await exigirAdmin(request);
   if (respuesta) return respuesta;
   try {
     const id = new URL(request.url).searchParams.get("id");
     if (!id) return jsonError("Falta el id", 400);
     const r = leerTarea(await request.json().catch(() => null), { etiquetas: await etiquetasDeTareas(), parcial: true });
     if (r.error) return jsonError(r.error, 400);
-    const tarea = await cambiarTarea(id, r.tarea);
+    // Quedarse una de las de Claude es ponerle autor: quién, lo dice la sesión.
+    const { adoptar, ...cambios } = r.tarea;
+    if (adoptar) cambios.autor = yoDe(sesion) || "admin";
+    const tarea = await cambiarTarea(id, cambios);
     if (!tarea) return jsonError("Esa tarea ya no existe", 404);
     return NextResponse.json(tarea);
   } catch (e) {

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import {
-  leerTarea, leerEtiquetas, idDeEtiqueta, ordenEntre, porColumna, esDe, personasDe,
+  leerTarea, leerEtiquetas, idDeEtiqueta, ordenEntre, porColumna, repartir, tintaSobre, esDe, personasDe,
   ETIQUETAS_DE_PARTIDA, COLORES_ETIQUETA, COLUMNAS, MAX_TITULO,
 } from "@/lib/tareas";
 import * as store from "@/lib/store";
@@ -174,6 +174,39 @@ describe("tareas en el store y en /api/admin/tareas", () => {
 
     expect((await ruta.DELETE(await pedir("DELETE", `/api/admin/tareas?id=${creada.id}`))).status).toBe(200);
     expect(await store.listTareas()).toEqual([]);
+  });
+
+  it("las de Claude van aparte hasta que alguien las sube; archivar no borra", async () => {
+    const ruta = await import("@/app/api/admin/tareas/route.js");
+    const cambiar = async (id, cuerpo) => (await ruta.PATCH(await pedir("PATCH", `/api/admin/tareas?id=${id}`, cuerpo))).json();
+    // Así las mete `npm run tareas`: sin autor.
+    const deClaude = await store.crearTarea({ titulo: "Del vault", columna: "pendiente" });
+    const hechaDeClaude = await store.crearTarea({ titulo: "Ya cerrada", columna: "hecha" });
+    const mia = await store.crearTarea({ titulo: "Mía", columna: "pendiente" }, { autor: "diego" });
+    let pilas = repartir(await store.listTareas());
+    expect(pilas.deClaude.map((t) => t.id)).toEqual([deClaude.id]);
+    expect(pilas.tablero.map((t) => t.id).sort()).toEqual([hechaDeClaude.id, mia.id].sort());
+
+    // Subirla al tablero: quién se la queda lo dice la sesión, no el navegador.
+    const subida = await cambiar(deClaude.id, { adoptar: true, autor: "diego", columna: "en_curso" });
+    expect(subida).toMatchObject({ autor: "victor", columna: "en_curso" });
+    expect(subida).not.toHaveProperty("adoptar");
+    expect(repartir(await store.listTareas()).deClaude).toEqual([]);
+
+    expect((await ruta.PATCH(await pedir("PATCH", `/api/admin/tareas?id=${mia.id}`, { archivada: "sí" }))).status).toBe(400);
+    expect((await cambiar(mia.id, { archivada: true })).archivada).toBeTruthy();
+    pilas = repartir(await store.listTareas());
+    expect(pilas.archivadas.map((t) => t.id)).toEqual([mia.id]);
+    expect(pilas.tablero.some((t) => t.id === mia.id)).toBe(false);
+    expect((await cambiar(mia.id, { archivada: false })).archivada).toBeNull();
+    expect(repartir(await store.listTareas()).tablero.some((t) => t.id === mia.id)).toBe(true);
+  });
+
+  it("la letra de una tarjeta rellena se lee: blanca, u oscura sobre los colores claros", () => {
+    expect(tintaSobre("#1c7ed6")).toBe("#ffffff");
+    expect(tintaSobre("#495057")).toBe("#ffffff");
+    expect(tintaSobre("#f08c00")).toBe("#1c1917");
+    expect(tintaSobre("#66a80f")).toBe("#1c1917");
   });
 
   it("las etiquetas se guardan enteras y validadas", async () => {

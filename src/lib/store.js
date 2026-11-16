@@ -235,12 +235,15 @@ export async function crearTarea(tarea, { autor = null } = {}) {
 
 /**
  * Cambia lo que venga en `cambios` (ya pasado por `leerTarea` parcial). Pasar a
- * «Hecho» apunta cuándo; sacarla de ahí lo quita. `null` si ya no existe.
+ * «Hecho» apunta cuándo; sacarla de ahí lo quita. `archivada` (sí o no) guarda
+ * cuándo se archivó. `null` si ya no existe.
  */
 export async function cambiarTarea(id, cambios) {
   const ahora = ahoraISO();
   const conFechas = (antes) => {
     const fila = { ...cambios, actualizado: ahora };
+    // Del navegador llega sí o no; lo guardado es cuándo (el archivo va por fecha).
+    if ("archivada" in cambios) fila.archivada = cambios.archivada ? ahora : null;
     if ("columna" in cambios) {
       if (cambios.columna !== HECHA) fila.terminada = null;
       else if (antes?.columna !== HECHA) fila.terminada = ahora;
