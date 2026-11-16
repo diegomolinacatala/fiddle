@@ -13,7 +13,6 @@ import ClaveNueva from "@/app/ClaveNueva";
 import Invitar from "@/app/admin/Invitar";
 import Planes from "@/app/admin/Planes";
 import Interesados from "@/app/admin/Interesados";
-import Tareas from "@/app/admin/Tareas";
 import { PLANES_DE_PARTIDA, PLAN_POR_DEFECTO } from "@/lib/planes";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
 import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, botonPequeno, aviso, solapa } from "@/app/ui";
@@ -41,7 +40,6 @@ const PESTANAS = [
   ["activas", "Tiendas", "puerta"],
   ["planes", "Planes", "cartera"],
   ["interesados", "Interesados", "correo"],
-  ["tareas", "Tareas", "check"],
 ];
 
 export default function Admin() {
@@ -53,11 +51,12 @@ export default function Admin() {
   const [borrando, setBorrando] = useState(null); // {slug, modo} que se está confirmando
   const [creada, setCreada] = useState(null); // tienda recién creada: sus contraseñas, una vez
 
-  // «Plataforma → Planes» desde la ficha de una tienda llega con #planes; el tablero,
-  // con #tareas (para tenerlo en marcadores).
+  // «Plataforma → Planes» desde la ficha de una tienda llega con #planes. El tablero
+  // de tareas tiene su página (/admin/tareas); #tareas es el marcador de antes.
   useEffect(() => {
     const desdeEnlace = window.location.hash.slice(1);
-    if (["planes", "tareas"].includes(desdeEnlace)) setPestana(desdeEnlace);
+    if (desdeEnlace === "planes") setPestana(desdeEnlace);
+    if (desdeEnlace === "tareas") window.location.replace("/admin/tareas");
   }, []);
   const deTiendas = pestana === "activas" || pestana === "archivadas";
   useEffect(() => { if (deTiendas) cargar(pestana); }, [pestana]);
@@ -128,6 +127,7 @@ export default function Admin() {
               </button>
             );
           })}
+          <a href="/admin/tareas" style={solapa(false)}><Icono nombre="check" tam={16} /> Tareas</a>
           <a href="/admin/crm" style={solapa(false)}><Icono nombre="clientes" tam={16} /> Clientes</a>
         </nav>
 
@@ -155,7 +155,6 @@ export default function Admin() {
 
         {pestana === "planes" && <Planes accent={AZUL} flash={flash} />}
         {pestana === "interesados" && <Interesados accent={AZUL} flash={flash} />}
-        {pestana === "tareas" && <Tareas accent={AZUL} flash={flash} />}
 
         {deTiendas && error && <div style={{ ...aviso(false), marginBottom: 14 }}>{error}</div>}
         {deTiendas && negocios === null && <p style={{ color: C.suave }}>Cargando…</p>}
