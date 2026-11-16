@@ -681,6 +681,34 @@ Ver [docs/AVISOS.md](docs/AVISOS.md), [`src/lib/envios.js`](src/lib/envios.js) y
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la
   tarjeta en el teléfono, y la caja lo ve arriba de la ficha ("En su tarjeta pone…").
 
+## La tarjeta del dueño (de prueba, desde el 16-11-2026)
+
+Ver [docs/TARJETA-DUENO.md](docs/TARJETA-DUENO.md) y `src/lib/dueno/`. Un pase de Wallet para
+el DUEÑO: el informe de la última semana entera cada lunes y, cuando «lo que dicen los
+números» tiene algo que se puede hacer hoy, un aviso con el enlace a Avisos → Enviar relleno.
+
+- **No comparte nada con el pase de los clientes**: su web service es `/api/dueno` (una sola
+  ruta a propósito: en dev cada función tiene su `/tmp`), firma con el Pass Type ID GENERAL
+  (no debe apilarse con las tarjetas de la tienda) y lleva los colores de fiddle, no los de
+  la tienda. Lo de `lib/apple/pase.js`, `/api/wallet` y `/api/pase` no se toca por ella.
+- **Todo vive en `negocio.tarjetaDueno`** (config, sin tabla): serial, token, los iPhone
+  registrados y lo último que calculó el reloj. Lleva el token del pase: **nunca sale a un
+  navegador** (`negocioDelPersonal` lo quita; la caja es una cuenta compartida) y ninguna
+  ruta que guarda config lo deja escribir.
+- **Apagada de partida** (`tarjetaDueno.activa`). Solo la semilla de dev la enciende.
+- **Solo cifras**: ni nombres, ni códigos, ni seriales de clientes en el pase ni en sus enlaces.
+- **Las claves de los campos son fijas y los campos están siempre**: un campo nuevo no
+  suena; suena el que cambia de valor con `changeMessage` en la versión nueva. `semana`
+  cambia cada lunes (su mensaje es el informe); `aviso` lleva `changeMessage` solo con
+  aviso y vuelve a «PREMIOS DADOS» en silencio.
+- **Nada sale solo hacia los clientes**: el aviso al dueño le lleva a Enviar ya relleno
+  (`enlaceDeAccion`), como el botón de «lo que dicen los números». Un aviso nuevo para el
+  dueño = una observación con `accion` en `lib/observaciones.js`, no un caso aquí.
+- **La banda se dibuja entre x=42 y x=333**: Wallet la pinta a 139 de alto y recorta los
+  lados (`WALLET` en `lib/vistaWallet.js`). El número grande va dibujado, no en un campo.
+- **En dev el iPhone no llega al web service** (la web de dev está tras el acceso de
+  Vercel): la tarjeta se instala y se ve, pero no se actualiza ni suena.
+
 ## Contraseñas
 
 Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/claves.js).

@@ -61,6 +61,7 @@ export const negocioDeTarjeta = (n) =>
  */
 export const negocioDelPersonal = (n) => {
   if (!n) return n;
-  const { brief: _brief, notas: _notas, plantilla: _plantilla, ...resto } = n;
+  // `tarjetaDueno` lleva el token del pase del dueño y la caja es una cuenta compartida.
+  const { brief: _brief, notas: _notas, plantilla: _plantilla, tarjetaDueno: _tarjetaDueno, ...resto } = n;
   return resto;
 };

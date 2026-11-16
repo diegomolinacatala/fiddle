@@ -19,6 +19,16 @@ describe("reglaDeRuta", () => {
     }
   });
 
+  it("la tarjeta del dueño: el web service es público, el pase, la vista previa y la prueba son del manager y lo demás no queda abierto", () => {
+    expect(regla("/api/dueno/v1/log", "POST")).toEqual({ tipo: "publica" });
+    expect(regla("/api/dueno/v1/passes/pass.x/dueno-nube-0123456789abcdef")).toEqual({ tipo: "publica" });
+    expect(regla("/api/dueno/pase?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/prueba?b=nube", "POST")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/vista?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/otra")).toEqual({ tipo: "sesion" });
+    expect(regla("/api/dueno")).toEqual({ tipo: "sesion" });
+  });
+
   it("lo que usa la tarjeta de Android es público (el serial es la llave)", () => {
     for (const r of ["/api/tarjeta/abc", "/api/push/abc", "/api/google/guardar/abc", "/api/imagen/icono?b=nube", "/api/imagen/banda?b=nube&s=3"]) {
       expect(regla(r, r.startsWith("/api/push") ? "POST" : "GET"), r).toEqual({ tipo: "publica" });

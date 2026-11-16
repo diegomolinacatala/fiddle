@@ -455,6 +455,9 @@ export function componerNegocio(slug, guardado) {
     // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
     contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,
+    // La tarjeta del dueño (lib/dueno/tarjeta.js). Solo lo guardado: apagada de partida
+    // en todas las tiendas. Lleva el token del pase: nunca sale del servidor.
+    tarjetaDueno: c.tarjetaDueno && typeof c.tarjetaDueno === "object" ? c.tarjetaDueno : null,
     // Quién es la tienda ante la ley: razón social, NIF, dirección y email
     // (lib/legal.js). Lo pone el admin con el contrato; lo lee /privacidad.
     legal: normalizarLegal(c.legal),
