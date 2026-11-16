@@ -16,7 +16,7 @@ import Interesados from "@/app/admin/Interesados";
 import Tareas from "@/app/admin/Tareas";
 import { PLANES_DE_PARTIDA, PLAN_POR_DEFECTO } from "@/lib/planes";
 import { vistaMarca, vistaForma, vistaBanda, vistaModo, vistaPlantilla, ROTULO, ROTULO_PLANTILLA } from "@/app/admin/vistas";
-import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, aviso, solapa } from "@/app/ui";
+import { C, pagina, panel, campo, etiqueta, h2, titulo, botonPrimario, botonSecundario, botonPequeno, aviso, solapa } from "@/app/ui";
 import { NumeroVisto } from "@/app/useVisto";
 
 // ============================================================================
@@ -34,6 +34,15 @@ const fechaBorrado = (archivadoEn) =>
   new Date(Date.parse(archivadoEn) + DIAS_BAJA_TIENDA * 86400000).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
 const AZUL = "#2563eb";
+
+// Con icono, como las del dueño (CabeceraGestion). «activas» es Tiendas; las archivadas
+// se abren desde dentro de Tiendas.
+const PESTANAS = [
+  ["activas", "Tiendas", "puerta"],
+  ["planes", "Planes", "cartera"],
+  ["interesados", "Interesados", "correo"],
+  ["tareas", "Tareas", "check"],
+];
 
 export default function Admin() {
   const [pestana, setPestana] = useState("activas");
@@ -96,35 +105,39 @@ export default function Admin() {
     <main style={pagina}>
       <div style={{ width: "min(960px, 100%)" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div>
-            <h1 style={titulo}>Plataforma</h1>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <h1 style={titulo}>Plataforma</h1>
+          {/* `relative`: el desplegable del estado se coloca contra este grupo, no contra su
+              botón, y en el móvil no se sale por la izquierda. */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", position: "relative" }}>
+            {/* Certificados, base de datos, avisos, cifrado: casi siempre bien, así que un
+                piloto en la esquina que se pone rojo si algo falla. */}
+            <EstadoIntegracion accent={AZUL} />
             <BotonTema />
             <LogoutButton />
           </div>
         </header>
 
-        {/* Certificados, base de datos, avisos, cifrado: es cosa de la plataforma, no de cada tienda. */}
-        <EstadoIntegracion accent={AZUL} />
-
-        <div style={{ display: "flex", gap: 8, margin: "18px 0 14px", flexWrap: "wrap" }}>
-          {[["activas", "Tiendas"], ["archivadas", "Archivadas"], ["planes", "Planes"], ["interesados", "Interesados"], ["tareas", "Tareas"]].map(([id, texto]) => (
-            <button key={id} type="button" onClick={() => setPestana(id)} style={solapa(pestana === id)}>{texto}</button>
-          ))}
+        {/* Solo navegación, como las pestañas del dueño: crear y ver las archivadas viven
+            dentro de Tiendas, que es donde se buscan. */}
+        <nav style={{ display: "flex", gap: 8, margin: "18px 0 16px", flexWrap: "wrap" }}>
+          {PESTANAS.map(([id, texto, icono]) => {
+            const activa = id === "activas" ? deTiendas : pestana === id;
+            return (
+              <button key={id} type="button" onClick={() => setPestana(id)} aria-current={activa ? "page" : undefined} style={solapa(activa)}>
+                <Icono nombre={icono} tam={16} /> {texto}
+              </button>
+            );
+          })}
           <a href="/admin/crm" style={solapa(false)}><Icono nombre="clientes" tam={16} /> Clientes</a>
-          <div style={{ flex: 1 }} />
-          {pestana === "activas" && (
-            <button type="button" onClick={() => setAbriendo((v) => !v)} style={botonPrimario(AZUL)}>
-              {abriendo ? "Cancelar" : "+ Nueva tienda"}
-            </button>
-          )}
-        </div>
+        </nav>
 
-        {abriendo && pestana === "activas" && (
-          <NuevaTienda
-            onCreada={(n) => { setAbriendo(false); setCreada(n); flash(`"${n.nombre}" creada`); cargar(); }}
-          />
+        {pestana === "archivadas" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <button type="button" onClick={() => setPestana("activas")} style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icono nombre="volver" tam={14} /> Tiendas
+            </button>
+            <strong style={{ fontSize: 15 }}>Archivadas</strong>
+          </div>
         )}
 
         {creada && (
@@ -201,6 +214,28 @@ export default function Admin() {
           ))}
         </div>
 
+        {pestana === "activas" && negocios && (
+          abriendo ? (
+            <NuevaTienda
+              onCancelar={() => setAbriendo(false)}
+              onCreada={(n) => { setAbriendo(false); setCreada(n); flash(`"${n.nombre}" creada`); cargar(); }}
+            />
+          ) : (
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => setAbriendo(true)}
+                style={{ ...botonPequeno, flex: "1 1 200px", background: "transparent", border: `1px dashed ${C.bordeFuerte}`, color: C.suave, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0.6rem 0.8rem" }}
+              >
+                <Icono nombre="mas" tam={14} /> Nueva tienda
+              </button>
+              <button type="button" onClick={() => setPestana("archivadas")} style={{ ...botonPequeno, padding: "0.6rem 0.9rem" }}>
+                Archivadas
+              </button>
+            </div>
+          )
+        )}
+
         {pestana === "archivadas" && negocios?.length > 0 && (
           <p style={{ fontSize: 13, color: C.suave, marginTop: 14 }}>
             Una tienda archivada no aparece en ningún sitio y sus páginas dejan de responder. A los
@@ -271,7 +306,7 @@ function Confirmar({ negocio, modo, onCancelar, onConfirmar }) {
 }
 
 // ------------------------------------------------------------ nueva tienda
-function NuevaTienda({ onCreada }) {
+function NuevaTienda({ onCreada, onCancelar }) {
   const [f, setF] = useState({
     slug: "", nombre: "", tipo: "sellos", meta: 8, premio: "", brief: "",
     tema: temaPorDefecto({ estilo: "coffee" }),
@@ -316,7 +351,7 @@ function NuevaTienda({ onCreada }) {
   }
 
   return (
-    <form onSubmit={crear} style={{ ...panel, marginBottom: 16 }}>
+    <form onSubmit={crear} style={{ ...panel, marginTop: 12 }}>
       <h2 style={h2}>Nueva tienda</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 12 }}>
         <div>
@@ -426,8 +461,9 @@ function NuevaTienda({ onCreada }) {
       />
 
       {error && <div style={{ ...aviso(false), marginTop: 12 }}>{error}</div>}
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="submit" disabled={busy} aria-busy={busy || undefined} style={botonPrimario(AZUL)}>{busy ? "Creando…" : "Crear tienda"}</button>
+        <button type="button" onClick={onCancelar} style={botonSecundario}>Cancelar</button>
       </div>
     </form>
   );

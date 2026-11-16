@@ -124,6 +124,21 @@ describe("tareas en el store y en /api/admin/tareas", () => {
     expect(await store.listTareas()).toEqual([]);
   });
 
+  it("la huella cambia al crear, mover, borrar o tocar las etiquetas, y solo entonces", async () => {
+    const huellas = [await store.huellaDeTareas()];
+    const t = await store.crearTarea({ titulo: "Una", columna: "pendiente" });
+    huellas.push(await store.huellaDeTareas());
+    expect(await store.huellaDeTareas()).toBe(huellas.at(-1)); // sin cambios, la misma
+    await new Promise((r) => setTimeout(r, 5)); // `actualizado` va al milisegundo
+    await store.cambiarTarea(t.id, { columna: "hecha" });
+    huellas.push(await store.huellaDeTareas());
+    await store.guardarEtiquetasDeTareas([{ id: "web", nombre: "Web", color: "#1098ad" }]);
+    huellas.push(await store.huellaDeTareas());
+    await store.borrarTarea(t.id);
+    huellas.push(await store.huellaDeTareas());
+    expect(new Set(huellas).size).toBe(huellas.length);
+  });
+
   it("las etiquetas son las de partida hasta que se guardan otras", async () => {
     expect(await store.etiquetasDeTareas()).toEqual(ETIQUETAS_DE_PARTIDA);
     const otras = [{ id: "web", nombre: "Web", color: "#1098ad" }];
@@ -152,7 +167,9 @@ describe("tareas en el store y en /api/admin/tareas", () => {
     expect((await ruta.PATCH(await pedir("PATCH", "/api/admin/tareas?id=otra", { titulo: "x" }))).status).toBe(404);
 
     const todo = await (await ruta.GET(await pedir("GET", "/api/admin/tareas"))).json();
-    expect(todo).toMatchObject({ yo: "victor", etiquetas: ETIQUETAS_DE_PARTIDA });
+    expect(todo).toMatchObject({ yo: "victor", etiquetas: ETIQUETAS_DE_PARTIDA, huella: expect.any(String) });
+    // La pregunta de cada pocos segundos: solo la huella, la misma que trae el tablero.
+    expect(await (await ruta.GET(await pedir("GET", "/api/admin/tareas?huella=1"))).json()).toEqual({ huella: todo.huella });
     expect(todo.tareas.map((t) => t.id)).toEqual([creada.id]);
 
     expect((await ruta.DELETE(await pedir("DELETE", `/api/admin/tareas?id=${creada.id}`))).status).toBe(200);
