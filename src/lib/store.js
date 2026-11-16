@@ -8,6 +8,7 @@ import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
 import { UMBRALES } from "./crm";
 import { semillaDe } from "./datosDePrueba";
 import { conPlan, normalizarPlanes } from "./planes";
+import { ETIQUETAS_DE_PARTIDA, HECHA } from "./tareas";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -27,7 +28,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados", "tareas"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -194,6 +195,93 @@ export async function borrarInteresado(id) {
     return;
   }
   await enFila(async () => escribir("interesados", (await leer("interesados", [])).filter((f) => f.id !== id)));
+}
+
+// ---------------------------------------------------------- tareas
+// El tablero de Víctor y Diego (/admin → Tareas, lib/tareas.js). Una fila por
+// tarea, no un JSON entero en `plataforma`: si los dos mueven a la vez, cada uno
+// toca SU fila y nadie pisa lo del otro. Las etiquetas sí van en `plataforma`
+// (`etiquetas_tareas`): son pocas y se guardan de una vez.
+
+/** Todas, terminadas incluidas (la pantalla pliega las viejas). */
+export async function listTareas() {
+  if (hasSupabase()) {
+    return porPaginas(() => supa().from("tareas").select("*").order("orden").order("id"), "listar tareas");
+  }
+  const filas = await enFila(() => leer("tareas", []));
+  return filas.sort((a, b) => a.orden - b.orden || (a.id < b.id ? -1 : 1));
+}
+
+/** `tarea` ya pasada por `leerTarea`. */
+export async function crearTarea(tarea, { autor = null } = {}) {
+  const ahora = ahoraISO();
+  const fila = {
+    nota: null, etiqueta: null, quien: null,
+    ...tarea,
+    id: randomUUID(),
+    orden: tarea.orden ?? Date.now(),
+    autor,
+    creado: ahora,
+    actualizado: ahora,
+    terminada: tarea.columna === HECHA ? ahora : null,
+  };
+  if (hasSupabase()) {
+    sinError(await supa().from("tareas").insert(fila), "crear tarea");
+    return fila;
+  }
+  await enFila(async () => escribir("tareas", [...(await leer("tareas", [])), fila]));
+  return fila;
+}
+
+/**
+ * Cambia lo que venga en `cambios` (ya pasado por `leerTarea` parcial). Pasar a
+ * «Hecho» apunta cuándo; sacarla de ahí lo quita. `null` si ya no existe.
+ */
+export async function cambiarTarea(id, cambios) {
+  const ahora = ahoraISO();
+  const conFechas = (antes) => {
+    const fila = { ...cambios, actualizado: ahora };
+    if ("columna" in cambios) {
+      if (cambios.columna !== HECHA) fila.terminada = null;
+      else if (antes?.columna !== HECHA) fila.terminada = ahora;
+    }
+    return fila;
+  };
+  if (hasSupabase()) {
+    const antes = "columna" in cambios
+      ? sinError(await supa().from("tareas").select("columna").eq("id", id).maybeSingle(), "leer tarea")
+      : {};
+    if (!antes) return null;
+    const filas = sinError(await supa().from("tareas").update(conFechas(antes)).eq("id", id).select(), "cambiar tarea");
+    return filas?.[0] ?? null;
+  }
+  return enFila(async () => {
+    const todas = await leer("tareas", []);
+    const i = todas.findIndex((t) => t.id === id);
+    if (i < 0) return null;
+    todas[i] = { ...todas[i], ...conFechas(todas[i]) };
+    await escribir("tareas", todas);
+    return todas[i];
+  });
+}
+
+export async function borrarTarea(id) {
+  if (hasSupabase()) {
+    sinError(await supa().from("tareas").delete().eq("id", id), "borrar tarea");
+    return;
+  }
+  await enFila(async () => escribir("tareas", (await leer("tareas", [])).filter((t) => t.id !== id)));
+}
+
+/** Las etiquetas del tablero (las de partida hasta que alguien las cambie). */
+export async function etiquetasDeTareas() {
+  return (await leerPlataforma("etiquetas_tareas")) ?? ETIQUETAS_DE_PARTIDA;
+}
+
+/** `etiquetas` ya pasadas por `leerEtiquetas`. */
+export async function guardarEtiquetasDeTareas(etiquetas) {
+  await escribirPlataforma("etiquetas_tareas", etiquetas);
+  return etiquetas;
 }
 
 /** Los tres planes como están ahora (los de partida si nadie los ha tocado). */

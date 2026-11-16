@@ -101,6 +101,11 @@ const DEL_ADMIN = [
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plan: "esencial" })],
   ["admin/planes", "GET", () => "/api/admin/planes"],
   ["admin/planes", "PUT", () => "/api/admin/planes", () => ({})],
+  ["admin/tareas", "GET", () => "/api/admin/tareas"],
+  ["admin/tareas", "POST", () => "/api/admin/tareas", () => ({ titulo: "x" })],
+  ["admin/tareas", "PATCH", () => "/api/admin/tareas?id=x", () => ({ columna: "hecha" })],
+  ["admin/tareas", "DELETE", () => "/api/admin/tareas?id=x"],
+  ["admin/tareas/etiquetas", "PUT", () => "/api/admin/tareas/etiquetas", () => ([])],
   ["estado", "GET", () => "/api/estado"],
 ];
 
