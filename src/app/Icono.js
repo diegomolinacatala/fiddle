@@ -53,6 +53,7 @@ const TRAZOS = {
     </>
   ),
   volver: <path d="M15 5l-7 7 7 7" />,
+  adelante: <path d="M9 5l7 7-7 7" />,
   deshacer: <path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
   descargar: <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M4.5 15.5v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3" />,
   cerrar: <path d="M6 6l12 12M18 6L6 18" />,
@@ -89,6 +90,8 @@ const TRAZOS = {
   ),
   estrella: <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8L3.5 9.7l5.9-.8z" />,
   papelera: <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />,
+  archivo: <path d="M3.5 5h17v4h-17zM5.5 9v10h13V9M10 13h4" />,
+  subir: <path d="M12 19V5M6 11l6-6 6 6" />,
   candado: (
     <>
       <rect x="5" y="10.5" width="14" height="10" rx="2" />
