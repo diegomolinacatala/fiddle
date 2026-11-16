@@ -284,6 +284,8 @@ create table if not exists tareas (
   terminada   timestamptz,                         -- cuándo pasó a «Hecho»
   vault       jsonb                                -- su nota del vault: { archivo, base } (lib/sincronia.js)
 );
+-- `vault` llegó después que la tabla (la de producción se creó sin ella).
+alter table tareas add column if not exists vault jsonb;
 create index if not exists tareas_orden on tareas (orden, id);
 
 alter table tarjetas_de_dispositivo enable row level security;
