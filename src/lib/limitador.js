@@ -10,6 +10,8 @@ import { registrarIntento, contarIntentos } from "./store";
 //        que luego se firma como pase (CPU). 30 altas por IP en 10 min: de sobra
 //        para una tienda con wifi compartida, corta un bucle de peticiones.
 // LOG    /api/wallet/v1/log es público por protocolo: 60 por IP en 10 min.
+// DUENO  /api/dueno/v1/devices/... es público por protocolo y recorre todas las tiendas:
+//        120 por IP en 10 min (un iPhone pregunta pocas veces, aunque llegue por la wifi de una tienda).
 // PUSH   /api/push/<serial> es público (lo usa la tarjeta del cliente) y cada
 //        alta guarda una fila y manda un aviso: 20 por IP en 10 min.
 // GOOGLE /api/google/guardar/<serial> firma un JWT y llama a la API de Google
@@ -30,6 +32,7 @@ export const LIMITES = {
   loginNegocio: { max: 100, ventanaMs: 15 * 60 * 1000 },
   tap: { max: 30, ventanaMs: 10 * 60 * 1000 },
   log: { max: 60, ventanaMs: 10 * 60 * 1000 },
+  dueno: { max: 120, ventanaMs: 10 * 60 * 1000 },
   push: { max: 20, ventanaMs: 10 * 60 * 1000 },
   google: { max: 30, ventanaMs: 10 * 60 * 1000 },
   invitacion: { max: 20, ventanaMs: 10 * 60 * 1000 },
@@ -91,7 +94,7 @@ export async function anotarFalloLogin(slug, ip) {
 
 /**
  * Cuenta un uso de un recurso público y dice si se pasó del límite.
- * @param {"tap"|"log"|"push"|"google"|"invitacion"|"interesado"} recurso
+ * @param {"tap"|"log"|"dueno"|"push"|"google"|"invitacion"|"interesado"} recurso
  * @returns {Promise<boolean>} true si hay que rechazar (429)
  */
 export async function usoExcedido(recurso, ip, ahora = Date.now()) {

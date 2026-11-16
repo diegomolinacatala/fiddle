@@ -429,6 +429,8 @@ function fusionarConfig(actual, patch) {
     contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
     estadoPase: patch.estadoPase !== undefined ? patch.estadoPase : actual.estadoPase,
+    // La tarjeta del dueño (lib/dueno/tarjeta.js): el objeto entero cada vez, lo escribe el servidor.
+    tarjetaDueno: patch.tarjetaDueno !== undefined ? patch.tarjetaDueno : actual.tarjetaDueno,
     // Quién es la tienda ante la ley (lib/legal.js): lo pone el admin, lo lee /privacidad.
     legal: patch.legal !== undefined ? patch.legal : actual.legal,
     // Cuándo se archivó: a los DIAS_BAJA_TIENDA se borra sola (lib/limpieza.js).

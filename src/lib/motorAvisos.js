@@ -6,6 +6,7 @@ import { avisarSeriales, refrescarPasesApple } from "./wallet";
 import { tiendaEnGoogle } from "./googlewallet";
 import { CLAVE_RELOJ } from "./relojAvisos";
 import { enviarPendientes } from "./campanas";
+import { repasarTarjetaDueno } from "./dueno/servidor";
 import { enviosVisibles } from "./envios";
 import { perfilesDe, conteoGrupos, efectoCampana, TIPOS_VISITA, LISTA_GRUPOS } from "./crm";
 import { relojLocal, estadoDeTienda, inicioDelDia } from "./horario";
@@ -209,6 +210,11 @@ export async function repasarTodas({ ahora = Date.now() } = {}) {
       r.estadoPase = await refrescarEstadoDelPase(negocio, ahora).catch((e) => {
         console.error(`[avisos] ${negocio.slug}: no se pudo poner al día el estado del pase:`, e);
         return null;
+      });
+      // La tarjeta del dueño: si falla, no para lo demás.
+      r.tarjetaDueno = await repasarTarjetaDueno(negocio, ahora).catch((e) => {
+        console.error(`[avisos] ${negocio.slug}: no se pudo repasar la tarjeta del dueño:`, e);
+        return { ok: false, cambio: false };
       });
       resultados.push(r);
     } catch (e) {
