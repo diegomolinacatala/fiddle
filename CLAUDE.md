@@ -22,7 +22,7 @@ tareas y el estado del negocio salen de ahí, no de `NEXT-STEPS.md`.
 - Si algo del trabajo aquí cambia el negocio (una tienda pide algo, se cierra una
   tarea), se apunta en el vault siguiendo sus reglas, no en este repo.
 - **Las tareas están en dos sitios y van a la par** (16-11-2026, lo pidió Víctor): las notas
-  de `Tareas/` del vault y el tablero de `/admin` → Tareas. Claude mira los dos: antes de leer
+  de `Tareas/` del vault y el tablero de `/admin/tareas`. Claude mira los dos: antes de leer
   o tocar tareas, y después de cambiarlas, `npm run tareas -- <copia del vault>` (enseña qué
   cambiaría) y luego con `--aplicar`, y commit y push en el vault. Ver «El tablero de tareas».
 
@@ -927,8 +927,9 @@ plataforma: no llega a ninguna tienda.
   con el tablero a la vista, `useEnVivo` pregunta cada 5 s por `GET /api/admin/tareas?huella=1`
   (`huellaDeTareas`: tres consultas de una fila) y solo si cambió pide el tablero entero.
 - Quitar una etiqueta no toca las tareas: salen sin etiqueta.
-- **La tarjeta es su color** (16-11-2026, lo pidió Víctor: «abruma»): la etiqueta la rellena entera (`tintaSobre` elige letra blanca u oscura) y solo lleva título y quién; lo terminado va desvaído. Arriba, UNA fila: quién, las etiquetas (leyenda y filtro) y, a la derecha, editar etiquetas y el archivo. Una tarea nueva se escribe en la propia columna (el «+» de su cabecera).
-- **Lo que mete Claude va abajo, «De Claude»** (`esDeClaude`, `repartir`): las que entran del vault llegan sin `autor` y salen en una rejilla sin columnas hasta que alguien la arrastra a una columna o pulsa «Pasar al tablero» (`adoptar` en el PATCH: el autor lo pone la sesión). Lo creado en el tablero lleva siempre autor.
+- **Es una pantalla APARTE: `/admin/tareas`** (16-11-2026, lo pidió Víctor), a pantalla completa y sin la cabecera del admin, con un «‹ fiddle» para volver. Vive aquí por comodidad pero no sigue el estilo de la app: sus colores, sus iconos y sus piezas van DENTRO de `admin/Tareas.js` (clases `tk-…`, nada de `app/ui.js` ni `app/Icono.js`); solo comparte el tema claro/oscuro y `confirmar`. Las reglas de aspecto del resto de este fichero no le tocan. En `/admin`, «Tareas» es un enlace.
+- **La tarjeta es su color**: la etiqueta la rellena entera (`tintaSobre` elige letra blanca u oscura); lo terminado va en blanco con su punto. Listas que se desplazan por dentro, tarea nueva escrita en su lista, y al arrastrar queda el hueco donde caería. Terminar, archivar y borrar salen al pasar el ratón; con el dedo, dentro de la tarea.
+- **Lo que mete Claude va abajo, en montones** (`esDeClaude`, `repartir`): las que entran del vault llegan sin `autor` y se apilan por etiqueta en «De Claude». Un montón se abre y cada tarea tiene ahí «Al tablero» (`adoptar` en el PATCH: el autor lo pone la sesión), archivar y borrar. Lo creado en el tablero lleva siempre autor.
 - **Archivar no borra** (`archivada`, una fecha): la quita de la vista sin tocar el vault; se devuelve o se borra desde el archivo. Archivar y borrar salen al pasar el ratón; con el dedo, dentro de la tarea. Antes de llevarlo a `main`, añadir la columna `archivada` (`schema.sql`).
 
 ## Pantallas en el móvil
