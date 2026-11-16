@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda, leerRecordados, recordarUsuario,
-  MAX_RECORDADOS,
+  MAX_RECORDADOS, sitioDeSesion,
 } from "@/lib/acceso";
 import { resolverUsuario, usuarioDe } from "@/lib/auth";
 
@@ -12,7 +12,7 @@ const regla = (ruta, method = "GET") => {
 
 describe("reglaDeRuta", () => {
   it("rutas públicas", () => {
-    for (const r of ["/", "/home", "/home/tarjeta", "/login", "/api/login", "/api/logout", "/api/tap?b=nube", "/p/abc", "/p/abc/listo", "/api/pase/abc",
+    for (const r of ["/", "/entrar", "/entrar?b=nube", "/home", "/home/tarjeta", "/login", "/api/login", "/api/logout", "/api/tap?b=nube", "/p/abc", "/p/abc/listo", "/api/pase/abc",
       "/api/wallet/v1/log", "/api/wallet/v1/devices/d/registrations/pass.x/s", "/api/manifest?b=nube", "/api/negocios",
       "/api/salud", "/nube"]) {
       expect(regla(r), r).toEqual({ tipo: "publica" });
@@ -115,6 +115,7 @@ describe("negocioDeRuta", () => {
     expect(negocioDeRuta("/fade")).toBe("fade");
     expect(negocioDeRuta("/w/123")).toBeNull();
     expect(negocioDeRuta("/home")).toBeNull();   // la web de fiddle, no una tienda
+    expect(negocioDeRuta("/entrar")).toBeNull(); // el «Entrar» de la web
     expect(negocioDeRuta(null)).toBeNull();
   });
 });
@@ -189,5 +190,14 @@ describe("los usuarios que recuerda el móvil en /login", () => {
       { u: "nube", t: "../x" },
       { u: "fade", t: "fade" },
     ]))).toEqual([{ u: "nube-caja", t: "nube" }, { u: "fade", t: "fade" }]);
+  });
+});
+
+describe("sitioDeSesion", () => {
+  // Lo usan la raíz, /entrar y el login: los tres mandan a cada uno al mismo sitio.
+  it("cada rol a lo suyo", () => {
+    expect(sitioDeSesion({ rol: "admin", negocio: null })).toBe("/admin");
+    expect(sitioDeSesion({ rol: "manager", negocio: "nube" })).toBe("/nube/manager");
+    expect(sitioDeSesion({ rol: "caja", negocio: "nube" })).toBe("/nube/caja");
   });
 });

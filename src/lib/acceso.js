@@ -41,6 +41,7 @@ import { RESERVADOS } from "./negocios";
 //                                          su handler (sin él, no hace nada)
 const PUBLICAS = [
   /^\/$/,
+  /^\/entrar$/, // «Entrar» de la web: con sesión a su sitio, sin ella al login
   /^\/home$/,
   /^\/home\/tarjeta$/, // «Diseña tu tarjeta», el probador de la web
   /^\/login$/,
@@ -127,6 +128,10 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   // otra: sesión válida; el handler valida el negocio concreto.
   return { tipo: "sesion" };
 }
+
+/** Adónde va cada sesión cuando no pide nada: el admin a /admin, el dueño a su panel, la caja a la caja. */
+export const sitioDeSesion = ({ rol, negocio }) =>
+  rol === "admin" ? "/admin" : `/${negocio}/${rol === "manager" ? "manager" : "caja"}`;
 
 /** `next` seguro para redirigir tras el login (evita open redirects). */
 export function destinoSeguro(next) {

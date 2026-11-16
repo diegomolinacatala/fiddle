@@ -31,12 +31,12 @@ import { cssMovil } from "./estiloMovil";
 // desplegable, filas que se deslizan en vez de columnas y WhatsApp siempre a
 // mano abajo. Lo que se dice es lo mismo; solo cambia cuánto se ve a la vez.
 //
-// «Entrar» va a «/», no a /login: la raíz ya sabe a dónde mandar a cada uno
+// «Entrar» va a /entrar, no a /login: sabe a dónde mandar a cada uno
 // (con sesión, a su panel o a su caja; sin ella, al login).
 // Página estática: nada de lo de aquí depende de quién la mira.
 // ============================================================================
 
-const ENTRAR = "/";
+const ENTRAR = "/entrar";
 
 // Las secciones, en la cabecera (pantalla ancha), en el menú del móvil y al pie.
 const SECCIONES = [

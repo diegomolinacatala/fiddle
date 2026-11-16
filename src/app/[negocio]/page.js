@@ -79,7 +79,7 @@ export default async function Page({ params, searchParams }) {
       </div>
       <footer className="pie">
         <a href={`/privacidad?b=${slug}`}>Privacidad</a>
-        <a href="/">Equipo</a>
+        <a href={`/entrar?b=${slug}`}>Equipo</a>
       </footer>
     </main>
   );
