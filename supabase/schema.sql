@@ -268,6 +268,26 @@ create table if not exists interesados (
 );
 create index if not exists interesados_creado on interesados (creado desc);
 
+-- El tablero de tareas de Víctor y Diego (/admin → Tareas, lib/tareas.js). Una fila
+-- por tarea; las etiquetas van en `plataforma` (clave `etiquetas_tareas`).
+create table if not exists tareas (
+  id          text primary key,
+  titulo      text not null,
+  nota        text,
+  etiqueta    text,                                -- id de una etiqueta, o null
+  quien       text,                                -- victor | diego | ambos | null
+  columna     text not null default 'pendiente',   -- pendiente | en_curso | esperando | hecha
+  orden       double precision not null,
+  autor       text,                                -- quién la creó (victor | diego)
+  creado      timestamptz not null default now(),
+  actualizado timestamptz not null default now(),
+  terminada   timestamptz,                         -- cuándo pasó a «Hecho»
+  vault       jsonb                                -- su nota del vault: { archivo, base } (lib/sincronia.js)
+);
+-- `vault` llegó después que la tabla (la de producción se creó sin ella).
+alter table tareas add column if not exists vault jsonb;
+create index if not exists tareas_orden on tareas (orden, id);
+
 alter table tarjetas_de_dispositivo enable row level security;
 alter table accesos        enable row level security;
 alter table invitaciones   enable row level security;
@@ -276,3 +296,4 @@ alter table borrados       enable row level security;
 alter table auditoria      enable row level security;
 alter table plataforma     enable row level security;
 alter table interesados    enable row level security;
+alter table tareas         enable row level security;

@@ -9,12 +9,15 @@
 //
 // Solo se mueven los números que son cuentas. Las fechas, los días de una
 // ventana o una cadencia (FIJOS) van ya con su valor: un `inicio` que saliera
-// de 0 diría «desde el 1 de enero de 1970» a media animación.
+// de 0 diría «desde el 1 de enero de 1970» a media animación. Lo mismo un número
+// que NOMBRA algo: la columna «3 puntos» de una cartilla (`sellos`) salía de 0 y
+// la gráfica buscaba la columna de 0 puntos, que no existe (16-11-2026: la página
+// entera se caía al bajar hasta ella la primera vez en un móvil).
 // ============================================================================
 
 export const FIJOS = new Set([
   "inicio", "ts", "dia", "dias", "d", "hora", "indice", "meta", "cadencia", "cadenciaHabitual",
-  "faltanDias", "hacenFalta", "desde", "hasta",
+  "faltanDias", "hacenFalta", "desde", "hasta", "sellos",
 ]);
 
 // Con qué se empareja un elemento de una lista con el de antes: la serie de días

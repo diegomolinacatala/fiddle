@@ -31,6 +31,18 @@ describe("entre: de lo que se vio a lo que hay", () => {
     expect(entre(z, b, 0.5).inicio).toBe(b.inicio);
   });
 
+  it("la columna de una cartilla no se mueve: «3 puntos» es su nombre, no una cuenta", () => {
+    // Si `sellos` salía de 0, la gráfica de puntos buscaba la columna de 0 y la página se caía.
+    const filas = [{ sellos: 1, siguen: 40, alejan: 12 }, { sellos: 2, siguen: 22, alejan: 5 }];
+    const b = [{ indice: 0, meta: 8, filas, conPuntos: 79 }];
+    const z = ceros(b);
+    expect(z[0].filas.map((f) => f.sellos)).toEqual([1, 2]);
+    for (const t of [0, 0.01, 0.3, 0.7, 1]) {
+      const [c] = entre(z, b, t);
+      expect(c.filas.map((f) => f.sellos)).toEqual([1, 2]);
+    }
+  });
+
   it("empareja las listas por su llave, no por la posición (la serie se corre un día)", () => {
     const antes = [{ dia: "2026-11-04", n: 5 }, { dia: "2026-11-05", n: 9 }];
     const ahora = [{ dia: "2026-11-05", n: 9 }, { dia: "2026-11-06", n: 2 }];

@@ -21,6 +21,10 @@ tareas y el estado del negocio salen de ahí, no de `NEXT-STEPS.md`.
   PRs. Se enlaza o se resume sin datos.
 - Si algo del trabajo aquí cambia el negocio (una tienda pide algo, se cierra una
   tarea), se apunta en el vault siguiendo sus reglas, no en este repo.
+- **Las tareas están en dos sitios y van a la par** (16-11-2026, lo pidió Víctor): las notas
+  de `Tareas/` del vault y el tablero de `/admin` → Tareas. Claude mira los dos: antes de leer
+  o tocar tareas, y después de cambiarlas, `npm run tareas -- <copia del vault>` (enseña qué
+  cambiaría) y luego con `--aplicar`, y commit y push en el vault. Ver «El tablero de tareas».
 
 ## Qué es esto
 
@@ -342,7 +346,7 @@ Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el P
 
 - **Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026 Tarjetas y Completo) y lo que lleva cada uno NO está en el código**:
   lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave `planes`) y el código solo
-  tiene lo de partida: Esencial sin nada y hasta 750 tarjetas (+50 de margen), Plus con
+  tiene lo de partida: Esencial sin nada y hasta 500 tarjetas (+50 de margen), Plus con
   estadísticas y promociones, Pro con todo. Antes de llevarlo a `main`, crear la tabla
   `plataforma` en Supabase (`schema.sql`); sin ella, valen los de partida y lo dice el log.
 - **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro.** Una tienda de antes no
@@ -791,7 +795,7 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 750 tarjetas, sin
+  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 500 tarjetas, sin
   promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
   pagará sola con Stripe); Plus, 39 € (tarjetas sin límite, promociones al momento a todos,
   estadísticas y se la dejamos montada);
@@ -861,6 +865,31 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
 - **Guardada, el probador se cierra** (10-11-2026, lo pidió Víctor): el panel entero (pestañas,
   flecha de atrás, pasos) pasa a «Tarjeta guardada» y la tarjeta ya no lleva a ningún paso. Con
   «Hecho» dentro del último paso se volvía atrás y se mandaba otra vez, una fila por vuelta.
+
+## El tablero de tareas (/admin → Tareas)
+
+Un Trello de Víctor y Diego (16-11-2026, `lib/tareas.js`, `admin/Tareas.js`). Es de la
+plataforma: no llega a ninguna tienda.
+
+- **Una fila por tarea en la tabla `tareas`**, no un JSON en `plataforma`: si los dos mueven a
+  la vez, cada uno toca SU fila. Las etiquetas (nombre y color, `#rrggbb`) sí van en
+  `plataforma` (`etiquetas_tareas`; las de partida hasta que se toquen). Antes de llevarlo a
+  `main`, crear la tabla (`schema.sql`).
+- **Va a la par con `Tareas/` del vault** (`lib/sincronia.js`, `scripts/sincronizar-tareas.mjs`,
+  `npm run tareas`). Columnas y responsables son los mismos (`estado` pendiente / en curso /
+  esperando / hecha; `responsable` Víctor, Diego o Ambos) y la etiqueta va en la nota como
+  `etiqueta:` con su nombre. La pareja se reconoce por `tablero: <id>` en la nota y la columna
+  `vault = { archivo, base }` en la fila: `base` es cómo quedó cada campo en la última vuelta,
+  y con eso gana el lado que cambió (los dos: el último, y lo dice). Nada se pierde: borrar en
+  el tablero deja la nota `descartada`; `descartada` en el vault la saca del tablero; una tarea
+  nueva en cualquiera de los dos entra en el otro. Fecha límite, prioridad, tienda y
+  «Por decidir» son solo del vault. El script lee la base de `.env.local` y, sin `--aplicar`,
+  no toca nada.
+- El orden es `orden`: la hora al crearla y la mitad entre las vecinas al soltarla
+  (`ordenEntre`). «Hecho» va por `terminada`, la última arriba.
+- Se arrastra con el ratón; en el móvil la columna se cambia desde la propia tarea (arrastrar
+  al tacto no es fiable). Se pone al día al volver a la pestaña, sin preguntar cada pocos segundos.
+- Quitar una etiqueta no toca las tareas: salen sin etiqueta.
 
 ## Pantallas en el móvil
 

@@ -43,7 +43,7 @@ const todas = (valor) => Object.fromEntries(IDS_FUNCION.map((id) => [id, valor])
 
 /** Lo de partida (06-11-2026): Esencial sin nada, Plus con estadísticas y promos, Pro con todo. */
 export const PLANES_DE_PARTIDA = {
-  esencial: { nombre: "Esencial", maxTarjetas: 750, margen: 50, funciones: todas(false) },
+  esencial: { nombre: "Esencial", maxTarjetas: 500, margen: 50, funciones: todas(false) },
   plus: { nombre: "Plus", maxTarjetas: null, margen: 0, funciones: { ...todas(false), estadisticas: true, promos: true } },
   pro: { nombre: "Pro", maxTarjetas: null, margen: 0, funciones: todas(true) },
 };
