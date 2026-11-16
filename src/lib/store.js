@@ -273,6 +273,30 @@ export async function borrarTarea(id) {
   await enFila(async () => escribir("tareas", (await leer("tareas", [])).filter((t) => t.id !== id)));
 }
 
+/**
+ * ¿Ha cambiado algo en el tablero? Cuántas hay, la última tocada y cuándo cambiaron las
+ * etiquetas: tres consultas de una fila. La pantalla abierta pregunta esto cada pocos
+ * segundos (useEnVivo) y solo pide el tablero entero si sale otra cosa. Borrar cambia la
+ * cuenta; crear o mover, la última.
+ */
+export async function huellaDeTareas() {
+  if (hasSupabase()) {
+    const db = supa();
+    const [cuantas, ultima, etiquetas] = await Promise.all([
+      db.from("tareas").select("id", { count: "exact", head: true }),
+      db.from("tareas").select("actualizado").order("actualizado", { ascending: false }).limit(1).maybeSingle(),
+      db.from("plataforma").select("actualizado").eq("clave", "etiquetas_tareas").maybeSingle(),
+    ]);
+    const n = sinError(cuantas, "huella tareas: contar") ?? 0;
+    const a = sinError(ultima, "huella tareas: última")?.actualizado ?? "";
+    const e = sinError(etiquetas, "huella tareas: etiquetas")?.actualizado ?? "";
+    return `${n}|${a}|${e}`;
+  }
+  const [tareas, plataforma] = await enFila(() => Promise.all([leer("tareas", []), leer("plataforma", {})]));
+  const a = tareas.reduce((max, t) => ((t.actualizado || "") > max ? t.actualizado : max), "");
+  return `${tareas.length}|${a}|${plataforma.etiquetas_tareas?.actualizado ?? ""}`;
+}
+
 /** Las etiquetas del tablero (las de partida hasta que alguien las cambie). */
 export async function etiquetasDeTareas() {
   return (await leerPlataforma("etiquetas_tareas")) ?? ETIQUETAS_DE_PARTIDA;

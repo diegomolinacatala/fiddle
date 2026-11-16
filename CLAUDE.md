@@ -893,7 +893,9 @@ plataforma: no llega a ninguna tienda.
 - El orden es `orden`: la hora al crearla y la mitad entre las vecinas al soltarla
   (`ordenEntre`). «Hecho» va por `terminada`, la última arriba.
 - Se arrastra con el ratón; en el móvil la columna se cambia desde la propia tarea (arrastrar
-  al tacto no es fiable). Se pone al día al volver a la pestaña, sin preguntar cada pocos segundos.
+  al tacto no es fiable). **Lo que mueve el otro aparece solo** (16-11-2026, lo pidió Víctor):
+  con el tablero a la vista, `useEnVivo` pregunta cada 5 s por `GET /api/admin/tareas?huella=1`
+  (`huellaDeTareas`: tres consultas de una fila) y solo si cambió pide el tablero entero.
 - Quitar una etiqueta no toca las tareas: salen sin etiqueta.
 
 ## Pantallas en el móvil

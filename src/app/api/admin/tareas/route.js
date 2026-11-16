@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listTareas, crearTarea, cambiarTarea, borrarTarea, etiquetasDeTareas } from "@/lib/store";
+import { listTareas, crearTarea, cambiarTarea, borrarTarea, etiquetasDeTareas, huellaDeTareas } from "@/lib/store";
 import { leerTarea, PERSONAS } from "@/lib/tareas";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 
@@ -7,7 +7,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // El tablero de Víctor y Diego (/admin → Tareas, lib/tareas.js). Solo el admin.
-//   GET               -> { tareas, etiquetas, yo }   yo: "victor" | "diego" | null (sesión sin nombre)
+//   GET               -> { tareas, etiquetas, yo, huella }   yo: "victor" | "diego" | null (sesión sin nombre)
+//   GET ?huella=1     -> { huella }   lo que pregunta la pantalla abierta cada pocos segundos
 //   POST  {titulo, nota?, etiqueta?, quien?, columna?, orden?}  -> la tarea creada
 //   PATCH ?id=<id>  {lo que cambie}                              -> la tarea como queda
 //   DELETE ?id=<id>
@@ -19,8 +20,12 @@ export async function GET(request) {
   const { sesion, respuesta } = await exigirAdmin(request);
   if (respuesta) return respuesta;
   try {
+    if (new URL(request.url).searchParams.has("huella")) return NextResponse.json({ huella: await huellaDeTareas() });
+    // La huella se lee ANTES que el tablero: si algo cambia entre las dos, la siguiente
+    // pregunta lo ve distinto y vuelve a pedirlo. Al revés, se perdería ese cambio.
+    const huella = await huellaDeTareas();
     const [tareas, etiquetas] = await Promise.all([listTareas(), etiquetasDeTareas()]);
-    return NextResponse.json({ tareas, etiquetas, yo: yoDe(sesion) });
+    return NextResponse.json({ tareas, etiquetas, yo: yoDe(sesion), huella });
   } catch (e) {
     return errorInterno("admin tareas GET", e);
   }
