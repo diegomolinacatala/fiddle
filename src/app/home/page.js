@@ -1,378 +1,45 @@
 import QRCode from "qrcode";
-import Icono from "@/app/Icono";
-import { LogoApple } from "@/app/LogoTienda";
-import { stripDelPase, comoDataUri } from "@/lib/apple/dibujo";
+import { comoDataUri } from "@/lib/apple/dibujo";
 import { appUrl } from "@/lib/url";
-import Telefono, { Aviso } from "./Telefono";
-import Panel from "./Panel";
-import Cifras from "./Cifras";
-import Correo from "./Correo";
-import Cinta from "./Cinta";
-import Menu from "./Menu";
-import BarraMovil from "./BarraMovil";
-import Indicador from "./Indicador";
-import Aparece from "./Aparece";
-import LogoFiddle from "@/app/LogoFiddle";
-import { ejemplo, avisoDe, CAFETERIA, CINTAS } from "./demo";
-import { PALETA } from "./paleta";
-import { PLANES, TELEFONO_VISIBLE, CORREO, enlaceWhatsApp, mensajeDePlan } from "./datos";
+import { ProveedorTarjeta } from "./experiencia/Tarjeta";
+import Experiencia from "./experiencia/Experiencia";
 import { css } from "./estilo";
 import { cssMovil } from "./estiloMovil";
+import { cssPiezas, cssPagina } from "./tarjeta/estilo";
+import { cssExperiencia } from "./experiencia/estilo";
+import { cssFinal } from "./experiencia/estiloFinal";
 
 // ============================================================================
 // LA WEB DE FIDDLE (/home)
 // ----------------------------------------------------------------------------
-// Lo que se le enseña a una cafetería que aún no nos conoce, de menos a más: qué
-// es (portada), que va rápido (Cero fricción), lo que ve el dueño (el panel),
-// que ya funciona en cafeterías de verdad, cuánto cuesta y cómo hablar con nosotros. Para quien ya trabaja con nosotros,
-// «Entrar» arriba a la derecha (y al pie).
+// No cuenta qué es fiddle: lo deja probar. Una pantalla como la de una app, sin
+// scroll, con UNA protagonista (la tarjeta de quien entra) y una sola pregunta
+// cada vez:
 //
-// En el móvil (estiloMovil.js) la misma página se ordena distinto: menú
-// desplegable, filas que se deslizan en vez de columnas y WhatsApp siempre a
-// mano abajo. Lo que se dice es lo mismo; solo cambia cuánto se ve a la vez.
+//   su cafetería → premios → puntos → color → icono → la prueba → la guarda
 //
-// «Entrar» va a «/», no a /login: la raíz ya sabe a dónde mandar a cada uno
-// (con sesión, a su panel o a su caja; sin ella, al login).
-// Página estática: nada de lo de aquí depende de quién la mira.
+// y, al guardarla (un email o un teléfono, a /api/interesados), los precios.
+// Todo lo demás (el panel, las cifras, las preguntas, el contacto) se quitó a
+// propósito el 16-11-2026: si hace falta contar algo más, se añade después de ver
+// dónde se para la gente, no antes.
+//
+// Aquí solo se prepara el QR de ejemplo; la experiencia entera es
+// experiencia/Experiencia.js, y lo elegido vive en ProveedorTarjeta.
 // ============================================================================
 
-const ENTRAR = "/";
-
-// Las secciones, en la cabecera (pantalla ancha), en el menú del móvil y al pie.
-const SECCIONES = [
-  ["#como-funciona", "Cómo funciona"],
-  ["#panel", "El panel"],
-  ["#precios", "Precios"],
-  ["#preguntas", "Preguntas"],
-  ["#contacto", "Contacto"],
-];
-// En la cabecera no caben todas: las preguntas, al pie y en el menú.
-const EN_CABECERA = ["#como-funciona", "#panel", "#precios", "#contacto"];
-
 export default async function Home() {
-  const portada = ejemplo(CAFETERIA, 7);
-  const antes = ejemplo(CAFETERIA, 6);
-  // El QR de la tarjeta de ejemplo lleva a esta misma web: quien lo escanee desde
-  // el ordenador la abre en su móvil, y no apunta a ninguna tarjeta de verdad.
-  const qr = await qrDeTexto(`${appUrl()}/home`);
+  // El QR de la tarjeta lleva a esta misma web: quien lo escanee desde el
+  // ordenador la abre en su móvil, y no apunta a ninguna tarjeta de verdad.
+  const svg = await QRCode.toString(`${appUrl()}/home`, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#000000", light: "#ffffff" } });
 
   return (
     <div className="home">
-      <style>{css + cssMovil}</style>
-      <a href="#contenido" className="saltar">Saltar al contenido</a>
-
-      <header className="cabecera">
-        <div className="cabecera-dentro">
-          <a href="#inicio" className="cabecera-marca" aria-label="fiddle, inicio">
-            <LogoFiddle tam={30} color={PALETA.verde} id="efe-cabecera" />
-          </a>
-          <nav className="cabecera-nav" aria-label="Secciones">
-            {SECCIONES.filter(([href]) => EN_CABECERA.includes(href)).map(([href, texto]) => (
-              <a key={href} href={href}>{texto}</a>
-            ))}
-          </nav>
-          <a href={ENTRAR} className="entrar">Entrar</a>
-          <Menu
-            enlaces={SECCIONES}
-            contacto={
-              <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
-                <IconoMensaje /> Hablemos por WhatsApp
-              </a>
-            }
-          />
-        </div>
-      </header>
-
+      <style>{css + cssMovil + cssPiezas + cssPagina + cssExperiencia + cssFinal}</style>
       <main id="contenido">
-        <section id="inicio" className="portada">
-          <div className="portada-texto">
-            <p className="antetitulo">Tarjetas de fidelización para cafeterías</p>
-            <h1 className="titular">
-              Clientes que no se pierden<Punto />
-            </h1>
-            <p className="entradilla">
-              Tu tarjeta, en el Apple Wallet o el Android de tus clientes. La guardan con un
-              escaneo y tú sumas puntos desde el móvil de la tienda.
-            </p>
-            <div className="acciones">
-              <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
-                Hablemos por WhatsApp
-              </a>
-              {/* Probar la suya (/home/tarjeta). «Precios» sigue en la cabecera y el menú. */}
-              <a href="/home/tarjeta" className="boton-suave probar">
-                Diseña tu tarjeta <Flecha />
-              </a>
-            </div>
-          </div>
-          <div className="portada-visual">
-            <Telefono qr={qr} />
-          </div>
-        </section>
-
-        <Cinta disenos={CINTAS[0]} />
-
-        <section id="como-funciona" className="bloque">
-          <Encabezado titulo="Cero fricción">
-            Una tarjeta digital suena a apps que instalar, registros y colas en caja. Con fiddle no hay
-            nada de eso: cada paso va en segundos.
-          </Encabezado>
-
-          <ol id="pasos" className="pasos">
-            <li className="paso revela">
-              <div className="paso-visual paso-cartel" aria-hidden="true">
-                <div className="cartel">
-                  <LogoApple tema={portada.negocio.tema} tam={34} />
-                  <img src={qr} alt="" width={104} height={104} />
-                  <span>Escanea y guarda tu tarjeta</span>
-                </div>
-              </div>
-              <span className="paso-dato">0 apps</span>
-              <h3>Escanean y ya la tienen</h3>
-              <p>Con la cámara del móvil, sin descargar nada ni crearse una cuenta. La tarjeta se guarda en su móvil al momento.</p>
-            </li>
-
-            <li className="paso revela">
-              <div className="paso-visual paso-caja" aria-hidden="true">
-                <div className="caja">
-                  <div className="caja-fila">
-                    <strong>{portada.negocio.nombre}</strong>
-                    <span>{antes.cliente.codigo}</span>
-                  </div>
-                  <img src={banda(antes)} alt="" className="caja-banda" />
-                  <span className="caja-boton">
-                    <Icono nombre="mas" tam={18} grosor={2.4} /> Sumar punto
-                  </span>
-                </div>
-              </div>
-              <span className="paso-dato">1 toque</span>
-              <h3>Sumas el punto</h3>
-              <p>Escaneas su tarjeta con el móvil de la tienda y tocas una vez. La cola no se para.</p>
-            </li>
-
-            <li className="paso revela">
-              <div className="paso-visual paso-avisos" aria-hidden="true">
-                <div className="avisos">
-                  {/* Como en la pantalla de bloqueo: el último arriba. */}
-                  <Aviso negocio={portada.negocio} texto={avisoDe(portada)} />
-                  <Aviso negocio={antes.negocio} texto={avisoDe(antes)} cuando="ayer" className="aviso-viejo" />
-                </div>
-              </div>
-              <span className="paso-dato">Al instante</span>
-              <h3>Les llega al móvil</h3>
-              <p>La tarjeta se pone al día sola y ven cuánto les falta para el premio. Y vuelven.</p>
-            </li>
-          </ol>
-          <Indicador objetivo="pasos" nombre="Pasos" etiquetas={["el paso 1", "el paso 2", "el paso 3"]} />
-
-          <div className="montaje revela">
-            <span className="montaje-icono" aria-hidden="true"><Icono nombre="check" tam={22} grosor={2.4} /></span>
-            <p>
-              <strong>Y el montaje corre de nuestra cuenta.</strong> Vamos a tu cafetería, preparamos tu
-              tarjeta y te dejamos el QR en el mostrador. Tú no configuras nada.
-            </p>
-          </div>
-        </section>
-
-        <section id="panel" className="bloque oscuro fondo-verde" aria-labelledby="titulo-panel">
-          <div className="panel-dentro">
-            <Encabezado id="titulo-panel" titulo="Sabes quién vuelve">
-              Desde tu panel ves quién viene, cada cuánto y quién se te está escapando. Y desde ahí mismo
-              les escribes.
-            </Encabezado>
-            <Indicador objetivo="panel-piezas" nombre="Partes del panel" tipo="pestanas" etiquetas={PIEZAS_DEL_PANEL} />
-            <Panel />
-            <p className="panel-nota">
-              Las estadísticas van desde el plan Plus; los grupos y el aviso al pasar cerca, en el Pro.{" "}
-              <a href="#precios">Ver precios</a>
-            </p>
-          </div>
-        </section>
-
-        {/* Justo antes del precio: lo que ya ha pasado en una cafetería, con su nombre. */}
-        <section id="cifras" className="bloque" aria-labelledby="titulo-cifras">
-          <Encabezado id="titulo-cifras" titulo="Ya funciona en cafeterías">
-            La Delicantería, en Valencia, fue la primera en usar fiddle. Así le fue en sus primeras semanas.
-          </Encabezado>
-          <Cifras />
-        </section>
-
-        <section id="precios" className="bloque">
-          <Encabezado titulo="Un precio claro" centrado>
-            Tres opciones, todas con tu tarjeta en iPhone y Android.
-          </Encabezado>
-
-          <Indicador objetivo="planes" nombre="Planes" tipo="pestanas" etiquetas={PLANES.map((p) => `${p.nombre} ${p.precio} €`)} />
-          <Aparece id="planes" className="planes">
-            {PLANES.map((plan, i) => (
-              <article key={plan.id} className={`plan${plan.destacado ? " plan-destacado oscuro" : ""}`} style={{ "--i": i }} aria-labelledby={`plan-${plan.id}`}>
-                <header className="plan-cabeza">
-                  <h3 id={`plan-${plan.id}`}>{plan.nombre}</h3>
-                  {plan.destacado && <span className="plan-etiqueta">Todo incluido</span>}
-                </header>
-                <p className="plan-lema">{plan.lema}</p>
-                <p className="plan-precio">
-                  <span className="plan-cifra">{plan.precio} €</span>
-                  <span className="plan-periodo">al mes</span>
-                </p>
-                <ul className="plan-lista">
-                  {plan.incluye.map((linea, j) => (
-                    <li key={linea} style={{ "--j": j }}>
-                      <Icono nombre="check" tam={18} grosor={2.2} />
-                      <span>{linea}</span>
-                    </li>
-                  ))}
-                </ul>
-                <a href={enlaceWhatsApp(mensajeDePlan(plan))} className={plan.destacado ? "boton boton-claro" : "boton"} target="_blank" rel="noopener noreferrer">
-                  Empezar con {plan.nombre}
-                </a>
-              </article>
-            ))}
-          </Aparece>
-          <p className="planes-nota">
-            ¿Tienes más de un local? <a href={enlaceWhatsApp("Hola, tengo más de un local y me interesa fiddle.")} target="_blank" rel="noopener noreferrer">Escríbenos</a> y lo vemos.
-          </p>
-        </section>
-
-        <Cinta disenos={CINTAS[1]} />
-
-        <section id="preguntas" className="bloque bloque-estrecho">
-          <Encabezado titulo="Preguntas" />
-          <div className="preguntas">
-            {PREGUNTAS.map(([pregunta, respuesta]) => (
-              <details key={pregunta} className="pregunta">
-                <summary>
-                  <span>{pregunta}</span>
-                  <Icono nombre="mas" tam={20} grosor={2} />
-                </summary>
-                <p>{respuesta}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section id="contacto" className="bloque oscuro fondo-espresso">
-          <div className="contacto-dentro">
-            <div className="contacto-texto revela">
-              <div className="iniciales" aria-hidden="true">
-                <span>V</span>
-                <span>D</span>
-              </div>
-              <h2 className="titulo-bloque">
-                Somos Victor y Diego<Punto />
-              </h2>
-              <p className="entradilla">
-                De Valencia. Vamos a tu cafetería, dejamos la tarjeta montada y nos tienes a un mensaje
-                para lo que necesites.
-              </p>
-            </div>
-            <div className="contacto-acciones revela">
-              <a href={enlaceWhatsApp()} className="contacto-via" target="_blank" rel="noopener noreferrer">
-                <span className="contacto-icono"><Icono nombre="movil" tam={22} /></span>
-                <span>
-                  <strong>WhatsApp</strong>
-                  <span>{TELEFONO_VISIBLE}</span>
-                </span>
-                <Flecha />
-              </a>
-              <Correo>
-                <span className="contacto-icono"><Icono nombre="correo" tam={22} /></span>
-                <span>
-                  <strong>Correo</strong>
-                  {/* Si no cabe, que parta tras la @ y no deje una letra suelta. */}
-                  <span>{CORREO.split("@")[0]}@<wbr />{CORREO.split("@")[1]}</span>
-                </span>
-              </Correo>
-            </div>
-          </div>
-        </section>
+        <ProveedorTarjeta qr={comoDataUri(svg)}>
+          <Experiencia />
+        </ProveedorTarjeta>
       </main>
-
-      <footer className="pie oscuro">
-        <div className="pie-dentro">
-          <LogoFiddle tam={28} color={PALETA.avena} id="efe-pie" />
-          <nav className="pie-nav" aria-label="Pie">
-            {SECCIONES.map(([href, texto]) => (
-              <a key={href} href={href}>{texto}</a>
-            ))}
-            <a href={ENTRAR}>Entrar</a>
-          </nav>
-          <p className="pie-firma">© {new Date().getFullYear()} fiddle, Valencia</p>
-        </div>
-      </footer>
-
-      <BarraMovil>
-        <a href={enlaceWhatsApp()} className="boton" target="_blank" rel="noopener noreferrer">
-          <IconoMensaje /> Hablemos por WhatsApp
-        </a>
-      </BarraMovil>
     </div>
   );
-}
-
-// Las pestañas del panel en el móvil, en el orden de las piezas de Panel.js.
-const PIEZAS_DEL_PANEL = ["Números", "Cerca", "Avisos", "Horas"];
-
-// Las preguntas que hacen en el mostrador. La última es para quien ya es cliente.
-const PREGUNTAS = [
-  [
-    "¿Tus clientes tienen que descargar una app?",
-    "No. En iPhone la tarjeta va al Apple Wallet, que ya viene en el teléfono. En Android se guarda en el móvil como una tarjeta más y, si activan los avisos, les llegan igual.",
-  ],
-  [
-    "¿Qué necesitas en la tienda?",
-    "Un móvil con cámara para la caja y tu QR en el mostrador. Con Plus y Pro te lo dejamos montado; con Esencial lo montas tú desde tu panel.",
-  ],
-  [
-    "¿Puedes cambiar el diseño o el premio más adelante?",
-    "Sí, desde tu panel y cuando quieras. La tarjeta se actualiza sola en el móvil de tus clientes.",
-  ],
-  [
-    "¿Qué pasa con los datos de tus clientes?",
-    "Son de tu tienda. Pedimos lo mínimo (el nombre, y solo si tú quieres), lo guardamos cifrado y cumplimos el RGPD: cada cliente puede descargar o borrar sus datos desde su tarjeta.",
-  ],
-  [
-    "Ya trabajo con vosotros, ¿cómo entro?",
-    "Con «Entrar», arriba a la derecha. Con el usuario de tu tienda llegas a tu panel; con el de la caja, a la caja.",
-  ],
-];
-
-// El punto del final de cada título: un sello (camel en claro, avena en oscuro).
-function Punto() {
-  return <span className="punto" aria-hidden="true" />;
-}
-
-function Encabezado({ id, titulo, centrado = false, children }) {
-  return (
-    <div className={`encabezado revela${centrado ? " encabezado-centro" : ""}`}>
-      <h2 id={id} className="titulo-bloque">
-        {titulo}
-        <Punto />
-      </h2>
-      {children && <p className="entradilla">{children}</p>}
-    </div>
-  );
-}
-
-// Un bocadillo de conversación: dice «escribir», sin copiar el logo de WhatsApp.
-function IconoMensaje() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5A8.4 8.4 0 1 1 20.5 11.6z" />
-    </svg>
-  );
-}
-
-function Flecha() {
-  return (
-    <svg className="flecha" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
-  );
-}
-
-const banda = ({ negocio, cliente }) => comoDataUri(stripDelPase(negocio, cliente).svg);
-
-async function qrDeTexto(texto) {
-  const svg = await QRCode.toString(texto, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#000000", light: "#ffffff" } });
-  return comoDataUri(svg);
 }
