@@ -97,6 +97,13 @@ export function leerTarea(cuerpo, { etiquetas, parcial = false }) {
     if (!Number.isFinite(cuerpo.orden)) return { error: "Orden no válido" };
     tarea.orden = cuerpo.orden;
   }
+  // Archivar o devolver (el store pone la fecha) y quedarse una de las de Claude (la
+  // ruta pone quién): las dos, solo sobre una tarea que ya existe.
+  if (parcial && "archivada" in cuerpo) {
+    if (typeof cuerpo.archivada !== "boolean") return { error: "Archivada: sí o no" };
+    tarea.archivada = cuerpo.archivada;
+  }
+  if (parcial && cuerpo.adoptar === true) tarea.adoptar = true;
   if (parcial && !Object.keys(tarea).length) return { error: "No hay nada que cambiar" };
   return { tarea };
 }
@@ -161,6 +168,40 @@ export function porColumna(tareas) {
       : (a, b) => a.orden - b.orden || String(a.id).localeCompare(String(b.id)));
   }
   return columnas;
+}
+
+/**
+ * ¿La metió Claude y nadie la ha hecho suya? Las que entran del vault
+ * (`npm run tareas`) llegan sin `autor`; las del tablero llevan quién la creó.
+ * Subirla al tablero le pone autor y deja de serlo. Una ya terminada va a «Hecho»
+ * como las demás: ahí no hay nada que decidir.
+ */
+export const esDeClaude = (tarea) => !tarea.autor && tarea.columna !== HECHA;
+
+/**
+ * Las tres pilas de la pantalla: el tablero, las de Claude (abajo, sin columnas) y
+ * el archivo. Archivar no borra nada ni toca el vault: solo la quita de la vista.
+ * @returns {{ tablero: object[], deClaude: object[], archivadas: object[] }}
+ */
+export function repartir(tareas) {
+  const pilas = { tablero: [], deClaude: [], archivadas: [] };
+  for (const t of tareas) (t.archivada ? pilas.archivadas : esDeClaude(t) ? pilas.deClaude : pilas.tablero).push(t);
+  pilas.deClaude.sort((a, b) => a.orden - b.orden || String(a.id).localeCompare(String(b.id)));
+  pilas.archivadas.sort((a, b) => String(b.archivada).localeCompare(String(a.archivada)));
+  return pilas;
+}
+
+/**
+ * El color de la letra sobre una tarjeta rellena con `color` (`#rrggbb`): blanca,
+ * salvo que no se lea (el naranja, el verde lima), y entonces oscura.
+ */
+export function tintaSobre(color) {
+  const canal = (i) => {
+    const v = parseInt(String(color).slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  const luz = 0.2126 * canal(1) + 0.7152 * canal(3) + 0.0722 * canal(5);
+  return 1.05 / (luz + 0.05) >= 3 ? "#ffffff" : "#1c1917";
 }
 
 /** ¿La lleva esta persona? «Los dos» cuenta para los dos; sin nadie, para ninguno. */
