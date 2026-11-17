@@ -32,7 +32,7 @@ export default function Final({ alVolver }) {
         <a href="/home" className="fin-marca" aria-label="Volver a la web de fiddle">
           <LogoFiddle tam={26} color={PALETA.verde} id="lacre-final" />
         </a>
-        <a href="/" className="fin-entrar">Entrar</a>
+        <a href="/login" className="fin-entrar">Entrar</a>
       </header>
 
       <main>

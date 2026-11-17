@@ -21,6 +21,10 @@ tareas y el estado del negocio salen de ahí, no de `NEXT-STEPS.md`.
   PRs. Se enlaza o se resume sin datos.
 - Si algo del trabajo aquí cambia el negocio (una tienda pide algo, se cierra una
   tarea), se apunta en el vault siguiendo sus reglas, no en este repo.
+- **Las tareas están en dos sitios y van a la par** (16-11-2026, lo pidió Víctor): las notas
+  de `Tareas/` del vault y el tablero de `/admin/tareas`. Claude mira los dos: antes de leer
+  o tocar tareas, y después de cambiarlas, `npm run tareas -- <copia del vault>` (enseña qué
+  cambiaría) y luego con `--aplicar`, y commit y push en el vault. Ver «El tablero de tareas».
 
 ## Qué es esto
 
@@ -258,8 +262,10 @@ si la tienda lo quiere. Un botón nuevo de la caja = una fila en `filasDeCaja`, 
   «deshacer» en `/api/accion`: habría que borrar eventos. La cuenta de la fila y del premio
   en espera vive en `lib/filaCaja.js` (pura, con sus tests): nada sale dos veces.
 - **«Deshacer cambios» deja la tarjeta como al escanearla** (26-10-2026, `lib/deshacer.js`,
-  `POST /api/accion/deshacer`): con algo hecho en la ficha, un botón debajo de lo que acaba
-  de pasar. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
+  `POST /api/accion/deshacer`): con algo hecho en la ficha, debajo de lo que acaba de pasar.
+  **Se desliza, no se pulsa** (`app/Deslizar.js`, la cuenta en `lib/deslizar.js`, 12-11-2026):
+  va pegado a «Escanear al siguiente» y en La Delicantería se tocaba sin querer. Un toque solo
+  asoma el tirador; lo demás que no deba pasar con un toque sin querer, con esa misma pieza. Ahí SÍ se borran eventos, a propósito: los de la caja (`TIPOS_DE_CAJA`) de esa
   tarjeta desde que se abrió la ficha, y la tarjeta recupera saldo, `visitas`,
   `ultima_visita` y el `mensaje` que sumar la visita le quitó. Para las cuentas, esa visita
   no pasó (con el «−» el sello y su corrección se quedan, y la visita cuenta). Cómo estaba
@@ -675,6 +681,34 @@ Ver [docs/AVISOS.md](docs/AVISOS.md), [`src/lib/envios.js`](src/lib/envios.js) y
 - Un aviso ocupa `clientes.mensaje`, como una campaña: solo le llega a quien tiene la
   tarjeta en el teléfono, y la caja lo ve arriba de la ficha ("En su tarjeta pone…").
 
+## La tarjeta del dueño (de prueba, desde el 16-11-2026)
+
+Ver [docs/TARJETA-DUENO.md](docs/TARJETA-DUENO.md) y `src/lib/dueno/`. Un pase de Wallet para
+el DUEÑO: el informe de la última semana entera cada lunes y, cuando «lo que dicen los
+números» tiene algo que se puede hacer hoy, un aviso con el enlace a Avisos → Enviar relleno.
+
+- **No comparte nada con el pase de los clientes**: su web service es `/api/dueno` (una sola
+  ruta a propósito: en dev cada función tiene su `/tmp`), firma con el Pass Type ID GENERAL
+  (no debe apilarse con las tarjetas de la tienda) y lleva los colores de fiddle, no los de
+  la tienda. Lo de `lib/apple/pase.js`, `/api/wallet` y `/api/pase` no se toca por ella.
+- **Todo vive en `negocio.tarjetaDueno`** (config, sin tabla): serial, token, los iPhone
+  registrados y lo último que calculó el reloj. Lleva el token del pase: **nunca sale a un
+  navegador** (`negocioDelPersonal` lo quita; la caja es una cuenta compartida) y ninguna
+  ruta que guarda config lo deja escribir.
+- **Apagada de partida** (`tarjetaDueno.activa`). La enciende el admin en `/admin/<slug>` → «Tarjeta del dueño» (y la semilla de dev). Apagar no borra: al reencender es la misma (serial y token). «Cambiar la llave» es la forma de anular un pase perdido: token nuevo y sin iPhone.
+- **Solo cifras**: ni nombres, ni códigos, ni seriales de clientes en el pase ni en sus enlaces.
+- **Las claves de los campos son fijas y los campos están siempre**: un campo nuevo no
+  suena; suena el que cambia de valor con `changeMessage` en la versión nueva. `semana`
+  cambia cada lunes (su mensaje es el informe); `aviso` lleva `changeMessage` solo con
+  aviso y vuelve a «PREMIOS DADOS» en silencio.
+- **Nada sale solo hacia los clientes**: el aviso al dueño le lleva a Enviar ya relleno
+  (`enlaceDeAccion`), como el botón de «lo que dicen los números». Un aviso nuevo para el
+  dueño = una observación con `accion` en `lib/observaciones.js`, no un caso aquí.
+- **La banda se dibuja entre x=42 y x=333**: Wallet la pinta a 139 de alto y recorta los
+  lados (`WALLET` en `lib/vistaWallet.js`). El número grande va dibujado, no en un campo.
+- **En dev el iPhone no llega al web service** (la web de dev está tras el acceso de
+  Vercel): la tarjeta se instala y se ve, pero no se actualiza ni suena.
+
 ## Contraseñas
 
 Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/claves.js).
@@ -839,8 +873,13 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
   de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa)
   sigue en el Perfil de Empresa de Google Wallet hasta que se suba `docs/marca/fiddle-lacre-1024.png`.
-- **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
-  enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
+- **Sin sesión, `/` es la web** (16-11-2026): quien escribe fiddle.es es una cafetería que aún
+  no nos conoce, no alguien del equipo. Con sesión, `/` sigue mandando a su panel o su caja.
+  **«Entrar» va a `/login`** (y «Equipo», al pie de una tienda, a `/login?b=<slug>`), que a
+  quien ya está dentro lo manda a su sitio sin pedir la contraseña. Con `next` no: ahí llega
+  del middleware porque su sesión no vale para esa página, y tiene que poder entrar con otro
+  usuario. El login enlaza de vuelta a `/home`. `home` está en `RESERVADOS`; adónde va cada
+  sesión, `sitioDeSesion`.
 - Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
   `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
 - **Las medidas de la tarjeta salen de una captura de iPhone** (`WALLET` en `lib/vistaWallet.js`,
@@ -861,6 +900,37 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
 - **Guardada, el probador se cierra** (10-11-2026, lo pidió Víctor): el panel entero (pestañas,
   flecha de atrás, pasos) pasa a «Tarjeta guardada» y la tarjeta ya no lleva a ningún paso. Con
   «Hecho» dentro del último paso se volvía atrás y se mandaba otra vez, una fila por vuelta.
+
+## El tablero de tareas (/admin → Tareas)
+
+Un Trello de Víctor y Diego (16-11-2026, `lib/tareas.js`, `admin/Tareas.js`). Es de la
+plataforma: no llega a ninguna tienda.
+
+- **Una fila por tarea en la tabla `tareas`**, no un JSON en `plataforma`: si los dos mueven a
+  la vez, cada uno toca SU fila. Las etiquetas (nombre y color, `#rrggbb`) sí van en
+  `plataforma` (`etiquetas_tareas`; las de partida hasta que se toquen). Antes de llevarlo a
+  `main`, crear la tabla (`schema.sql`).
+- **Va a la par con `Tareas/` del vault** (`lib/sincronia.js`, `scripts/sincronizar-tareas.mjs`,
+  `npm run tareas`). Columnas y responsables son los mismos (`estado` pendiente / en curso /
+  esperando / hecha; `responsable` Víctor, Diego o Ambos) y la etiqueta va en la nota como
+  `etiqueta:` con su nombre. La pareja se reconoce por `tablero: <id>` en la nota y la columna
+  `vault = { archivo, base }` en la fila: `base` es cómo quedó cada campo en la última vuelta,
+  y con eso gana el lado que cambió (los dos: el último, y lo dice). Nada se pierde: borrar en
+  el tablero deja la nota `descartada`; `descartada` en el vault la saca del tablero; una tarea
+  nueva en cualquiera de los dos entra en el otro. Fecha límite, prioridad, tienda y
+  «Por decidir» son solo del vault. El script lee la base de `.env.local` y, sin `--aplicar`,
+  no toca nada.
+- El orden es `orden`: la hora al crearla y la mitad entre las vecinas al soltarla
+  (`ordenEntre`). «Hecho» va por `terminada`, la última arriba.
+- Se arrastra con el ratón; en el móvil la columna se cambia desde la propia tarea (arrastrar
+  al tacto no es fiable). **Lo que mueve el otro aparece solo** (16-11-2026, lo pidió Víctor):
+  con el tablero a la vista, `useEnVivo` pregunta cada 5 s por `GET /api/admin/tareas?huella=1`
+  (`huellaDeTareas`: tres consultas de una fila) y solo si cambió pide el tablero entero.
+- Quitar una etiqueta no toca las tareas: salen sin etiqueta.
+- **Es una pantalla APARTE: `/admin/tareas`** (16-11-2026, lo pidió Víctor), a pantalla completa y sin la cabecera del admin, con un «‹ fiddle» para volver. Vive aquí por comodidad pero no sigue el estilo de la app: sus colores, sus iconos y sus piezas van DENTRO de `admin/Tareas.js` (clases `tk-…`, nada de `app/ui.js` ni `app/Icono.js`); solo comparte el tema claro/oscuro y `confirmar`. Las reglas de aspecto del resto de este fichero no le tocan. En `/admin`, «Tareas» es un enlace.
+- **La tarjeta es su color**: la etiqueta la rellena entera (`tintaSobre` elige letra blanca u oscura); lo terminado va en blanco con su punto. Listas que se desplazan por dentro, tarea nueva escrita en su lista, y al arrastrar queda el hueco donde caería. Terminar, archivar y borrar salen al pasar el ratón; con el dedo, dentro de la tarea.
+- **Lo que mete Claude va abajo, en montones** (`esDeClaude`, `repartir`): las que entran del vault llegan sin `autor` y se apilan por etiqueta en «De Claude». Un montón se abre y cada tarea tiene ahí «Al tablero» (`adoptar` en el PATCH: el autor lo pone la sesión), archivar y borrar. Lo creado en el tablero lleva siempre autor.
+- **Archivar no borra** (`archivada`, una fecha): la quita de la vista sin tocar el vault; se devuelve o se borra desde el archivo. Archivar y borrar salen al pasar el ratón; con el dedo, dentro de la tarea. Antes de llevarlo a `main`, añadir la columna `archivada` (`schema.sql`).
 
 ## Pantallas en el móvil
 

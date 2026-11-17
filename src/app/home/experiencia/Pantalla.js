@@ -71,7 +71,7 @@ export default function Pantalla({ paso, sentido, ir }) {
         <a href="/home" className="prob-volver" aria-label="Volver a la web de fiddle">
           <LogoFiddle tam={24} color={PALETA.verde} id="efe-experiencia" />
         </a>
-        <a href="/" className="exp-entrar">Entrar</a>
+        <a href="/login" className="exp-entrar">Entrar</a>
       </header>
 
       <div className="prob-halo" aria-hidden="true" />

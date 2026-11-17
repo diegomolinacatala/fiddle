@@ -8,6 +8,7 @@ import { cifrar, descifrar, estaCifrado, estadoClaveCifrado } from "./cifrado";
 import { UMBRALES } from "./crm";
 import { semillaDe } from "./datosDePrueba";
 import { conPlan, normalizarPlanes } from "./planes";
+import { ETIQUETAS_DE_PARTIDA, HECHA } from "./tareas";
 
 // ============================================================================
 // ALMACENAMIENTO
@@ -27,7 +28,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados", "tareas"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -196,6 +197,120 @@ export async function borrarInteresado(id) {
   await enFila(async () => escribir("interesados", (await leer("interesados", [])).filter((f) => f.id !== id)));
 }
 
+// ---------------------------------------------------------- tareas
+// El tablero de Víctor y Diego (/admin → Tareas, lib/tareas.js). Una fila por
+// tarea, no un JSON entero en `plataforma`: si los dos mueven a la vez, cada uno
+// toca SU fila y nadie pisa lo del otro. Las etiquetas sí van en `plataforma`
+// (`etiquetas_tareas`): son pocas y se guardan de una vez.
+
+/** Todas, terminadas incluidas (la pantalla pliega las viejas). */
+export async function listTareas() {
+  if (hasSupabase()) {
+    return porPaginas(() => supa().from("tareas").select("*").order("orden").order("id"), "listar tareas");
+  }
+  const filas = await enFila(() => leer("tareas", []));
+  return filas.sort((a, b) => a.orden - b.orden || (a.id < b.id ? -1 : 1));
+}
+
+/** `tarea` ya pasada por `leerTarea`. */
+export async function crearTarea(tarea, { autor = null } = {}) {
+  const ahora = ahoraISO();
+  const fila = {
+    nota: null, etiqueta: null, quien: null,
+    ...tarea,
+    id: randomUUID(),
+    orden: tarea.orden ?? Date.now(),
+    autor,
+    creado: ahora,
+    actualizado: ahora,
+    terminada: tarea.columna === HECHA ? ahora : null,
+  };
+  if (hasSupabase()) {
+    sinError(await supa().from("tareas").insert(fila), "crear tarea");
+    return fila;
+  }
+  await enFila(async () => escribir("tareas", [...(await leer("tareas", [])), fila]));
+  return fila;
+}
+
+/**
+ * Cambia lo que venga en `cambios` (ya pasado por `leerTarea` parcial). Pasar a
+ * «Hecho» apunta cuándo; sacarla de ahí lo quita. `archivada` (sí o no) guarda
+ * cuándo se archivó. `null` si ya no existe.
+ */
+export async function cambiarTarea(id, cambios) {
+  const ahora = ahoraISO();
+  const conFechas = (antes) => {
+    const fila = { ...cambios, actualizado: ahora };
+    // Del navegador llega sí o no; lo guardado es cuándo (el archivo va por fecha).
+    if ("archivada" in cambios) fila.archivada = cambios.archivada ? ahora : null;
+    if ("columna" in cambios) {
+      if (cambios.columna !== HECHA) fila.terminada = null;
+      else if (antes?.columna !== HECHA) fila.terminada = ahora;
+    }
+    return fila;
+  };
+  if (hasSupabase()) {
+    const antes = "columna" in cambios
+      ? sinError(await supa().from("tareas").select("columna").eq("id", id).maybeSingle(), "leer tarea")
+      : {};
+    if (!antes) return null;
+    const filas = sinError(await supa().from("tareas").update(conFechas(antes)).eq("id", id).select(), "cambiar tarea");
+    return filas?.[0] ?? null;
+  }
+  return enFila(async () => {
+    const todas = await leer("tareas", []);
+    const i = todas.findIndex((t) => t.id === id);
+    if (i < 0) return null;
+    todas[i] = { ...todas[i], ...conFechas(todas[i]) };
+    await escribir("tareas", todas);
+    return todas[i];
+  });
+}
+
+export async function borrarTarea(id) {
+  if (hasSupabase()) {
+    sinError(await supa().from("tareas").delete().eq("id", id), "borrar tarea");
+    return;
+  }
+  await enFila(async () => escribir("tareas", (await leer("tareas", [])).filter((t) => t.id !== id)));
+}
+
+/**
+ * ¿Ha cambiado algo en el tablero? Cuántas hay, la última tocada y cuándo cambiaron las
+ * etiquetas: tres consultas de una fila. La pantalla abierta pregunta esto cada pocos
+ * segundos (useEnVivo) y solo pide el tablero entero si sale otra cosa. Borrar cambia la
+ * cuenta; crear o mover, la última.
+ */
+export async function huellaDeTareas() {
+  if (hasSupabase()) {
+    const db = supa();
+    const [cuantas, ultima, etiquetas] = await Promise.all([
+      db.from("tareas").select("id", { count: "exact", head: true }),
+      db.from("tareas").select("actualizado").order("actualizado", { ascending: false }).limit(1).maybeSingle(),
+      db.from("plataforma").select("actualizado").eq("clave", "etiquetas_tareas").maybeSingle(),
+    ]);
+    const n = sinError(cuantas, "huella tareas: contar") ?? 0;
+    const a = sinError(ultima, "huella tareas: última")?.actualizado ?? "";
+    const e = sinError(etiquetas, "huella tareas: etiquetas")?.actualizado ?? "";
+    return `${n}|${a}|${e}`;
+  }
+  const [tareas, plataforma] = await enFila(() => Promise.all([leer("tareas", []), leer("plataforma", {})]));
+  const a = tareas.reduce((max, t) => ((t.actualizado || "") > max ? t.actualizado : max), "");
+  return `${tareas.length}|${a}|${plataforma.etiquetas_tareas?.actualizado ?? ""}`;
+}
+
+/** Las etiquetas del tablero (las de partida hasta que alguien las cambie). */
+export async function etiquetasDeTareas() {
+  return (await leerPlataforma("etiquetas_tareas")) ?? ETIQUETAS_DE_PARTIDA;
+}
+
+/** `etiquetas` ya pasadas por `leerEtiquetas`. */
+export async function guardarEtiquetasDeTareas(etiquetas) {
+  await escribirPlataforma("etiquetas_tareas", etiquetas);
+  return etiquetas;
+}
+
 /** Los tres planes como están ahora (los de partida si nadie los ha tocado). */
 export async function planesGlobales() {
   if (planesEnMemoria && planesEnMemoria.hasta > Date.now()) return planesEnMemoria.valor;
@@ -317,6 +432,8 @@ function fusionarConfig(actual, patch) {
     contacto: patch.contacto !== undefined ? patch.contacto : actual.contacto,
     // El último "ABIERTO hasta 14:00" que el reloj empujó a los pases (lib/motorAvisos.js).
     estadoPase: patch.estadoPase !== undefined ? patch.estadoPase : actual.estadoPase,
+    // La tarjeta del dueño (lib/dueno/tarjeta.js): el objeto entero cada vez, lo escribe el servidor.
+    tarjetaDueno: patch.tarjetaDueno !== undefined ? patch.tarjetaDueno : actual.tarjetaDueno,
     // Quién es la tienda ante la ley (lib/legal.js): lo pone el admin, lo lee /privacidad.
     legal: patch.legal !== undefined ? patch.legal : actual.legal,
     // Cuándo se archivó: a los DIAS_BAJA_TIENDA se borra sola (lib/limpieza.js).

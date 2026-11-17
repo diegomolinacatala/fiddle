@@ -35,10 +35,12 @@ import { cssScroll } from "./estiloScroll";
 // (un enlace, la barra del móvil), para que la página cuente y no empuje.
 // WhatsApp queda de segunda opción para quien prefiere hablar.
 //
+// «Entrar» va a /login, que a quien ya está dentro lo manda a su sitio
+// (a su panel o a su caja) sin pedirle la contraseña otra vez.
 // Página estática: nada de lo de aquí depende de quién la mira.
 // ============================================================================
 
-const ENTRAR = "/";
+const ENTRAR = "/login";
 const DISENA = "/home/tarjeta";
 
 // Las secciones, en la cabecera (pantalla ancha), en el menú del móvil y al pie.

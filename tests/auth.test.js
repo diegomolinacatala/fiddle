@@ -157,7 +157,8 @@ describe("sesión firmada", () => {
 
   it("acepta todavía el formato de antes (`negocio.rol.exp.firma`) con la emisión deducida; quitarlo a partir del 15-11-2026", async () => {
     vi.stubEnv("AUTH_SECRET", "el-de-vercel");
-    const ahora = Date.now();
+    // Fecha fija, anterior al límite: con el reloj de verdad este test caducó el 15-11-2026.
+    const ahora = Date.UTC(2026, 9, 20);
     const exp = ahora + 10 * DIA; // una caja que entró hace 20 días
     const payload = `nube.caja.${exp}`;
     const viejo = `${payload}.${createHmac("sha256", "el-de-vercel").update(payload).digest("hex")}`;

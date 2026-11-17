@@ -90,6 +90,9 @@ const DEL_ADMIN = [
   ["admin/accesos", "POST", () => "/api/admin/accesos", () => ({ slug: "nube", rol: "caja" })],
   ["admin/cifrar", "POST", () => "/api/admin/cifrar"],
   ["admin/crm", "GET", () => "/api/admin/crm"],
+  ["admin/dueno", "GET", () => "/api/admin/dueno?slug=nube"],
+  ["admin/dueno", "PUT", () => "/api/admin/dueno", () => ({ slug: "nube", activa: true })],
+  ["admin/dueno", "POST", () => "/api/admin/dueno", () => ({ slug: "nube", accion: "llave" })],
   ["admin/interesados", "GET", () => "/api/admin/interesados"],
   ["admin/interesados", "DELETE", () => "/api/admin/interesados?id=x"],
   ["admin/invitacion", "GET", () => "/api/admin/invitacion?slug=nube"],
@@ -101,12 +104,19 @@ const DEL_ADMIN = [
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plan: "esencial" })],
   ["admin/planes", "GET", () => "/api/admin/planes"],
   ["admin/planes", "PUT", () => "/api/admin/planes", () => ({})],
+  ["admin/tareas", "GET", () => "/api/admin/tareas"],
+  ["admin/tareas", "POST", () => "/api/admin/tareas", () => ({ titulo: "x" })],
+  ["admin/tareas", "PATCH", () => "/api/admin/tareas?id=x", () => ({ columna: "hecha" })],
+  ["admin/tareas", "DELETE", () => "/api/admin/tareas?id=x"],
+  ["admin/tareas/etiquetas", "PUT", () => "/api/admin/tareas/etiquetas", () => ([])],
   ["estado", "GET", () => "/api/estado"],
 ];
 
 // Públicas a propósito (lib/acceso.js dice por qué cada una) o con su propia llave.
+// `dueno/[...ruta]` va aquí porque es el web service de Apple (lo protege el token del
+// pase); `pase` y `prueba`, que son del manager, se comprueban en tests/dueno-servicio.test.js.
 const PUBLICAS = [
-  "cron/avisos", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
+  "cron/avisos", "dueno/[...ruta]", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
   "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
   "tutorial", "wallet/v1/devices/[dispositivo]/registrations/[passType]/[serial]",
   "wallet/v1/devices/[dispositivo]/registrations/[passType]", "wallet/v1/log", "wallet/v1/passes/[passType]/[serial]",

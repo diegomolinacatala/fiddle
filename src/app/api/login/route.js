@@ -3,7 +3,7 @@ import {
   resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, cookieSesion, secretoSesion, COOKIE, ADMINS,
 } from "@/lib/auth";
 import { listNegocios, getNegocio, getCliente } from "@/lib/store";
-import { destinoSeguro, negocioDeRuta } from "@/lib/acceso";
+import { destinoSeguro, negocioDeRuta, sitioDeSesion } from "@/lib/acceso";
 import { comprobarAcceso } from "@/lib/accesos";
 import { COOKIE_QUIEN } from "@/lib/plantilla";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
@@ -93,7 +93,7 @@ const FICHA = /^\/w\/([0-9a-f-]{36})$/i;
  * otra tienda", o sellándose a sí mismo).
  */
 async function destinoTrasLogin(acceso, next) {
-  const suSitio = acceso.rol === "admin" ? "/admin" : `/${acceso.negocio}/${acceso.rol === "manager" ? "manager" : "caja"}`;
+  const suSitio = sitioDeSesion(acceso);
   const pedido = destinoSeguro(next);
   if (!pedido) return suSitio;
   if (acceso.rol === "admin") return pedido;

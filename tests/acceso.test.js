@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda, leerRecordados, recordarUsuario,
-  MAX_RECORDADOS,
+  MAX_RECORDADOS, sitioDeSesion,
 } from "@/lib/acceso";
 import { resolverUsuario, usuarioDe } from "@/lib/auth";
 
@@ -17,6 +17,16 @@ describe("reglaDeRuta", () => {
       "/api/salud", "/nube"]) {
       expect(regla(r), r).toEqual({ tipo: "publica" });
     }
+  });
+
+  it("la tarjeta del dueño: el web service es público, el pase, la vista previa y la prueba son del manager y lo demás no queda abierto", () => {
+    expect(regla("/api/dueno/v1/log", "POST")).toEqual({ tipo: "publica" });
+    expect(regla("/api/dueno/v1/passes/pass.x/dueno-nube-0123456789abcdef")).toEqual({ tipo: "publica" });
+    expect(regla("/api/dueno/pase?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/prueba?b=nube", "POST")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/vista?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/otra")).toEqual({ tipo: "sesion" });
+    expect(regla("/api/dueno")).toEqual({ tipo: "sesion" });
   });
 
   it("lo que usa la tarjeta de Android es público (el serial es la llave)", () => {
@@ -189,5 +199,14 @@ describe("los usuarios que recuerda el móvil en /login", () => {
       { u: "nube", t: "../x" },
       { u: "fade", t: "fade" },
     ]))).toEqual([{ u: "nube-caja", t: "nube" }, { u: "fade", t: "fade" }]);
+  });
+});
+
+describe("sitioDeSesion", () => {
+  // Lo usan la raíz, /login y /api/login: los tres mandan a cada uno al mismo sitio.
+  it("cada rol a lo suyo", () => {
+    expect(sitioDeSesion({ rol: "admin", negocio: null })).toBe("/admin");
+    expect(sitioDeSesion({ rol: "manager", negocio: "nube" })).toBe("/nube/manager");
+    expect(sitioDeSesion({ rol: "caja", negocio: "nube" })).toBe("/nube/caja");
   });
 });

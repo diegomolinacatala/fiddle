@@ -1,5 +1,6 @@
 "use client";
 
+import Deslizar from "@/app/Deslizar";
 import Icono from "@/app/Icono";
 import { C, aviso, legible } from "@/app/ui";
 import { svgMarca, comoDataUri } from "@/lib/apple/dibujo";
@@ -15,7 +16,9 @@ import { svgMarca, comoDataUri } from "@/lib/apple/dibujo";
 //
 // «Deshacer cambios» va al final, debajo de lo que acaba de pasar: con algo
 // hecho en la ficha, la deja como al escanearla (lib/deshacer.js). No es una
-// fila de la caja: no suma ni quita nada que no se acabe de hacer aquí.
+// fila de la caja: no suma ni quita nada que no se acabe de hacer aquí. Se
+// DESLIZA, no se pulsa (app/Deslizar.js, 12-11-2026): justo debajo está
+// «Escanear al siguiente» y en La Delicantería se tocaba sin querer.
 // ============================================================================
 
 export default function WorkerActions({ filas, premios = [], tema = null, accent = C.texto, ejecutar, toast, grande = false, onCancelarVuelta, onDeshacer, deshacerCambios = null }) {
@@ -55,15 +58,14 @@ export default function WorkerActions({ filas, premios = [], tema = null, accent
         </div>
       )}
       {deshacerCambios && (
-        <button type="button" onClick={deshacerCambios.onClick} style={botonDeshacerCambios}>
-          <Icono nombre="deshacer" tam={19} grosor={2.2} />
-          <span style={{ display: "grid", gap: 1, textAlign: "left" }}>
-            <span style={{ fontSize: 15, fontWeight: 650, color: C.texto }}>Deshacer cambios</span>
-            <span style={{ fontSize: 12.5 }}>
-              Deja la tarjeta como al escanearla{deshacerCambios.como ? ` (${deshacerCambios.como})` : ""}
-            </span>
-          </span>
-        </button>
+        <Deslizar
+          titulo="Desliza para deshacer cambios"
+          texto={`Deja la tarjeta como al escanearla${deshacerCambios.como ? ` (${deshacerCambios.como})` : ""}`}
+          etiqueta="Deshacer cambios: deja la tarjeta como al escanearla"
+          icono="deshacer"
+          onConfirmar={deshacerCambios.onClick}
+          style={{ marginTop: 12 }}
+        />
       )}
     </div>
   );
@@ -206,12 +208,6 @@ const botonPremio = (principal, accent) => ({
   border: principal ? 0 : `1.5px solid ${accent}`,
   background: principal ? accent : C.panel, color: principal ? "#fff" : legible(accent),
 });
-
-const botonDeshacerCambios = {
-  width: "100%", display: "flex", alignItems: "center", gap: 12, marginTop: 12,
-  minHeight: 52, padding: "8px 16px", borderRadius: 14, cursor: "pointer",
-  border: `1px solid ${C.bordeFuerte}`, background: C.panel, color: C.suave,
-};
 
 const botonDeshacer = {
   minHeight: 40, padding: "0 16px", borderRadius: 10, cursor: "pointer",

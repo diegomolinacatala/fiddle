@@ -287,7 +287,7 @@ export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, mod
 // "crm" está reservado aunque no sea una ruta de primer nivel: /admin/crm es la
 // vista de la plataforma, y una tienda con ese slug la taparía. "home" es la web
 // de fiddle: una tienda que se llamara así no se vería nunca.
-export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion", "home"]);
+export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion", "home", "tareas"]);
 
 /**
  * ¿Es un slug válido para un negocio? Solo mira la FORMA (minúsculas, guiones,
@@ -455,6 +455,9 @@ export function componerNegocio(slug, guardado) {
     // Lo que se lee al dar la vuelta a la tarjeta, además de "Cómo funciona".
     contacto: normalizarContacto(c.contacto).contacto ?? null,
     estadoPase: typeof c.estadoPase === "string" ? c.estadoPase : null,
+    // La tarjeta del dueño (lib/dueno/tarjeta.js). Solo lo guardado: apagada de partida
+    // en todas las tiendas. Lleva el token del pase: nunca sale del servidor.
+    tarjetaDueno: c.tarjetaDueno && typeof c.tarjetaDueno === "object" ? c.tarjetaDueno : null,
     // Quién es la tienda ante la ley: razón social, NIF, dirección y email
     // (lib/legal.js). Lo pone el admin con el contrato; lo lee /privacidad.
     legal: normalizarLegal(c.legal),

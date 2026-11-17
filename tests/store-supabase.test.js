@@ -265,4 +265,24 @@ describe("datos personales cifrados con Supabase", () => {
     expect(u2[0][1]).toEqual({ nota: expect.stringMatching(/^v1:/) });
     expect(u2.slice(1)).toEqual([["eq", "serial", "s2"], ["eq", "nota", "el del perro"], ["select", "serial"]]);
   });
+
+  it("cambiarTarea: pasar a «Hecho» mira dónde estaba y apunta cuándo; solo toca su fila", async () => {
+    encolar("tareas",
+      { data: { columna: "pendiente" }, error: null },
+      { data: [{ id: "t1", columna: "hecha" }], error: null },
+    );
+    expect(await store.cambiarTarea("t1", { columna: "hecha", orden: 2 })).toMatchObject({ id: "t1" });
+    expect(metodos(0)).toEqual(["select", "eq", "maybeSingle"]);
+    const [update, ...resto] = llamadas[1].cadena;
+    expect(update[0]).toBe("update");
+    expect(update[1]).toMatchObject({ columna: "hecha", orden: 2, terminada: expect.any(String) });
+    expect(resto).toEqual([["eq", "id", "t1"], ["select"]]);
+
+    // Cambiar el título no pregunta nada antes ni toca `terminada`.
+    llamadas.length = 0;
+    encolar("tareas", { data: [{ id: "t1" }], error: null });
+    await store.cambiarTarea("t1", { titulo: "Otro" });
+    expect(llamadas).toHaveLength(1);
+    expect(llamadas[0].cadena[0][1]).not.toHaveProperty("terminada");
+  });
 });

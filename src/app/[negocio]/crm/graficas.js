@@ -301,7 +301,8 @@ export function Cartilla({ c, conNombre }) {
   const max = Math.max(1, ...c.filas.map((f) => f.siguen + f.alejan));
   const comun = c.filas.reduce((m, f) => (f.siguen + f.alejan > m.siguen + m.alejan ? f : m), c.filas[0]);
   const { i, props } = usePuntero(c.filas.length);
-  const f = c.filas[i ?? comun.sellos - 1];
+  // Por su sitio en la lista, no por su número: a media animación el número podía no ser el suyo.
+  const f = c.filas[i ?? c.filas.indexOf(comun)];
   const cuantos = (s) => (s === c.meta ? "la cartilla llena" : contar(s, ["punto", "puntos"]));
   // «1 punto o menos» no existe (no hay ceros aquí): con 1, «en 1 punto».
   const hasta = (n) => `${contar(n, ["punto", "puntos"])}${n > 1 ? " o menos" : ""}`;

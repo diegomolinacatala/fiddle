@@ -39,10 +39,14 @@ export const dynamic = "force-dynamic";
 //   plantillaActiva  quién atiende la caja y su PIN (lib/plantilla.js): la lista se queda
 const INTERRUPTORES = ["avisosAvanzados", "plantillaActiva"];
 
+// `tarjetaDueno` lleva el token del pase del dueño: no sale del servidor ni al admin
+// (ninguna pantalla del admin lo usa; se enciende y se baja desde Ajustes del dueño).
+const sinTarjetaDueno = ({ tarjetaDueno: _tarjetaDueno, ...resto }) => resto;
+
 // Cuántos clientes tiene cada negocio: el admin necesita saberlo antes de borrar.
 async function conClientes(negocios) {
   return Promise.all(
-    negocios.map(async (n) => ({ ...n, clientes: (await listClientes(n.slug)).length })),
+    negocios.map(async (n) => ({ ...sinTarjetaDueno(n), clientes: (await listClientes(n.slug)).length })),
   );
 }
 
@@ -77,7 +81,7 @@ export async function POST(request) {
     } catch (e) {
       console.error(`[admin] tienda ${creado.negocio.slug} creada sin contraseñas:`, e);
     }
-    return NextResponse.json({ ...creado.negocio, accesos }, { status: 201 });
+    return NextResponse.json({ ...sinTarjetaDueno(creado.negocio), accesos }, { status: 201 });
   } catch (e) {
     return errorInterno("admin negocios POST", e);
   }
@@ -100,7 +104,7 @@ export async function PUT(request) {
       const notas = { ...actual.notas };
       if (n.texto) notas[n.clave] = n.texto;
       else delete notas[n.clave];
-      return NextResponse.json(await saveNegocio(slug, { notas }));
+      return NextResponse.json(sinTarjetaDueno(await saveNegocio(slug, { notas })));
     }
 
     // Los datos legales (razón social, NIF…) no salen en el pase: se guardan solos,
@@ -109,7 +113,7 @@ export async function PUT(request) {
       const legal = normalizarLegal(body.legal);
       const guardado = await saveNegocio(slug, { legal });
       await auditar(sesion, slug, "config", "legal");
-      return NextResponse.json(guardado);
+      return NextResponse.json(sinTarjetaDueno(guardado));
     }
 
     // Su plan (lib/planes.js), solo. Sí se ve en el pase (la promo, el «Abierto
@@ -120,7 +124,7 @@ export async function PUT(request) {
       const guardado = await saveNegocio(slug, { plan: body.plan });
       await auditar(sesion, slug, "config", `plan=${body.plan}`);
       const aviso = await notificarNegocio(guardado, { cartilla: true });
-      return NextResponse.json({ ...guardado, aviso });
+      return NextResponse.json({ ...sinTarjetaDueno(guardado), aviso });
     }
 
     // Un interruptor del admin, solo: tampoco sale en el pase.
@@ -128,7 +132,7 @@ export async function PUT(request) {
     if (interruptor && Object.keys(body).every((k) => k === "slug" || k === interruptor)) {
       const guardado = await saveNegocio(slug, { [interruptor]: body[interruptor] });
       await auditar(sesion, slug, "config", `${interruptor}=${body[interruptor]}`);
-      return NextResponse.json(guardado);
+      return NextResponse.json(sinTarjetaDueno(guardado));
     }
 
     const r = patchNegocioAdmin(body, Object.keys(ACCIONES), {
@@ -143,7 +147,7 @@ export async function PUT(request) {
 
     // Si cambió algo que se ve en el pase, los teléfonos tienen que enterarse.
     const aviso = nuevo.archivado ? null : await notificarNegocio(nuevo, { cartilla: true });
-    return NextResponse.json({ ...nuevo, aviso });
+    return NextResponse.json({ ...sinTarjetaDueno(nuevo), aviso });
   } catch (e) {
     return errorInterno("admin negocios PUT", e);
   }
