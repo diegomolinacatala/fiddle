@@ -695,7 +695,7 @@ números» tiene algo que se puede hacer hoy, un aviso con el enlace a Avisos �
   registrados y lo último que calculó el reloj. Lleva el token del pase: **nunca sale a un
   navegador** (`negocioDelPersonal` lo quita; la caja es una cuenta compartida) y ninguna
   ruta que guarda config lo deja escribir.
-- **Apagada de partida** (`tarjetaDueno.activa`). Solo la semilla de dev la enciende.
+- **Apagada de partida** (`tarjetaDueno.activa`). La enciende el admin en `/admin/<slug>` → «Tarjeta del dueño» (y la semilla de dev). Apagar no borra: al reencender es la misma (serial y token). «Cambiar la llave» es la forma de anular un pase perdido: token nuevo y sin iPhone.
 - **Solo cifras**: ni nombres, ni códigos, ni seriales de clientes en el pase ni en sus enlaces.
 - **Las claves de los campos son fijas y los campos están siempre**: un campo nuevo no
   suena; suena el que cambia de valor con `changeMessage` en la versión nueva. `semana`

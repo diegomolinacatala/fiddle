@@ -21,6 +21,17 @@ export function nuevaTarjeta(slug) {
   };
 }
 
+/** Cuántos iPhone la tienen y si está encendida: lo único que ve el admin (nunca serial ni token). */
+export function resumenTarjeta(negocio) {
+  const t = negocio?.tarjetaDueno;
+  const lista = Array.isArray(t?.dispositivos) ? t.dispositivos : [];
+  // Un iPhone se cuenta una vez aunque tenga una fila por cada Pass Type ID.
+  return { activa: t?.activa === true && Boolean(t.serial && t.token), iphones: new Set(lista.map((d) => d.id)).size };
+}
+
+/** El parche de una llave nueva: otro token, sin iPhone, el mismo serial. Quien tenga el pase viejo lo pierde. */
+export const conLlaveNueva = () => ({ token: randomBytes(24).toString("hex"), dispositivos: [] });
+
 /** La tarjeta con todo lo que puede faltar puesto, o null si la tienda no la tiene activa. */
 export function tarjetaDe(negocio) {
   const t = negocio?.tarjetaDueno;
