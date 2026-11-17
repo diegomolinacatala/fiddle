@@ -21,8 +21,9 @@ export default function PasoHola({ seguir, pedirFoco, alEnfocar, alFoco }) {
     <>
       <div className="exp-cuerpo exp-hola">
         <div className="prob-cabeza">
-          <h1 data-titulo tabIndex={-1}>Clientes que no se pierden</h1>
-          <p>Tu tarjeta de fidelización, en el móvil de tus clientes.</p>
+          {/* Se llega desde «Diseña tu tarjeta» de la web: el titular de allí aquí sobraría. */}
+          <h1 data-titulo tabIndex={-1}>Empieza por el nombre</h1>
+          <p>Y mira cómo sale en tu tarjeta mientras lo escribes.</p>
         </div>
         <label className="prob-nombre exp-nombre">
           <span className="exp-etiqueta">¿Cómo se llama tu cafetería?</span>

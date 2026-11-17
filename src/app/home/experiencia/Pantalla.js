@@ -67,7 +67,8 @@ export default function Pantalla({ paso, sentido, ir }) {
       style={{ "--tono": tema.accent, "--tono-2": tema.cardBg }}
     >
       <header className="prob-arriba">
-        <a href="/home" className="prob-volver" aria-label="fiddle, volver al principio" onClick={(ev) => { ev.preventDefault(); ir("hola"); }}>
+        {/* La experiencia vive aparte de la web: el logo vuelve a ella, no al primer paso. */}
+        <a href="/home" className="prob-volver" aria-label="Volver a la web de fiddle">
           <LogoFiddle tam={24} color={PALETA.verde} id="efe-experiencia" />
         </a>
         <a href="/" className="exp-entrar">Entrar</a>

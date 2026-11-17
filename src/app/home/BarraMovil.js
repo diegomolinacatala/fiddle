@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 // ============================================================================
 // LA BARRA DE ABAJO EN EL MÓVIL (/home)
 // ----------------------------------------------------------------------------
-// En el móvil, el botón de WhatsApp de la portada se queda atrás en cuanto se
+// En el móvil, el botón principal de la portada se queda atrás en cuanto se
 // baja; esta barra lo trae al pulgar. Solo aparece cuando ese botón ya no se ve
-// (por arriba) y se va al llegar a «Contacto» o al pie, donde ya está a la vista,
+// (por arriba) y se va al llegar a la invitación del final, a «Contacto» o al pie,
+// donde lo que lleva ya está a la vista (y la barra tapaba ese mismo botón),
 // y mientras el menú está abierto (CSS, html.menu-abierto). En pantallas anchas
 // no existe (CSS).
 // Escondida no se enfoca ni se lee (inert): sería un botón fantasma.
@@ -18,7 +19,7 @@ export default function BarraMovil({ children }) {
 
   useEffect(() => {
     const portada = document.querySelector(".portada .acciones");
-    const finales = [document.getElementById("contacto"), document.querySelector(".pie")].filter(Boolean);
+    const finales = [document.querySelector(".invita"), document.getElementById("contacto"), document.querySelector(".pie")].filter(Boolean);
     if (!portada) return undefined;
 
     let pasada = false;
