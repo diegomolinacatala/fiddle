@@ -10,7 +10,7 @@ import { cssExperiencia } from "../experiencia/estilo";
 import { cssFinal } from "../experiencia/estiloFinal";
 
 // ============================================================================
-// «DISEÑA TU TARJETA» (/home/tarjeta)
+// LA DEMO (/home/tarjeta)
 // ----------------------------------------------------------------------------
 // A donde lleva la acción principal de la web (/home). Una pantalla como la de
 // una app, sin scroll, con UNA protagonista (la tarjeta de quien entra) y una
@@ -24,7 +24,7 @@ import { cssFinal } from "../experiencia/estiloFinal";
 // ============================================================================
 
 export const metadata = {
-  title: "Diseña tu tarjeta en fiddle",
+  title: "Prueba la demo de fiddle",
   description: "Prueba cómo quedaría la tarjeta de fidelización de tu cafetería: el nombre, los colores, el icono y los puntos. Y mira cómo les llega a tus clientes.",
   alternates: { canonical: "/home/tarjeta" },
 };

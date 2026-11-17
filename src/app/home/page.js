@@ -29,8 +29,10 @@ import { cssScroll } from "./estiloScroll";
 // es (portada), cómo funciona (de que la guardan a que sabes quién vuelve), que
 // ya funciona en una cafetería de verdad, cuánto cuesta y quiénes somos.
 //
-// La acción principal NO es escribirnos: es «Diseña tu tarjeta» (/home/tarjeta),
-// donde la diseña, la prueba y nos deja su contacto. Es lo único que destaca en
+// La acción principal NO es escribirnos: es «Prueba la demo» (/home/tarjeta),
+// donde diseña su tarjeta, la prueba y nos deja su contacto. Se dice «demo» y no
+// «Diseña tu tarjeta» a propósito (17-11-2026): diseñar suena a trabajo; una
+// demo se mira y se toca. Es lo único que destaca en
 // la portada y en la cabecera; según se baja vuelve a ofrecerse, pero callado
 // (un enlace, la barra del móvil), para que la página cuente y no empuje.
 // WhatsApp queda de segunda opción para quien prefiere hablar.
@@ -72,12 +74,12 @@ export default async function Home() {
           </nav>
           <a href={ENTRAR} className="cabecera-entrar">Entrar</a>
           {/* En pantalla ancha, la acción de la portada se queda a mano al bajar. */}
-          <a href={DISENA} className="entrar">Diseña tu tarjeta</a>
+          <a href={DISENA} className="entrar">Prueba la demo</a>
           <Menu
             enlaces={[...SECCIONES, [ENTRAR, "Entrar"]]}
             contacto={
               <a href={DISENA} className="boton">
-                Diseña tu tarjeta <Flecha />
+                Prueba la demo <Flecha />
               </a>
             }
           />
@@ -99,13 +101,13 @@ export default async function Home() {
             </p>
             <div className="acciones">
               <a href={DISENA} className="boton venta-principal">
-                Diseña tu tarjeta <Flecha />
+                Prueba la demo <Flecha />
               </a>
               <a href={enlaceWhatsApp()} className="boton-suave venta-hablar" target="_blank" rel="noopener noreferrer">
                 <IconoMensaje /> Hablemos por WhatsApp
               </a>
             </div>
-            <p className="venta-nota">Un minuto, sin registrarte. Y la ves como la verán tus clientes.</p>
+            <p className="venta-nota">Con el nombre de tu cafetería. Un minuto, sin registrarte.</p>
           </div>
           <div className="portada-visual">
             <Telefono qr={qr} />
@@ -168,7 +170,7 @@ export default async function Home() {
             ¿Cómo sería la tuya<Punto />
           </h2>
           <a href={DISENA} className="boton-suave probar">
-            Diséñala en un minuto <Flecha />
+            Pruébalo con tu cafetería <Flecha />
           </a>
         </section>
 
@@ -216,7 +218,7 @@ export default async function Home() {
             {SECCIONES.map(([href, texto]) => (
               <a key={href} href={href}>{texto}</a>
             ))}
-            <a href={DISENA}>Diseña tu tarjeta</a>
+            <a href={DISENA}>La demo</a>
             <a href={ENTRAR}>Entrar</a>
           </nav>
           <p className="pie-firma">© {new Date().getFullYear()} fiddle, Valencia</p>
@@ -226,7 +228,7 @@ export default async function Home() {
       {/* En el móvil, en cuanto la portada se queda atrás, la acción vuelve al pulgar. */}
       <BarraMovil>
         <a href={DISENA} className="boton">
-          Diseña tu tarjeta <Flecha />
+          Prueba la demo <Flecha />
         </a>
       </BarraMovil>
     </div>

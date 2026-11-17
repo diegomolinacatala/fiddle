@@ -81,7 +81,7 @@ export default function Pantalla({ paso, sentido, ir }) {
         <AvisoEnEscena visible={enPrueba} movilRef={movil} />
       </Escena>
 
-      <aside className="prob-panel exp-panel" aria-label="Diseña tu tarjeta">
+      <aside className="prob-panel exp-panel" aria-label="La demo de tu tarjeta">
         <Progreso paso={paso} alAtras={() => ir(anteriorDe(paso))} />
         <section key={paso} className={`exp-paso ${sentido > 0 ? "desde-dcha" : "desde-izda"}`}>
           {cuerpoDe({ paso: actual, ir, latido, quieto, pedirFoco, alEnfocar, setEnCampo })}

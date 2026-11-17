@@ -21,7 +21,7 @@ export default function PasoHola({ seguir, pedirFoco, alEnfocar, alFoco }) {
     <>
       <div className="exp-cuerpo exp-hola">
         <div className="prob-cabeza">
-          {/* Se llega desde «Diseña tu tarjeta» de la web: el titular de allí aquí sobraría. */}
+          {/* Se llega desde «Prueba la demo» de la web: el titular de allí aquí sobraría. */}
           <h1 data-titulo tabIndex={-1}>Empieza por el nombre</h1>
           <p>Y mira cómo sale en tu tarjeta mientras lo escribes.</p>
         </div>
@@ -43,7 +43,7 @@ export default function PasoHola({ seguir, pedirFoco, alEnfocar, alFoco }) {
       </div>
       <div className="exp-accion">
         <button type="button" className="prob-siguiente prob-ancho exp-principal" onClick={seguir}>
-          Diseñar mi tarjeta <Flecha />
+          Empezar <Flecha />
         </button>
         <p className="exp-nota">Un minuto. Sin registrarte.</p>
       </div>

@@ -7,7 +7,7 @@ import { CONSULTA_MOVIL } from "./consultaMovil";
 // al scroll (animation-timeline: view() / scroll()), sin librerías:
 //   - el aire entre secciones baja y las entradas empiezan al asomar, no al 70 %;
 //   - los titulares se «escriben» (de tono apagado a tinta, de izquierda a derecha);
-//   - las piezas del bento suben y crecen escalonadas; la del panel, la última;
+//   - los pasos de «Así de simple» suben escalonados, su hilo de puntos se dibuja y la banda del panel entra la última;
 //   - el móvil de la portada se despide al salir; las barras de La Delicantería
 //     crecen; los precios entran como un abanico que se cierra;
 //   - una línea de progreso de lectura bajo la cabecera.
@@ -20,7 +20,7 @@ import { CONSULTA_MOVIL } from "./consultaMovil";
 // pisar los :active ni las transiciones que ya llevan transform.
 // ============================================================================
 
-// Pantalla ancha: donde los pasos son un bento y los planes, tres columnas.
+// Pantalla ancha: donde los pasos van en tres columnas y los planes, tres columnas.
 const ANCHA = "(min-width:760px) and (not ((pointer:coarse) and (max-height:500px)))";
 
 export const cssScroll = `
@@ -69,11 +69,6 @@ export const cssScroll = `
       .oscuro .titulo-bloque{--sc-tono:var(--claro)}
     }
 
-    /* ---------- el bento de «Así de simple», escalonado ---------- */
-    .cf-pieza:nth-child(even){--k:1}
-    .cf-pieza:nth-child(odd){--k:0}
-    .cf-pieza:nth-child(4){--k:2}
-
     /* ---------- barras de La Delicantería ---------- */
     .cifra-barra{transform-origin:50% 100%;animation:sc-barra linear both;animation-timeline:view();
       animation-range:entry calc(var(--i,0) * 14%) entry calc(70% + var(--i,0) * 14%)}
@@ -85,9 +80,12 @@ export const cssScroll = `
 
   @supports (animation-timeline:view()){
     @media ${ANCHA}{
-      .cf-pieza.revela{animation:sc-pieza linear both;animation-timeline:view();
-        animation-range:entry calc(var(--k) * 16%) entry calc(42% + var(--k) * 16%)}
-      .cf-verde .cf-cifras dd{transform-origin:0 100%;animation:sc-zoom linear both;animation-timeline:view();
+      /* Los tres pasos suben escalonados (--k), el hilo se dibuja detrás y la banda entra la última. */
+      .cf-paso.revela,.cf-banda.revela{animation:sc-sube linear both;animation-timeline:view();
+        animation-range:entry calc(var(--k) * 14%) entry calc(42% + var(--k) * 14%)}
+      .cf-paso .cf-marca::after{animation:sc-hilo linear both;animation-timeline:view();
+        animation-range:entry calc(20% + var(--k) * 14%) entry calc(90% + var(--k) * 6%)}
+      .cf-banda .cf-cifras dd{transform-origin:0 100%;animation:sc-zoom linear both;animation-timeline:view();
         animation-range:entry 30% entry 100%}
     }
     /* El móvil de la portada se aleja al salir. Solo cuando está al lado del texto. */
@@ -104,7 +102,8 @@ export const cssScroll = `
 }
 
 @keyframes sc-escribe{from{background-position:100% 0}to{background-position:0 0}}
-@keyframes sc-pieza{from{opacity:0;translate:0 40px;scale:.94}to{opacity:1;translate:0 0;scale:1}}
+@keyframes sc-sube{from{opacity:0;translate:0 40px}to{opacity:1;translate:0 0}}
+@keyframes sc-hilo{from{scale:0 1}to{scale:1 1}}
 @keyframes sc-zoom{from{scale:.82}to{scale:1}}
 @keyframes sc-barra{from{scale:1 0}to{scale:1 1}}
 @keyframes sc-escala{from{opacity:0;scale:.9}to{opacity:1;scale:1}}

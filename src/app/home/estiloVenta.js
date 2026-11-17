@@ -2,14 +2,14 @@ import { PALETA as P } from "./paleta";
 import { CONSULTA_MOVIL } from "./consultaMovil";
 
 // ============================================================================
-// LO QUE EMPUJA HACIA «DISEÑA TU TARJETA» EN LA WEB (/home)
+// LO QUE EMPUJA HACIA LA DEMO EN LA WEB (/home)
 // ----------------------------------------------------------------------------
 // Va después de estilo.js y estiloMovil.js y solo retoca lo que hace falta para
 // que la mirada vaya a una sola acción:
-// - Portada: «Diseña tu tarjeta» es el botón grande y con sombra; WhatsApp, al
+// - Portada: «Prueba la demo» es el botón grande y con sombra; WhatsApp, al
 //   lado y callado.
 // - Cabecera: en pantalla ancha, la píldora verde (.entrar, la de siempre) es
-//   «Diseña tu tarjeta» y «Entrar» pasa a ser texto. En el móvil la píldora no
+//   «Prueba la demo» y «Entrar» pasa a ser texto. En el móvil la píldora no
 //   cabe junto al logo: ahí se queda «Entrar» de texto, y la acción la llevan la
 //   portada y la barra de abajo (BarraMovil).
 // - Al final, antes de quiénes somos, una invitación corta (.invita).
