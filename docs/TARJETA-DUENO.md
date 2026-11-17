@@ -51,10 +51,14 @@ iPhone, pero nadie la empuja.
 
 ## Encenderla
 
-Apagada de partida en todas las tiendas. Hoy solo la trae encendida la semilla de dev
-(`lib/datosDePrueba.js`), con un serial y un token fijos (como el PIN 1234: en dev cada
-función de Vercel tiene su `/tmp`). Para una tienda de verdad hace falta guardar
-`tarjetaDueno = nuevaTarjeta(slug)` en su configuración: **todavía no hay botón en `/admin`**.
+Apagada de partida en todas las tiendas. La enciende el admin en `/admin/<slug>` →
+**Tarjeta del dueño** (`/api/admin/dueno`): la primera vez crea serial y token; apagar y
+volver a encender conserva los mismos, así que la del iPhone sigue valiendo. **Cambiar la
+llave** (con confirmación) pone un token nuevo y vacía los iPhone registrados: es la forma
+de anular un pase perdido o reenviado a quien no debía; el dueño tiene que añadirla otra
+vez desde Ajustes. El admin solo ve si está encendida y en cuántos iPhone; nunca el token.
+La semilla de dev (`lib/datosDePrueba.js`) también la trae encendida, con un serial y un
+token fijos (como el PIN 1234: en dev cada función de Vercel tiene su `/tmp`).
 
 Con ella encendida, el dueño la añade desde **Ajustes → Tu tarjeta de dueño**.
 
@@ -76,8 +80,6 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ver-tarjeta-dueno.mj
 
 ## Lo que falta
 
-- Un interruptor en `/admin/<slug>` para encenderla y para **cambiar el token** si el pase
-  se pierde o se reenvía (hoy solo se puede a mano).
 - Google Wallet y Android.
 - Probarla en un iPhone: cómo coloca iOS la fila de dos campos y los enlaces del reverso.
 - Decidir si es de un plan.
