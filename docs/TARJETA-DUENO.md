@@ -33,6 +33,19 @@ Hace dos cosas:
 
 Todo lo guarda la tienda en su configuración, en `tarjetaDueno`. No hay tabla nueva.
 
+## Los dos botones de debajo (iOS 27)
+
+Desde iOS 27 un pase puede llevar hasta dos «acciones destacadas» (`featuredActions`), que
+Wallet pinta debajo de la tarjeta abierta. El texto y el icono los pone Apple según el
+`type`; nosotros solo elegimos el tipo y adónde lleva (`accionesDelDueno` en `pase.js`):
+
+- `viewOffersRewards`: el aviso preparado (Avisos → Enviar ya relleno) o, sin aviso, Avisos.
+- `call`: el teléfono de fiddle.
+
+iOS 26 y anteriores las ignoran y la tarjeta sale igual (en iOS 26 los enlaces nuevos de
+Apple son solo para tarjetas de embarque y entradas). Solo valen los tipos de la lista de
+Apple: uno desconocido puede dejar la tarjeta sin ningún botón.
+
 ## Cuándo suena
 
 Wallet solo avisa cuando un campo **cambia de valor** y la versión nueva lleva

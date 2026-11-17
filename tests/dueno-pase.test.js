@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { camposDelDueno, construirPassJsonDueno } from "../src/lib/dueno/pase";
+import { camposDelDueno, construirPassJsonDueno, accionesDelDueno } from "../src/lib/dueno/pase";
 
 const informe = {
   desde: "2026-11-09", hasta: "2026-11-15", etiqueta: "9 al 15 nov",
@@ -95,5 +95,31 @@ describe("pass.json de la tarjeta del dueño", () => {
     const texto = JSON.stringify(construirPassJsonDueno({ informe: sucio, aviso }, negocio, opciones));
     expect(texto).not.toContain("Ana");
     expect(texto).not.toContain("K7Q");
+  });
+});
+
+describe("botones de debajo de la tarjeta (featuredActions, iOS 27)", () => {
+  const base = { base: "https://fiddle.test" };
+
+  it("con aviso, el primero lleva al aviso preparado y el segundo llama a fiddle", () => {
+    const acciones = accionesDelDueno({ texto: "x", enlace: "https://fiddle.test/delicanteria/avisos?grupo=riesgo" }, negocio, base);
+    expect(acciones).toEqual([
+      { identifier: "aviso", type: "viewOffersRewards", url: "https://fiddle.test/delicanteria/avisos?grupo=riesgo" },
+      { identifier: "llamar-fiddle", type: "call", url: expect.stringMatching(/^tel:\+\d{9,15}$/) },
+    ]);
+  });
+
+  it("sin aviso (o con la prueba, que no lleva enlace) el primero abre Avisos con el mismo identificador", () => {
+    for (const aviso of [null, { texto: "Esto es una prueba.", enlace: "" }]) {
+      expect(accionesDelDueno(aviso, negocio, base)[0]).toEqual({ identifier: "aviso", type: "viewOffersRewards", url: "https://fiddle.test/delicanteria/avisos" });
+    }
+  });
+
+  it("van en el pass.json, dos como mucho y solo con tipos de la lista de Apple", () => {
+    const { featuredActions } = construirPassJsonDueno({ informe, aviso: null }, negocio, opciones);
+    const deApple = ["viewSchedule", "watchTrailer", "listenToMusic", "call", "place", "addToBalance", "order", "shop", "membershipBenefits", "bookAppointment", "bookCar", "bookFlight", "bookStay", "viewOffersRewards"];
+    expect(featuredActions.length).toBeLessThanOrEqual(2);
+    expect(featuredActions.every((a) => deApple.includes(a.type))).toBe(true);
+    expect(new Set(featuredActions.map((a) => a.identifier)).size).toBe(featuredActions.length);
   });
 });

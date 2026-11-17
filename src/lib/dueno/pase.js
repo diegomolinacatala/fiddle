@@ -1,4 +1,5 @@
 import { PALETA } from "../../app/home/paleta";
+import { WHATSAPP } from "../../app/home/datos";
 import { fraseDelInforme, lineasDelInforme } from "./informe";
 
 // ============================================================================
@@ -53,6 +54,22 @@ function campoPanel(negocio, base) {
     value: enlaces.map(([t, url]) => `${t}: ${url}`).join("\n"),
     attributedValue: enlaces.map(([t, url]) => enlace(url, t)).join("\n"),
   };
+}
+
+/**
+ * Los botones que Wallet pinta DEBAJO de la tarjeta («featuredActions», iOS 27; iOS 26 y
+ * antes los ignoran y la tarjeta sale igual). Apple pone el texto y el icono según `type`:
+ * aquí solo se elige el tipo y adónde lleva. Como mucho dos, en orden de importancia, y
+ * solo tipos de la lista de Apple: uno desconocido puede dejar la tarjeta sin ninguno.
+ *   viewOffersRewards  el aviso preparado (Avisos → Enviar ya relleno) o, sin aviso, Avisos
+ *   call               el teléfono de fiddle, para cuando algo no cuadra
+ * Los identificadores no cambian aunque cambie el enlace: es el mismo botón.
+ */
+export function accionesDelDueno(aviso, negocio, { base = "" } = {}) {
+  return [
+    { identifier: "aviso", type: "viewOffersRewards", url: aviso?.enlace || `${base}/${negocio.slug}/avisos` },
+    { identifier: "llamar-fiddle", type: "call", url: `tel:+${WHATSAPP}` },
+  ];
 }
 
 /**
@@ -111,5 +128,6 @@ export function construirPassJsonDueno({ informe, aviso }, negocio, { passTypeId
     foregroundColor: rgb(PALETA.papel),
     labelColor: rgb(PALETA.avena),
     storeCard: camposDelDueno({ informe, aviso }, negocio, { base: appUrl }),
+    featuredActions: accionesDelDueno(aviso, negocio, { base: appUrl }),
   };
 }

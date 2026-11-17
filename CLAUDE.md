@@ -697,6 +697,8 @@ números» tiene algo que se puede hacer hoy, un aviso con el enlace a Avisos �
   ruta que guarda config lo deja escribir.
 - **Apagada de partida** (`tarjetaDueno.activa`). La enciende el admin en `/admin/<slug>` → «Tarjeta del dueño» (y la semilla de dev). Apagar no borra: al reencender es la misma (serial y token). «Cambiar la llave» es la forma de anular un pase perdido: token nuevo y sin iPhone.
 - **Solo cifras**: ni nombres, ni códigos, ni seriales de clientes en el pase ni en sus enlaces.
+- **Los botones de debajo son de Apple** (`featuredActions`, iOS 27, dos como mucho,
+  `accionesDelDueno`): el texto y el icono salen del `type`, que tiene que ser de su lista.
 - **Las claves de los campos son fijas y los campos están siempre**: un campo nuevo no
   suena; suena el que cambia de valor con `changeMessage` en la versión nueva. `semana`
   cambia cada lunes (su mensaje es el informe); `aviso` lleva `changeMessage` solo con
