@@ -29,8 +29,8 @@ const ESTADOS = {
  * Una tienda de ejemplo y su cliente, ya recortados como los ve el navegador.
  * @param {{ slug: string, nombre: string, premio: string, tema: object, cartillas?: object[] }} tienda
  */
-export function ejemplo({ slug, nombre, premio, tema, cartillas }, sellos, { sellos2 = 0, estado = null, meta = 8 } = {}) {
-  const config = { meta, premio, tema, ...(cartillas ? { cartillas } : {}) };
+export function ejemplo({ slug, nombre, premio, tema, cartillas, promo }, sellos, { sellos2 = 0, estado = null, meta = 8 } = {}) {
+  const config = { meta, premio, tema, ...(cartillas ? { cartillas } : {}), ...(promo ? { promo } : {}) };
   const negocio = componerNegocio(slug, { nombre, tipo: "sellos", config });
   const cliente = { serial: `ejemplo-${slug}`, codigo: "K7P", sellos, sellos2, premios: 0 };
   return { negocio: negocioDeTarjeta(negocio), cliente: clienteDeTarjeta(cliente), estado: estado ? ESTADOS[estado] : null };
@@ -42,6 +42,15 @@ export function ejemplo({ slug, nombre, premio, tema, cartillas }, sellos, { sel
  */
 export function avisoDe({ negocio, cliente }) {
   const campo = camposDelPase(cliente, negocio).secondaryFields.find((f) => f.changeMessage);
+  return campo ? campo.changeMessage.replace("%@", campo.value) : "";
+}
+
+/**
+ * Lo que dice la pantalla de bloqueo cuando la tienda manda una promoción: el
+ * campo PROMO del pase con su changeMessage. "" si el pase no lleva promo.
+ */
+export function avisoDePromo({ negocio, cliente }) {
+  const campo = camposDelPase(cliente, negocio).auxiliaryFields.find((f) => f.key === "promo" && f.changeMessage);
   return campo ? campo.changeMessage.replace("%@", campo.value) : "";
 }
 

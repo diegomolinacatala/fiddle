@@ -1,4 +1,5 @@
 import { DELICANTERIA } from "./datos";
+import Cuenta from "./Cuenta";
 
 // ============================================================================
 // LO QUE HA PASADO EN UNA CAFETERÍA DE VERDAD
@@ -21,7 +22,7 @@ export default function Cifras() {
     <div className="cifras">
       <article className="cifra cifra-rapida revela">
         <p className="cifra-num">
-          {segundos}
+          <Cuenta valor={segundos} />
           <span>segundos</span>
         </p>
         <div className="cifra-pie">
@@ -32,7 +33,7 @@ export default function Cifras() {
 
       <article className="cifra revela">
         <p className="cifra-num">
-          +{crecimiento}
+          <Cuenta valor={crecimiento} antes="+" />
           <span>%</span>
         </p>
         <h3>más visitas a la semana en quince días</h3>
@@ -42,7 +43,7 @@ export default function Cifras() {
         </p>
         <ol className="cifra-barras" aria-label="Visitas de cada semana">
           {semanas.map(({ semana, visitas }, i) => (
-            <li key={semana} className={i === semanas.length - 1 ? "ultima" : undefined}>
+            <li key={semana} className={i === semanas.length - 1 ? "ultima" : undefined} style={{ "--i": i }}>
               <strong>{visitas}</strong>
               <span className="cifra-hueco" aria-hidden="true">
                 <span className="cifra-barra" style={{ "--h": `${(visitas / maximo) * 100}%` }} />

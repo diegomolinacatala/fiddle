@@ -108,6 +108,9 @@ export const SECCIONES = [
   { id: "guardar", nombre: "Guardar", titulo: "Guárdala", parte: "todo", pista: "Déjanos un email o un teléfono y hablamos. Con uno basta." },
 ];
 
+/** Los pasos que solo diseñan (todos menos el de guardar): lo que pinta PasoDiseno. */
+export const PASOS_DISENO = SECCIONES.filter((s) => s.id !== "guardar");
+
 export const INICIAL = {
   cartillas: 1,
   paleta: "verde",
@@ -167,15 +170,25 @@ function cartillasDe(e) {
   return iconos.map(hacer);
 }
 
-/** Tienda + cliente de ejemplo, como los ve el navegador (para CaraDelPase). */
-export function tarjetaDe(eleccion) {
+/**
+ * Tienda + cliente de ejemplo, como los ve el navegador (para CaraDelPase).
+ * `puntos` es para la web (/home), donde el visitante suma puntos a su tarjeta;
+ * sin él, los de siempre. `promo` es lo que la tienda manda a todos: sale como el
+ * campo PROMO del pase.
+ */
+export function tarjetaDe(eleccion, { puntos = PUNTOS, promo = null } = {}) {
   const e = limpiar(eleccion);
   const nombre = e.nombre.trim() || NOMBRE_POR_DEFECTO;
   const cartillas = e.cartillas === 2 ? cartillasDe(e) : null;
   const premio = cartillas ? cartillas[0].premio : de(ICONOS, e.icono).premio;
-  const tienda = { ...CAFETERIA, slug: "tu-tarjeta", nombre, premio, tema: temaDe(e), ...(cartillas ? { cartillas } : {}) };
-  return ejemplo(tienda, PUNTOS, { meta: META, sellos2: cartillas ? PUNTOS_2 : 0 });
+  const tienda = { ...CAFETERIA, slug: "tu-tarjeta", nombre, premio, tema: temaDe(e), ...(cartillas ? { cartillas } : {}), ...(promo ? { promo } : {}) };
+  const llevados = Math.max(0, Math.min(META, Math.round(Number(puntos)) || 0));
+  return ejemplo(tienda, llevados, { meta: META, sellos2: cartillas ? PUNTOS_2 : 0 });
 }
+
+/** Cuántos puntos pide la tarjeta de la web y con cuántos empieza. */
+export const META_WEB = META;
+export const PUNTOS_WEB = PUNTOS;
 
 // ----------------------------------------------------------------------------
 // LA CÁMARA: cuánto se acerca y cuánto se mueve la tarjeta para encuadrar una parte
