@@ -7,25 +7,30 @@ import { PALETA as P } from "../paleta";
 // escena se tiñe con el color de la tarjeta elegida (`--tono`, registrado con
 // @property para que el cambio se funda y no salte).
 //
+// Dos cadenas, para poder reutilizar las piezas en otra pantalla:
+// - `cssPiezas`: lo que vale bajo CUALQUIER contenedor con clase `prob` (variables,
+//   la escena con su tarjeta, los controles de diseño, el formulario de guardar).
+//   `.prob` no lleva disposición de página: ni tamaño ni posición.
+// - `cssPagina`: la disposición a pantalla completa de /home/tarjeta, bajo
+//   `.prob-pagina` (que se pone junto a `prob`).
+//
 // Pantalla ancha: la escena a la izquierda y el panel de cristal a la derecha.
 // Móvil: la escena arriba y el panel como una hoja abajo.
 //
-// Movimiento: la inclinación la escribe Probador.js en cada fotograma; aquí
+// Movimiento: la inclinación la escribe movimiento.js en cada fotograma; aquí
 // solo las transiciones (la cámara, las capas que se funden, el panel). Con
 // «reducir movimiento» (.prob-quieto y la media query), nada se anima.
 // ============================================================================
 
 const alfa = (hex, a) => `rgba(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(",")},${a})`;
 
-export const css = `
+export const cssPiezas = `
 @property --tono{syntax:"<color>";inherits:true;initial-value:${P.camel}}
 @property --tono-2{syntax:"<color>";inherits:true;initial-value:${P.crema}}
-body:has(.prob){background:${P.papel};overflow:hidden}
 .prob{
   --papel:${P.papel}; --tinta:${P.espresso}; --tinta-2:${P.vison}; --tinta-3:${P.tintaSuave}; --marca:${P.verde};
   --marca-encima:${P.verdeEncima}; --linea:${alfa(P.espresso, 0.1)}; --curva:cubic-bezier(.16,1,.3,1);
   --muelle:cubic-bezier(.34,1.32,.5,1);
-  position:fixed; inset:0; display:flex; flex-direction:column; overflow:hidden;
   background:var(--papel); color:var(--tinta); color-scheme:light;
   font-family:var(--fuente-web),system-ui,-apple-system,"Segoe UI",sans-serif; font-size:16px; line-height:1.45;
   -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;
@@ -38,33 +43,22 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 .prob :focus-visible{outline:2px solid var(--tinta);outline-offset:3px}
 .prob-oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* ---------- arriba ---------- */
-.prob-arriba{position:absolute;z-index:5!important;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
-  padding:max(14px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 0 max(18px,env(safe-area-inset-left));pointer-events:none}
-.prob-arriba > *{pointer-events:auto}
-.prob-volver{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 16px 0 12px;border-radius:999px;
-  color:var(--tinta);text-decoration:none;background:${alfa(P.superficie, 0.6)};
-  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
-  box-shadow:inset 0 0 0 1px var(--linea);transition:background-color .2s}
-@media (hover:hover){
-  .prob-volver:hover{background:${alfa(P.superficie, 0.9)}}
-}
-
 /* ---------- la escena ---------- */
-.prob-escena{position:relative;flex:1;min-height:0;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;perspective:1300px;
-  touch-action:none;user-select:none;-webkit-user-select:none;isolation:isolate}
+.prob-escena{position:relative;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;perspective:1300px;
+  touch-action:none;user-select:none;-webkit-user-select:none;isolation:isolate;z-index:1}
 /* El halo cubre toda la página (si no, se le ve el borde junto al panel) y se
    centra en la escena: --cx/--cy cambian con la disposición. */
 .prob-halo{position:absolute;inset:0;z-index:0;pointer-events:none;--cx:50%;--cy:38%;
   background:
     radial-gradient(ellipse 34% 40% at var(--cx) var(--cy),color-mix(in oklab,var(--tono) 30%,transparent),transparent 72%),
     radial-gradient(ellipse 70% 80% at var(--cx) var(--cy),color-mix(in oklab,var(--tono-2) 20%,var(--papel)),var(--papel) 80%)}
-.prob-arriba,.prob-escena{z-index:1}
 .prob-inclina{position:relative;will-change:transform;transform-style:preserve-3d}
-/* Hasta medir la escena no se ve ni se anima: si no, al abrirla la tarjeta salía enorme y encogía. */
+/* Hasta medir la escena no se ve ni se anima: si no, al abrirla la tarjeta salía enorme y encogía.
+   :where() deja la regla con la misma fuerza que antes (.prob-lista colgaba de la raíz): así
+   «reducir movimiento», más abajo, le sigue ganando. */
 .prob-zoom{will-change:transform;opacity:0}
-.prob-lista .prob-zoom{opacity:1;transition:transform 1s var(--curva),opacity .3s}
-/* Pintada al doble (RESOLUCION en Probador.js): la cámara la encoge y, al acercarse, no se ve borrosa. */
+:where(.prob-escena).prob-lista .prob-zoom{opacity:1;transition:transform 1s var(--curva),opacity .3s}
+/* Pintada al doble (RESOLUCION en Escena.js): la cámara la encoge y, al acercarse, no se ve borrosa. */
 .prob-tarjeta{position:relative;width:360px;zoom:2;transform-origin:50% 50%}
 /* La sombra de la tarjeta va una sola vez, en .prob-capas: cada capa con la suya se sumaban. */
 .prob-tarjeta article{box-shadow:none!important;transition:none}
@@ -82,19 +76,8 @@ body:has(.prob){background:${P.papel};overflow:hidden}
     radial-gradient(circle at var(--bx,50%) var(--by,38%),rgba(255,255,255,.55),rgba(255,255,255,0) 46%),
     linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.18) 48%,rgba(255,255,255,0) 62%)}
 
-/* ---------- el panel ---------- */
-.prob-panel{position:relative;z-index:4;display:flex;flex-direction:column;min-height:0;
-  background:${alfa(P.superficie, 0.78)};-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
-  box-shadow:inset 0 0 0 1px ${alfa(P.espresso, 0.07)},0 30px 60px -30px ${alfa(P.espresso, 0.35)}}
-.prob-solapas{position:relative;margin:14px 14px 0;padding:4px;border-radius:999px;background:${alfa(P.espresso, 0.055)}}
-.prob-solapas-fila{position:relative;z-index:1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr}
-.prob-solapas-fila button{height:38px;padding:0 6px;border:0;border-radius:999px;background:none;cursor:pointer;
-  font-size:14px;font-weight:560;color:var(--tinta-2);letter-spacing:-.01em;transition:color .3s}
-.prob-solapas-fila button[aria-selected="true"]{color:var(--tinta)}
-.prob-pildora{position:absolute;top:4px;left:4px;height:38px;border-radius:999px;background:#fff;
-  box-shadow:0 1px 2px ${alfa(P.espresso, 0.1)},0 6px 16px -8px ${alfa(P.espresso, 0.3)};
-  transition:transform .55s var(--muelle),width .55s var(--muelle)}
-.prob-marco{position:relative;flex:1;min-height:0;overflow:hidden auto;overscroll-behavior:contain;scrollbar-width:thin}
+/* ---------- el contenido de cada paso ---------- */
+.prob-marco{position:relative}
 .prob-seccion{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;padding:22px 22px 18px}
 .prob-seccion.desde-dcha{animation:prob-entra-d .5s var(--curva) both}
 .prob-seccion.desde-izda{animation:prob-entra-i .5s var(--curva) both}
@@ -127,7 +110,7 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 /* segmentos con píldora que se desliza */
 .prob-segmentos{position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);padding:4px;border-radius:14px;
   background:${alfa(P.espresso, 0.055)}}
-.prob-segmentos button{position:relative;z-index:1;height:38px;border:0;background:none;border-radius:10px;cursor:pointer;
+.prob-segmentos button{position:relative;z-index:1;height:44px;border:0;background:none;border-radius:10px;cursor:pointer;
   font-size:14.5px;font-weight:560;color:var(--tinta-2);transition:color .25s}
 .prob-segmentos button[aria-checked="true"]{color:var(--tinta)}
 .prob-segmentos-pildora{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 8px) / var(--n));border-radius:10px;background:#fff;
@@ -166,25 +149,7 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 .prob-legal{font-size:12.5px;line-height:1.4;color:var(--tinta-3)}
 .prob-legal a{color:inherit}
 
-/* guardada: el panel entero es esto, y la tarjeta ya no lleva a ningún paso */
-.prob-cerrado .prob-tarjeta [data-parte]{cursor:default}
-.prob-cerrado .prob-marco{display:grid;place-items:center}
-.prob-hecho{display:grid;justify-items:center;gap:6px;text-align:center;padding:36px 24px max(28px,env(safe-area-inset-bottom));
-  animation:prob-entra-d .5s var(--curva) both}
-.prob-hecho-marca{display:grid;place-items:center;width:56px;height:56px;margin-bottom:6px;border-radius:50%;background:var(--marca);color:${P.papel}}
-.prob-hecho h1{font-size:24px;line-height:1.15;font-weight:660;letter-spacing:-.03em}
-.prob .prob-hecho h1:focus-visible{outline:none}
-.prob-hecho p{color:var(--tinta-2);margin-bottom:14px;overflow-wrap:anywhere}
-
-/* ---------- el pie del panel ---------- */
-.prob-pie{display:flex;align-items:center;gap:12px;padding:12px 14px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--linea)}
-.prob-atras{display:grid;place-items:center;width:48px;height:48px;border:0;border-radius:50%;cursor:pointer;background:${alfa(P.espresso, 0.06)};
-  transition:opacity .25s,background-color .2s}
-.prob-atras:disabled{opacity:.35;cursor:default}
-.prob-paso{flex:1;display:flex;justify-content:center;min-width:0}
-.prob-paso i{width:6px;height:6px;border-radius:99px;background:${alfa(P.espresso, 0.16)};transition:width .45s var(--muelle),background-color .3s}
-.prob-paso i.hecho{background:${alfa(P.espresso, 0.4)}}
-.prob-paso i.activo{width:20px;background:var(--tinta)}
+/* botones: el de seguir (pie del panel) y el del formulario de guardar */
 .prob-siguiente{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;border:0;border-radius:999px;
   cursor:pointer;background:var(--marca);color:${P.papel};font-size:15px;font-weight:600;text-decoration:none;letter-spacing:-.01em;
   transition:background-color .2s,transform .3s var(--muelle)}
@@ -192,25 +157,9 @@ body:has(.prob){background:${P.papel};overflow:hidden}
 .prob-siguiente:active{transform:scale(.97)}
 .prob-siguiente:disabled{cursor:progress}
 .prob-ancho{width:100%}
-/* Sin botón, los puntos siguen en medio: lo que ocupa la flecha de atrás. */
-.prob-sin-boton{width:48px}
 
-/* ---------- pantalla ancha: escena a la izquierda, panel de cristal a la derecha ---------- */
-@media (min-width:900px){
-  .prob{flex-direction:row}
-  .prob-halo{--cx:calc((100% - 432px) / 2);--cy:50%}
-  .prob-panel{width:400px;flex:none;margin:16px;border-radius:30px;margin-top:76px}
-}
-/* ---------- móvil: la escena arriba, el panel como una hoja ---------- */
-/* Los puntos del pie son botones (en el ordenador no hacen falta: están las pestañas). */
-.prob-paso button{display:grid;place-items:center;height:44px;padding:0 7px;border:0;background:none;cursor:pointer}
+/* ---------- móvil: los controles, más compactos ---------- */
 @media (max-width:899.98px){
-  /* La tarjeta no se mete por debajo del panel al acercarse: se recorta en su escena. */
-  .prob-escena{padding-top:60px;overflow:hidden}
-  /* El panel mide lo que lleva (hasta un 62 % del alto) y la tarjeta se queda con el resto.
-     Sin pestañas: seis nombres no caben en 320 px; los puntos del pie llevan a cada paso. */
-  .prob-panel{flex:none;max-height:62%;border-radius:28px 28px 0 0}
-  .prob-solapas{display:none}
   .prob-seccion{padding:16px 18px 14px;gap:16px}
   .prob-cabeza p{font-size:14px}
   .prob-colores-fila{height:72px}
@@ -223,20 +172,56 @@ body:has(.prob){background:${P.papel};overflow:hidden}
   .prob-icono{width:44px;height:44px}
   .prob-contacto input{height:50px;font-size:17px}
   .prob-guardar{gap:8px}
-  .prob-hecho{padding:28px 20px max(24px,env(safe-area-inset-bottom))}
-}
-@media (max-width:899.98px) and (orientation:landscape){
-  .prob{flex-direction:row}
-  .prob-panel{max-height:none;width:min(380px,50vw);border-radius:0}
-  .prob-solapas{display:block}
-  .prob-solapas-fila button{font-size:12px;padding:0 2px}
 }
 
 /* ---------- reducir movimiento ---------- */
-.prob-quieto .prob-zoom,.prob-quieto .prob-pildora,.prob-quieto .prob-segmentos-pildora{transition:none}
-.prob-quieto .prob-capa.entra,.prob-quieto .prob-seccion,.prob-quieto .prob-hecho{animation:none}
+.prob-quieto .prob-zoom,.prob-quieto .prob-segmentos-pildora{transition:none}
+.prob-quieto .prob-capa.entra,.prob-quieto .prob-seccion{animation:none}
 @media (prefers-reduced-motion:reduce){
   .prob{transition:none}
   .prob-opcion{transition:none}
 }
 `;
+
+export const cssPagina = `
+body:has(.prob-pagina){background:${P.papel};overflow:hidden}
+.prob-pagina{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* ---------- arriba ---------- */
+.prob-arriba{position:absolute;z-index:5!important;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
+  padding:max(14px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 0 max(18px,env(safe-area-inset-left));pointer-events:none}
+.prob-arriba > *{pointer-events:auto}
+.prob-volver{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 16px 0 12px;border-radius:999px;
+  color:var(--tinta);text-decoration:none;background:${alfa(P.superficie, 0.6)};
+  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 0 0 1px var(--linea);transition:background-color .2s}
+@media (hover:hover){
+  .prob-volver:hover{background:${alfa(P.superficie, 0.9)}}
+}
+.prob-pagina .prob-escena{flex:1;min-height:0}
+
+/* ---------- el panel ---------- */
+.prob-panel{position:relative;z-index:4;display:flex;flex-direction:column;min-height:0;
+  background:${alfa(P.superficie, 0.78)};-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
+  box-shadow:inset 0 0 0 1px ${alfa(P.espresso, 0.07)},0 30px 60px -30px ${alfa(P.espresso, 0.35)}}
+/* ---------- pantalla ancha: escena a la izquierda, panel de cristal a la derecha ---------- */
+@media (min-width:900px){
+  .prob-pagina{flex-direction:row}
+  .prob-pagina .prob-halo{--cx:calc((100% - 432px) / 2);--cy:50%}
+  .prob-panel{width:400px;flex:none;margin:16px;border-radius:30px;margin-top:76px}
+}
+/* ---------- móvil: la escena arriba, el panel como una hoja ---------- */
+@media (max-width:899.98px){
+  /* La tarjeta no se mete por debajo del panel al acercarse: se recorta en su escena. */
+  .prob-pagina .prob-escena{padding-top:60px;overflow:hidden}
+  /* El panel mide lo que lleva (hasta un 62 % del alto) y la tarjeta se queda con el resto. */
+  .prob-panel{flex:none;max-height:62%;border-radius:28px 28px 0 0}
+}
+@media (max-width:899.98px) and (orientation:landscape){
+  .prob-pagina{flex-direction:row}
+  .prob-panel{max-height:none;width:min(380px,50vw);border-radius:0}
+}
+
+`;
+
+export const css = cssPiezas + cssPagina;

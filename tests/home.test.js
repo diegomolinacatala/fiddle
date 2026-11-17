@@ -233,7 +233,7 @@ describe("web de fiddle: las filas que se deslizan en el móvil", () => {
   });
 });
 
-describe("web de fiddle: «Diseña tu tarjeta»", () => {
+describe("web de fiddle: la demo de la tarjeta", () => {
   it("cada opción existe en el dibujo del pase", () => {
     for (const i of ICONOS) expect(MARCAS_DIBUJO, i.id).toContain(i.id);
     for (const m of MODOS_PROBADOR) expect(MODOS_DIBUJO, m.id).toContain(m.id);
