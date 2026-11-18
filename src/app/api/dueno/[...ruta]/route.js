@@ -4,6 +4,7 @@ import { tiendaDeSerial, tarjetaDe, guardarTarjeta, conDispositivo, sinDispositi
 import { estadoVigente, avisarDueno } from "@/lib/dueno/servidor";
 import { generarPkpassDueno } from "@/lib/dueno/firmar";
 import { recibirDe, validarRecibir } from "@/lib/dueno/recibir";
+import { firmarEnlace, negocioDeEnlace, MINUTOS_ENLACE } from "@/lib/dueno/enlace";
 import { configApple } from "@/lib/apple/config";
 import { listNegocios } from "@/lib/store";
 import { exigirTienda, aResponse, jsonError, errorInterno } from "@/lib/http";
@@ -18,6 +19,8 @@ export const dynamic = "force-dynamic";
 // verse entre sí.
 //
 //   GET    /api/dueno/pase?b=<slug>      el .pkpass (solo el manager)
+//   GET    /api/dueno/pase?t=<llave>     el .pkpass desde el QR, sin sesión (lib/dueno/enlace.js)
+//   POST   /api/dueno/enlace?b=<slug>    la llave de ese QR, de MINUTOS_ENLACE (solo el manager)
 //   GET    /api/dueno/vista?b=<slug>     lo que enseña la vista previa de Tienda (solo el manager)
 //   POST   /api/dueno/prueba?b=<slug>    un aviso de prueba de 15 minutos (solo el manager)
 //   PUT    /api/dueno/recibir?b=<slug>   qué quiere recibir el dueño (solo el manager)
@@ -37,14 +40,31 @@ function depsServicio() {
   };
 }
 
+// Lo que ve en Safari quien escanea un QR que ya no vale: una frase, no un JSON.
+function paginaCaducada() {
+  const texto = "Este código ya no vale. Abre Tienda en el ordenador y escanea el que sale ahora.";
+  const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>fiddle</title><body style="font:17px/1.45 -apple-system,system-ui,sans-serif;margin:0;padding:48px 24px;color:#1d1d1f">${texto}</body></html>`;
+  return new Response(html, { status: 410, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
+
+/** Quién baja el pase: con la sesión, o con la llave del QR (público, con tope por IP). */
+async function quienDescarga(request) {
+  const llave = new URL(request.url).searchParams.get("t");
+  if (!llave) return exigirTienda(request, "manager");
+  if (await excedido(request, "dueno")) return { respuesta: new Response(null, { status: 429 }) };
+  const enlace = await negocioDeEnlace(llave);
+  if (!enlace) return { respuesta: paginaCaducada() };
+  return { sesion: enlace.quien, negocio: enlace.negocio, porQr: true };
+}
+
 async function descargarPase(request) {
-  const { respuesta, sesion, negocio } = await exigirTienda(request, "manager");
+  const { respuesta, sesion, negocio, porQr } = await quienDescarga(request);
   if (respuesta) return respuesta;
   if (!configApple()) return jsonError("Apple Wallet no configurado", 404);
   const tarjeta = tarjetaDe(negocio);
   if (!tarjeta) return jsonError("Esta tienda no tiene la tarjeta del dueño", 404);
   const body = await generarPkpassDueno(await estadoVigente(negocio), negocio);
-  await auditar(sesion, negocio.slug, "exportar", "tarjeta del dueño");
+  await auditar(sesion, negocio.slug, "exportar", porQr ? "tarjeta del dueño (QR)" : "tarjeta del dueño");
   return new Response(body, {
     status: 200,
     headers: {
@@ -82,6 +102,16 @@ async function ponerPrueba(request) {
   const { enviados, motivo } = await avisarDueno(guardada);
   await auditar(sesion, negocio.slug, "config", "tarjeta del dueño: prueba");
   return NextResponse.json({ ok: true, avisados: enviados, ...(motivo ? { motivo } : {}) });
+}
+
+// La llave del QR de Tienda (lib/dueno/enlace.js). Sin URL: la arma el navegador con
+// su origen, como el QR del mostrador.
+async function crearEnlace(request) {
+  const { respuesta, sesion, negocio } = await exigirTienda(request, "manager");
+  if (respuesta) return respuesta;
+  if (!tarjetaDe(negocio)) return jsonError("Esta tienda no tiene la tarjeta del dueño", 404);
+  const { token, hasta } = await firmarEnlace(negocio, sesion);
+  return NextResponse.json({ token, hasta, minutos: MINUTOS_ENLACE }, { headers: { "cache-control": "no-store" } });
 }
 
 // Solo las tres claves de `recibir` (lib/dueno/recibir.js): nada más de la tarjeta se
@@ -151,6 +181,7 @@ async function despachar(request, metodo, { params }) {
     if (ruta.length === 1 && ruta[0] === "vista" && metodo === "GET") return await verVista(request);
     if (ruta.length === 1 && ruta[0] === "prueba" && metodo === "POST") return await ponerPrueba(request);
     if (ruta.length === 1 && ruta[0] === "recibir" && metodo === "PUT") return await cambiarRecibir(request);
+    if (ruta.length === 1 && ruta[0] === "enlace" && metodo === "POST") return await crearEnlace(request);
     if (ruta[0] === "v1") {
       if (ruta.length === 2 && ruta[1] === "log" && metodo === "POST") return await registrarLog(request);
       const r = await webService(request, metodo, ruta);

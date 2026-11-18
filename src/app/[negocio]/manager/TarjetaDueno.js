@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import VistaTarjetaDueno from "./VistaTarjetaDueno";
 import Icono from "@/app/Icono";
 import { Interruptor } from "@/app/Interruptor";
-import { BotonAppleWallet } from "@/app/BotonesWallet";
+import AnadirEnIphone from "./AnadirEnIphone";
 import { EsqueletoGestion, Hueso } from "@/app/Esqueleto";
 import { recibirDe, resumenRecibir, TOPE_SEMANA } from "@/lib/dueno/recibir";
 import { C, panel, botonPequeno, etiqueta, RADIO, legible, tinte } from "@/app/ui";
@@ -15,8 +15,8 @@ import { C, panel, botonPequeno, etiqueta, RADIO, legible, tinte } from "@/app/u
 // Antes era una fila de Ajustes; desde el 18-11-2026 vive aquí, en el hueco de
 // debajo del QR, y solo aquí. Plegada es una línea: qué es y qué le avisa. Al
 // tocarla se abre lo que el dueño elige recibir (lib/dueno/recibir.js), que se
-// guarda al tocar, y debajo su tarjeta: el botón de Wallet, la vista previa y el
-// aviso de prueba. Solo sale si la tienda la tiene activa (page.js).
+// guarda al tocar, y debajo su tarjeta: el botón de Wallet en el iPhone o un QR en
+// el ordenador (AnadirEnIphone.js), la vista previa y el aviso de prueba. Solo sale si la tienda la tiene activa (page.js).
 //
 // Al navegador no llega el serial ni el token del pase. La vista previa no viene
 // con la página: calcular el informe lee el historial, y Tienda no debe hacerlo
@@ -162,12 +162,7 @@ export default function TarjetaDueno({ slug, negocio, tarjeta, accent, flash }) 
 
           <span style={etiqueta}>Tu tarjeta</span>
           <div style={{ display: "grid", gap: 12, justifyItems: "start" }}>
-            <div style={{ display: "grid", gap: 6, justifyItems: "start" }}>
-              <BotonAppleWallet href={`/api/dueno/pase?b=${encodeURIComponent(slug)}`} />
-              <span style={{ fontSize: 12.5, color: C.suave }}>
-                {tarjeta.instalada ? "Ya está en tu Wallet. En otro iPhone, añádela desde aquí." : "Solo en iPhone por ahora."}
-              </span>
-            </div>
+            <AnadirEnIphone slug={slug} instalada={tarjeta.instalada} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" onClick={() => setVerTarjeta((v) => !v)} aria-expanded={verTarjeta}
                 style={{ ...botonPequeno, display: "inline-flex", alignItems: "center", gap: 6 }}>

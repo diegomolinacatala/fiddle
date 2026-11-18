@@ -114,7 +114,8 @@ const DEL_ADMIN = [
 
 // Públicas a propósito (lib/acceso.js dice por qué cada una) o con su propia llave.
 // `dueno/[...ruta]` va aquí porque es el web service de Apple (lo protege el token del
-// pase); `pase` y `prueba`, que son del manager, se comprueban en tests/dueno-servicio.test.js.
+// pase); `pase`, `vista`, `prueba` y `recibir`, que son del manager, se comprueban en
+// tests/dueno-servicio.test.js, y `enlace` (la llave del QR) en tests/dueno-enlace.test.js.
 const PUBLICAS = [
   "cron/avisos", "dueno/[...ruta]", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
   "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
