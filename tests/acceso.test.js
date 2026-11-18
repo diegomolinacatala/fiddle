@@ -25,6 +25,11 @@ describe("reglaDeRuta", () => {
     expect(regla("/api/dueno/pase?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
     expect(regla("/api/dueno/prueba?b=nube", "POST")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
     expect(regla("/api/dueno/vista?b=nube")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/recibir?b=nube", "PUT")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    expect(regla("/api/dueno/enlace?b=nube", "POST")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
+    // El QR de Tienda: sin sesión, la llave la comprueba la ruta. Con ?b= sigue siendo del manager.
+    expect(regla("/api/dueno/pase?t=llave")).toEqual({ tipo: "publica" });
+    expect(regla("/api/dueno/pase?b=nube&t=llave")).toEqual({ tipo: "negocio", slug: "nube", rol: "manager" });
     expect(regla("/api/dueno/otra")).toEqual({ tipo: "sesion" });
     expect(regla("/api/dueno")).toEqual({ tipo: "sesion" });
   });

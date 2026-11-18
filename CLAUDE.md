@@ -701,6 +701,10 @@ n煤meros禄 tiene algo que se puede hacer hoy, un aviso con el enlace a Avisos 鈫
   (`tarjetaDueno.recibir`, `lib/dueno/recibir.js`: el resumen del lunes, ideas para sus
   clientes y cu谩ntas a la semana) y su tarjeta. `PUT /api/dueno/recibir` solo escribe esas
   tres claves. Una opci贸n nueva = una clave ah铆 y su efecto en `estado.js` o `pase.js`.
+- **En el ordenador, un QR para el iPhone** (`manager/AnadirEnIphone.js`); en el iPhone, el
+  bot贸n. El QR lleva una llave firmada de 10 minutos atada al token del pase
+  (`lib/dueno/enlace.js`): `/api/dueno/pase?t=` es la 脷NICA descarga sin sesi贸n, y el
+  middleware la deja pasar solo sin `?b=`.
 - **Solo cifras**: ni nombres, ni c贸digos, ni seriales de clientes en el pase ni en sus enlaces.
 - **Los botones de debajo son de Apple** (`featuredActions`, iOS 27, dos como mucho,
   `accionesDelDueno`): el texto y el icono salen del `type`, que tiene que ser de su lista.

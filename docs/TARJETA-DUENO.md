@@ -31,6 +31,7 @@ Hace dos cosas:
 | La ruta (descarga, vista, prueba y web service) | `src/app/api/dueno/[...ruta]/route.js` |
 | Lo que el dueño elige recibir | `src/lib/dueno/recibir.js` |
 | La fila de Tienda (bajo el QR) | `src/app/[negocio]/manager/TarjetaDueno.js` |
+| El QR para bajarla en el iPhone | `src/lib/dueno/enlace.js`, `manager/AnadirEnIphone.js` |
 
 Todo lo guarda la tienda en su configuración, en `tarjetaDueno`. No hay tabla nueva.
 
@@ -49,6 +50,24 @@ vista previa y el aviso de prueba. Hasta el 18-11-2026 vivía en Ajustes.
 - **Ideas como mucho**: 1 o 2 a la semana. Nunca más de `MAX_AVISOS_SEMANA`.
 
 De partida, lo de siempre: todo encendido y dos a la semana.
+
+## Añadirla desde el ordenador
+
+El dueño suele mirar Tienda en el ordenador, donde no hay Wallet. Ahí la fila enseña un QR
+en vez del botón (en el iPhone, el botón de siempre). La cámara del iPhone abre el enlace en
+Safari, que no tiene la sesión, así que lleva su propia llave (`lib/dueno/enlace.js`,
+`POST /api/dueno/enlace` y `GET /api/dueno/pase?t=`):
+
+- Firmada con el secreto de las sesiones y de `MINUTOS_ENLACE` (10). Al caducar, la fila
+  ofrece «Otro código»; quien abre uno viejo ve una frase, no un error.
+- Lleva la huella del token del pase: «Cambiar la llave» en el admin la anula.
+- La descarga queda en `auditoria` a nombre de quien pidió el QR («tarjeta del dueño (QR)»).
+- Va en la URL (no detrás de `#`): el .pkpass lo tiene que pedir Safari tal cual. Por eso
+  dura poco. Lo que se acepta: quien tenga el enlace en esos minutos se lleva la tarjeta,
+  que solo lleva cifras de la tienda.
+
+En local el QR apunta a `localhost`, y en dev a la web tras el acceso de Vercel: el iPhone
+solo llega a él en producción.
 
 ## Los dos botones de debajo (iOS 27)
 
