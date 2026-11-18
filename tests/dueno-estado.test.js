@@ -28,6 +28,17 @@ describe("estadoDeHoy", () => {
     expect(e.aviso.enlace.startsWith("https://x.test/cafe/avisos")).toBe(true);
   });
 
+  it("sin «ideas», no hay aviso del día aunque los números digan algo", () => {
+    const e = estadoDeHoy({ negocio, eventos: [], observaciones, ahora: LUNES, recibir: { ideas: false } });
+    expect(e.aviso).toBeNull();
+    expect(e.informe.desde).toBe("2026-11-09");
+  });
+
+  it("con una a la semana y una ya dicha, tampoco", () => {
+    const e = estadoDeHoy({ negocio, eventos: [], observaciones, ahora: LUNES, avisados: { otra: "2026-11-16" }, recibir: { porSemana: 1 } });
+    expect(e.aviso).toBeNull();
+  });
+
   it("la fecha es la de la tienda: a las 23:30 UTC ya es el día siguiente", () => {
     const e = estadoDeHoy({ negocio, eventos: [], observaciones: [], ahora: Date.parse("2026-11-15T23:30:00Z") });
     expect(e.fecha).toBe("2026-11-16");
@@ -57,6 +68,13 @@ describe("avisoVisible", () => {
   });
   it("el aviso del día caducado no se enseña", () => {
     expect(avisoVisible({}, estado, Date.parse("2026-11-17T00:00:00Z"))).toBeNull();
+  });
+  it("sin «ideas», el aviso del día ya calculado se deja de enseñar", () => {
+    expect(avisoVisible({ recibir: { ideas: false } }, estado, LUNES)).toBeNull();
+  });
+  it("sin «ideas», la prueba sí sale: la pide él", () => {
+    const tarjeta = { ...prueba("2026-11-16T09:00:00.000Z"), recibir: { ideas: false } };
+    expect(avisoVisible(tarjeta, estado, LUNES)).toEqual({ texto: "De prueba", enlace: "/p" });
   });
   it("sin nada que enseñar devuelve null", () => {
     expect(avisoVisible({ prueba: null }, { aviso: null }, LUNES)).toBeNull();

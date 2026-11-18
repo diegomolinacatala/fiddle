@@ -9,24 +9,31 @@ import { informeSemanal } from "./informe";
 import { avisoDelDia } from "./avisos";
 import { fechaLocal, tramosDe } from "../horario";
 import { zonaDe } from "../actividad";
+import { recibirDe } from "./recibir";
 
 const REPASO_POR_DEFECTO = 9 * 60;
 
-export function estadoDeHoy({ negocio, eventos, observaciones, ahora = Date.now(), avisados = {}, base = "", historialDesde = null }) {
+/** `recibir`: lo que eligió el dueño. Sin «ideas» no hay aviso del día (ni se apunta como dicho). */
+export function estadoDeHoy({ negocio, eventos, observaciones, ahora = Date.now(), avisados = {}, base = "", historialDesde = null, recibir = null }) {
+  const { ideas, porSemana } = recibirDe({ recibir });
   return {
     fecha: fechaLocal(ahora, zonaDe(negocio)),
     informe: informeSemanal({ eventos, negocio, ahora, historialDesde }),
-    aviso: avisoDelDia({ observaciones, negocio, ahora, avisados, base }),
+    aviso: ideas ? avisoDelDia({ observaciones, negocio, ahora, avisados, base, porSemana }) : null,
   };
 }
 
 /** Lo que cambia la tarjeta: la semana que enseña y qué aviso lleva. */
 export const claveDeEstado = (estado) => `${estado.informe.desde}|${estado.aviso?.id ?? ""}`;
 
-/** La prueba vigente gana; si no, el aviso del día mientras no haya caducado. */
+/**
+ * La prueba vigente gana (la pide él, sale aunque no quiera ideas); si no, el aviso del día
+ * mientras no haya caducado y mientras quiera ideas: apagarlas lo quita ya, sin esperar al reloj.
+ */
 export function avisoVisible(tarjeta, estado, ahora = Date.now()) {
   const prueba = tarjeta?.prueba;
   if (prueba && Date.parse(prueba.hasta) > ahora) return { texto: prueba.texto, enlace: prueba.enlace ?? "" };
+  if (!recibirDe(tarjeta).ideas) return null;
   const aviso = estado?.aviso;
   if (aviso && Date.parse(aviso.hasta) > ahora) return { texto: aviso.texto, enlace: aviso.enlace };
   return null;

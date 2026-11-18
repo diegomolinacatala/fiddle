@@ -3,6 +3,7 @@ import * as servicio from "@/lib/dueno/servicio";
 import { tiendaDeSerial, tarjetaDe, guardarTarjeta, conDispositivo, sinDispositivo } from "@/lib/dueno/tarjeta";
 import { estadoVigente, avisarDueno } from "@/lib/dueno/servidor";
 import { generarPkpassDueno } from "@/lib/dueno/firmar";
+import { recibirDe, validarRecibir } from "@/lib/dueno/recibir";
 import { configApple } from "@/lib/apple/config";
 import { listNegocios } from "@/lib/store";
 import { exigirTienda, aResponse, jsonError, errorInterno } from "@/lib/http";
@@ -17,8 +18,9 @@ export const dynamic = "force-dynamic";
 // verse entre sí.
 //
 //   GET    /api/dueno/pase?b=<slug>      el .pkpass (solo el manager)
-//   GET    /api/dueno/vista?b=<slug>     lo que enseña la vista previa de Ajustes (solo el manager)
+//   GET    /api/dueno/vista?b=<slug>     lo que enseña la vista previa de Tienda (solo el manager)
 //   POST   /api/dueno/prueba?b=<slug>    un aviso de prueba de 15 minutos (solo el manager)
+//   PUT    /api/dueno/recibir?b=<slug>   qué quiere recibir el dueño (solo el manager)
 //   .../api/dueno/v1/...                 el web service de Apple (lo protege el token del pase)
 
 const MINUTOS_PRUEBA = 15;
@@ -53,8 +55,8 @@ async function descargarPase(request) {
   });
 }
 
-// La vista previa de Ajustes se pide al abrirla: calcular el informe lee el historial
-// entero y no debe pasar cada vez que alguien entra en Ajustes.
+// La vista previa de Tienda se pide al abrirla: calcular el informe lee el historial
+// entero y no debe pasar cada vez que alguien entra en Tienda.
 async function verVista(request) {
   const { respuesta, negocio } = await exigirTienda(request, "manager");
   if (respuesta) return respuesta;
@@ -80,6 +82,25 @@ async function ponerPrueba(request) {
   const { enviados, motivo } = await avisarDueno(guardada);
   await auditar(sesion, negocio.slug, "config", "tarjeta del dueño: prueba");
   return NextResponse.json({ ok: true, avisados: enviados, ...(motivo ? { motivo } : {}) });
+}
+
+// Solo las tres claves de `recibir` (lib/dueno/recibir.js): nada más de la tarjeta se
+// escribe desde aquí. Con `actualizado` nuevo el iPhone se baja la versión que toca; y
+// si cambian las ideas se le empuja, para que el aviso del día aparezca o se quite ya
+// (al quitarse vuelve a PREMIOS DADOS sin changeMessage: no suena).
+async function cambiarRecibir(request) {
+  const { respuesta, sesion, negocio } = await exigirTienda(request, "manager");
+  if (respuesta) return respuesta;
+  const tarjeta = tarjetaDe(negocio);
+  if (!tarjeta) return jsonError("Esta tienda no tiene la tarjeta del dueño", 404);
+  const validado = validarRecibir(await request.json().catch(() => null));
+  if (!validado.ok) return jsonError(validado.error, 400);
+  const antes = recibirDe(tarjeta);
+  const recibir = { ...antes, ...validado.cambios };
+  const guardada = await guardarTarjeta(negocio.slug, { recibir, actualizado: new Date().toISOString() });
+  if (recibir.ideas !== antes.ideas) await avisarDueno(guardada);
+  await auditar(sesion, negocio.slug, "config", "tarjeta del dueño: qué recibe");
+  return NextResponse.json({ ok: true, recibir });
 }
 
 /** true si esta IP se pasó de uso en un recurso público. Si el limitador falla, se deja pasar. */
@@ -129,6 +150,7 @@ async function despachar(request, metodo, { params }) {
     if (ruta.length === 1 && ruta[0] === "pase" && metodo === "GET") return await descargarPase(request);
     if (ruta.length === 1 && ruta[0] === "vista" && metodo === "GET") return await verVista(request);
     if (ruta.length === 1 && ruta[0] === "prueba" && metodo === "POST") return await ponerPrueba(request);
+    if (ruta.length === 1 && ruta[0] === "recibir" && metodo === "PUT") return await cambiarRecibir(request);
     if (ruta[0] === "v1") {
       if (ruta.length === 2 && ruta[1] === "log" && metodo === "POST") return await registrarLog(request);
       const r = await webService(request, metodo, ruta);
@@ -142,4 +164,5 @@ async function despachar(request, metodo, { params }) {
 
 export const GET = (request, contexto) => despachar(request, "GET", contexto);
 export const POST = (request, contexto) => despachar(request, "POST", contexto);
+export const PUT = (request, contexto) => despachar(request, "PUT", contexto);
 export const DELETE = (request, contexto) => despachar(request, "DELETE", contexto);

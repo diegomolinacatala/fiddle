@@ -696,6 +696,11 @@ números» tiene algo que se puede hacer hoy, un aviso con el enlace a Avisos �
   navegador** (`negocioDelPersonal` lo quita; la caja es una cuenta compartida) y ninguna
   ruta que guarda config lo deja escribir.
 - **Apagada de partida** (`tarjetaDueno.activa`). La enciende el admin en `/admin/<slug>` → «Tarjeta del dueño» (y la semilla de dev). Apagar no borra: al reencender es la misma (serial y token). «Cambiar la llave» es la forma de anular un pase perdido: token nuevo y sin iPhone.
+- **Vive en Tienda, debajo del QR** (`manager/TarjetaDueno.js`), plegada en una línea; no en
+  Ajustes (desde el 18-11-2026). Al abrirla, lo que el dueño elige recibir
+  (`tarjetaDueno.recibir`, `lib/dueno/recibir.js`: el resumen del lunes, ideas para sus
+  clientes y cuántas a la semana) y su tarjeta. `PUT /api/dueno/recibir` solo escribe esas
+  tres claves. Una opción nueva = una clave ahí y su efecto en `estado.js` o `pase.js`.
 - **Solo cifras**: ni nombres, ni códigos, ni seriales de clientes en el pase ni en sus enlaces.
 - **Los botones de debajo son de Apple** (`featuredActions`, iOS 27, dos como mucho,
   `accionesDelDueno`): el texto y el icono salen del `type`, que tiene que ser de su lista.

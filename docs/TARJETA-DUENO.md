@@ -29,9 +29,26 @@ Hace dos cosas:
 | Leer el historial, empujar y el paso del reloj | `src/lib/dueno/servidor.js` |
 | El web service de Apple | `src/lib/dueno/servicio.js` |
 | La ruta (descarga, vista, prueba y web service) | `src/app/api/dueno/[...ruta]/route.js` |
-| La fila de Ajustes | `src/app/[negocio]/ajustes/TarjetaDueno.js` |
+| Lo que el dueño elige recibir | `src/lib/dueno/recibir.js` |
+| La fila de Tienda (bajo el QR) | `src/app/[negocio]/manager/TarjetaDueno.js` |
 
 Todo lo guarda la tienda en su configuración, en `tarjetaDueno`. No hay tabla nueva.
+
+## Lo que elige recibir
+
+En Tienda, debajo de «QR y tag del mostrador», la tarjeta es una fila plegada que dice qué
+le avisa. Al tocarla se abre «Qué quieres recibir» (se guarda al tocar, `PUT
+/api/dueno/recibir`, en `tarjetaDueno.recibir`) y debajo su tarjeta: el botón de Wallet, la
+vista previa y el aviso de prueba. Hasta el 18-11-2026 vivía en Ajustes.
+
+- **El resumen del lunes**: apagado, la semana se pone al día igual pero sin
+  `changeMessage`, así que no suena.
+- **Ideas para tus clientes**: apagado, no hay aviso del día (el reloj no lo calcula ni lo
+  apunta como dicho) y el que ya estuviera puesto se quita al momento, en silencio. La
+  prueba sale igual: la pide él.
+- **Ideas como mucho**: 1 o 2 a la semana. Nunca más de `MAX_AVISOS_SEMANA`.
+
+De partida, lo de siempre: todo encendido y dos a la semana.
 
 ## Los dos botones de debajo (iOS 27)
 
@@ -69,11 +86,11 @@ Apagada de partida en todas las tiendas. La enciende el admin en `/admin/<slug>`
 volver a encender conserva los mismos, así que la del iPhone sigue valiendo. **Cambiar la
 llave** (con confirmación) pone un token nuevo y vacía los iPhone registrados: es la forma
 de anular un pase perdido o reenviado a quien no debía; el dueño tiene que añadirla otra
-vez desde Ajustes. El admin solo ve si está encendida y en cuántos iPhone; nunca el token.
+vez desde Tienda. El admin solo ve si está encendida y en cuántos iPhone; nunca el token.
 La semilla de dev (`lib/datosDePrueba.js`) también la trae encendida, con un serial y un
 token fijos (como el PIN 1234: en dev cada función de Vercel tiene su `/tmp`).
 
-Con ella encendida, el dueño la añade desde **Ajustes → Tu tarjeta de dueño**.
+Con ella encendida, el dueño la añade desde **Tienda → Tu tarjeta de dueño** (debajo del QR).
 
 ## Probarla en dev
 

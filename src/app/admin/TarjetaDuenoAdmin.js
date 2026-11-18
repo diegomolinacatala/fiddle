@@ -58,12 +58,12 @@ export default function TarjetaDuenoAdmin({ slug, accent, flash }) {
       texto: "La tarjeta que tenga en el iPhone dejará de funcionar y tendrá que añadirla otra vez. ¿Seguro?",
       si: "Cambiar la llave", peligro: true, accent,
     });
-    if (si) enviar("POST", { accion: "llave" }, "Llave nueva: tiene que volver a añadirla desde Ajustes");
+    if (si) enviar("POST", { accion: "llave" }, "Llave nueva: tiene que volver a añadirla desde Tienda");
   }
 
   const on = estado?.activa === true;
   const lado = on
-    ? { titulo: "Encendida para esta tienda", texto: `El dueño la añade desde Ajustes → Tu tarjeta de dueño. Cada lunes le llega el resumen de la semana. ${iphonesTexto(estado.iphones)}` }
+    ? { titulo: "Encendida para esta tienda", texto: `El dueño la añade desde Tienda → Tu tarjeta de dueño, debajo del QR. Cada lunes le llega el resumen de la semana. ${iphonesTexto(estado.iphones)}` }
     : { titulo: "Apagada para esta tienda", texto: "La que tenga en el iPhone deja de actualizarse. Al volver a encenderla, sigue siendo la misma." };
 
   return (

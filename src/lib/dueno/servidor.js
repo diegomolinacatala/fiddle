@@ -32,6 +32,7 @@ export async function cargarEstado(negocio, ahora = Date.now()) {
   return estadoDeHoy({
     negocio, eventos, observaciones: ideas, ahora, base: appUrl(),
     avisados: tarjeta?.avisados ?? {},
+    recibir: tarjeta?.recibir ?? null,
     historialDesde: Date.parse(historialCompletoDesde) || null,
   });
 }

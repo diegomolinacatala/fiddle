@@ -8,6 +8,7 @@
 import { randomBytes } from "node:crypto";
 import { getNegocio, saveNegocio } from "../store";
 import { igualSeguro } from "../auth";
+import { recibirDe } from "./recibir";
 
 export const MAX_DISPOSITIVOS = 5;
 const PREFIJO = "dueno-";
@@ -27,6 +28,16 @@ export function resumenTarjeta(negocio) {
   const lista = Array.isArray(t?.dispositivos) ? t.dispositivos : [];
   // Un iPhone se cuenta una vez aunque tenga una fila por cada Pass Type ID.
   return { activa: t?.activa === true && Boolean(t.serial && t.token), iphones: new Set(lista.map((d) => d.id)).size };
+}
+
+/**
+ * Lo que la fila de Tienda necesita, sin serial, token ni iPhone (el pase se baja por
+ * /api/dueno/pase), o null si la tienda no la tiene. No se calcula el informe: lee todo
+ * el historial y la vista previa lo pide al abrirse (/api/dueno/vista).
+ */
+export function tarjetaParaElPanel(negocio) {
+  const t = tarjetaDe(negocio);
+  return t ? { instalada: t.dispositivos.length > 0, recibir: recibirDe(t) } : null;
 }
 
 /** El parche de una llave nueva: otro token, sin iPhone, el mismo serial. Quien tenga el pase viejo lo pierde. */
