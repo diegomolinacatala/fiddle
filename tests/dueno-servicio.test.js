@@ -228,14 +228,16 @@ describe("repasarTarjetaDueno", () => {
 });
 
 describe("las rutas del manager", () => {
-  async function pedir(url, metodo, como) {
+  async function pedir(url, metodo, como, cuerpo) {
     const headers = {};
     if (como) headers.cookie = `sesion=${await firmarSesion(...como)}`;
-    const request = new NextRequest(`http://x${url}`, { method: metodo, headers });
+    if (cuerpo !== undefined) headers["content-type"] = "application/json";
+    const body = cuerpo !== undefined ? { body: JSON.stringify(cuerpo) } : {};
+    const request = new NextRequest(`http://x${url}`, { method: metodo, headers, ...body });
     const params = Promise.resolve({ ruta: url.split("?")[0].replace("/api/dueno/", "").split("/") });
     return ruta[metodo](request, { params });
   }
-  const CASOS = [["GET", "/api/dueno/pase?b=nube"], ["GET", "/api/dueno/vista?b=nube"], ["POST", "/api/dueno/prueba?b=nube"]];
+  const CASOS = [["GET", "/api/dueno/pase?b=nube"], ["GET", "/api/dueno/vista?b=nube"], ["POST", "/api/dueno/prueba?b=nube"], ["PUT", "/api/dueno/recibir?b=nube"]];
 
   for (const [metodo, url] of CASOS) {
     it(`${metodo} ${url}: 401 sin sesión`, async () => {
@@ -279,6 +281,32 @@ describe("las rutas del manager", () => {
     expect(Object.keys(cuerpo).sort()).toEqual(["aviso", "informe"]);
     expect(cuerpo.informe.porDia).toHaveLength(7);
     expect(JSON.stringify(cuerpo)).not.toContain(t.token);
+  });
+
+  it("qué recibe: guarda solo lo suyo, marca la tarjeta como cambiada y no toca el token", async () => {
+    const r = await pedir("/api/dueno/recibir?b=nube", "PUT", ["nube", "manager"], { resumen: false });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ ok: true, recibir: { resumen: false, ideas: true, porSemana: 2 } });
+    const guardada = tarjeta.tarjetaDe(await store.getNegocio("nube"));
+    expect(guardada.recibir).toEqual({ resumen: false, ideas: true, porSemana: 2 });
+    expect(guardada.token).toBe(t.token);
+    expect(guardada.actualizado).toBeTruthy();
+    expect(enviarAvisos).not.toHaveBeenCalled();
+  });
+
+  it("qué recibe: cambiar las ideas empuja a los iPhone", async () => {
+    await tarjeta.guardarTarjeta("nube", { dispositivos: [{ id: "iphone1", token: TOKEN_PUSH, tipo: PASS_TYPE, alta: "a" }] });
+    await pedir("/api/dueno/recibir?b=nube", "PUT", ["nube", "manager"], { ideas: false });
+    expect(enviarAvisos).toHaveBeenCalledTimes(1);
+  });
+
+  it("qué recibe: lo que no es suyo o no vale es 400 y no se guarda", async () => {
+    for (const malo of [{ token: "x" }, { porSemana: 7 }, { ideas: "no" }, {}]) {
+      expect((await pedir("/api/dueno/recibir?b=nube", "PUT", ["nube", "manager"], malo)).status).toBe(400);
+    }
+    const guardada = tarjeta.tarjetaDe(await store.getNegocio("nube"));
+    expect(guardada.token).toBe(t.token);
+    expect(guardada.recibir).toBeUndefined();
   });
 
   it("lo que no casa es 404", async () => {

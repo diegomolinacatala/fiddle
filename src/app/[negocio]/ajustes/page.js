@@ -9,17 +9,8 @@ import PanelAjustes from "./PanelAjustes";
 import { relojVivo } from "@/lib/relojAvisos";
 import { planesGlobales, contarTarjetas } from "@/lib/store";
 import { cupoDe } from "@/lib/planes";
-import { tarjetaDe } from "@/lib/dueno/tarjeta";
 
 export const dynamic = "force-dynamic";
-
-// Lo que la fila de la tarjeta del dueño necesita, sin serial, token ni dispositivos
-// (el pase se baja por /api/dueno/pase). No se calcula nada aquí: el informe lee todo
-// el historial y la vista previa lo pide al abrirse (/api/dueno/vista).
-const tarjetaDuenoDe = (n) => {
-  const tarjeta = tarjetaDe(n);
-  return tarjeta ? { instalada: tarjeta.dispositivos.length > 0 } : null;
-};
 
 // Lo de la cuenta, que se toca casi nunca: la contraseña de la caja y cómo abrir
 // la caja en otro móvil. Como el resto, llega pintado desde el servidor.
@@ -46,7 +37,7 @@ export default async function Page({ params }) {
   };
   return (
     <PanelAjustes
-      slug={slug} negocio={negocioDelPersonal(n)} plan={plan} tarjetaDueno={tarjetaDuenoDe(n)}
+      slug={slug} negocio={negocioDelPersonal(n)} plan={plan}
       usuarios={{ manager: usuarioDe(slug, "manager"), caja: usuarioDe(slug, "caja") }}
       esAdmin={sesion.rol === "admin"} reloj={reloj}
     />

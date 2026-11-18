@@ -79,6 +79,16 @@ describe("avisoDelDia: sin agobiar", () => {
     expect(pedir({ observaciones: [grupo("dormidos")], avisados: { a: "2026-11-16" } })?.id).toBe("dormidos");
   });
 
+  it("si el dueño quiere una a la semana, con una ya dicha no hay más", () => {
+    expect(pedir({ observaciones: [grupo("dormidos")], avisados: { a: "2026-11-16" }, porSemana: 1 })).toBeNull();
+    expect(pedir({ observaciones: [grupo("dormidos")], porSemana: 1 })?.id).toBe("dormidos");
+  });
+
+  it("un tope mayor que el de fiddle no lo sube", () => {
+    const avisados = { a: "2026-11-16", b: "2026-11-16" };
+    expect(pedir({ observaciones: [grupo("dormidos")], avisados, porSemana: 5 })).toBeNull();
+  });
+
   it("los de la semana pasada no cuentan para el tope", () => {
     const avisados = { a: "2026-11-10", b: "2026-11-11" };
     expect(pedir({ observaciones: [grupo("dormidos")], avisados })?.id).toBe("dormidos");

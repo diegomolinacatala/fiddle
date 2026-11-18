@@ -32,6 +32,17 @@ describe("campos de la tarjeta del dueño", () => {
     expect(h.changeMessage).toMatch(/^Semana del %@: 142 visitas/);
   });
 
+  it("sin «resumen», la semana cambia igual pero no suena", () => {
+    const [h] = camposDelDueno({ informe, aviso: null }, negocio, { recibir: { resumen: false } }).headerFields;
+    expect(h).toEqual({ key: "semana", label: "SEMANA", value: "9 al 15 nov" });
+  });
+
+  it("el pass.json lee lo que eligió el dueño en su tarjeta", () => {
+    const callado = { ...negocio, tarjetaDueno: { ...negocio.tarjetaDueno, recibir: { resumen: false } } };
+    const [h] = construirPassJsonDueno({ informe, aviso: null }, callado, opciones).storeCard.headerFields;
+    expect(h).not.toHaveProperty("changeMessage");
+  });
+
   it("deja vacío el campo principal y pone los nuevos en secundario", () => {
     const c = camposDelDueno({ informe, aviso: null }, negocio);
     expect(c.primaryFields).toEqual([]);

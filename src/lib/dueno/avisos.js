@@ -11,9 +11,10 @@ import { tiene } from "../planes";
 import { funcionDeDestino } from "../envios";
 import { relojLocal, sumarDias, inicioDelDia, aMinutos } from "../horario";
 import { zonaDe } from "../actividad";
+import { TOPE_SEMANA } from "./recibir";
 
 export const PAUSA_MISMO_AVISO_DIAS = 14;
-export const MAX_AVISOS_SEMANA = 2;
+export const MAX_AVISOS_SEMANA = TOPE_SEMANA;
 const MAX_CARACTERES = 110;
 
 const diasEntre = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
@@ -61,10 +62,12 @@ function avisosDeLaSemana(avisados, hoy, dia) {
   return Object.values(avisados).filter((f) => f >= lunes && f <= domingo).length;
 }
 
-export function avisoDelDia({ observaciones, negocio, ahora = Date.now(), avisados = {}, base = "" }) {
+/** `porSemana`: el tope que eligió el dueño (lib/dueno/recibir.js), nunca más de MAX_AVISOS_SEMANA. */
+export function avisoDelDia({ observaciones, negocio, ahora = Date.now(), avisados = {}, base = "", porSemana = MAX_AVISOS_SEMANA }) {
   const zona = zonaDe(negocio);
   const reloj = relojLocal(ahora, zona);
-  if (avisosDeLaSemana(avisados, reloj.fecha, reloj.dia) >= MAX_AVISOS_SEMANA) return null;
+  const tope = Math.min(porSemana, MAX_AVISOS_SEMANA);
+  if (avisosDeLaSemana(avisados, reloj.fecha, reloj.dia) >= tope) return null;
 
   const elegida = (observaciones || []).find((o) => {
     const a = o.accion;

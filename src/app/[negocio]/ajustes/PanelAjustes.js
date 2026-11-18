@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { NumeroVisto } from "@/app/useVisto";
 import ClaveNueva from "@/app/ClaveNueva";
 import CambiarClave from "./CambiarClave";
-import TarjetaDueno from "./TarjetaDueno";
 import Bloque from "../Bloque";
 import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
@@ -25,7 +24,7 @@ import { enlaceWhatsApp } from "@/app/home/datos";
 // dentro del horario ni al fondo del editor de la tarjeta.
 // ============================================================================
 
-export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, esAdmin = false, reloj = false, tarjetaDueno = null }) {
+export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, esAdmin = false, reloj = false }) {
   const abiertoEnPlan = tiene(n, "abierto");
   const [enPase, setEnPase] = useState(n.tema.abierto !== false);
   const [guardandoEnPase, setGuardandoEnPase] = useState(false);
@@ -188,8 +187,6 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
               onHecho={() => { setCambiandoClave(false); flash("Contraseña cambiada"); }}
             />
           </Bloque>
-          {/* Es de la cuenta del dueño, por eso junto a «Tu acceso». Solo si la tienda la tiene activa. */}
-          {tarjetaDueno && <TarjetaDueno slug={slug} negocio={n} tarjeta={tarjetaDueno} accent={accent} />}
           <Bloque
             accent={accent} icono="movil" titulo="Sesiones abiertas"
             resumen="Si te dejaste la sesión abierta en un ordenador que no es tuyo o se perdió un móvil, ciérralas todas a la vez (la caja también). Las contraseñas no cambian."

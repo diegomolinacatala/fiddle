@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { partesConEnlaces } from "../src/app/[negocio]/ajustes/partesConEnlaces";
+import { partesConEnlaces } from "../src/app/[negocio]/manager/partesConEnlaces";
 
 describe("partesConEnlaces", () => {
   test("separa el enlace del texto que lo rodea", () => {

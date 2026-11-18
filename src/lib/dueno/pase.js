@@ -1,6 +1,7 @@
 import { PALETA } from "../../app/home/paleta";
 import { WHATSAPP } from "../../app/home/datos";
 import { fraseDelInforme, lineasDelInforme } from "./informe";
+import { recibirDe } from "./recibir";
 
 // ============================================================================
 // LA TARJETA DEL DUEÑO — pass.json
@@ -74,8 +75,11 @@ export function accionesDelDueno(aviso, negocio, { base = "" } = {}) {
 
 /**
  * Los campos de la tarjeta. `aviso` es el visible (ya resuelto): { texto, enlace } o null.
+ * `recibir` (lib/dueno/recibir.js): sin «resumen», la semana cambia igual pero sin
+ * `changeMessage`, así que el lunes no suena. Lo de «ideas» ya viene resuelto en `aviso`.
  */
-export function camposDelDueno({ informe, aviso }, negocio, { base = "" } = {}) {
+export function camposDelDueno({ informe, aviso }, negocio, { base = "", recibir = null } = {}) {
+  const { resumen } = recibirDe({ recibir });
   // El campo de abajo conserva SIEMPRE su clave: con aviso dice PARA TI y suena
   // (`%@` es el propio texto); al caducar vuelve a PREMIOS DADOS sin changeMessage,
   // en silencio. Con otra clave, el cambio sería un campo nuevo y no avisaría.
@@ -87,7 +91,7 @@ export function camposDelDueno({ informe, aviso }, negocio, { base = "" } = {}) 
       key: "semana",
       label: "SEMANA",
       value: informe.etiqueta,
-      changeMessage: `Semana del %@: ${fraseDelInforme(informe)}`,
+      ...(resumen ? { changeMessage: `Semana del %@: ${fraseDelInforme(informe)}` } : {}),
     }],
     // El número grande va dibujado en la banda: así se ve igual en todos los iPhone.
     primaryFields: [],
@@ -127,7 +131,7 @@ export function construirPassJsonDueno({ informe, aviso }, negocio, { passTypeId
     backgroundColor: rgb(PALETA.verde),
     foregroundColor: rgb(PALETA.papel),
     labelColor: rgb(PALETA.avena),
-    storeCard: camposDelDueno({ informe, aviso }, negocio, { base: appUrl }),
+    storeCard: camposDelDueno({ informe, aviso }, negocio, { base: appUrl, recibir: t.recibir }),
     featuredActions: accionesDelDueno(aviso, negocio, { base: appUrl }),
   };
 }
