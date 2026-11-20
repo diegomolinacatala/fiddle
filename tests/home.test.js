@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan } from "@/app/home/datos";
+import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan, mensualDelAnual } from "@/app/home/datos";
 import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL, CINTAS, DISENOS } from "@/app/home/demo";
 import { GRUPOS } from "@/lib/crm";
 import { ubicacionesApple } from "@/lib/apple/pase";
@@ -40,34 +40,36 @@ describe("web de fiddle: contacto y precios", () => {
     expect(url.searchParams.get("body")).toBe("Cuerpo");
   });
 
-  it("tres planes: Esencial a 19 €, Plus a 39 € y Pro a 49 €, el último destacado", () => {
-    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["esencial", 19], ["plus", 39], ["pro", 49]]);
+  it("dos planes: Gratis a 0 € con 50 tarjetas y Pro a 49 €, el último destacado", () => {
+    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["gratis", 0], ["pro", 49]]);
     expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["pro"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
-    const [esencial, plus, pro] = PLANES.map((p) => p.incluye.join(" "));
-    // Esencial: hasta 500 tarjetas (10-11-2026; antes 750), sin promociones y la monta la tienda.
-    expect(esencial).toMatch(/500 tarjetas/);
-    expect(esencial).not.toMatch(/Promociones|sin límite|montada/);
-    expect(esencial).toMatch(/La montas tú/);
-    // Plus y Pro (13-10-2026; antes Tarjetas y Completo).
-    expect(plus).toMatch(/sin límite/);
-    expect(plus).toMatch(/Promociones al momento, a todos/);
-    expect(PLANES[2].incluye[0]).toBe("Todo lo de Plus");
-    // Las estadísticas van desde Plus (06-11-2026, como los planes de lib/planes.js).
-    expect(plus).toMatch(/estadísticas/);
-    for (const cosa of [/grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/]) {
-      expect(pro).toMatch(cosa);
-    }
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
+    const [gratis, pro] = PLANES;
+    // Gratis: todo lo que antes era Pro, con tope de tarjetas en uso, y se da de alta en /alta.
+    const incluye = gratis.incluye.join(" ");
+    expect(incluye).toMatch(/50 tarjetas/);
+    for (const cosa of [/estadísticas/i, /grupos/, /automáticos y programados/, /Promociones/, /Abierto hasta/, /pasar cerca/, /PIN/]) {
+      expect(incluye).toMatch(cosa);
+    }
+    expect(gratis.enlace).toBe("/alta");
+    expect(gratis.nota).toMatch(/lista de espera/);
+    // Pro: 49 al mes o 468 al año por adelantado (39 al mes), sin límite y montada.
+    expect(pro.anual).toBe(468);
+    expect(mensualDelAnual(pro)).toBe(39);
+    expect(pro.enlace).toBeUndefined();
+    expect(pro.incluye.join(" ")).toMatch(/sin límite/i);
+    expect(pro.incluye.join(" ")).toMatch(/montada/);
   });
 
-  it("el mensaje de cada plan dice cuál y cuánto", () => {
-    expect(mensajeDePlan(PLANES[0])).toContain("Esencial");
-    expect(mensajeDePlan(PLANES[0])).toContain("19 €");
-    expect(mensajeDePlan(PLANES[1])).toContain("Plus");
-    expect(mensajeDePlan(PLANES[1])).toContain("39 €");
-    expect(mensajeDePlan(PLANES[2])).toContain("49 €");
-    expect(mensajeDePlan(PLANES[2])).toContain("plan Pro");
+  it("no queda rastro de Esencial ni de Plus", () => {
+    expect(JSON.stringify(PLANES)).not.toMatch(/Esencial|Plus/);
+  });
+
+  it("el mensaje de WhatsApp de Pro dice cuál y cuánto", () => {
+    expect(mensajeDePlan(PLANES[1])).toContain("plan Pro");
+    expect(mensajeDePlan(PLANES[1])).toContain("49 €");
+    expect(mensajeDePlan(PLANES[1])).toContain("468 €");
   });
 });
 

@@ -36,7 +36,7 @@ export function proveedorWallet() {
 
 /**
  * La tienda ya no puede dar más tarjetas: llegó al límite de su plan y al margen.
- * Quien llama decide qué ve cada uno: el cliente, «pregunta en el mostrador»; el
+ * Quien llama decide qué ve cada uno: el cliente, la lista de espera por correo; el
  * dueño, que su plan está lleno. Las tarjetas que ya existen siguen funcionando.
  */
 export class TiendaLlena extends Error {

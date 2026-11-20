@@ -20,7 +20,7 @@ import { CONSULTA_MOVIL } from "./consultaMovil";
 // pisar los :active ni las transiciones que ya llevan transform.
 // ============================================================================
 
-// Pantalla ancha: donde los pasos van en tres columnas y los planes, tres columnas.
+// Pantalla ancha: donde los pasos van en tres columnas y los planes, dos columnas.
 const ANCHA = "(min-width:760px) and (not ((pointer:coarse) and (max-height:500px)))";
 
 export const cssScroll = `
@@ -44,8 +44,7 @@ export const cssScroll = `
 @media (prefers-reduced-motion:no-preference) and ${ANCHA}{
   .plan{transform-origin:50% 100%}
   [data-aparece=espera] .plan:nth-child(1){rotate:-7deg;translate:46px 26px}
-  [data-aparece=espera] .plan:nth-child(3){rotate:7deg;translate:-46px 26px}
-  [data-aparece=espera] .plan:nth-child(2){scale:.95}
+  [data-aparece=espera] .plan:nth-child(2){rotate:7deg;translate:-46px 26px}
   [data-aparece=visto] .plan{transition:transform 1.1s var(--curva) calc(var(--i) * 120ms),
     rotate 1.1s var(--curva) calc(var(--i) * 120ms),translate 1.1s var(--curva) calc(var(--i) * 120ms),
     scale 1.1s var(--curva) calc(var(--i) * 120ms)}

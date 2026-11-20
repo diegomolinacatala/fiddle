@@ -10,12 +10,11 @@ import Correo from "./Correo";
 import Cinta from "./Cinta";
 import Menu from "./Menu";
 import BarraMovil from "./BarraMovil";
-import Indicador from "./Indicador";
-import Aparece from "./Aparece";
+import Planes from "./Planes";
 import { Punto, Encabezado, Flecha, IconoMensaje } from "./Trozos";
 import { CINTAS } from "./demo";
 import { PALETA } from "./paleta";
-import { PLANES, TELEFONO_VISIBLE, CORREO, enlaceWhatsApp, mensajeDePlan } from "./datos";
+import { TELEFONO_VISIBLE, CORREO, enlaceWhatsApp } from "./datos";
 import { css } from "./estilo";
 import { cssMovil } from "./estiloMovil";
 import { cssComo } from "./estiloComo";
@@ -128,36 +127,10 @@ export default async function Home() {
 
         <section id="precios" className="bloque">
           <Encabezado titulo="Un precio claro" centrado>
-            Tres opciones, todas con tu tarjeta en iPhone y Android.
+            Empiezas gratis y con todo. Pagas cuando tengas muchos clientes.
           </Encabezado>
 
-          <Indicador objetivo="planes" nombre="Planes" tipo="pestanas" etiquetas={PLANES.map((p) => `${p.nombre} ${p.precio} €`)} />
-          <Aparece id="planes" className="planes">
-            {PLANES.map((plan, i) => (
-              <article key={plan.id} className={`plan${plan.destacado ? " plan-destacado oscuro" : ""}`} style={{ "--i": i }} aria-labelledby={`plan-${plan.id}`}>
-                <header className="plan-cabeza">
-                  <h3 id={`plan-${plan.id}`}>{plan.nombre}</h3>
-                  {plan.destacado && <span className="plan-etiqueta">Todo incluido</span>}
-                </header>
-                <p className="plan-lema">{plan.lema}</p>
-                <p className="plan-precio">
-                  <span className="plan-cifra">{plan.precio} €</span>
-                  <span className="plan-periodo">al mes</span>
-                </p>
-                <ul className="plan-lista">
-                  {plan.incluye.map((linea, j) => (
-                    <li key={linea} style={{ "--j": j }}>
-                      <Icono nombre="check" tam={18} grosor={2.2} />
-                      <span>{linea}</span>
-                    </li>
-                  ))}
-                </ul>
-                <a href={enlaceWhatsApp(mensajeDePlan(plan))} className={plan.destacado ? "boton boton-claro" : "boton"} target="_blank" rel="noopener noreferrer">
-                  Empezar con {plan.nombre}
-                </a>
-              </article>
-            ))}
-          </Aparece>
+          <Planes />
           <p className="planes-nota">
             ¿Tienes más de un local? <a href={enlaceWhatsApp("Hola, tengo más de un local y me interesa fiddle.")} target="_blank" rel="noopener noreferrer">Escríbenos</a> y lo vemos.
           </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IDS_PLAN, PLANES_DE_PARTIDA, PLAN_POR_DEFECTO, FUNCIONES } from "@/lib/planes";
 import { C, panel, h2, campo, etiqueta } from "@/app/ui";
 
@@ -17,6 +17,17 @@ export default function PlanTienda({ n, accent, flash, onCambio }) {
   const [guardando, setGuardando] = useState(false);
   const actual = n.plan || null;
   const funciones = n.funciones || {};
+  // Cuántos esperan tarjeta en su lista (solo se pregunta si tiene límite).
+  const [espera, setEspera] = useState(null);
+  useEffect(() => {
+    if (!n.cupo) { setEspera(null); return undefined; }
+    let vivo = true;
+    fetch(`/api/admin/espera?slug=${encodeURIComponent(n.slug)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (vivo) setEspera(d); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [n.slug, n.cupo]);
 
   async function elegir(plan) {
     if (plan === actual) return;
@@ -28,7 +39,11 @@ export default function PlanTienda({ n, accent, flash, onCambio }) {
       const d = await r.json();
       if (!r.ok) return flash(d.error || "No se pudo guardar");
       onCambio(d);
-      flash(`Plan ${PLANES_DE_PARTIDA[plan].nombre}: sus tarjetas se ponen al día en silencio`);
+      const mandados = d.espera?.mandados || 0;
+      flash(mandados > 0
+        ? `Plan ${PLANES_DE_PARTIDA[plan].nombre}. Se ha escrito a ${mandados} de la lista de espera`
+        : `Plan ${PLANES_DE_PARTIDA[plan].nombre}: sus tarjetas se ponen al día en silencio`);
+      setEspera((e) => (e ? { ...e, esperan: d.espera?.esperan ?? e.esperan } : e));
     } catch {
       flash("Sin conexión: no se ha guardado");
     } finally {
@@ -53,6 +68,14 @@ export default function PlanTienda({ n, accent, flash, onCambio }) {
           : "Tarjetas sin límite."}
         {" "}{lleva.length ? <>Lleva: {lleva.join(", ")}.</> : "Solo la tarjeta y la caja."}
       </p>
+      {espera && espera.esperan > 0 && (
+        <p style={texto}>
+          En la lista de espera: <strong style={{ color: C.texto }}>{espera.esperan}</strong>.
+          {espera.hayCorreo
+            ? " Se les escribe solos en cuanto haya sitio."
+            : <span style={{ color: C.mal }}> No hay proveedor de correo (RESEND_API_KEY y CORREO_DESDE): no se les puede escribir.</span>}
+        </p>
+      )}
       <p style={{ ...texto, color: C.tenue }}>
         Lo que lleva cada plan se cambia en <a href="/admin#planes" style={{ color: accent }}>Plataforma → Planes</a>, para todas las tiendas.
       </p>

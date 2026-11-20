@@ -142,7 +142,7 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
             <Bloque
               accent={accent} icono="estrella" titulo={`Tu plan: ${plan.nombre}`}
               resumen={textoDelPlan(plan, slug)}
-              accion={{ texto: "Hablar de mi plan", icono: "correo", onClick: () => window.open(enlaceWhatsApp(`Hola, soy de ${n.nombre} y quiero hablar de mi plan de fiddle (${plan.nombre}).`), "_blank", "noopener") }}
+              accion={plan.id === "pro" ? null : { texto: "Pasar a Pro", icono: "correo", onClick: () => window.open(enlaceWhatsApp(`Hola, soy de ${n.nombre} y quiero pasar a Pro (49 €/mes o 468 €/año).`), "_blank", "noopener") }}
             />
           )}
           <Bloque
@@ -199,15 +199,23 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
   );
 }
 
-// Cuántas tarjetas lleva, si su plan tiene límite, y qué pasa al llegar (lib/planes.js).
-function textoDelPlan({ cupo }, slug) {
-  if (!cupo) return "Tarjetas sin límite. Si quieres cambiar de plan, escríbenos.";
+// Su plan y cómo va de tarjetas (lib/planes.js). Gratis: hasta el límite EN USO (las
+// que nadie guardó ni usó no cuentan) y, al llegar, quien escanea se apunta en la
+// lista de espera. Pro: sin límite. Si falta el proveedor de correo lo sabemos
+// nosotros, no el dueño: a él le basta saber que se les escribirá.
+function textoDelPlan({ cupo, esperan }, slug) {
+  if (!cupo) return "Tarjetas sin límite y todo incluido.";
   // Las que lleva ruedan desde las que vio aquí la última vez (app/useVisto.js).
-  const cuenta = <><NumeroVisto id={`${slug}:emitidas`} valor={cupo.emitidas} /> de {cupo.max.toLocaleString("es")} tarjetas.</>;
-  if (cupo.estado === "cerrado") return <><span style={{ color: C.mal }}>{cuenta} Ya no se dan tarjetas nuevas:</span> a quien escanea se le dice que pregunte en el mostrador. Las que ya tienen siguen funcionando.</>;
-  if (cupo.estado === "lleno") return <><span style={{ color: C.mal }}>{cuenta} Has llegado al límite.</span> Aún se dan unas pocas más; para no quedarte sin, cambia de plan.</>;
-  if (cupo.estado === "cerca") return <><span style={{ color: C.mal }}>{cuenta}</span> Te queda poco para el límite de tu plan.</>;
-  return <>{cuenta} Si te vas a quedar corto, escríbenos y cambias de plan.</>;
+  const cuenta = <><NumeroVisto id={`${slug}:emitidas`} valor={cupo.emitidas} /> de {cupo.max.toLocaleString("es")} tarjetas en uso.</>;
+  const nota = " Las que nadie guardó ni usó no cuentan; las que ya tienen siguen funcionando siempre.";
+  const lista = esperan > 0
+    ? ` Hay ${esperan} ${esperan === 1 ? "persona" : "personas"} en la lista de espera: les llega su tarjeta por correo en cuanto pases a Pro.`
+    : "";
+  if (cupo.estado === "cerrado" || cupo.estado === "lleno") {
+    return <><span style={{ color: C.mal }}>{cuenta} Has llegado al límite:</span> quien escanea ahora deja su correo y le mandamos la tarjeta cuando pases a Pro.{lista}{nota}</>;
+  }
+  if (cupo.estado === "cerca") return <><span style={{ color: C.mal }}>{cuenta}</span> Te queda poco para el límite del plan Gratis.{lista}{nota}</>;
+  return <>{cuenta} El plan Gratis lleva todo, hasta ese límite.{lista}{nota}</>;
 }
 
 const toast = {

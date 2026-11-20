@@ -28,7 +28,7 @@ function supa() {
 }
 
 // Tablas que crea supabase/schema.sql (las comprueba el diagnóstico del manager).
-export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados", "tareas"];
+export const TABLAS = ["negocios", "clientes", "eventos", "dispositivos", "registros", "intentos", "campanas", "tarjetas_de_dispositivo", "accesos", "invitaciones", "tutoriales", "borrados", "auditoria", "plataforma", "interesados", "tareas", "espera"];
 
 /**
  * ¿Supabase responde y existen todas las tablas? Consulta barata (solo cuenta).
@@ -195,6 +195,94 @@ export async function borrarInteresado(id) {
     return;
   }
   await enFila(async () => escribir("interesados", (await leer("interesados", [])).filter((f) => f.id !== id)));
+}
+
+// ---------------------------------------------------------- lista de espera
+// Quien quiso tarjeta de una tienda llena (lib/listaDeEspera.js). Solo el correo,
+// cifrado y atado a su fila. Una fila vive hasta que se le manda el correo o hasta
+// los MESES_ESPERA (lib/legal.js): nunca más.
+const leerEspera = (fila) => ({ ...fila, email: descifrar(fila.email, { serial: fila.id, campo: "email" }) });
+
+/** Los de una tienda, el más antiguo primero (en el orden en que se apuntaron). */
+export async function listEspera(negocio) {
+  if (hasSupabase()) {
+    const filas = await porPaginas(() => supa().from("espera").select("*").eq("negocio", negocio).order("creado").order("id"), "listar espera");
+    return filas.map(leerEspera);
+  }
+  const filas = await enFila(() => leer("espera", []));
+  return filas.filter((f) => f.negocio === negocio).sort((a, b) => (a.creado < b.creado ? -1 : 1)).map(leerEspera);
+}
+
+/** Cuántos esperan en una tienda (sin descifrar a nadie). */
+export async function contarEspera(negocio) {
+  if (hasSupabase()) {
+    return sinError(await supa().from("espera").select("id", { count: "exact", head: true }).eq("negocio", negocio), "contar espera") ?? 0;
+  }
+  return (await enFila(() => leer("espera", []))).filter((f) => f.negocio === negocio).length;
+}
+
+/** Las tiendas con alguien esperando: lo que mira el reloj antes de leer ninguna. */
+export async function negociosConEspera() {
+  if (hasSupabase()) {
+    const filas = await porPaginas(() => supa().from("espera").select("negocio, id").order("id"), "tiendas con espera");
+    return [...new Set(filas.map((f) => f.negocio))];
+  }
+  return [...new Set((await enFila(() => leer("espera", []))).map((f) => f.negocio))];
+}
+
+/**
+ * Apunta un correo (ya validado y en minúsculas). `creado` solo para devolver a su
+ * sitio de la cola a uno cuyo correo no salió (lib/listaDeEspera.js).
+ * @returns {Promise<string>} su id
+ */
+export async function addEspera(negocio, email, { creado = null } = {}) {
+  const id = randomUUID();
+  const fila = { id, negocio, email: cifrar(email, { serial: id, campo: "email" }), creado: creado || ahoraISO() };
+  if (hasSupabase()) {
+    sinError(await supa().from("espera").insert(fila), "apuntar en espera");
+    return id;
+  }
+  await enFila(async () => escribir("espera", [...(await leer("espera", [])), fila]));
+  return id;
+}
+
+/**
+ * Borra una fila y dice si la borró ESTA llamada: así, si el reloj y el admin
+ * atienden la lista a la vez, solo uno se queda con cada persona y nadie recibe
+ * dos correos.
+ * @returns {Promise<boolean>}
+ */
+export async function borrarEspera(id) {
+  if (hasSupabase()) {
+    return (sinError(await supa().from("espera").delete({ count: "exact" }).eq("id", id), "borrar de la espera") ?? 0) > 0;
+  }
+  return enFila(async () => {
+    const filas = await leer("espera", []);
+    const quedan = filas.filter((f) => f.id !== id);
+    await escribir("espera", quedan);
+    return quedan.length < filas.length;
+  });
+}
+
+/**
+ * Borra los apuntados antes de `antesDe` (ISO), o todos los de una tienda.
+ * @param {{antesDe?: string, negocio?: string}} filtro
+ * @returns {Promise<number>} cuántos
+ */
+export async function vaciarEspera({ antesDe = null, negocio = null }) {
+  if (!antesDe && !negocio) throw new Error("vaciarEspera: falta el filtro");
+  const cae = (f) => (!antesDe || f.creado < antesDe) && (!negocio || f.negocio === negocio);
+  if (hasSupabase()) {
+    let q = supa().from("espera").delete({ count: "exact" });
+    if (antesDe) q = q.lt("creado", antesDe);
+    if (negocio) q = q.eq("negocio", negocio);
+    return sinError(await q, "vaciar espera") ?? 0;
+  }
+  return enFila(async () => {
+    const filas = await leer("espera", []);
+    await escribir("espera", filas.filter((f) => !cae(f)));
+    return filas.filter(cae).length;
+  });
 }
 
 // ---------------------------------------------------------- tareas
@@ -383,11 +471,16 @@ export async function listNegocios({ incluirArchivados = false } = {}) {
 }
 
 /** Crea un negocio. Devuelve `{error}` si el slug ya está cogido o no vale. */
-export async function crearNegocio({ slug, nombre, tipo, meta, premio, acciones, tema, brief }) {
+/**
+ * `extra`: lo que la tienda tiene que llevar DESDE que existe (el alta sola: su
+ * plan Gratis, su ubicación y quién la dio de alta). En la misma escritura: una
+ * tienda sin plan es Pro (lib/planes.js) y no puede existir ni un momento así.
+ */
+export async function crearNegocio({ slug, nombre, tipo, meta, premio, acciones, tema, brief }, extra = {}) {
   if (!esSlug(slug)) return { error: "El identificador solo admite minúsculas, números y guiones" };
   if (await getNegocio(slug, { incluirArchivados: true })) return { error: `Ya existe un negocio con el identificador "${slug}"` };
 
-  const config = configInicial({ meta, premio, acciones, tema, brief });
+  const config = { ...configInicial({ meta, premio, acciones, tema, brief }), ...extra };
   const fila = { slug, nombre, tipo, config, creado: ahoraISO() };
   if (hasSupabase()) {
     sinError(await supa().from("negocios").insert(fila), "crear negocio");
@@ -447,6 +540,9 @@ function fusionarConfig(actual, patch) {
     propios: patch.propios ?? actual.propios,
     // «Cerrar todas las sesiones» (lib/sesionVigente.js): las firmadas antes no valen.
     sesionesDesde: patch.sesionesDesde ?? actual.sesionesDesde,
+    // Cómo llegó la tienda si se dio de alta sola desde la web (lib/alta.js): quién
+    // y dónde. Solo lo escribe /api/alta; lo ve el admin.
+    alta: patch.alta !== undefined ? patch.alta : actual.alta,
   };
   return config;
 }
@@ -562,6 +658,7 @@ export async function borrarNegocio(slug) {
     sinError(await db.from("accesos").delete().eq("negocio", slug), "borrar accesos");
     sinError(await db.from("invitaciones").delete().eq("negocio", slug), "borrar invitaciones");
     sinError(await db.from("tutoriales").delete().eq("negocio", slug), "borrar tutoriales");
+    sinError(await db.from("espera").delete().eq("negocio", slug), "borrar la lista de espera");
     sinError(await db.from("clientes").delete().eq("negocio", slug), "borrar clientes");
     sinError(await db.from("negocios").delete().eq("slug", slug), "borrar negocio");
     await borrarDispositivosSinRegistros(dispositivos);
@@ -579,6 +676,7 @@ export async function borrarNegocio(slug) {
     const registros = await leer("registros", []);
     await escribir("registros", registros.filter((r) => !seriales.includes(r.serial) && r.negocio !== slug));
     await escribir("campanas", (await leer("campanas", [])).filter((c) => c.negocio !== slug));
+    await escribir("espera", (await leer("espera", [])).filter((f) => f.negocio !== slug));
     const tarjetas = await leer("tarjetas_de_dispositivo", {});
     await escribir("tarjetas_de_dispositivo", Object.fromEntries(Object.entries(tarjetas).filter(([, t]) => t.negocio !== slug)));
     const accesos = await leer("accesos", {});
@@ -919,19 +1017,26 @@ export async function listClientes(negocio, { limite } = {}) {
 }
 
 /**
- * Cuántas tarjetas vivas tiene una tienda (ni fusionadas ni borradas): lo que mide
- * el límite de su plan (lib/planes.js). Solo cuenta: no lee ni descifra ninguna.
+ * Cuántas tarjetas EN USO tiene una tienda: lo que mide el límite de su plan
+ * (lib/planes.js). Ni fusionadas ni borradas, y tampoco las descartadas: sin
+ * visitas, sin instalar nunca y de antes de `UMBRALES.descartadaDias` (la misma
+ * regla que `perfil.descartada` de lib/crm.js, que las deja fuera de las cifras).
+ * Quien escanea y se va no ocupa sitio; quien tiene puntos, sí, aunque no venga.
+ * Solo cuenta: no lee ni descifra ninguna.
  */
-export async function contarTarjetas(negocio) {
+export async function contarTarjetas(negocio, ahora = Date.now()) {
+  const desde = new Date(ahora - UMBRALES.descartadaDias * 86400000).toISOString();
   if (hasSupabase()) {
     return sinError(
       await supa().from("clientes").select("serial", { count: "exact", head: true })
-        .eq("negocio", negocio).is("fusionado_en", null).is("borrado_en", null),
+        .eq("negocio", negocio).is("fusionado_en", null).is("borrado_en", null)
+        .or(`visitas.gt.0,instalado.not.is.null,creado.gte."${desde}"`),
       "contar tarjetas",
     ) ?? 0;
   }
   const all = await enFila(() => leer("clientes", {}));
-  return Object.values(all).filter((c) => c.negocio === negocio && !c.fusionado_en && !c.borrado_en).length;
+  const enUso = (c) => (c.visitas || 0) > 0 || Boolean(c.instalado) || !c.creado || c.creado >= desde;
+  return Object.values(all).filter((c) => c.negocio === negocio && !c.fusionado_en && !c.borrado_en && enUso(c)).length;
 }
 
 /**
