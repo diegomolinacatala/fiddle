@@ -1,13 +1,16 @@
 // ============================================================================
 // PLANES: qué puede usar cada tienda según lo que paga
 // ----------------------------------------------------------------------------
-// Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026, Tarjetas y Completo). Lo que lleva cada uno NO está fijo
-// en el código: lo cambia el admin en /admin → Planes y se guarda en la tabla
-// `plataforma` (clave "planes"). Aquí solo está lo de partida y las reglas.
+// Dos planes desde el 20-11-2026: **Gratis** (para siempre, hasta 50 tarjetas en
+// uso y con todo) y **Pro** (de pago, sin límite). Antes hubo Esencial, Plus y Pro
+// (y antes Tarjetas y Completo). Lo que lleva cada uno NO está fijo en el código:
+// lo cambia el admin en /admin → Planes y se guarda en la tabla `plataforma`
+// (clave "planes"). Aquí solo está lo de partida y las reglas.
 //
-// - Cada tienda tiene su plan (`negocio.plan`, lo elige el admin en su ficha).
-//   **Sin plan es Pro**: una tienda de antes, o una que nadie ha tocado, no
-//   pierde nada por un despliegue. La Delicantería va en Pro a propósito.
+// - Cada tienda tiene su plan (`negocio.plan`, lo elige el admin en su ficha; el
+//   alta sola desde la web, /alta, empieza en Gratis).
+//   **Sin plan es Pro**, y también un plan que ya no existe (esencial, plus): una
+//   tienda de antes no pierde nada por un despliegue. La Delicantería va en Pro.
 // - Un plan dice qué PUEDE encenderse, no qué está encendido: los avisos
 //   automáticos y la plantilla siguen teniendo su interruptor en el admin
 //   (`avisosAvanzados`, `plantillaActiva`), y el «Abierto hasta…» el suyo en
@@ -16,10 +19,14 @@
 // - Al leer la tienda, el store le pone `funciones` y `cupo` (`conPlan`). Lo que
 //   depende del plan pregunta con `tiene(negocio, "promos")`, nunca mirando el
 //   nombre del plan: los planes se pueden cambiar.
-// - El límite de tarjetas cuenta las emitidas que siguen vivas (ni borradas ni
-//   fusionadas). Se avisa al dueño al 90 % y al llegar; se siguen dando hasta el
-//   límite más el `margen`, y entonces el cliente nuevo ve «pregunta en el
-//   mostrador». Las tarjetas que ya existen funcionan siempre.
+// - El límite cuenta las tarjetas EN USO (`contarTarjetas` del store): ni
+//   borradas ni fusionadas, y tampoco las descartadas (nadie la guardó ni la usó
+//   en su primer día, `UMBRALES.descartadaDias` de lib/crm.js): quien escanea y se
+//   va no le quita sitio a nadie. Una tarjeta con puntos de alguien que lleva meses
+//   sin venir SÍ cuenta: es de alguien. Se avisa al dueño al 90 % y al llegar; se
+//   siguen dando hasta el límite más el `margen`, y entonces el cliente nuevo puede
+//   apuntarse a la lista de espera (lib/listaDeEspera.js). Las tarjetas que ya
+//   existen funcionan siempre, también las de una tienda gratis que nunca paga.
 //
 // Puro y sin imports del servidor: lo usan también las pantallas.
 // ============================================================================
@@ -36,15 +43,19 @@ export const FUNCIONES = [
 ];
 const IDS_FUNCION = FUNCIONES.map((f) => f.id);
 
-export const IDS_PLAN = ["esencial", "plus", "pro"];
+export const IDS_PLAN = ["gratis", "pro"];
 export const PLAN_POR_DEFECTO = "pro";
+/** El de una tienda que se da de alta sola desde la web (/alta). */
+export const PLAN_DEL_ALTA = "gratis";
 
 const todas = (valor) => Object.fromEntries(IDS_FUNCION.map((id) => [id, valor]));
 
-/** Lo de partida (06-11-2026): Esencial sin nada, Plus con estadísticas y promos, Pro con todo. */
+/**
+ * Lo de partida (20-11-2026): los dos con todo; Gratis, hasta 50 tarjetas en uso y
+ * sin margen (pasado el límite está la lista de espera, no «unas cuantas más»).
+ */
 export const PLANES_DE_PARTIDA = {
-  esencial: { nombre: "Esencial", maxTarjetas: 500, margen: 50, funciones: todas(false) },
-  plus: { nombre: "Plus", maxTarjetas: null, margen: 0, funciones: { ...todas(false), estadisticas: true, promos: true } },
+  gratis: { nombre: "Gratis", maxTarjetas: 50, margen: 0, funciones: todas(true) },
   pro: { nombre: "Pro", maxTarjetas: null, margen: 0, funciones: todas(true) },
 };
 
@@ -53,7 +64,7 @@ const MAX_MARGEN = 10_000;
 
 const entero = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
 
-/** Lo guardado (puede faltar o venir mal) → los tres planes completos. */
+/** Lo guardado (puede faltar o venir mal) → los planes completos. Lo de un plan que ya no existe se ignora. */
 export function normalizarPlanes(guardado) {
   const g = guardado && typeof guardado === "object" ? guardado : {};
   return Object.fromEntries(IDS_PLAN.map((id) => {
@@ -150,8 +161,9 @@ export function cupoDe(negocio, emitidas) {
 }
 
 // Lo que lee el cliente si la tienda ya no puede dar tarjetas. Sin hablar de
-// planes: eso es cosa del dueño, no de quien está en la cola.
-export const TEXTO_LLENA = "Ahora mismo no podemos darte la tarjeta desde aquí. Pregunta en el mostrador.";
+// planes: eso es cosa del dueño, no de quien está en la cola. Debajo, la lista de
+// espera (lib/listaDeEspera.js).
+export const TEXTO_LLENA = "Ahora mismo no podemos darte la tarjeta. Déjanos tu correo y te la mandamos en cuanto podamos.";
 
 /** ¿Se puede dar UNA tarjeta más? */
 export const quedaCupo = (negocio, emitidas) => cupoDe(negocio, emitidas)?.estado !== "cerrado";

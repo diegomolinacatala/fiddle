@@ -28,6 +28,7 @@ import { normalizarLegal } from "./legal";
 import { normalizarCaja } from "./caja";
 import { normalizarPlantilla } from "./plantilla";
 import { IDS_PLAN } from "./planes";
+import { normalizarAlta } from "./alta";
 import { normalizarHorario } from "./horario";
 import { normalizarPendientes } from "./envios";
 import { normalizarPropios } from "./propios";
@@ -287,7 +288,7 @@ export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, mod
 // "crm" está reservado aunque no sea una ruta de primer nivel: /admin/crm es la
 // vista de la plataforma, y una tienda con ese slug la taparía. "home" es la web
 // de fiddle: una tienda que se llamara así no se vería nunca.
-export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion", "home", "tareas"]);
+export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion", "home", "tareas", "alta"]);
 
 /**
  * ¿Es un slug válido para un negocio? Solo mira la FORMA (minúsculas, guiones,
@@ -478,6 +479,8 @@ export function componerNegocio(slug, guardado) {
     // Desde cuándo valen las sesiones de la tienda (lib/sesionVigente.js): las
     // firmadas antes se cerraron desde Ajustes. null: nunca se cerraron.
     sesionesDesde: typeof c.sesionesDesde === "string" ? c.sesionesDesde : null,
+    // Si se dio de alta sola desde la web (lib/alta.js): quién y dónde. Solo el admin.
+    alta: normalizarAlta(c.alta),
   };
 }
 

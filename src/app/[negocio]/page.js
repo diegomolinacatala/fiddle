@@ -19,6 +19,8 @@ import CaraDelPase from "@/app/CaraDelPase";
 import { colorDelPase } from "@/lib/apple/dibujo";
 import { BotonAppleWallet, BotonGoogleWallet } from "@/app/BotonesWallet";
 import PedirNombre from "./PedirNombre";
+import ListaDeEspera from "./ListaDeEspera";
+import { MESES_ESPERA } from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +65,7 @@ export default async function Page({ params, searchParams }) {
   const vigente = recordado ? await clienteVigente(getCliente, recordado).catch(() => null) : null;
   const suya = vigente?.negocio === slug ? vigente : null;
   // Sin tarjetas libres en su plan (lib/planes.js): quien ya tiene la suya la ve
-  // igual; a los nuevos, «pregunta en el mostrador». Solo se cuenta con límite.
+  // igual; a los nuevos, lista de espera por correo. Solo se cuenta con límite.
   const llena = !suya && n.cupo ? !quedaCupo(n, await contarTarjetas(slug).catch(() => 0)) : false;
   const t = n.tema;
 
@@ -88,11 +90,14 @@ export default async function Page({ params, searchParams }) {
 function Bienvenida({ n, slug, nuevo, llena }) {
   if (llena) {
     return (
-      <header className="entra">
-        <MarcaTienda tema={n.tema} tam={76} icono style={marca} />
-        <h1 className="titulo" style={{ marginTop: 26 }}>{n.nombre}</h1>
-        <p className="promesa"><span>{TEXTO_LLENA}</span></p>
-      </header>
+      <>
+        <header className="entra">
+          <MarcaTienda tema={n.tema} tam={76} icono style={marca} />
+          <h1 className="titulo" style={{ marginTop: 26 }}>{n.nombre}</h1>
+          <p className="promesa"><span>{TEXTO_LLENA}</span></p>
+        </header>
+        <ListaDeEspera slug={slug} meses={MESES_ESPERA} />
+      </>
     );
   }
   return (

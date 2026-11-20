@@ -12,8 +12,8 @@
  * la que vio al darse de alta (`clientes.aviso_version`). Subirla cada vez que
  * cambie lo que dice /privacidad.
  */
-export const VERSION_AVISO = "2026-10-15";
-export const VERSION_AVISO_TEXTO = "15 de octubre de 2026";
+export const VERSION_AVISO = "2026-11-20";
+export const VERSION_AVISO_TEXTO = "20 de noviembre de 2026";
 
 /** Una tarjeta sin ninguna actividad en este tiempo se borra sola. */
 export const MESES_SIN_USO = 24;
@@ -26,6 +26,12 @@ export const DIAS_BAJA_TIENDA = 30;
  * vieja, con pinta de válida).
  */
 export const HORAS_HASTA_PURGA = 24;
+/**
+ * Lo que guardamos el correo de quien se apunta a la lista de espera de una
+ * tienda llena (lib/listaDeEspera.js) si la tienda nunca puede darle la tarjeta.
+ * Si puede, se borra al mandarle el correo.
+ */
+export const MESES_ESPERA = 6;
 
 const DIA = 24 * 60 * 60 * 1000;
 /** Antes de esta fecha (ISO), nada se guarda: el plazo de los clientes y de su historial. */
@@ -35,6 +41,11 @@ export const limiteSinUso = (ahora = Date.now()) => {
   return d.toISOString();
 };
 export const limiteBajaTienda = (ahora = Date.now()) => new Date(ahora - DIAS_BAJA_TIENDA * DIA).toISOString();
+export const limiteEspera = (ahora = Date.now()) => {
+  const d = new Date(ahora);
+  d.setUTCMonth(d.getUTCMonth() - MESES_ESPERA);
+  return d.toISOString();
+};
 export const limitePurga = (ahora = Date.now()) => new Date(ahora - HORAS_HASTA_PURGA * 60 * 60 * 1000).toISOString();
 
 /**
@@ -48,6 +59,7 @@ export const SUBENCARGADOS = [
   { quien: "Vercel", para: "Servidor web", donde: "Londres (Reino Unido)", garantia: "Empresa de EE. UU.: DPA con cláusulas contractuales tipo y Data Privacy Framework" },
   { quien: "Apple", para: "Apple Wallet y los avisos de Safari", donde: "EE. UU. y UE", garantia: "Data Privacy Framework" },
   { quien: "Google", para: "Google Wallet y los avisos de Chrome", donde: "EE. UU. y UE", garantia: "Data Privacy Framework" },
+  { quien: "Resend", para: "El correo de la lista de espera, si te apuntas", donde: "EE. UU.", garantia: "Empresa de EE. UU.: contrato de tratamiento (DPA) con cláusulas contractuales tipo de la UE" },
   { quien: "Mozilla", para: "Los avisos de Firefox, si los activas ahí", donde: "EE. UU.", garantia: "El aviso viaja cifrado: Mozilla no puede leerlo" },
 ];
 

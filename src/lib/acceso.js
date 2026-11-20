@@ -40,6 +40,10 @@ import { RESERVADOS } from "./negocios";
 //                                          contraseñas (vale el token del enlace)
 //   /api/interesados                       el último paso de «Diseña tu tarjeta»:
 //                                          deja un contacto, con límite por IP
+//   /alta  /api/alta                       una cafetería se da de alta sola, en
+//                                          el plan Gratis (lib/alta.js), con límite
+//   /api/espera                            el correo de quien quiere tarjeta de una
+//                                          tienda llena (lib/listaDeEspera.js)
 //   /api/cron/avisos                       el reloj de los avisos automáticos: no
 //                                          hay sesión, lo protege CRON_SECRET en
 //                                          su handler (sin él, no hace nada)
@@ -47,11 +51,14 @@ const PUBLICAS = [
   /^\/$/,
   /^\/home$/,
   /^\/home\/tarjeta$/, // «Diseña tu tarjeta», el probador de la web
+  /^\/alta$/, // el alta sola de una cafetería (lib/alta.js)
   /^\/login$/,
   /^\/privacidad$/,
   /^\/invitacion$/,
   /^\/api\/invitacion$/,
   /^\/api\/interesados$/,
+  /^\/api\/espera$/,
+  /^\/api\/alta$/,
   /^\/api\/login$/,
   /^\/api\/logout$/,
   /^\/api\/tap$/,

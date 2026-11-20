@@ -26,65 +26,67 @@ export const enlaceCorreo = (asunto = ASUNTO, cuerpo = CUERPO) =>
 export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
   `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CORREO)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
-// Lo que lleva cada plan (Plus y Pro, 13-10-2026, que se llamaban Tarjetas y Completo
-// hasta el 07-11-2026; Esencial, 06-11-2026). «Pro» suma a «Plus»: no repite su lista. Las frases dicen lo que la app
-// hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
+// Los planes (20-11-2026): Gratis y Pro; Esencial y Plus ya no existen. Las frases dicen
+// lo que la app hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
 //
 // Lo que la app deja usar a cada plan lo decide el admin en /admin → Planes
 // (lib/planes.js) y esta página NO lo lee: si cambia allí, se cambia aquí a mano.
 //
-// Esencial es para no perder a quien le parece caro: la tarjeta y la caja, hasta
-// 500 tarjetas, sin promociones y sin montarla nosotros. Aún no se paga sola
-// (Stripe, más adelante): de momento se pide por WhatsApp como los otros.
+// Gratis lo tiene todo (lo que antes era Pro) con tope de tarjetas EN USO: las que nadie
+// guardó ni usó no cuentan. Al llegar al tope, los clientes nuevos se apuntan a una lista
+// de espera y reciben su tarjeta cuando la tienda pasa a Pro. Se da de alta solo, en /alta.
+// Pro se pide por WhatsApp (aún no se paga solo): 49 € al mes, o 468 € al año pagados por
+// adelantado, que sale a 39 € al mes.
+export const TARJETAS_GRATIS = 50;
+export const RUTA_ALTA = "/alta";
+
 export const PLANES = [
   {
-    id: "esencial",
-    nombre: "Esencial",
-    precio: 19,
-    lema: "Lo justo para tener tu tarjeta.",
+    id: "gratis",
+    nombre: "Gratis",
+    precio: 0,
+    periodo: "para siempre",
+    lema: `Con todo, hasta ${TARJETAS_GRATIS} tarjetas.`,
+    boton: "Empezar gratis",
+    enlace: RUTA_ALTA,
     incluye: [
-      "Hasta 500 tarjetas, en Apple Wallet y Android",
+      `Hasta ${TARJETAS_GRATIS} tarjetas en uso, en Apple Wallet y Android`,
       "Con tu logo, tus colores y tu premio",
       "La caja en el móvil de la tienda",
       "Tu QR para el mostrador",
-      "La montas tú, desde tu panel",
+      "Estadísticas, grupos y avisos a cada grupo",
+      "Promociones, avisos automáticos y programados",
+      "«Abierto hasta…» y aviso al pasar cerca de tu tienda",
+      "Tu equipo en la caja, cada uno con su PIN",
+      "Lo montas tú, desde tu panel",
     ],
-  },
-  {
-    id: "plus",
-    nombre: "Plus",
-    precio: 39,
-    lema: "Sin límite y con promociones.",
-    incluye: [
-      "Tarjetas sin límite, en Apple Wallet y Android",
-      "Con tu logo, tus colores y tu premio",
-      "La caja en el móvil de la tienda",
-      "Tu QR para el mostrador",
-      "Promociones al momento, a todos tus clientes a la vez",
-      "Las estadísticas de tus clientes",
-      "Te la dejamos montada",
-    ],
+    nota: "Si llegas a las 50, tus clientes nuevos se apuntan a una lista de espera y les llega la tarjeta cuando pases a Pro.",
   },
   {
     id: "pro",
     nombre: "Pro",
     precio: 49,
-    lema: "Para que vuelvan más.",
+    anual: 468,
+    periodo: "al mes",
+    lema: "Sin límite y te la dejamos montada.",
     destacado: true,
+    etiqueta: "Sin límite",
     incluye: [
-      "Todo lo de Plus",
-      "Tus clientes por grupos, y avisos a cada grupo",
-      "Avisos automáticos y programados",
-      "«Abierto hasta…» en la tarjeta",
-      "Aviso al pasar cerca de tu tienda",
-      "Tu equipo en la caja, cada uno con su PIN",
+      "Todo lo del plan Gratis",
+      "Tarjetas sin límite",
+      "Te la dejamos montada",
     ],
   },
 ];
 
+/** Pro, pagado por adelantado: lo que sale al mes (468 / 12). */
+export const mensualDelAnual = (plan) => (plan.anual ? Math.round(plan.anual / 12) : null);
+
 /** El mensaje de WhatsApp con el plan elegido, para que la conversación empiece por ahí. */
 export const mensajeDePlan = (plan) =>
-  `Hola, me interesa el plan ${plan.nombre} de fiddle (${plan.precio} € al mes) para mi cafetería.`;
+  plan.anual
+    ? `Hola, me interesa el plan ${plan.nombre} de fiddle (${plan.precio} € al mes, o ${plan.anual} € al año) para mi cafetería.`
+    : `Hola, me interesa el plan ${plan.nombre} de fiddle para mi cafetería.`;
 
 // Lo que se enseña de La Delicantería (Valencia), primer cliente. Sacado de su base
 // el 09-11-2026 con consultas de solo lectura; Jesús tiene que dar el visto bueno a

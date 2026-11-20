@@ -81,7 +81,7 @@ export async function GET(request) {
     return recordar(respuesta, slug, suya.serial, url);
   } catch (e) {
     // Sin tarjetas libres en su plan (lib/planes.js): a la página de la tienda,
-    // que se lo dice con sus colores («pregunta en el mostrador»), no un error.
+    // que se lo dice con sus colores y le deja apuntarse en la lista de espera.
     if (e instanceof TiendaLlena) return NextResponse.redirect(new URL(`/${slug}`, request.url), 302);
     return errorInterno("tap", e);
   }

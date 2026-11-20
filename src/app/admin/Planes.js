@@ -74,7 +74,7 @@ export default function Planes({ accent, flash }) {
               <FilaInterruptor
                 on={conLimite} accent={accent} icono="credencial"
                 titulo={conLimite ? "Con límite de tarjetas" : "Tarjetas sin límite"}
-                texto={conLimite ? "Avisa al dueño al 90 % y al llegar. Con el margen, se siguen dando unas pocas." : "Las que hagan falta."}
+                texto={conLimite ? "Avisa al dueño al 90 % y al llegar. Con margen, se siguen dando unas pocas; sin él, lista de espera." : "Las que hagan falta."}
                 onClick={() => poner(id, conLimite ? { maxTarjetas: null, margen: 0 } : { maxTarjetas: 500, margen: 50 })}
               />
               {conLimite && (
@@ -93,7 +93,7 @@ export default function Planes({ accent, flash }) {
               )}
               {conLimite && p.maxTarjetas > 0 && (
                 <p style={{ fontSize: 12.5, color: C.tenue, margin: "8px 0 0", lineHeight: 1.4 }}>
-                  A partir de {p.maxTarjetas + p.margen} tarjetas, quien escanea ve «pregunta en el mostrador». Las que ya existen siguen funcionando.
+                  A partir de {p.maxTarjetas + p.margen} tarjetas, quien escanea deja su correo en la lista de espera. Las que ya existen siguen funcionando.
                 </p>
               )}
               <div style={{ marginTop: 12, display: "grid", gap: 2 }}>

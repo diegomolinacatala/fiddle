@@ -12,6 +12,7 @@ import AvisosAvanzados from "@/app/admin/AvisosAvanzados";
 import PlantillaTienda from "@/app/admin/PlantillaTienda";
 import TarjetaDuenoAdmin from "@/app/admin/TarjetaDuenoAdmin";
 import PlanTienda from "@/app/admin/PlanTienda";
+import AltaSola from "@/app/admin/AltaSola";
 import { MARCAS, FORMAS, BANDAS, ESTILOS_GENERALES, estilosDelKit, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia, temaPorDefecto } from "@/lib/negocios";
 import { kitDe } from "@/lib/kits";
 import Selector from "@/app/admin/Selector";
@@ -36,6 +37,7 @@ const AZUL = "#2563eb";
 export default function AdminNegocio() {
   const { slug } = useParams();
   const [n, setN] = useState(null);
+  const [otras, setOtras] = useState([]); // las demás tiendas activas (para ver si un alta está en un local ya ocupado)
   const [error, setError] = useState(null);
   const [msg, setMsg] = useState(null);
   const [origin, setOrigin] = useState("");
@@ -56,6 +58,7 @@ export default function AdminNegocio() {
       const encontrado = lista.find((x) => x.slug === slug);
       if (!encontrado) throw new Error("Esa tienda no existe o está archivada");
       setN(encontrado);
+      setOtras(lista.filter((x) => x.slug !== slug));
     } catch (e) {
       setError(String(e?.message || e));
     }
@@ -147,6 +150,7 @@ export default function AdminNegocio() {
         </header>
 
         <div style={{ marginTop: 18 }}><Accesos slug={n.slug} /></div>
+        {n.alta && <div style={{ marginTop: 18 }}><AltaSola alta={n.alta} ubicaciones={n.ubicaciones} otras={otras} /></div>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20, marginTop: 18, alignItems: "start" }}>
           {/* Su plan primero: dice qué se puede encender en los dos de al lado (lib/planes.js). */}
           <PlanTienda n={n} accent={AZUL} flash={flash} onCambio={(d) => setN((x) => ({ ...x, plan: d.plan, planId: d.planId, funciones: d.funciones, cupo: d.cupo }))} />

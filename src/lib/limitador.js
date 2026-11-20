@@ -37,6 +37,10 @@ export const LIMITES = {
   google: { max: 30, ventanaMs: 10 * 60 * 1000 },
   invitacion: { max: 20, ventanaMs: 10 * 60 * 1000 },
   interesado: { max: 10, ventanaMs: 10 * 60 * 1000 },
+  // La lista de espera de una tienda llena (lib/listaDeEspera.js) y el alta sola
+  // desde la web (lib/alta.js): pocos por conexión, que nadie llene la base.
+  espera: { max: 10, ventanaMs: 10 * 60 * 1000 },
+  alta: { max: 3, ventanaMs: 60 * 60 * 1000 },
   // El PIN de la caja (lib/quien.js): 4 cifras son 10.000 combinaciones. 5 fallos
   // por persona e IP, y 30 por persona desde donde sea, cada 15 minutos.
   pinIp: { max: 5, ventanaMs: 15 * 60 * 1000 },
@@ -94,7 +98,7 @@ export async function anotarFalloLogin(slug, ip) {
 
 /**
  * Cuenta un uso de un recurso público y dice si se pasó del límite.
- * @param {"tap"|"log"|"dueno"|"push"|"google"|"invitacion"|"interesado"} recurso
+ * @param {"tap"|"log"|"dueno"|"push"|"google"|"invitacion"|"interesado"|"espera"|"alta"} recurso
  * @returns {Promise<boolean>} true si hay que rechazar (429)
  */
 export async function usoExcedido(recurso, ip, ahora = Date.now()) {
