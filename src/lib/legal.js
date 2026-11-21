@@ -59,7 +59,8 @@ export const SUBENCARGADOS = [
   { quien: "Vercel", para: "Servidor web", donde: "Londres (Reino Unido)", garantia: "Empresa de EE. UU.: DPA con cláusulas contractuales tipo y Data Privacy Framework" },
   { quien: "Apple", para: "Apple Wallet y los avisos de Safari", donde: "EE. UU. y UE", garantia: "Data Privacy Framework" },
   { quien: "Google", para: "Google Wallet y los avisos de Chrome", donde: "EE. UU. y UE", garantia: "Data Privacy Framework" },
-  { quien: "Resend", para: "El correo de la lista de espera, si te apuntas", donde: "EE. UU.", garantia: "Empresa de EE. UU.: contrato de tratamiento (DPA) con cláusulas contractuales tipo de la UE" },
+  // El dominio fiddle.es se dio de alta en su región de Irlanda (eu-west-1, 21-11-2026).
+  { quien: "Resend", para: "El correo de la lista de espera, si te apuntas", donde: "Irlanda (UE)", garantia: "Empresa de EE. UU.: contrato de tratamiento (DPA) con cláusulas contractuales tipo de la UE" },
   { quien: "Mozilla", para: "Los avisos de Firefox, si los activas ahí", donde: "EE. UU.", garantia: "El aviso viaja cifrado: Mozilla no puede leerlo" },
 ];
 
