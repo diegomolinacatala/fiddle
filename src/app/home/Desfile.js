@@ -11,14 +11,12 @@ import { useEffect, useRef, useState } from "react";
 // el salto no se ve. Las copias las pinta el navegador al montar (no viajan en el
 // HTML) y, hasta entonces, la cinta está quieta.
 //
-// El movimiento es un bucle de requestAnimationFrame con velocidad, no una
-// animación CSS (07-11-2026, lo pidió Víctor): con el ratón encima la cinta
-// FRENA hasta pararse, y al salir vuelve a coger velocidad, en vez de pararse de
-// golpe. La tarjeta que hay bajo el ratón se acerca y se inclina hacia él, con un
+// Con el ratón encima la cinta FRENA hasta pararse, y al salir vuelve a coger
+// velocidad, en vez de pararse de golpe (07-11-2026, lo pidió Víctor). La tarjeta que hay bajo el ratón se acerca y se inclina hacia él, con un
 // brillo que lo sigue (las variables --rx, --ry, --bx, --by de .cinta-tarjeta).
 //
 // - Con «reducir movimiento», ni se mueve, ni se duplica, ni se inclina.
-// - Fuera de pantalla o con la pestaña oculta, el bucle se duerme (batería).
+// - Fuera de pantalla o con la pestaña oculta, se pone en pausa (batería).
 // - Con el dedo, un toque la para y otro la sigue (también frenando). Es
 //   decoración (aria-hidden): lo que enseña ya lo dice el móvil.
 // ============================================================================
@@ -58,47 +56,71 @@ export default function Desfile({ cuantas, children }) {
     return () => window.removeEventListener("resize", medir);
   }, [corre]);
 
-  // El bucle: la velocidad va hacia la que toca (0 con el ratón encima) con un
-  // muelle, y la posición avanza con ella.
+  // El movimiento es una animación del navegador (Web Animations), que corre en
+  // el compositor: el hilo principal no hace nada mientras la cinta va a su
+  // ritmo. Con un rAF que escribía el transform en cada fotograma, Chrome
+  // rehacía las capas de toda la página 60 veces por segundo y en un móvil
+  // modesto era lo que más tiraba (23-11-2026, medido con la CPU a 1/4). Solo
+  // la frenada y la arrancada van con rAF: la velocidad va hacia la que toca
+  // (0 con el ratón encima) con un muelle, y al llegar se apaga.
+  const muelle = useRef(() => {});
   useEffect(() => {
     const el = pista.current;
     const caja = raiz.current;
-    if (!corre || tandas < 2 || !el || !caja) {
-      if (el) el.style.transform = "";
-      return undefined;
-    }
+    if (!corre || tandas < 2 || !el || !caja || !el.animate) return undefined;
+    const primera = el.firstElementChild;
+    const recorrido = () => [
+      { transform: "translate3d(0,0,0)" },
+      { transform: `translate3d(${-(primera?.getBoundingClientRect().width || 0)}px,0,0)` },
+    ];
+    const anim = el.animate(recorrido(), { duration: cuantas * SEGUNDOS_POR_TARJETA * 1000, iterations: Infinity });
+    // El ancho de una tanda cambia con la ventana (el zoom y el hueco van con
+    // ella): misma duración, otro recorrido, y sigue por donde iba.
+    const tamano = new ResizeObserver(() => anim.effect.setKeyframes(recorrido()));
+    if (primera) tamano.observe(primera);
+
     let raf = 0;
     let antes = 0;
-    let x = 0;
-    let v = null;
-    const paso = (t) => {
-      const dt = antes ? Math.min(64, t - antes) : 16;
-      antes = t;
-      const tanda = el.firstElementChild?.getBoundingClientRect().width || 0;
-      const crucero = tanda / (cuantas * SEGUNDOS_POR_TARJETA * 1000); // px por ms
-      const { encima, parada } = estado.current;
-      const objetivo = encima || parada ? 0 : crucero;
-      if (v === null) v = objetivo;
+    let v = 1; // la velocidad, de 0 (parada) a 1 (la de crucero)
+    let t = 0; // por dónde va, mientras frena o arranca
+    const quieta = () => estado.current.encima || estado.current.parada;
+    // Mientras cambia de velocidad la animación está en pausa y se lleva a mano
+    // (currentTime): cambiarle el playbackRate en cada fotograma la dejaba
+    // clavada y frenaba en seco. Al llegar a crucero vuelve a ir sola.
+    const paso = (ahora) => {
+      const dt = antes ? Math.min(64, ahora - antes) : 16;
+      antes = ahora;
+      const objetivo = quieta() ? 0 : 1;
       v += (objetivo - v) * (1 - Math.exp(-dt / (FRENADA / 3)));
-      if (tanda) x = (x + v * dt) % tanda;
-      el.style.transform = `translate3d(${-x}px,0,0)`;
-      raf = requestAnimationFrame(paso);
+      if (Math.abs(objetivo - v) < 0.002) v = objetivo;
+      t += v * dt;
+      anim.currentTime = t;
+      if (v !== objetivo) raf = requestAnimationFrame(paso);
+      else {
+        raf = 0;
+        if (v === 1) anim.play();
+      }
     };
-    const arrancar = () => {
-      if (!raf && estado.current.aLaVista) {
+    muelle.current = () => {
+      if (!raf && estado.current.aLaVista && v !== (quieta() ? 0 : 1)) {
+        anim.pause();
+        t = anim.currentTime ?? 0;
         antes = 0;
         raf = requestAnimationFrame(paso);
       }
     };
-    const parar = () => {
-      cancelAnimationFrame(raf);
-      raf = 0;
-    };
+    // Fuera de pantalla o con la pestaña oculta, en pausa (batería).
     let enPantalla = true;
     const actualizar = () => {
       estado.current.aLaVista = enPantalla && document.visibilityState === "visible";
-      if (estado.current.aLaVista) arrancar();
-      else parar();
+      if (estado.current.aLaVista) {
+        if (v === 1) anim.play();
+        muelle.current();
+      } else {
+        anim.pause();
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
     };
     const obs = new IntersectionObserver((entradas) => {
       enPantalla = entradas[entradas.length - 1].isIntersecting;
@@ -106,9 +128,11 @@ export default function Desfile({ cuantas, children }) {
     });
     obs.observe(caja);
     document.addEventListener("visibilitychange", actualizar);
-    arrancar();
     return () => {
-      parar();
+      cancelAnimationFrame(raf);
+      muelle.current = () => {};
+      anim.cancel();
+      tamano.disconnect();
       obs.disconnect();
       document.removeEventListener("visibilitychange", actualizar);
     };
@@ -122,7 +146,10 @@ export default function Desfile({ cuantas, children }) {
   };
   const mover = (e) => {
     if (e.pointerType !== "mouse") return;
-    estado.current.encima = true;
+    if (!estado.current.encima) {
+      estado.current.encima = true;
+      muelle.current();
+    }
     if (!corre) return;
     const t = e.target.closest?.(".cinta-tarjeta");
     if (t !== actual.current) {
@@ -144,6 +171,7 @@ export default function Desfile({ cuantas, children }) {
   const salir = (e) => {
     if (e.pointerType !== "mouse") return;
     estado.current.encima = false;
+    muelle.current();
     soltar();
   };
 
@@ -155,7 +183,9 @@ export default function Desfile({ cuantas, children }) {
       onPointerMove={mover}
       onPointerLeave={salir}
       onClick={(e) => {
-        if (["touch", "pen"].includes(e.nativeEvent.pointerType)) estado.current.parada = !estado.current.parada;
+        if (!["touch", "pen"].includes(e.nativeEvent.pointerType)) return;
+        estado.current.parada = !estado.current.parada;
+        muelle.current();
       }}
     >
       <div ref={pista} className="cinta-pista" style={{ "--tandas": tandas }}>
