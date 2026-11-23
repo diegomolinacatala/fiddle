@@ -23,6 +23,10 @@ import { RESERVADOS } from "./negocios";
 //   /p/<serial>/listo                      lo abre en iPhone y dice «Todo listo»
 //   /api/wallet/...                        web service de Apple Wallet (se
 //                                          autentica con el token del pase)
+//   /api/dueno/v1/...                      web service de la tarjeta del dueño (lo
+//                                          protege el token de su pase); el .pkpass,
+//                                          la vista previa y la prueba son del manager,
+//                                          salvo el .pkpass con la llave del QR (?t=)
 //   /api/manifest  /api/negocios           manifest PWA y directorio
 //   /api/tarjeta/<serial>                  la tarjeta web se pone al día sola
 //   /p/<serial>/datos                      "Tu tarjeta y tus datos": promos, descargar
@@ -55,6 +59,7 @@ const PUBLICAS = [
   /^\/p\/[^/]+\/datos$/,
   /^\/api\/pase\/[^/]+$/,
   /^\/api\/wallet(\/.*)?$/,
+  /^\/api\/dueno\/v1\/.+$/,
   /^\/api\/manifest$/,
   /^\/api\/negocios$/,
   /^\/api\/salud$/,
@@ -100,6 +105,13 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   // Igual las fotos de la banda y los iconos que sube la tienda: verlos, cualquiera
   // (la tarjeta web pinta su banda); su lista, subir y quitar, solo el manager.
   if (pathname === "/api/fondo") return method === "GET" ? { tipo: "publica" } : { tipo: "negocio", slug: b, rol: "manager" };
+  // La tarjeta del dueño: su pase, la vista, la prueba, qué recibe y la llave del QR, solo del
+  // manager (el resto de /api/dueno/v1 es público arriba). El pase con `?t=` y sin `?b=` viene
+  // del QR de Tienda, en un iPhone sin sesión: pasa, y la ruta comprueba la llave (lib/dueno/enlace.js).
+  if (pathname === "/api/dueno/pase" && !b && params.get("t")) return { tipo: "publica" };
+  if (["/api/dueno/pase", "/api/dueno/vista", "/api/dueno/prueba", "/api/dueno/recibir", "/api/dueno/enlace"].includes(pathname)) {
+    return { tipo: "negocio", slug: b, rol: "manager" };
+  }
   if (pathname === "/api/propios") return { tipo: "negocio", slug: b, rol: "manager" };
   if (pathname === "/api/negocio") {
     return { tipo: "negocio", slug: b, rol: method === "GET" ? "caja" : "manager" };

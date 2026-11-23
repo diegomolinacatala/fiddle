@@ -8,6 +8,7 @@ import ErrorDatos from "@/app/ErrorDatos";
 import { negocioDelPersonal } from "@/lib/tarjeta";
 import { recorridoVisto } from "@/lib/tutorial";
 import PanelManager from "./PanelManager";
+import { tarjetaParaElPanel } from "@/lib/dueno/tarjeta";
 
 export const dynamic = "force-dynamic";
 
@@ -34,5 +35,11 @@ export default async function Page({ params }) {
   }
   if (!n) notFound();
   // `reloj`: si anda, el pase lleva "ABIERTO / CERRADO" y la vista previa también.
-  return <PanelManager negocio={slug} inicial={negocioDelPersonal(n)} reloj={reloj} recorridoVisto={visto} />;
+  // `tarjetaDueno`: solo si la tienda la tiene, y sin serial ni token (lib/dueno/tarjeta.js).
+  return (
+    <PanelManager
+      negocio={slug} inicial={negocioDelPersonal(n)} reloj={reloj} recorridoVisto={visto}
+      tarjetaDueno={tarjetaParaElPanel(n)}
+    />
+  );
 }

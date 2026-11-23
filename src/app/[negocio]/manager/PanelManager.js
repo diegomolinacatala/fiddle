@@ -10,6 +10,7 @@ import Horario from "./Horario";
 import MapaUbicacion from "./MapaUbicacion";
 import EditorTarjeta from "./EditorTarjeta";
 import EditorCaja from "./EditorCaja";
+import TarjetaDueno from "./TarjetaDueno";
 import { confirmarTarjetas } from "./confirmarTarjetas";
 import { normalizarCaja } from "@/lib/caja";
 import Recorrido from "@/app/Recorrido";
@@ -21,6 +22,7 @@ import { C, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chip
 
 // La pestaña TIENDA: cómo es la tarjeta (cartillas y premios), qué botones
 // tiene la caja, cuándo abre y dónde está la tienda, y el tag/QR del mostrador.
+// Debajo del QR, plegada, la tarjeta de Wallet del dueño (si la tienda la tiene).
 // La vista previa enseña, mientras se edita, cómo queda el pase.
 //
 // A la izquierda, una fila por cosa, todas con la misma forma (Bloque.js): lo
@@ -28,7 +30,7 @@ import { C, panel, campo, h2, botonPrimario, botonSecundario, botonPequeno, chip
 // la cuenta (la contraseña de la caja) vive en Ajustes; lo que se les DICE a los
 // clientes, en Avisos; la lista de clientes, en Clientes. Cada cosa en un solo
 // sitio. Llega con el negocio ya cargado en el servidor (page.js).
-export default function PanelManager({ negocio, inicial, reloj = false, recorridoVisto }) {
+export default function PanelManager({ negocio, inicial, reloj = false, recorridoVisto, tarjetaDueno = null }) {
   const [n, setN] = useState(inicial);
   // Una sola ubicación (la tienda). Se guarda entera para no perder su `texto`.
   const guardada = n.ubicaciones?.[0] || null;
@@ -231,7 +233,8 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
             )}
           </section>
 
-          {/* ------------------------------------------------ el mostrador */}
+          {/* ------------------------------------------------ el mostrador y, debajo, lo del dueño */}
+          <div style={{ display: "grid", gap: 20, minWidth: 0 }}>
           <section style={panel} data-recorrido="tag">
             <h2 style={h2}>QR y tag del mostrador</h2>
             <p style={texto}>
@@ -254,6 +257,9 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
             <GrabarTag url={origin ? tapUrl : null} accent={accent} />
             {/* «Pedir el nombre al escanear» y «Abierto hasta…» viven en Ajustes (31-10-2026). */}
           </section>
+          {/* Plegada en una línea: lo que se toca poco no debe pesar al lado del QR. */}
+          {tarjetaDueno && <TarjetaDueno slug={negocio} negocio={n} tarjeta={tarjetaDueno} accent={accent} flash={flash} />}
+          </div>
         </div>
 
         {editando && (

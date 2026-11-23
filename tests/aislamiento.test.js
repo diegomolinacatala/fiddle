@@ -90,6 +90,9 @@ const DEL_ADMIN = [
   ["admin/accesos", "POST", () => "/api/admin/accesos", () => ({ slug: "nube", rol: "caja" })],
   ["admin/cifrar", "POST", () => "/api/admin/cifrar"],
   ["admin/crm", "GET", () => "/api/admin/crm"],
+  ["admin/dueno", "GET", () => "/api/admin/dueno?slug=nube"],
+  ["admin/dueno", "PUT", () => "/api/admin/dueno", () => ({ slug: "nube", activa: true })],
+  ["admin/dueno", "POST", () => "/api/admin/dueno", () => ({ slug: "nube", accion: "llave" })],
   ["admin/interesados", "GET", () => "/api/admin/interesados"],
   ["admin/interesados", "DELETE", () => "/api/admin/interesados?id=x"],
   ["admin/invitacion", "GET", () => "/api/admin/invitacion?slug=nube"],
@@ -110,8 +113,11 @@ const DEL_ADMIN = [
 ];
 
 // Públicas a propósito (lib/acceso.js dice por qué cada una) o con su propia llave.
+// `dueno/[...ruta]` va aquí porque es el web service de Apple (lo protege el token del
+// pase); `pase`, `vista`, `prueba` y `recibir`, que son del manager, se comprueban en
+// tests/dueno-servicio.test.js, y `enlace` (la llave del QR) en tests/dueno-enlace.test.js.
 const PUBLICAS = [
-  "cron/avisos", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
+  "cron/avisos", "dueno/[...ruta]", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
   "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
   "tutorial", "wallet/v1/devices/[dispositivo]/registrations/[passType]/[serial]",
   "wallet/v1/devices/[dispositivo]/registrations/[passType]", "wallet/v1/log", "wallet/v1/passes/[passType]/[serial]",

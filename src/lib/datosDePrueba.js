@@ -279,6 +279,14 @@ export function generar(ahora = Date.now()) {
         plantillaActiva: true,
         // El plan de arriba (lib/planes.js): como La Delicantería, que va en Pro a propósito.
         plan: "pro",
+        // La tarjeta del dueño, encendida solo aquí. Serial y token FIJOS, por lo mismo
+        // que el PIN 1234: cada función de Vercel tiene su /tmp y un token inventado en
+        // una no valdría en las demás. Son datos inventados de dev, no un secreto de producción.
+        tarjetaDueno: {
+          activa: true,
+          serial: "dueno-delicanteria-3f9c2a7b51d04e68",
+          token: "a41c7e90b3d85f2619e0c47a8b5d3f1e72a96c04d8b1e53f",
+        },
         plantilla: [
           { id: QUIEN.sebas, nombre: "Sebas", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
           { id: QUIEN.andreina, nombre: "Andreina", alta: alta(DIAS_PLANTILLA), baja: null, pin: HASH_PIN_DEV, largoPin: PIN_DEV.length },
