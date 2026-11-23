@@ -12,13 +12,11 @@ import { INICIO, pedir, entrar } from "./posicion";
 //   izquierda y la siguiente entra por la derecha, también al volver a la 1).
 //   Deprisa a propósito: con 3,6 s parecía una foto y nadie veía que cambiaba.
 // - Se para con el ratón encima, con el foco de teclado dentro, fuera de
-//   pantalla, con la pestaña oculta y con el botón de pausa (más de 5 s
-//   moviéndose sin poder pararlo no vale, WCAG 2.2.2). Darle a «seguir» manda
-//   sobre el ratón y el foco: si no, el botón diría que va y seguiría quieto.
-//   Un toque o un clic en un punto no la para (no es foco de teclado).
-//   Con «reducir movimiento», ni pasa sola ni anima.
-// - Se cambia con los puntos, con las flechas de los lados (muy suaves: el móvil
-//   manda), con las flechas del teclado o deslizando el dedo.
+//   pantalla y con la pestaña oculta. Con «reducir movimiento», ni pasa sola ni
+//   anima.
+// - Sin título ni puntos debajo (23-11-2026, lo pidió Víctor: el móvil va solo).
+//   Se cambia con las flechas de los lados (muy suaves: el móvil manda), con las
+//   flechas del teclado o deslizando el dedo.
 // Sin JavaScript se ve la primera, que es una tarjeta completa.
 // ============================================================================
 
@@ -28,7 +26,6 @@ const DESLIZ = 40; // px de dedo para que cuente como deslizar
 export default function Carrusel({ titulos, tarjetas, avisos, children }) {
   const n = tarjetas.length;
   const [pos, setPos] = useState(INICIO);
-  const [pausa, setPausa] = useState(false);
   const [raton, setRaton] = useState(false);
   const [foco, setFoco] = useState(false);
   const [quieto, setQuieto] = useState(true); // hasta saber si pide reducir movimiento
@@ -77,21 +74,13 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
     };
   }, []);
 
-  const corre = !quieto && !pausa && !raton && !foco && aLaVista;
+  const corre = !quieto && !raton && !foco && aLaVista;
   // Un temporizador por tarjeta: tocar un punto vuelve a contar desde cero.
   useEffect(() => {
     if (!corre) return undefined;
     const t = setTimeout(siguiente, PASO);
     return () => clearTimeout(t);
   }, [corre, pos.actual]);
-
-  const pausarOSeguir = () => {
-    if (pausa) {
-      setRaton(false);
-      setFoco(false);
-    }
-    setPausa(!pausa);
-  };
 
   const teclas = (e) => {
     if (e.key === "ArrowRight") siguiente();
@@ -157,36 +146,6 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
 
       {/* key: cada tarjeta nueva vuelve a montar su aviso, y llega como uno de verdad. */}
       <div key={pos.actual} className={`movil-aviso${pos.movido ? "" : " primera"}`}>{avisos[pos.actual]}</div>
-
-      <figcaption className="movil-pie">
-        <span className="movil-titulo" aria-live={corre ? "off" : "polite"}>{titulos[pos.actual]}</span>
-        <span className="movil-controles">
-          {titulos.map((t, i) => (
-            <button
-              key={t}
-              type="button"
-              className="movil-punto"
-              aria-label={`Ver tarjeta ${i + 1}: ${t}`}
-              aria-current={i === pos.actual ? "true" : undefined}
-              onClick={() => cambiar(i, i < pos.actual ? -1 : 1)}
-            >
-              <i />
-            </button>
-          ))}
-          {/* Siempre en su sitio (que los puntos no se muevan al cargar); con
-              «reducir movimiento» no hay nada que parar y no se ve ni se enfoca. */}
-          <button
-            type="button"
-            className="movil-pausa"
-            aria-label={pausa ? "Seguir pasando tarjetas" : "Parar las tarjetas"}
-            onClick={pausarOSeguir}
-            disabled={quieto}
-            style={quieto ? { visibility: "hidden" } : undefined}
-          >
-            {pausa ? <Seguir /> : <Parar />}
-          </button>
-        </span>
-      </figcaption>
     </figure>
   );
 }
@@ -194,18 +153,5 @@ export default function Carrusel({ titulos, tarjetas, avisos, children }) {
 const Chevron = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M9 5l7 7-7 7" />
-  </svg>
-);
-
-const Parar = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-    <rect x="3" y="2" width="3" height="10" rx="1" />
-    <rect x="8" y="2" width="3" height="10" rx="1" />
-  </svg>
-);
-
-const Seguir = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-    <path d="M4 2.5v9a.6.6 0 0 0 .9.5l7.2-4.5a.6.6 0 0 0 0-1L4.9 2a.6.6 0 0 0-.9.5z" />
   </svg>
 );

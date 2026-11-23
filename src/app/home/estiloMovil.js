@@ -73,20 +73,15 @@ export const cssMovil = `
   .movil{zoom:.84}
   .movil-pantalla{height:600px}
   .movil-aviso{top:496px}
-  /* Con el zoom todo encoge: flechas, puntos y pausa se agrandan para seguir
-     rondando los 44 px de dedo. Sin ratón no hay «pasar por encima»: un punto más
+  /* Con el zoom todo encoge: las flechas se agrandan para seguir rondando los
+     44 px de dedo. Sin ratón no hay «pasar por encima»: un punto más
      visibles que en el ordenador. */
   .movil-flecha{top:311px;width:52px;height:52px;opacity:.6}
   .movil-flecha-antes{left:-60px}
   .movil-flecha-despues{right:-60px}
-  .movil-punto{width:32px;height:52px}
-  .movil-pausa{position:relative}
-  .movil-pausa::before{content:"";position:absolute;inset:-9px}
   /* El desenfoque del aviso, cada 2 s sobre una tarjeta que se mueve: en un
      Android modesto es lo que más cuesta. Opaco se ve igual. */
   .movil-aviso .aviso{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(250,250,250,.97)}
-  .movil-pie{margin-top:16px}
-  .movil-titulo{font-size:17px}
 
   /* ---------- secciones ---------- */
   .bloque{padding-top:60px;padding-bottom:60px}

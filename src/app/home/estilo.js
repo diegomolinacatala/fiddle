@@ -105,7 +105,7 @@ body:has(.home){background:${P.papel}}
 .probar .flecha{margin-left:2px;transition:transform .3s var(--curva)}
 @media (hover:hover){.probar:hover .flecha{transform:translateX(3px)}}
 @media (min-width:960px){
-  .portada{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);padding-top:64px}
+  .portada{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);padding-top:24px}
   .portada-texto{justify-items:start;text-align:left}
   .acciones{justify-content:flex-start}
 }
@@ -149,20 +149,10 @@ body:has(.home){background:${P.papel}}
 .movil-flecha:active{transform:scale(.9);opacity:1}
 .movil-aviso{position:absolute;z-index:3;pointer-events:none;left:50%;top:536px;width:calc(100% - 28px);translate:-50% 0}
 @media (min-width:1100px){.movil-aviso{left:-84px;width:300px;translate:none}}
-.movil-pie{display:grid;justify-items:center;gap:4px;margin-top:22px;font-family:var(--fuente-web),system-ui,sans-serif}
-.movil-titulo{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--tinta)}
-.movil-controles{display:flex;align-items:center}
-.movil-punto{width:28px;height:44px;display:grid;place-items:center;padding:0;border:0;background:none;cursor:pointer;border-radius:8px}
-.movil-punto i{width:7px;height:7px;border-radius:999px;background:${alfa(P.espresso, 0.55)};transition:width .3s var(--curva),background-color .3s}
-.movil-punto[aria-current] i{width:22px;background:var(--marca)}
-@media (hover:hover){.movil-punto:not([aria-current]):hover i{background:${alfa(P.espresso, 0.8)}}}
-.movil-pausa{margin-left:10px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;cursor:pointer;
-  border:1px solid ${alfa(P.espresso, 0.18)};background:none;color:var(--tinta-2)}
-@media (hover:hover){.movil-pausa:hover{color:var(--tinta);border-color:${alfa(P.espresso, 0.32)}}}
 
 /* la cinta de tarjetitas entre secciones (Cinta.js, Desfile.js): rellena el hueco
    que antes era solo margen, así que lo de alrededor se aprieta. */
-.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:26px 0 54px;margin-bottom:-20px;cursor:default;
+.cinta{--hueco:clamp(14px,1.6vw,22px);position:relative;overflow:hidden;padding:12px 0 54px;margin-bottom:-20px;cursor:default;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 .cinta-pista{display:flex;width:max-content;will-change:transform}
@@ -178,7 +168,8 @@ body:has(.home){background:${P.papel}}
   transition:transform .18s ease-out}
 .cinta-tarjeta.encima::after{opacity:1}
 .cinta-tarjeta.encima article{box-shadow:0 30px 44px -18px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.1)!important}
-.portada:has(+ .cinta){padding-bottom:clamp(24px,4vw,48px)}
+/* La cinta asoma ya al abrir (media tarjeta en una ventana de portátil): pegada al móvil. */
+.portada:has(+ .cinta){padding-bottom:0}
 .cinta + .bloque{padding-top:clamp(44px,6vw,84px)}
 .bloque:has(+ .cinta){padding-bottom:clamp(36px,5vw,64px)}
 @media (max-width:759px){.cinta{--hueco:12px;padding:12px 0 24px}.cinta-tarjeta{zoom:.433}}
