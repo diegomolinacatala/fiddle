@@ -8,7 +8,8 @@ import { negocioDelPersonal } from "@/lib/tarjeta";
 import PanelAjustes from "./PanelAjustes";
 import { relojVivo } from "@/lib/relojAvisos";
 import { planesGlobales, contarTarjetas } from "@/lib/store";
-import { cupoDe } from "@/lib/planes";
+import { cupoDe, FUNCIONES } from "@/lib/planes";
+import { estadoEspera } from "@/lib/listaDeEspera";
 
 export const dynamic = "force-dynamic";
 
@@ -29,11 +30,19 @@ export default async function Page({ params }) {
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
   }
   if (!n) notFound();
-  // «Tu plan» (lib/planes.js): su nombre y, si tiene límite, cuántas tarjetas lleva.
-  // Solo se cuentan las tarjetas si hay límite: a las demás no les cuesta nada.
+  // «Tu plan» (lib/planes.js): su nombre y, si tiene límite, cuántas tarjetas lleva
+  // y cuántos esperan en la lista (lib/listaDeEspera.js). Solo se cuenta con
+  // límite: a las demás no les cuesta nada.
+  const [emitidas, espera] = n.cupo
+    ? await Promise.all([contarTarjetas(slug).catch(() => 0), estadoEspera(slug)])
+    : [0, null];
   const plan = {
+    id: n.planId,
     nombre: planes[n.planId].nombre,
-    cupo: n.cupo ? cupoDe(n, await contarTarjetas(slug).catch(() => 0)) : null,
+    cupo: n.cupo ? cupoDe(n, emitidas) : null,
+    esperan: espera?.esperan ?? 0,
+    // Lo que su plan no lleva (Básico), para decir qué ganaría pasando a Pro.
+    faltan: FUNCIONES.filter((f) => n.funciones?.[f.id] === false).map((f) => f.nombre),
   };
   return (
     <PanelAjustes

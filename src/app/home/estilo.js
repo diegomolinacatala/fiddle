@@ -317,10 +317,11 @@ body:has(.home){background:${P.papel}}
 .panel-nota a{color:var(--claro);font-weight:600;text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* ---------- precios ---------- */
-/* Tres planes: en fila solo con sitio para los tres; antes, uno debajo de otro (con dos
-   columnas el tercero se quedaba solo abajo). En el móvil se deslizan (estiloMovil.js). */
+/* Dos planes: en fila con sitio para los dos; antes, uno debajo de otro. En el móvil se
+   deslizan (estiloMovil.js). */
 .planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:560px;margin:0 auto}
-@media (min-width:1040px){.planes{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;max-width:1160px}}
+@media (min-width:860px){.planes{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:1180px}}
+@media (min-width:1080px){.planes{gap:20px}}
 .plan{display:flex;flex-direction:column;padding:clamp(26px,3.5vw,38px);border-radius:32px;background:var(--superficie);
   box-shadow:0 0 0 1px var(--linea)}
 .plan-destacado{background:var(--tinta);box-shadow:0 40px 70px -40px ${alfa(P.espresso, 0.6)}}
@@ -332,6 +333,10 @@ body:has(.home){background:${P.papel}}
 .plan-cifra{font-size:clamp(52px,2.4rem + 1.6vw,64px);line-height:1;font-weight:660;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
 .plan-periodo{font-size:16px;color:var(--tinta-3)}
 .plan-destacado .plan-lema,.plan-destacado .plan-periodo{color:var(--claro-2)}
+.plan-anual{margin:-14px 0 22px;color:var(--tinta-2);font-size:15px}
+.plan-destacado .plan-anual{color:var(--claro-2)}
+.plan-anual b{font-weight:650;color:inherit}
+.plan-nota{margin:-14px 0 22px;font-size:14px;line-height:1.45;color:var(--tinta-3)}
 .plan-lista{list-style:none;margin:0 0 32px;padding:24px 0 0;display:grid;gap:13px;border-top:1px solid var(--linea);flex:1;align-content:start}
 .plan-destacado .plan-lista{border-top-color:var(--claro-linea)}
 .plan-lista li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:12px;align-items:start;line-height:1.4}

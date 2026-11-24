@@ -101,9 +101,10 @@ const DEL_ADMIN = [
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", legal: { nif: "B1" } })],
   ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plantillaActiva: true })],
   ["admin/negocios", "DELETE", () => "/api/admin/negocios?slug=nube&modo=archivar"],
-  ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plan: "esencial" })],
+  ["admin/negocios", "PUT", () => "/api/admin/negocios", () => ({ slug: "nube", plan: "gratis" })],
   ["admin/planes", "GET", () => "/api/admin/planes"],
   ["admin/planes", "PUT", () => "/api/admin/planes", () => ({})],
+  ["admin/espera", "GET", () => "/api/admin/espera?slug=nube"],
   ["admin/tareas", "GET", () => "/api/admin/tareas"],
   ["admin/tareas", "POST", () => "/api/admin/tareas", () => ({ titulo: "x" })],
   ["admin/tareas", "PATCH", () => "/api/admin/tareas?id=x", () => ({ columna: "hecha" })],
@@ -117,7 +118,7 @@ const DEL_ADMIN = [
 // pase); `pase`, `vista`, `prueba` y `recibir`, que son del manager, se comprueban en
 // tests/dueno-servicio.test.js, y `enlace` (la llave del QR) en tests/dueno-enlace.test.js.
 const PUBLICAS = [
-  "cron/avisos", "dueno/[...ruta]", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
+  "alta", "cron/avisos", "dueno/[...ruta]", "espera", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
   "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
   "tutorial", "wallet/v1/devices/[dispositivo]/registrations/[passType]/[serial]",
   "wallet/v1/devices/[dispositivo]/registrations/[passType]", "wallet/v1/log", "wallet/v1/passes/[passType]/[serial]",

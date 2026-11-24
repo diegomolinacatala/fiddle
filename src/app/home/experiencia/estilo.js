@@ -61,6 +61,11 @@ export const cssExperiencia = `
 .exp-guarda{gap:16px}
 /* El botón de guardar se queda pegado abajo del cuerpo si no cabe todo. */
 .exp-guarda .prob-guardar button[type="submit"]{position:sticky;bottom:2px;z-index:1;height:54px;font-size:16px}
+.exp-llamar{display:grid;gap:10px;justify-items:center}
+.exp-llamar > summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.exp-empezar{height:54px;font-size:16px}
+.exp-llamar > summary::-webkit-details-marker{display:none}
+.exp-llamar .prob-guardar{justify-self:stretch}
 .exp-precios{display:grid;justify-items:center;gap:0;text-align:center}
 .exp-precios p{font-size:13.5px;color:var(--tinta-3)}
 .exp-enlace{height:44px;padding:0 12px;border:0;background:none;cursor:pointer;font-size:14px;font-weight:600;color:var(--tinta-2);

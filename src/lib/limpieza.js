@@ -1,11 +1,11 @@
 import {
   listNegocios, getNegocio, saveNegocio, getCliente, borradosPendientes, purgarCliente, clientesSinUso,
   recortarEventos, recortarTarjetasDeDispositivo, borrarNegocio, registrarBorrado,
-  ultimoIntento, registrarIntento,
+  ultimoIntento, registrarIntento, vaciarEspera,
 } from "./store";
 import { borrarCliente, borrarClientesDeTienda } from "./derechos";
 import { auditar } from "./auditoria";
-import { limiteSinUso, limiteBajaTienda, limitePurga } from "./legal";
+import { limiteSinUso, limiteBajaTienda, limitePurga, limiteEspera } from "./legal";
 
 // ============================================================================
 // LA PASADA DIARIA: lo que se borra solo (docs/RGPD.md, 3.3, 5.2 y 7.2)
@@ -21,6 +21,8 @@ import { limiteSinUso, limiteBajaTienda, limitePurga } from "./legal";
 //   3. Las tiendas archivadas hace DIAS_BAJA_TIENDA: primero se anulan todos sus
 //      pases (para que no queden tarjetas "válidas" en los teléfonos) y, cuando
 //      ya no queda ninguna tarjeta, la tienda entera.
+//   4. Los correos de la lista de espera (lib/listaDeEspera.js) apuntados hace
+//      más de MESES_ESPERA: la tienda nunca pudo darles la tarjeta.
 //
 // Nunca lanza hacia fuera: un fallo en una tienda no para a las demás.
 // ============================================================================
@@ -97,6 +99,11 @@ async function darDeBaja(ahora, resultado) {
   }
 }
 
+/** Los correos de la lista de espera que ya cumplieron su plazo. */
+async function caducarEspera(ahora, resultado) {
+  resultado.esperaBorrados = await vaciarEspera({ antesDe: limiteEspera(ahora) });
+}
+
 /**
  * La pasada entera. `forzar` la corre aunque hoy ya corriera (tests).
  * @returns {Promise<object|null>} qué hizo, o null si hoy ya tocó
@@ -104,9 +111,9 @@ async function darDeBaja(ahora, resultado) {
 export async function limpiezaDiaria({ ahora = Date.now(), forzar = false } = {}) {
   if (!forzar && !(await tocaLimpieza(ahora))) return null;
   await registrarIntento(CLAVE_LIMPIEZA).catch((e) => console.error("[limpieza] no se pudo apuntar la marca:", e));
-  const resultado = { purgados: 0, caducados: 0, tiendasAnuladas: [], tiendasBorradas: [], errores: [] };
+  const resultado = { purgados: 0, caducados: 0, tiendasAnuladas: [], tiendasBorradas: [], esperaBorrados: 0, errores: [] };
   // En este orden: lo que hoy se anula cae mañana, nunca en la misma pasada.
-  for (const [nombre, paso] of [["purgar", purgar], ["caducar", caducar], ["dar de baja", darDeBaja]]) {
+  for (const [nombre, paso] of [["purgar", purgar], ["caducar", caducar], ["dar de baja", darDeBaja], ["lista de espera", caducarEspera]]) {
     await paso(ahora, resultado).catch((e) => registrarFallo(resultado, nombre, e));
   }
   return resultado;

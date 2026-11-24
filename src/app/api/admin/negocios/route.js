@@ -13,6 +13,7 @@ import { normalizarLegal } from "@/lib/legal";
 import { prepararPropios } from "@/lib/propiosServidor";
 import { jsonError, errorInterno, exigirAdmin } from "@/lib/http";
 import { IDS_PLAN } from "@/lib/planes";
+import { atenderEspera } from "@/lib/listaDeEspera";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,7 +125,10 @@ export async function PUT(request) {
       const guardado = await saveNegocio(slug, { plan: body.plan });
       await auditar(sesion, slug, "config", `plan=${body.plan}`);
       const aviso = await notificarNegocio(guardado, { cartilla: true });
-      return NextResponse.json({ ...sinTarjetaDueno(guardado), aviso });
+      // Si pasa a un plan sin límite (Básico o Pro), a los primeros de su lista de espera les llega el correo ya,
+      // sin esperar al reloj, que manda el resto (lib/listaDeEspera.js). Nunca lanza.
+      const espera = await atenderEspera(guardado, { max: 10 });
+      return NextResponse.json({ ...sinTarjetaDueno(guardado), aviso, espera });
     }
 
     // Un interruptor del admin, solo: tampoco sale en el pase.

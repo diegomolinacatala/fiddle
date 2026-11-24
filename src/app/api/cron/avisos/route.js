@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { repasarTodas } from "@/lib/motorAvisos";
 import { limpiezaDiaria } from "@/lib/limpieza";
 import { vigilar } from "@/lib/alertas";
+import { atenderTodas } from "@/lib/listaDeEspera";
 import { igualSeguro } from "@/lib/auth";
 import { jsonError, errorInterno } from "@/lib/http";
 
@@ -21,7 +22,8 @@ export const maxDuration = 60;
  *
  * De paso, en el mismo reloj: la pasada diaria de lo que se borra solo (plazos
  * del RGPD, lib/limpieza.js; corre una vez al día) y las alertas de seguridad
- * (lib/alertas.js). Ninguna de las dos para a la otra ni a los avisos.
+ * (lib/alertas.js), y el correo a quien esperaba tarjeta de una tienda que ya
+ * puede dársela (lib/listaDeEspera.js). Ninguna para a las otras ni a los avisos.
  */
 async function pasada(request) {
   const secreto = process.env.CRON_SECRET?.trim();
@@ -33,7 +35,8 @@ async function pasada(request) {
     const resultados = await repasarTodas();
     const limpieza = await limpiezaDiaria().catch((e) => ({ error: String(e?.message || e) }));
     const alertas = await vigilar().catch((e) => ({ error: String(e?.message || e) }));
-    return NextResponse.json({ ok: true, resultados, limpieza, alertas });
+    const espera = await atenderTodas();
+    return NextResponse.json({ ok: true, resultados, limpieza, alertas, espera });
   } catch (e) {
     return errorInterno("cron avisos", e);
   }

@@ -1,6 +1,6 @@
 import { getNegocio } from "@/lib/store";
 import { esSlug } from "@/lib/negocios";
-import { VERSION_AVISO_TEXTO, MESES_SIN_USO, DIAS_BAJA_TIENDA, SUBENCARGADOS } from "@/lib/legal";
+import { VERSION_AVISO_TEXTO, MESES_SIN_USO, DIAS_BAJA_TIENDA, SUBENCARGADOS, MESES_ESPERA } from "@/lib/legal";
 import { C, pagina, panel, titulo, h2 } from "@/app/ui";
 
 export const dynamic = "force-dynamic";
@@ -109,6 +109,16 @@ export default async function Privacidad({ searchParams }) {
           <p style={{ marginBottom: 0 }}>
             También puedes silenciar todos los avisos desde Apple Wallet, Google Wallet o los ajustes
             del navegador.
+          </p>
+        </section>
+
+        <section style={seccion}>
+          <h2 style={h2}>Si la tienda aún no puede darte la tarjeta</h2>
+          <p style={{ marginBottom: 0 }}>
+            Si una tienda ha llegado al límite de tarjetas de su plan, puedes dejar tu <strong>correo</strong> para
+            que te mandemos el enlace de su tarjeta en cuanto pueda dártela. Solo lo usamos para eso, una vez: no
+            te escribimos para nada más. Se guarda cifrado, se borra en cuanto te mandamos el correo y, si la tienda
+            no puede en <strong>{MESES_ESPERA} meses</strong>, se borra solo. El correo lo manda Resend (ver más abajo).
           </p>
         </section>
 

@@ -344,15 +344,20 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 
 ## Los planes: qué puede usar cada tienda
 
-Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el PR a `main`).
+Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 24-11-2026, tres planes).
 
-- **Tres planes (Esencial, Plus, Pro; hasta el 07-11-2026 Tarjetas y Completo) y lo que lleva cada uno NO está en el código**:
-  lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave `planes`) y el código solo
-  tiene lo de partida: Esencial sin nada y hasta 500 tarjetas (+50 de margen), Plus con
-  estadísticas y promociones, Pro con todo. Antes de llevarlo a `main`, crear la tabla
-  `plataforma` en Supabase (`schema.sql`); sin ella, valen los de partida y lo dice el log.
-- **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro.** Una tienda de antes no
-  pierde nada por un despliegue. La Delicantería va en Pro a propósito.
+- **Tres planes desde el 24-11-2026: Gratis, Básico y Pro** (antes Esencial, Plus y Pro; y antes
+  Tarjetas y Completo). **Gratis es para siempre**: hasta 50 tarjetas EN USO y con todo, sin margen; es el
+  de la tienda que se da de alta sola (`PLAN_DEL_ALTA`, ver «El alta sola desde la web»). Los de
+  pago, sin límite: **Básico** (`basico`, 29 €/mes o 276 € al año) con promociones y estadísticas,
+  y **Pro** (49 €/mes o 468 € al año) con todo. Gratis lleva todo a propósito: quien se queda
+  corto elige si paga por el límite (Básico) o por todo (Pro). Lo que lleva cada uno NO
+  está en el código: lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave
+  `planes`) y el código solo tiene lo de partida.
+- **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro, y un plan que ya no existe
+  (`esencial`, `plus`) también.** Una tienda de antes no pierde nada por un despliegue. Por eso
+  Básico es `basico` y no reutiliza `plus`: una tienda en Plus bajaría sola. La
+  Delicantería va en Pro a propósito.
 - **El plan dice qué PUEDE usarse, no qué está encendido, y nunca borra.** Los avisos automáticos
   y la plantilla siguen con su interruptor del admin; el «Abierto hasta…» con el suyo en Ajustes.
   Lo que el plan no deja no sale ni se manda, y vuelve tal cual con otro plan. Por eso el store
@@ -367,11 +372,28 @@ Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026, solo en dev hasta el P
   aviso al pasar cerca en `ubicacionesApple` y en Google. Enviar: a todos y «solo ese día» son
   `promos`, lo demás `grupos` (`funcionDeDestino`, `fueraDelPlan` en `lib/campanas.js`). En
   Clientes, el Resumen es `estadisticas` y Grupos va con `grupos` (`pestanasDe`).
-- **El límite de tarjetas cuenta las vivas** (`contarTarjetas`, ni borradas ni fusionadas: lo
-  mismo que «clientes» en el admin, no lo que el CRM llama clientes). Avisa al dueño al 90 % y al
-  llegar (Ajustes → Tu plan); se siguen dando hasta el límite + el margen y entonces el cliente
-  nuevo ve «pregunta en el mostrador» (`TEXTO_LLENA`, sin hablar de planes). Las que ya existen
-  funcionan siempre. Solo se cuenta si el plan tiene límite: a las demás no les cuesta nada.
+- **El límite cuenta las tarjetas EN USO** (`contarTarjetas`): ni borradas ni fusionadas, y
+  tampoco las descartadas (sin visitas, sin instalar nunca y de antes de
+  `UMBRALES.descartadaDias`, la misma regla que `perfil.descartada` del CRM). Quien escanea y se va
+  no le quita sitio a nadie; una tarjeta con puntos de alguien que no viene hace meses SÍ cuenta
+  (es de alguien) y nunca se libera sola. Avisa al dueño al 90 % y al llegar (Ajustes → Tu plan);
+  pasado el límite + el margen, el cliente nuevo puede apuntarse a la **lista de espera**. Las que
+  ya existen funcionan siempre, también las de una tienda gratis que no paga nunca. Solo se cuenta
+  si el plan tiene límite: a las demás no les cuesta nada.
+- **La lista de espera** (`lib/listaDeEspera.js`, tabla `espera`): quien escanea una tienda llena
+  deja su correo (cifrado, `/api/espera`); cuando la tienda pasa a un plan de pago le llega un correo con el
+  enlace de la página de la tienda (`/<slug>`, no el tap: un antivirus que abre el enlace no saca
+  tarjetas), por orden de llegada y `MAX_POR_PASADA` cada vez. **Solo escribe una tienda SIN
+  límite** (Básico o Pro, lo pone el admin), nunca una gratis que libera sitio: cualquiera crea una gratis
+  en /alta, y el correo sale con nuestro dominio y su nombre. Lo manda el reloj (`atenderTodas`) y,
+  al momento, el cambio de plan del admin. Cada fila se reclama (se borra) antes de mandar: dos
+  pasadas a la vez no escriben dos veces; un fallo pasajero la devuelve a su sitio y una dirección
+  que no vale (400/422) se queda fuera. **La fila se borra al mandarle el correo**, o a los
+  `MESES_ESPERA` (6) en la pasada diaria: nunca se guarda más. Sin proveedor de correo no se manda
+  nada y la fila se queda: nunca se da por avisado a quien no lo fue.
+- **Los correos van por Resend** (`lib/correo.js`, un fetch a su API): `RESEND_API_KEY` y
+  `CORREO_DESDE` (con el dominio verificado en Resend). Sin las dos, `hayCorreo()` es false.
+  `mandarCorreo` nunca lanza. Resend está en `SUBENCARGADOS`.
 - Los planes van un minuto en memoria (`planesGlobales`): se leen con cada tienda. Cambiar un plan
   no empuja los pases de nadie (serían miles de firmas): lo recogen al ponerse al día. Cambiar el
   plan de UNA tienda sí la pone al día en silencio.
@@ -830,20 +852,38 @@ Falta decidir: **dominio propio** (sin él los correos de recuperación no llega
 el **PIN por defecto** (la propuesta es "solo para premios") y si se entra con
 **Google/Apple**.
 
+## El alta sola desde la web (/alta, 20-11-2026)
+
+Ver [`src/lib/alta.js`](src/lib/alta.js) y [`src/app/api/alta/route.js`](src/app/api/alta/route.js).
+
+- **Una cafetería se da de alta sin nosotros**: nombre, su nombre, email, teléfono y el local
+  marcado en el mapa (OpenStreetMap: Nominatim y teselas, lo único que abre la CSP). La tienda
+  nace en el plan **Gratis** (en la misma escritura: `crearNegocio(datos, extra)`; sin plan sería
+  Pro), con `ubicaciones` en ese punto, `negocio.alta` (quién y dónde, solo para el admin:
+  `negocioDelPersonal` lo quita) y los interruptores de automáticos y plantilla encendidos, que es
+  lo que promete la web (cada regla sigue naciendo apagada). Si viene de «Diseña tu tarjeta», con ese diseño
+  (`sessionStorage` `fiddle:eleccion`, `temaDe` de `home/tarjeta/opciones.js`).
+- **Después va a `/invitacion#<token>`** (alcance `alta`): elige su contraseña y la de la caja como
+  cualquier tienda nueva. No hace falta proveedor de correo para empezar.
+- **Lo que frena los abusos es saber dónde está el local**: no hay correo verificado (aún no hay
+  cuentas de persona). Cada alta queda en `auditoria` y en su ficha de `/admin/<slug>`, con aviso
+  si hay otra tienda a menos de `METROS_MISMO_LOCAL`. Si algo huele mal, se la llama o se va.
+  Además: límite por conexión (`alta`, 3 por hora), campo trampa y nada desde otra web.
+
 ## La web (/home)
 
 Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, precios y
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026): Esencial, 19 € (desde el 06-11-2026, solo en dev: hasta 500 tarjetas, sin
-  promociones, la monta la tienda; para no perder a quien le parece caro, y algún día se
-  pagará sola con Stripe); Plus, 39 € (tarjetas sin límite, promociones al momento a todos,
-  estadísticas y se la dejamos montada);
-  Pro, 49 € (además grupos, automáticos y programados, «Abierto
-  hasta…», aviso al pasar cerca y PIN por empleado). Lo que dice cada plan es lo que la
-  app hace hoy. Lo que la app DEJA a cada plan está en `/admin` → Planes (ver «Los planes»):
-  esta página no lo lee, así que si cambia allí se cambia aquí a mano.
+  (13-10-2026). Desde el 24-11-2026, tres planes: **Gratis** (0 €, para siempre, hasta 50
+  tarjetas en uso y con todo; su botón lleva a `/alta`), **Básico** (29 €/mes o 276 € al año:
+  23 €/mes; sin límite, promociones y estadísticas) y **Pro** (49 €/mes o 468 € al año: 39 €/mes;
+  sin límite y con todo). Los de pago se los dejamos montados y se piden por WhatsApp; Ajustes →
+  Tu plan saca sus precios de aquí.
+  Lo que dice cada plan es lo que la app hace hoy. Lo que la app DEJA a cada plan está en
+  `/admin` → Planes (ver «Los planes»): esta página no lo lee, así que si cambia allí se cambia
+  aquí a mano.
 - **«Ya funciona en cafeterías»** (`home/Cifras.js`, antes de los precios): dos cifras
   reales de La Delicantería (los segundos hasta tenerla en el Wallet y las visitas por
   semana), en `DELICANTERIA` de `datos.js` con cómo se sacaron (09-11-2026). Cifras fijas,

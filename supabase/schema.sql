@@ -268,6 +268,20 @@ create table if not exists interesados (
 );
 create index if not exists interesados_creado on interesados (creado desc);
 
+-- ===================== LISTA DE ESPERA =====================
+-- Quien escanea el QR de una tienda que ya no puede dar tarjetas (lleno el límite de
+-- su plan, lib/planes.js) y deja su correo para que se la mandemos cuando pueda
+-- (lib/listaDeEspera.js). `email` va cifrado (lib/cifrado.js). La fila se borra al
+-- mandarle el correo, o a los MESES_ESPERA (lib/legal.js) si la tienda nunca puede.
+create table if not exists espera (
+  id      text primary key,
+  negocio text not null,
+  email   text not null,
+  creado  timestamptz not null default now()
+);
+create index if not exists espera_negocio on espera (negocio, creado);
+create index if not exists espera_creado on espera (creado);
+
 -- El tablero de tareas de Víctor y Diego (/admin → Tareas, lib/tareas.js). Una fila
 -- por tarea; las etiquetas van en `plataforma` (clave `etiquetas_tareas`).
 create table if not exists tareas (
@@ -298,4 +312,5 @@ alter table borrados       enable row level security;
 alter table auditoria      enable row level security;
 alter table plataforma     enable row level security;
 alter table interesados    enable row level security;
+alter table espera         enable row level security;
 alter table tareas         enable row level security;

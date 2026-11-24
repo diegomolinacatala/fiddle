@@ -30,6 +30,8 @@ export default function PedirNombre({ slug, nuevo, conNombre = true }) {
         body: JSON.stringify({ nombre }),
       });
       const data = await res.json().catch(() => ({}));
+      // Se llenó mientras miraba: la página, recargada, ya enseña la lista de espera.
+      if (data.lleno) return router.refresh();
       if (!res.ok || !data.ir) throw new Error(data.error || "No se ha podido crear la tarjeta. Prueba otra vez.");
       empezar(() => (nuevo ? router.replace(data.ir) : router.refresh()));
     } catch (err) {
