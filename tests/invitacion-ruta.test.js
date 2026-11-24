@@ -14,6 +14,9 @@ import { NextRequest } from "next/server";
 // ficha, y crear queda apuntado.
 // ============================================================================
 
+vi.mock("@/lib/correo", async () => (await import("./correoFalso.js")).modulo);
+const { ultimoCodigo } = await import("./correoFalso.js");
+
 // `guardarAcceso` de verdad, pero con un fallo de la base cuando el test lo pida.
 vi.mock("@/lib/store", async (original) => {
   const real = await original();
@@ -27,7 +30,8 @@ const { firmarSesion } = await import("@/lib/auth");
 const ruta = await import("@/app/api/invitacion/route.js");
 const admin = await import("@/app/api/admin/invitacion/route.js");
 
-const CLAVES = { manager: "la del dueño 2026", caja: "caja de la tienda" };
+const EMAIL = "dueno@nube.es";
+const CLAVES = { manager: "la del dueño 2026", cajaUsuario: "barra-nube", caja: "caja de la tienda" };
 const DIA = 86400000;
 
 let dir;
@@ -56,7 +60,13 @@ function pedir(url, { metodo = "POST", cuerpo, ip = "1.2.3.4", como } = {}) {
 }
 const leer = async (r) => ({ status: r.status, data: await r.json(), cookies: r.cookies.getAll() });
 const comprobar = async (token, ip) => leer(await ruta.POST(pedir("/api/invitacion", { cuerpo: { token }, ip })));
-const aceptar = async (token, claves = CLAVES, ip) => leer(await ruta.POST(pedir("/api/invitacion", { cuerpo: { token, ...claves }, ip })));
+const post = async (cuerpo, ip) => leer(await ruta.POST(pedir("/api/invitacion", { cuerpo, ip })));
+// Lo que hace la pantalla: pide el código al correo, lo lee del buzón y lo manda con todo.
+async function aceptar(token, claves = CLAVES, ip, email = EMAIL) {
+  const pedido = await post({ token, email }, ip);
+  const reto = pedido.data.reto ?? "sin-reto";
+  return post({ token, reto, codigo: ultimoCodigo(email) ?? "000000", ...claves }, ip);
+}
 const comoAdmin = async () => ({ cookie: `sesion=${await firmarSesion("plataforma", "admin")}` });
 const estado = async (slug = "nube") =>
   leer(await admin.GET(new NextRequest(`http://x/api/admin/invitacion?slug=${slug}`, { headers: await comoAdmin() })));
@@ -71,7 +81,7 @@ describe("POST /api/invitacion: ¿vale el enlace?", () => {
     const { token } = await nuevaInvitacion("nube");
     const r = await comprobar(token);
     expect(r.status).toBe(200);
-    expect(r.data).toMatchObject({ nombre: "Nube Café", usuarios: { manager: "nube", caja: "nube-caja" } });
+    expect(r.data).toMatchObject({ nombre: "Nube Café", alcance: "alta", email: null, cajaUsuario: "nube-caja" });
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -113,17 +123,57 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect(r.data).toEqual({ ok: true, destino: "/nube/manager" });
     expect(r.cookies.find((c) => c.name === "sesion")?.value).toMatch(/^nube\.manager\./);
 
-    expect(await comprobarAcceso("nube", CLAVES.manager)).toMatchObject({ rol: "manager" });
-    expect(await comprobarAcceso("nube-caja", CLAVES.caja)).toMatchObject({ rol: "caja" });
+    expect(await comprobarAcceso(EMAIL, CLAVES.manager)).toMatchObject({ rol: "manager" });
+    expect(await comprobarAcceso("barra-nube", CLAVES.caja)).toMatchObject({ rol: "caja" });
     expect(await auditoria("invitacion")).toEqual([
       expect.objectContaining({ negocio: "nube", usuario: "nube", rol: "manager", accion: "invitacion", detalle: "aceptada alta" }),
     ]);
   });
 
+  it("el código tiene que ser el del correo; con ocho usos se agota y hay que pedir otro", async () => {
+    const { token } = await nuevaInvitacion("nube");
+    const { data } = await post({ token, email: EMAIL });
+    expect(data.email).toBe(EMAIL);
+    const bueno = ultimoCodigo(EMAIL);
+    const malo = bueno === "000000" ? "111111" : "000000";
+    expect(await post({ token, reto: data.reto, codigo: malo })).toMatchObject({ status: 400, data: { campo: "codigo", codigoCorreo: "mal" } });
+    expect(await post({ token, reto: data.reto, codigo: bueno })).toMatchObject({ status: 200, data: { ok: true, email: EMAIL } });
+    for (let i = 0; i < 6; i++) await post({ token, reto: data.reto, codigo: malo });
+    expect(await post({ token, reto: data.reto, codigo: bueno })).toMatchObject({ status: 400, data: { codigoCorreo: "agotado" } });
+    // El reto de un enlace no vale en otro.
+    const { token: otro } = await nuevaInvitacion("fade");
+    expect(await post({ token: otro, reto: data.reto, codigo: bueno })).toMatchObject({ status: 400, data: { codigoCorreo: "caducado" } });
+  });
+
+  it("los usuarios de siempre valen hasta acabar; después, solo el correo y el usuario nuevo de la caja", async () => {
+    const { token } = await nuevaInvitacion("nube");
+    await store.guardarAcceso({ usuario: "nube", negocio: "nube", rol: "manager", hash: await (await import("@/lib/claves")).hashClave("la de antes 1234", "elegida") });
+    expect(await comprobarAcceso("nube", "la de antes 1234")).toMatchObject({ rol: "manager" });
+    // Pedir el código o equivocarse no cambia nada.
+    await post({ token, email: EMAIL });
+    expect(await comprobarAcceso("nube", "la de antes 1234")).toMatchObject({ rol: "manager" });
+
+    expect((await aceptar(token)).status).toBe(200);
+    expect(await comprobarAcceso("nube", CLAVES.manager)).toBeNull();
+    expect(await comprobarAcceso("nube-caja", CLAVES.caja)).toBeNull();
+    expect(await comprobarAcceso(" Dueno@Nube.es ", CLAVES.manager)).toMatchObject({ negocio: "nube", rol: "manager", usuario: "nube" });
+    expect(await comprobarAcceso("BARRA-NUBE", CLAVES.caja)).toMatchObject({ negocio: "nube", rol: "caja", usuario: "nube-caja" });
+    // Otra tienda no puede quedarse ese correo ni ese usuario.
+    const { token: deFade } = await nuevaInvitacion("fade");
+    // Que el correo ya es de otra se dice tras el código: antes delataría qué correos tienen cuenta.
+    const pedido = await post({ token: deFade, email: EMAIL });
+    expect(pedido.status).toBe(200);
+    expect(await post({ token: deFade, reto: pedido.data.reto, codigo: ultimoCodigo(EMAIL) })).toMatchObject({ status: 400, data: { campo: "email" } });
+    expect(await aceptar(deFade, CLAVES, undefined, "otra@fade.es")).toMatchObject({ status: 400, data: { campo: "cajaUsuario" } });
+  });
+
   it("una contraseña floja es 400 con su campo, y el enlace sigue vivo", async () => {
     const { token } = await nuevaInvitacion("nube");
-    expect(await aceptar(token, { manager: "corta", caja: CLAVES.caja })).toMatchObject({ status: 400, data: { campo: "manager" } });
-    expect(await aceptar(token, { manager: CLAVES.manager, caja: CLAVES.manager })).toMatchObject({ status: 400, data: { campo: "caja" } });
+    expect(await aceptar(token, { ...CLAVES, manager: "corta" })).toMatchObject({ status: 400, data: { campo: "manager" } });
+    expect(await aceptar(token, { ...CLAVES, caja: CLAVES.manager })).toMatchObject({ status: 400, data: { campo: "caja" } });
+    expect(await aceptar(token, { ...CLAVES, cajaUsuario: "con espacios" })).toMatchObject({ status: 400, data: { campo: "cajaUsuario" } });
+    // El usuario de siempre de OTRA tienda no puede ser el de esta caja.
+    expect(await aceptar(token, { ...CLAVES, cajaUsuario: "fade-caja" })).toMatchObject({ status: 400, data: { campo: "cajaUsuario" } });
     expect((await comprobar(token)).status).toBe(200);
     expect(await auditoria("invitacion")).toEqual([]);
   });
@@ -142,8 +192,8 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect(await auditoria("invitacion")).toEqual([]);
 
     expect((await aceptar(token)).status).toBe(200);
-    expect(await comprobarAcceso("nube", CLAVES.manager)).toMatchObject({ rol: "manager" });
-    expect(await comprobarAcceso("nube-caja", CLAVES.caja)).toMatchObject({ rol: "caja" });
+    expect(await comprobarAcceso(EMAIL, CLAVES.manager)).toMatchObject({ rol: "manager" });
+    expect(await comprobarAcceso("barra-nube", CLAVES.caja)).toMatchObject({ rol: "caja" });
     expect((await comprobar(token)).data.codigo).toBe("usada");
   });
 
@@ -152,7 +202,7 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     const gastar = vi.spyOn(store, "gastarInvitacion").mockRejectedValueOnce(new Error("Supabase caído"));
     expect((await aceptar(token)).status).toBe(500);
     expect(gastar).toHaveBeenCalled();
-    expect(await comprobarAcceso("nube", CLAVES.manager)).toBeNull();
+    expect(await comprobarAcceso(EMAIL, CLAVES.manager)).toBeNull();
     expect((await comprobar(token)).status).toBe(200);
   });
 
@@ -167,7 +217,7 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
 
   it("dos peticiones a la vez con el mismo enlace: solo una fija las contraseñas", async () => {
     const { token } = await nuevaInvitacion("nube");
-    const otras = { manager: "la del portátil 2026", caja: "caja del portátil" };
+    const otras = { manager: "la del portátil 2026", cajaUsuario: "barra-nube", caja: "caja del portátil" };
     const [a, b] = await Promise.all([aceptar(token), aceptar(token, otras)]);
     const [gana, pierde] = a.status === 200 ? [a, b] : [b, a];
     expect(gana.status).toBe(200);
@@ -175,8 +225,8 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect(pierde.cookies.find((c) => c.name === "sesion")).toBeUndefined();
     // Las que quedan son las de la que ganó, las dos.
     const suyas = gana === a ? CLAVES : otras;
-    expect(await comprobarAcceso("nube", suyas.manager)).toMatchObject({ rol: "manager" });
-    expect(await comprobarAcceso("nube-caja", suyas.caja)).toMatchObject({ rol: "caja" });
+    expect(await comprobarAcceso(EMAIL, suyas.manager)).toMatchObject({ rol: "manager" });
+    expect(await comprobarAcceso("barra-nube", suyas.caja)).toMatchObject({ rol: "caja" });
     expect(await auditoria("invitacion")).toHaveLength(1);
   });
 

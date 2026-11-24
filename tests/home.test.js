@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { PLANES, WHATSAPP, CORREO, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan, mensualDelAnual } from "@/app/home/datos";
+import { PLANES, WHATSAPP, CORREO, TARJETAS_GRATIS, enlaceWhatsApp, enlaceCorreo, enlaceGmail, mensajeDePlan, mensualDelAnual } from "@/app/home/datos";
+import { PLANES_DE_PARTIDA, IDS_PLAN } from "@/lib/planes";
 import { ejemplo, avisoDe, ejemploDe, CAFETERIA, CARRUSEL, CINTAS, DISENOS } from "@/app/home/demo";
 import { GRUPOS } from "@/lib/crm";
 import { ubicacionesApple } from "@/lib/apple/pase";
@@ -40,13 +41,13 @@ describe("web de fiddle: contacto y precios", () => {
     expect(url.searchParams.get("body")).toBe("Cuerpo");
   });
 
-  it("dos planes: Gratis a 0 € con 50 tarjetas y Pro a 49 €, el último destacado", () => {
-    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["gratis", 0], ["pro", 49]]);
+  it("tres planes: Gratis a 0 € con 50 tarjetas, Básico a 29 € y Pro a 49 €, el último destacado", () => {
+    expect(PLANES.map((p) => [p.id, p.precio])).toEqual([["gratis", 0], ["basico", 29], ["pro", 49]]);
     expect(PLANES.filter((p) => p.destacado).map((p) => p.id)).toEqual(["pro"]);
     for (const p of PLANES) expect(p.incluye.length).toBeGreaterThan(0);
     expect(new Set(PLANES.map((p) => p.id)).size).toBe(PLANES.length);
-    const [gratis, pro] = PLANES;
-    // Gratis: todo lo que antes era Pro, con tope de tarjetas en uso, y se da de alta en /alta.
+    const [gratis, basico, pro] = PLANES;
+    // Gratis: todo, con tope de tarjetas en uso, y se da de alta en /alta.
     const incluye = gratis.incluye.join(" ");
     expect(incluye).toMatch(/50 tarjetas/);
     for (const cosa of [/estadísticas/i, /grupos/, /automáticos y programados/, /Promociones/, /Abierto hasta/, /pasar cerca/, /PIN/]) {
@@ -54,22 +55,43 @@ describe("web de fiddle: contacto y precios", () => {
     }
     expect(gratis.enlace).toBe("/alta");
     expect(gratis.nota).toMatch(/lista de espera/);
-    // Pro: 49 al mes o 468 al año por adelantado (39 al mes), sin límite y montada.
+    expect(gratis.nota).toMatch(/plan de pago/);
+    // Básico: 29 al mes o 276 al año (23 al mes), sin límite, promociones y estadísticas, y nada más.
+    expect(basico.anual).toBe(276);
+    expect(mensualDelAnual(basico)).toBe(23);
+    expect(basico.enlace).toBeUndefined();
+    const delBasico = basico.incluye.join(" ");
+    for (const cosa of [/sin límite/i, /Promociones/, /estadísticas/, /montada/]) expect(delBasico).toMatch(cosa);
+    for (const cosa of [/grupos/, /automáticos/, /Abierto hasta/, /pasar cerca/, /PIN/]) expect(delBasico).not.toMatch(cosa);
+    // Pro: 49 al mes o 468 al año (39 al mes), lo del Básico y lo que a este le falta.
     expect(pro.anual).toBe(468);
     expect(mensualDelAnual(pro)).toBe(39);
     expect(pro.enlace).toBeUndefined();
-    expect(pro.incluye.join(" ")).toMatch(/sin límite/i);
-    expect(pro.incluye.join(" ")).toMatch(/montada/);
+    const delPro = pro.incluye.join(" ");
+    expect(delPro).toMatch(/Todo lo del Básico/);
+    for (const cosa of [/grupos/, /automáticos y programados/, /Abierto hasta/, /pasar cerca/, /PIN/]) expect(delPro).toMatch(cosa);
+  });
+
+  it("lo que la web dice de cada plan es lo que la app le deja de partida", () => {
+    const funcionesDe = (id) => Object.entries(PLANES_DE_PARTIDA[id].funciones).filter(([, v]) => v).map(([f]) => f).sort();
+    expect(PLANES.map((p) => p.id)).toEqual(IDS_PLAN);
+    expect(funcionesDe("basico")).toEqual(["estadisticas", "promos"]);
+    expect(funcionesDe("gratis")).toEqual(funcionesDe("pro"));
+    expect(PLANES_DE_PARTIDA.gratis.maxTarjetas).toBe(TARJETAS_GRATIS);
+    expect(PLANES_DE_PARTIDA.basico.maxTarjetas).toBeNull();
   });
 
   it("no queda rastro de Esencial ni de Plus", () => {
     expect(JSON.stringify(PLANES)).not.toMatch(/Esencial|Plus/);
   });
 
-  it("el mensaje de WhatsApp de Pro dice cuál y cuánto", () => {
-    expect(mensajeDePlan(PLANES[1])).toContain("plan Pro");
-    expect(mensajeDePlan(PLANES[1])).toContain("49 €");
-    expect(mensajeDePlan(PLANES[1])).toContain("468 €");
+  it("el mensaje de WhatsApp de cada plan de pago dice cuál y cuánto", () => {
+    expect(mensajeDePlan(PLANES[1])).toContain("plan Básico");
+    expect(mensajeDePlan(PLANES[1])).toContain("29 €");
+    expect(mensajeDePlan(PLANES[1])).toContain("276 €");
+    expect(mensajeDePlan(PLANES[2])).toContain("plan Pro");
+    expect(mensajeDePlan(PLANES[2])).toContain("49 €");
+    expect(mensajeDePlan(PLANES[2])).toContain("468 €");
   });
 });
 

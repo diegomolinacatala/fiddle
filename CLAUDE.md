@@ -344,16 +344,19 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 
 ## Los planes: qué puede usar cada tienda
 
-Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 20-11-2026, dos planes).
+Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 24-11-2026, tres planes).
 
-- **Dos planes desde el 20-11-2026: Gratis y Pro** (antes Esencial, Plus y Pro; y antes Tarjetas
-  y Completo). **Gratis es para siempre**: hasta 50 tarjetas EN USO y con todo, sin margen; es el
-  de la tienda que se da de alta sola (`PLAN_DEL_ALTA`, ver «El alta sola desde la web»). **Pro**
-  es el de pago (49 €/mes o 468 € al año por adelantado), sin límite. Lo que lleva cada uno NO
+- **Tres planes desde el 24-11-2026: Gratis, Básico y Pro** (antes Esencial, Plus y Pro; y antes
+  Tarjetas y Completo). **Gratis es para siempre**: hasta 50 tarjetas EN USO y con todo, sin margen; es el
+  de la tienda que se da de alta sola (`PLAN_DEL_ALTA`, ver «El alta sola desde la web»). Los de
+  pago, sin límite: **Básico** (`basico`, 29 €/mes o 276 € al año) con promociones y estadísticas,
+  y **Pro** (49 €/mes o 468 € al año) con todo. Gratis lleva todo a propósito: quien se queda
+  corto elige si paga por el límite (Básico) o por todo (Pro). Lo que lleva cada uno NO
   está en el código: lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave
   `planes`) y el código solo tiene lo de partida.
 - **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro, y un plan que ya no existe
-  (`esencial`, `plus`) también.** Una tienda de antes no pierde nada por un despliegue. La
+  (`esencial`, `plus`) también.** Una tienda de antes no pierde nada por un despliegue. Por eso
+  Básico es `basico` y no reutiliza `plus`: una tienda en Plus bajaría sola. La
   Delicantería va en Pro a propósito.
 - **El plan dice qué PUEDE usarse, no qué está encendido, y nunca borra.** Los avisos automáticos
   y la plantilla siguen con su interruptor del admin; el «Abierto hasta…» con el suyo en Ajustes.
@@ -378,10 +381,10 @@ Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 20-11-2026, d
   ya existen funcionan siempre, también las de una tienda gratis que no paga nunca. Solo se cuenta
   si el plan tiene límite: a las demás no les cuesta nada.
 - **La lista de espera** (`lib/listaDeEspera.js`, tabla `espera`): quien escanea una tienda llena
-  deja su correo (cifrado, `/api/espera`); cuando la tienda pasa a Pro le llega un correo con el
+  deja su correo (cifrado, `/api/espera`); cuando la tienda pasa a un plan de pago le llega un correo con el
   enlace de la página de la tienda (`/<slug>`, no el tap: un antivirus que abre el enlace no saca
   tarjetas), por orden de llegada y `MAX_POR_PASADA` cada vez. **Solo escribe una tienda SIN
-  límite** (Pro, lo pone el admin), nunca una gratis que libera sitio: cualquiera crea una gratis
+  límite** (Básico o Pro, lo pone el admin), nunca una gratis que libera sitio: cualquiera crea una gratis
   en /alta, y el correo sale con nuestro dominio y su nombre. Lo manda el reloj (`atenderTodas`) y,
   al momento, el cambio de plan del admin. Cada fila se reclama (se borra) antes de mandar: dos
   pasadas a la vez no escriben dos veces; un fallo pasajero la devuelve a su sitio y una dirección
@@ -751,6 +754,16 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   `POST /api/accesos/manager`, con el límite de intentos del login). Mínimo 10 caracteres
   y sin reglas de mayúsculas o números a propósito: se aconseja una frase («un café por
   favor»), que es más larga y más fácil de recordar.
+- **El dueño entra con su correo; la caja, con el usuario que eligió** (24-11-2026, columna
+  `accesos.login`, `lib/accesos.js`). Los pone la invitación: correo verificado con un código de
+  6 cifras por Resend (`lib/codigos.js`, sin tabla: un reto firmado y los fallos en `intentos`),
+  su contraseña, y usuario y contraseña de la caja. Hasta que la tienda lo hace, entra con el
+  usuario de siempre (`delicanteria`, `delicanteria-caja`); con `login`, SOLO con él. La sesión
+  sigue llevando el usuario de siempre. Un correo por tienda; el usuario de la caja es único y
+  nunca el de siempre de otra tienda (`usuarioCajaOcupado`), y una tienda nueva no puede tener
+  un slug que ya es el login de alguien (`slugChocaConLogin`). «¿Has olvidado tu contraseña?»
+  (`/recuperar`) solo sirve al dueño con correo. Sin Resend (local, web de dev) el código es
+  siempre `123456`.
 - **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
   detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
   desde el correo del admin: no hay proveedor de correo. Tiene **alcance**
@@ -798,13 +811,11 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
-- **`/login` rellena el usuario según de dónde se viene** (`usuarioSugerido` en
-  `lib/acceso.js`): la caja si `next` era `/<slug>/caja` o `/w/…`, el dueño si no; y dos
-  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Sin `b`,
-  el último usuario de tienda que entró en ESE móvil (`localStorage`, hasta 3,
-  `leerRecordados`; nunca la contraseña ni los admins, y abajo «Olvidar»). Cada recordado
-  lleva la tienda que dijo el servidor al entrar. Hasta que
-  haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
+- **`/login` es usuario y contraseña, vacíos, siempre** (24-11-2026). Nada de rellenar el
+  usuario según de dónde se viene, ni botones «Soy la caja» / «Soy el dueño», ni usuarios
+  recordados en el móvil: el gestor de contraseñas del navegador ya los rellena, y con
+  cuentas distintas un usuario puesto por nosotros estorbaba. «Salir» manda `next` con su
+  sitio. Hasta que haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
   `app/home/datos.js`). Lo que se aprendió con La Delicantería (15-10-2026) está en
   [docs/AUDITORIA-ACCESOS.md](docs/AUDITORIA-ACCESOS.md).
 - **La página `/invitacion` NO quita el token de la barra**: lo guarda en la pestaña
@@ -873,9 +884,11 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026). Desde el 20-11-2026, dos planes: **Gratis** (0 €, para siempre, hasta 50
-  tarjetas en uso y con todo; su botón lleva a `/alta`) y **Pro** (49 €/mes, o 468 € al año
-  pagados por adelantado: 39 €/mes; sin límite y se la dejamos montada; se pide por WhatsApp).
+  (13-10-2026). Desde el 24-11-2026, tres planes: **Gratis** (0 €, para siempre, hasta 50
+  tarjetas en uso y con todo; su botón lleva a `/alta`), **Básico** (29 €/mes o 276 € al año:
+  23 €/mes; sin límite, promociones y estadísticas) y **Pro** (49 €/mes o 468 € al año: 39 €/mes;
+  sin límite y con todo). Los de pago se los dejamos montados y se piden por WhatsApp; Ajustes →
+  Tu plan saca sus precios de aquí.
   Lo que dice cada plan es lo que la app hace hoy. Lo que la app DEJA a cada plan está en
   `/admin` → Planes (ver «Los planes»): esta página no lo lee, así que si cambia allí se cambia
   aquí a mano.
@@ -919,13 +932,11 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
   de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa)
   sigue en el Perfil de Empresa de Google Wallet hasta que se suba `docs/marca/fiddle-lacre-1024.png`.
-- **Sin sesión, `/` es la web** (16-11-2026): quien escribe fiddle.es es una cafetería que aún
-  no nos conoce, no alguien del equipo. Con sesión, `/` sigue mandando a su panel o su caja.
-  **«Entrar» va a `/login`** (y «Equipo», al pie de una tienda, a `/login?b=<slug>`), que a
-  quien ya está dentro lo manda a su sitio sin pedir la contraseña. Con `next` no: ahí llega
-  del middleware porque su sesión no vale para esa página, y tiene que poder entrar con otro
-  usuario. El login enlaza de vuelta a `/home`. `home` está en `RESERVADOS`; adónde va cada
-  sesión, `sitioDeSesion`.
+- **`fiddle.es` (la raíz) es la web**: sin sesión, `/` lleva a `/home`; con sesión, a su
+  sitio (`sitioDeSesion`: panel, caja o admin). «Entrar» va a `/login`, que a quien ya está
+  dentro también lo manda a su sitio (salvo con `next`: ahí lo manda el middleware y tiene
+  que poder entrar con otro usuario). El login enlaza de vuelta a `/home`. `home` está en
+  `RESERVADOS`.
 - Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
   `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
 - **Las medidas de la tarjeta salen de una captura de iPhone** (`WALLET` en `lib/vistaWallet.js`,

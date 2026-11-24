@@ -46,6 +46,7 @@ const TRAZOS = {
       <circle cx="12" cy="10" r="2.3" />
     </>
   ),
+  tienda: <path d="M4 9l1.2-4.5h13.6L20 9M4 9v10.5h16V9M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9M10 19.5v-5h4v5" />,
   copiar: (
     <>
       <rect x="8.5" y="8.5" width="12" height="12" rx="2" />

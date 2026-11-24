@@ -5,7 +5,7 @@ import { PLANES, enlaceWhatsApp, mensajeDePlan, mensualDelAnual } from "./datos"
 
 // Las tarjetas de los planes, una sola vez para la web y para el final del recorrido:
 // si se separan, un precio se cambia en un sitio y se queda viejo en el otro.
-// Gratis va a /alta (se da de alta solo); Pro, a WhatsApp con el plan ya escrito.
+// Gratis va a /alta (se da de alta sola); Básico y Pro, a WhatsApp con el plan ya escrito.
 export default function Planes() {
   return (
     <>

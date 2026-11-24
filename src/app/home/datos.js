@@ -26,17 +26,18 @@ export const enlaceCorreo = (asunto = ASUNTO, cuerpo = CUERPO) =>
 export const enlaceGmail = (asunto = ASUNTO, cuerpo = CUERPO) =>
   `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CORREO)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
-// Los planes (20-11-2026): Gratis y Pro; Esencial y Plus ya no existen. Las frases dicen
-// lo que la app hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
+// Los planes (24-11-2026): Gratis, Básico y Pro; Esencial y Plus ya no existen. Las frases
+// dicen lo que la app hace hoy; nada de promesas que la tienda no vaya a encontrar al entrar.
 //
 // Lo que la app deja usar a cada plan lo decide el admin en /admin → Planes
 // (lib/planes.js) y esta página NO lo lee: si cambia allí, se cambia aquí a mano.
 //
-// Gratis lo tiene todo (lo que antes era Pro) con tope de tarjetas EN USO: las que nadie
-// guardó ni usó no cuentan. Al llegar al tope, los clientes nuevos se apuntan a una lista
-// de espera y reciben su tarjeta cuando la tienda pasa a Pro. Se da de alta solo, en /alta.
-// Pro se pide por WhatsApp (aún no se paga solo): 49 € al mes, o 468 € al año pagados por
-// adelantado, que sale a 39 € al mes.
+// Gratis lo tiene todo con tope de tarjetas EN USO: las que nadie guardó ni usó no
+// cuentan. Al llegar al tope, los clientes nuevos se apuntan a una lista de espera y
+// reciben su tarjeta cuando la tienda pasa a un plan de pago. Se da de alta sola, en /alta.
+// Los de pago, sin límite, se piden por WhatsApp (aún no se pagan solos):
+// - Básico: 29 € al mes o 276 € al año (23 €/mes). Promociones y estadísticas.
+// - Pro: 49 € al mes o 468 € al año (39 €/mes). Todo.
 export const TARJETAS_GRATIS = 50;
 export const RUTA_ALTA = "/alta";
 
@@ -60,7 +61,24 @@ export const PLANES = [
       "Tu equipo en la caja, cada uno con su PIN",
       "Lo montas tú, desde tu panel",
     ],
-    nota: "Si llegas a las 50, tus clientes nuevos se apuntan a una lista de espera y les llega la tarjeta cuando pases a Pro.",
+    nota: `Si llegas a las ${TARJETAS_GRATIS}, tus clientes nuevos se apuntan a una lista de espera y les llega la tarjeta cuando pases a un plan de pago.`,
+  },
+  {
+    id: "basico",
+    nombre: "Básico",
+    precio: 29,
+    anual: 276,
+    periodo: "al mes",
+    lema: "Sin límite, con promociones.",
+    incluye: [
+      "Tarjetas sin límite, en Apple Wallet y Android",
+      "Con tu logo, tus colores y tu premio",
+      "La caja en el móvil de la tienda",
+      "Tu QR para el mostrador",
+      "Promociones al momento, a todos tus clientes a la vez",
+      "Las estadísticas de tus clientes",
+      "Te la dejamos montada",
+    ],
   },
   {
     id: "pro",
@@ -68,18 +86,20 @@ export const PLANES = [
     precio: 49,
     anual: 468,
     periodo: "al mes",
-    lema: "Sin límite y te la dejamos montada.",
+    lema: "Sin límite y con todo.",
     destacado: true,
-    etiqueta: "Sin límite",
+    etiqueta: "Todo incluido",
     incluye: [
-      "Todo lo del plan Gratis",
-      "Tarjetas sin límite",
-      "Te la dejamos montada",
+      "Todo lo del Básico",
+      "Tus clientes por grupos, y avisos a cada grupo",
+      "Avisos automáticos y programados",
+      "«Abierto hasta…» y aviso al pasar cerca de tu tienda",
+      "Tu equipo en la caja, cada uno con su PIN",
     ],
   },
 ];
 
-/** Pro, pagado por adelantado: lo que sale al mes (468 / 12). */
+/** Un plan de pago, pagado por adelantado: lo que sale al mes (468 / 12 = 39). */
 export const mensualDelAnual = (plan) => (plan.anual ? Math.round(plan.anual / 12) : null);
 
 /** El mensaje de WhatsApp con el plan elegido, para que la conversación empiece por ahí. */

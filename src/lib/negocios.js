@@ -288,7 +288,7 @@ export function temaPorDefecto({ estilo, emoji, accent, marca, forma, banda, mod
 // "crm" está reservado aunque no sea una ruta de primer nivel: /admin/crm es la
 // vista de la plataforma, y una tienda con ese slug la taparía. "home" es la web
 // de fiddle: una tienda que se llamara así no se vería nunca.
-export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion", "home", "tareas", "alta"]);
+export const RESERVADOS = new Set(["api", "login", "admin", "plataforma", "crm", "p", "w", "icons", "marcas", "_next", "favicon.ico", "privacidad", "invitacion", "home", "tareas", "alta", "recuperar", "mapa"]);
 
 /**
  * ¿Es un slug válido para un negocio? Solo mira la FORMA (minúsculas, guiones,

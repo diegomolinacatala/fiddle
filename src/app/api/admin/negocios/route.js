@@ -6,7 +6,7 @@ import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { ACCIONES } from "@/lib/acciones";
 import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validacion";
 import { notificarNegocio } from "@/lib/wallet";
-import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
+import { nuevaClave, ROLES_TIENDA, slugChocaConLogin } from "@/lib/accesos";
 import { auditar } from "@/lib/auditoria";
 import { borrarClientesDeTienda } from "@/lib/derechos";
 import { normalizarLegal } from "@/lib/legal";
@@ -70,6 +70,8 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const r = datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto });
     if (r.error) return jsonError(r.error, 400);
+    // Sus usuarios de siempre (`pan`, `pan-caja`) no pueden ser el que eligió la caja de otra.
+    if (await slugChocaConLogin(r.datos.slug)) return jsonError("Ese identificador ya lo usa alguien para entrar. Elige otro.", 409);
 
     const creado = await crearNegocio(r.datos);
     if (creado.error) return jsonError(creado.error, 409);
@@ -125,7 +127,7 @@ export async function PUT(request) {
       const guardado = await saveNegocio(slug, { plan: body.plan });
       await auditar(sesion, slug, "config", `plan=${body.plan}`);
       const aviso = await notificarNegocio(guardado, { cartilla: true });
-      // Si pasa a Pro, a los primeros de su lista de espera les llega el correo ya,
+      // Si pasa a un plan sin límite (Básico o Pro), a los primeros de su lista de espera les llega el correo ya,
       // sin esperar al reloj, que manda el resto (lib/listaDeEspera.js). Nunca lanza.
       const espera = await atenderEspera(guardado, { max: 10 });
       return NextResponse.json({ ...sinTarjetaDueno(guardado), aviso, espera });

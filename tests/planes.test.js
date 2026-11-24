@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   normalizarPlanes, validarPlanes, conPlan, tiene, conAvisosAvanzados, conAbierto, promoDe, cupoDe, quedaCupo,
-  IDS_PLAN, FUNCIONES, PLAN_POR_DEFECTO, PLAN_DEL_ALTA,
+  IDS_PLAN, FUNCIONES, PLAN_POR_DEFECTO, PLAN_DEL_ALTA, planQueLoLleva,
 } from "@/lib/planes";
 import { componerNegocio } from "@/lib/negocios";
 import { camposDelPase, ubicacionesApple } from "@/lib/apple/pase";
@@ -28,13 +28,28 @@ const enPlan = (plan, extra = {}) => conPlan({ ...base, ...extra, plan }, planes
 const cliente = { serial: "s1", sellos: 2, premios: 0, codigo: "K7M", auth_token: "x".repeat(24) };
 
 describe("los planes de partida", () => {
-  it("Gratis con todo y hasta 50 tarjetas, sin margen; Pro con todo y sin límite", () => {
-    expect(IDS_PLAN).toEqual(["gratis", "pro"]);
+  it("Gratis con todo y hasta 50 tarjetas, sin margen; Básico y Pro sin límite; Pro con todo", () => {
+    expect(IDS_PLAN).toEqual(["gratis", "basico", "pro"]);
     expect(planes.gratis).toMatchObject({ maxTarjetas: 50, margen: 0 });
     expect(Object.values(planes.gratis.funciones).every((v) => v === true)).toBe(true);
     expect(Object.values(planes.pro.funciones).every((v) => v === true)).toBe(true);
     expect(planes.pro.maxTarjetas).toBeNull();
     expect(PLAN_DEL_ALTA).toBe("gratis");
+  });
+
+  it("Básico: sin límite, con promociones y estadísticas y sin lo demás", () => {
+    expect(planes.basico).toMatchObject({ nombre: "Básico", maxTarjetas: null, margen: 0 });
+    const n = enPlan("basico");
+    expect(n.cupo).toBeNull();
+    expect(cupoDe(n, 1e6)).toBeNull();
+    const llevaBasico = FUNCIONES.filter((f) => tiene(n, f.id)).map((f) => f.id);
+    expect(llevaBasico).toEqual(["estadisticas", "promos"]);
+  });
+
+  it("«va en el plan X» dice el de pago más barato que lo lleva, nunca Gratis", () => {
+    expect(planQueLoLleva(planes, "promos")).toBe("Básico");
+    expect(planQueLoLleva(planes, "estadisticas")).toBe("Básico");
+    for (const f of ["grupos", "avisosAvanzados", "plantilla", "abierto", "ubicacion"]) expect(planQueLoLleva(planes, f)).toBe("Pro");
   });
 
   it("sin plan es Pro: una tienda de antes no pierde nada", () => {
@@ -47,7 +62,7 @@ describe("los planes de partida", () => {
     expect(tiene({}, "promos")).toBe(true);
   });
 
-  it("un plan que ya no existe (Esencial, Plus) es Pro: nadie pierde nada", () => {
+  it("un plan que ya no existe (Esencial, Plus) es Pro, también ahora que hay Básico: nadie pierde nada", () => {
     for (const viejo of ["esencial", "plus"]) {
       const n = conPlan({ ...base, plan: viejo }, planes);
       expect(n.planId).toBe("pro");
@@ -70,7 +85,9 @@ describe("los planes de partida", () => {
     expect(p.pro.margen).toBe(0);
     expect(p.pro.funciones.estadisticas).toBe(true);
     // Lo de un plan que ya no existe se ignora.
-    expect(Object.keys(p)).toEqual(["gratis", "pro"]);
+    expect(Object.keys(p)).toEqual(["gratis", "basico", "pro"]);
+    // Lo guardado de antes de Básico (solo gratis y pro) lo deja con lo de partida.
+    expect(p.basico.funciones).toEqual(planes.basico.funciones);
   });
 });
 
@@ -140,6 +157,19 @@ describe("lo que esconde un plan sin funciones (si el admin se las quita)", () =
     expect(n.promo).toBe("2x1 hoy");
     expect(n.avisosAvanzados).toBe(true);
     expect(n.plantillaActiva).toBe(true);
+  });
+
+  it("Básico: la promo en la tarjeta, pero ni ubicación, ni «Abierto hasta…», ni avisos ni plantilla", () => {
+    const n = enPlan("basico", conTodo);
+    expect(camposDelPase(cliente, n).auxiliaryFields[0]).toMatchObject({ key: "promo", value: "2x1 hoy" });
+    expect(promoDe(n)).toBe("2x1 hoy");
+    expect(ubicacionesApple(n)).toHaveLength(0);
+    expect(conAbierto(n)).toBe(false);
+    expect(conAvisosAvanzados(n)).toBe(false);
+    expect(conPlantilla(n)).toBe(false);
+    expect(fueraDelPlan(n, "todos")).toBeNull();
+    expect(fueraDelPlan(n, "en_riesgo")?.status).toBe(403);
+    expect(pestanasDe(n.funciones).map(([k]) => k)).toEqual(["resumen", "clientes", "actividad"]);
   });
 
   it("Pro: todo como siempre", () => {

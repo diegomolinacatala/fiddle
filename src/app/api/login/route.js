@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  resolverUsuario, usuariosDemo, usuarioDe, firmarSesion, cookieSesion, secretoSesion, COOKIE, ADMINS,
+  usuariosDemo, usuarioDe, firmarSesion, cookieSesion, secretoSesion, COOKIE, ADMINS,
 } from "@/lib/auth";
 import { listNegocios, getNegocio, getCliente } from "@/lib/store";
 import { destinoSeguro, negocioDeRuta, sitioDeSesion } from "@/lib/acceso";
-import { comprobarAcceso } from "@/lib/accesos";
+import { comprobarAcceso, buscarAcceso } from "@/lib/accesos";
 import { COOKIE_QUIEN } from "@/lib/plantilla";
 import { loginBloqueado, anotarFalloLogin, ipDe } from "@/lib/limitador";
 import { jsonError, errorInterno } from "@/lib/http";
@@ -33,12 +33,14 @@ export async function GET() {
   return NextResponse.json({ demo: true, accesos });
 }
 
-// POST /api/login  body: { usuario, clave } -> valida, firma la sesión y la deja
+// POST /api/login  body: { usuario, clave } -> `usuario` es lo que se escribe en
+// «Correo o usuario»: el correo del dueño, el usuario de la caja o, mientras la
+// tienda no haya hecho el cambio, el de siempre (lib/accesos.js). Valida, firma la sesión y la deja
 // en una cookie httpOnly. Devuelve negocio y rol para redirigir.
 export async function POST(request) {
   try {
     const { usuario, clave, next } = await request.json().catch(() => ({}));
-    const quien = resolverUsuario(usuario);
+    const quien = await buscarAcceso(usuario);
     if (!quien) return jsonError("Usuario o contraseña incorrectos", 401);
     // Un usuario de tienda solo vale si la tienda existe (y no está archivada):
     // en modo pruebas la contraseña es el propio usuario, así que sin esto
@@ -61,14 +63,15 @@ export async function POST(request) {
     }
 
     // Contraseña de la base; si la tienda no tiene, la variable de entorno (lib/accesos.js).
-    const acceso = await comprobarAcceso(usuario, clave);
+    const acceso = await comprobarAcceso(usuario, clave, quien);
     if (!acceso) {
       await anotarFalloLogin(quien.negocio, ip).catch((e) => console.error("[login] no se pudo anotar el fallo:", e));
       return jsonError("Usuario o contraseña incorrectos", 401);
     }
 
-    // Con quién entró, con el nombre canónico: `nube-manager` es un alias de `nube`
-    // y el token (y la auditoría) llevan el de siempre. El admin, su nombre.
+    // Con quién entró, con el nombre canónico: el correo, el usuario elegido de la
+    // caja o `nube-manager` llevan al de siempre (`nube`), que es el del token (y de
+    // la auditoría). El admin, su nombre.
     const quienEntra = { negocio: acceso.negocio, rol: acceso.rol, usuario: acceso.rol === "admin" ? acceso.usuario : usuarioDe(acceso.negocio, acceso.rol) };
     // Queda apuntado quién entró; los fallos van a `intentos`.
     await auditar(quienEntra, acceso.rol === "admin" ? null : acceso.negocio, "login");

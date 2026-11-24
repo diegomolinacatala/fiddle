@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { negocioDePeticion, sesionDePeticion } from "../negocioDePeticion";
-import { puedeAcceder, usuarioDe } from "@/lib/auth";
+import { puedeAcceder } from "@/lib/auth";
+import { estadoAccesos } from "@/lib/accesos";
 import { apuntarEntradaAdmin } from "@/lib/auditoria";
 import { explicarErrorSupabase } from "@/lib/diagnostico";
 import ErrorDatos from "@/app/ErrorDatos";
@@ -8,7 +9,7 @@ import { negocioDelPersonal } from "@/lib/tarjeta";
 import PanelAjustes from "./PanelAjustes";
 import { relojVivo } from "@/lib/relojAvisos";
 import { planesGlobales, contarTarjetas } from "@/lib/store";
-import { cupoDe } from "@/lib/planes";
+import { cupoDe, FUNCIONES } from "@/lib/planes";
 import { estadoEspera } from "@/lib/listaDeEspera";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +23,9 @@ export default async function Page({ params }) {
   // Lo que ve aquí el admin son los clientes de otro: queda apuntado (docs/RGPD.md, 6.9).
   await apuntarEntradaAdmin(sesion, slug, "Ajustes");
 
-  let n, reloj, planes;
+  let n, reloj, planes, accesos;
   try {
-    [n, reloj, planes] = await Promise.all([negocioDePeticion(slug), relojVivo(), planesGlobales()]);
+    [n, reloj, planes, accesos] = await Promise.all([negocioDePeticion(slug), relojVivo(), planesGlobales(), estadoAccesos(slug)]);
   } catch (e) {
     console.error(`[ajustes ${slug}] no se pudo leer la base de datos:`, e);
     return <ErrorDatos detalle={explicarErrorSupabase(e?.message || e, "negocios")} />;
@@ -41,11 +42,13 @@ export default async function Page({ params }) {
     nombre: planes[n.planId].nombre,
     cupo: n.cupo ? cupoDe(n, emitidas) : null,
     esperan: espera?.esperan ?? 0,
+    // Lo que su plan no lleva (Básico), para decir qué ganaría pasando a Pro.
+    faltan: FUNCIONES.filter((f) => n.funciones?.[f.id] === false).map((f) => f.nombre),
   };
   return (
     <PanelAjustes
       slug={slug} negocio={negocioDelPersonal(n)} plan={plan}
-      usuarios={{ manager: usuarioDe(slug, "manager"), caja: usuarioDe(slug, "caja") }}
+      usuarios={usuariosDeEntrada(accesos)}
       esAdmin={sesion.rol === "admin"} reloj={reloj}
     />
   );

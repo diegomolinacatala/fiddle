@@ -41,6 +41,9 @@ export const LIMITES = {
   // desde la web (lib/alta.js): pocos por conexión, que nadie llene la base.
   espera: { max: 10, ventanaMs: 10 * 60 * 1000 },
   alta: { max: 3, ventanaMs: 60 * 60 * 1000 },
+  // Códigos por correo (lib/codigos.js): cada uno es un correo de Resend. Pocos por
+  // conexión: de sobra para quien no lo recibe y pide otro, corta a quien llene buzones.
+  codigo: { max: 6, ventanaMs: 15 * 60 * 1000 },
   // El PIN de la caja (lib/quien.js): 4 cifras son 10.000 combinaciones. 5 fallos
   // por persona e IP, y 30 por persona desde donde sea, cada 15 minutos.
   pinIp: { max: 5, ventanaMs: 15 * 60 * 1000 },

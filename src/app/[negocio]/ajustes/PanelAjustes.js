@@ -10,7 +10,7 @@ import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 import { confirmar } from "@/app/Dialogo";
 import { confirmarTarjetas } from "../manager/confirmarTarjetas";
 import { tiene } from "@/lib/planes";
-import { enlaceWhatsApp } from "@/app/home/datos";
+import { PLANES, enlaceWhatsApp } from "@/app/home/datos";
 
 // ============================================================================
 // AJUSTES — lo de la cuenta
@@ -142,7 +142,7 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
             <Bloque
               accent={accent} icono="estrella" titulo={`Tu plan: ${plan.nombre}`}
               resumen={textoDelPlan(plan, slug)}
-              accion={plan.id === "pro" ? null : { texto: "Pasar a Pro", icono: "correo", onClick: () => window.open(enlaceWhatsApp(`Hola, soy de ${n.nombre} y quiero pasar a Pro (49 €/mes o 468 €/año).`), "_blank", "noopener") }}
+              accion={mejoraDe(plan, n.nombre)}
             />
           )}
           <Bloque
@@ -174,7 +174,7 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
             accent={accent} icono="puerta" titulo="Tu acceso"
             resumen={esAdmin
               ? "Has entrado como administrador de fiddle."
-              : <>Usuario <strong style={{ color: C.texto }}>{usuarios.manager}</strong>. Si cambias tu contraseña, aquí sigues dentro; en los demás dispositivos habrá que volver a entrar.</>}
+              : <>{usuarios.manager.includes("@") ? "Entras con" : "Usuario"} <strong style={{ color: C.texto }}>{usuarios.manager}</strong>. Si cambias tu contraseña, aquí sigues dentro; en los demás dispositivos habrá que volver a entrar.</>}
             abierto={cambiandoClave}
             accion={esAdmin ? null : {
               texto: cambiandoClave ? "Cerrar" : "Cambiar mi contraseña",
@@ -199,24 +199,48 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
   );
 }
 
+// A qué plan puede pasar y el WhatsApp ya escrito, con los precios de la web
+// (app/home/datos.js, el único sitio donde viven). Desde Gratis se elige entre los
+// dos de pago; desde Básico, Pro; desde Pro, nada (aunque el admin le apague algo).
+function mejoraDe(plan, tienda) {
+  const precio = (id) => {
+    const p = PLANES.find((x) => x.id === id);
+    return `${p.nombre}, ${p.precio} €/mes o ${p.anual} €/año`;
+  };
+  const abrir = (texto) => () => window.open(enlaceWhatsApp(`Hola, soy de ${tienda} y ${texto}.`), "_blank", "noopener");
+  if (plan.id === "gratis") {
+    return { texto: "Pasar a un plan de pago", icono: "correo", onClick: abrir(`quiero pasar a un plan de pago (${precio("basico")}; ${precio("pro")})`) };
+  }
+  if (plan.id === "basico") return { texto: "Pasar a Pro", icono: "correo", onClick: abrir(`quiero pasar a Pro (${precio("pro")})`) };
+  return null;
+}
+
 // Su plan y cómo va de tarjetas (lib/planes.js). Gratis: hasta el límite EN USO (las
 // que nadie guardó ni usó no cuentan) y, al llegar, quien escanea se apunta en la
-// lista de espera. Pro: sin límite. Si falta el proveedor de correo lo sabemos
-// nosotros, no el dueño: a él le basta saber que se les escribirá.
-function textoDelPlan({ cupo, esperan }, slug) {
-  if (!cupo) return "Tarjetas sin límite y todo incluido.";
+// lista de espera. Básico y Pro: sin límite; Básico dice lo que no lleva. Si falta el
+// proveedor de correo lo sabemos nosotros, no el dueño: a él le basta saber que se
+// les escribirá.
+function textoDelPlan({ id, nombre, cupo, esperan, faltan }, slug) {
+  const noLleva = faltan.length ? ` No lleva: ${listaDe(faltan)}${id === "basico" ? "; van en Pro" : ""}.` : "";
+  if (!cupo) return faltan.length ? `Tarjetas sin límite.${noLleva}` : "Tarjetas sin límite y todo incluido.";
   // Las que lleva ruedan desde las que vio aquí la última vez (app/useVisto.js).
   const cuenta = <><NumeroVisto id={`${slug}:emitidas`} valor={cupo.emitidas} /> de {cupo.max.toLocaleString("es")} tarjetas en uso.</>;
   const nota = " Las que nadie guardó ni usó no cuentan; las que ya tienen siguen funcionando siempre.";
   const lista = esperan > 0
-    ? ` Hay ${esperan} ${esperan === 1 ? "persona" : "personas"} en la lista de espera: les llega su tarjeta por correo en cuanto pases a Pro.`
+    ? ` Hay ${esperan} ${esperan === 1 ? "persona" : "personas"} en la lista de espera: les llega su tarjeta por correo en cuanto pases a un plan de pago.`
     : "";
   if (cupo.estado === "cerrado" || cupo.estado === "lleno") {
-    return <><span style={{ color: C.mal }}>{cuenta} Has llegado al límite:</span> quien escanea ahora deja su correo y le mandamos la tarjeta cuando pases a Pro.{lista}{nota}</>;
+    return <><span style={{ color: C.mal }}>{cuenta} Has llegado al límite:</span> quien escanea ahora deja su correo y le mandamos la tarjeta cuando pases a un plan de pago.{lista}{nota}</>;
   }
-  if (cupo.estado === "cerca") return <><span style={{ color: C.mal }}>{cuenta}</span> Te queda poco para el límite del plan Gratis.{lista}{nota}</>;
-  return <>{cuenta} El plan Gratis lleva todo, hasta ese límite.{lista}{nota}</>;
+  if (cupo.estado === "cerca") return <><span style={{ color: C.mal }}>{cuenta}</span> Te queda poco para el límite del plan {nombre}.{lista}{nota}</>;
+  return <>{cuenta} {faltan.length ? `El plan ${nombre} llega hasta ese límite.${noLleva}` : `El plan ${nombre} lleva todo, hasta ese límite.`}{lista}{nota}</>;
 }
+
+/** «a, b y c», en minúscula salvo lo que va entre comillas. */
+const listaDe = (nombres) => {
+  const n = nombres.map((x) => (x.startsWith("«") ? x : x.charAt(0).toLowerCase() + x.slice(1)));
+  return n.length > 1 ? `${n.slice(0, -1).join(", ")} y ${n.at(-1)}` : n[0];
+};
 
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",

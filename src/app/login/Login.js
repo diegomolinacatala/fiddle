@@ -1,44 +1,35 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 // Nada de lib/auth.js aquí: lleva la lista de admins y esto va al navegador.
-import {
-  destinoSeguro, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda, CLAVE_RECORDADOS, leerRecordados, recordarUsuario,
-} from "@/lib/acceso";
+import { destinoSeguro } from "@/lib/acceso";
 import { CORREO, TELEFONO_VISIBLE, enlaceWhatsApp, enlaceCorreo } from "@/app/home/datos";
-import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario, solapa } from "@/app/ui";
+import { C, paginaCentrada, panel, campo, etiqueta, aviso, botonSecundario } from "@/app/ui";
 import LogoFiddle from "@/app/LogoFiddle";
 
 // PRIMERA PANTALLA de la app: usuario + contraseña, para todos los negocios.
-//   delicanteria (manager) · delicanteria-caja (caja)
 // El rol lo decide el usuario. Si el servidor tiene activo el modo pruebas,
 // debajo se listan los accesos de ejemplo y se rellenan al tocarlos.
 // Se llega desde «Entrar» de la web (/home), y abajo hay un enlace de vuelta.
 //
-// Con `?b=<tienda>&next=<ruta>` (el middleware o «Salir») el usuario sale ya
-// puesto: el de la caja si se venía de la caja, el del dueño si no
-// (usuarioSugerido en lib/acceso.js), y dos botones para cambiarlo sin teclear.
-// Sin `?b=` (se abre /login a secas), el móvil propone el último usuario de
-// tienda con el que se entró en él y su tienda da los dos botones; uno de otra
-// tienda sale como un botón más con su nombre (leerRecordados). Nunca la
-// contraseña ni los admins, y abajo se pueden olvidar.
-// Hoy no hay forma de recuperar una contraseña sin fiddle: por eso «¿No puedes
-// entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
+// Los dos campos salen VACÍOS, siempre (24-11-2026). Antes se rellenaba el usuario
+// según de dónde se venía, había botones «Soy la caja» / «Soy el dueño» y el móvil
+// recordaba los últimos usuarios. Sobraba: el gestor de contraseñas del navegador
+// (Google, iCloud) ya rellena los dos, y con cuentas distintas un usuario puesto
+// por nosotros solo estorbaba. Por eso `autoComplete` bien puesto y nada más.
+// El dueño entra con su correo (y recupera la contraseña en /recuperar); la caja, con
+// su usuario. «¿No puedes entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
 const MENSAJE_AYUDA = "Hola, no puedo entrar en fiddle.";
+// Lo que guardaba el login de antes en cada móvil (los últimos usuarios). Se borra.
+const CLAVE_VIEJA = "fiddle-usuarios";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = destinoSeguro(params.get("next"));
-  const slugDeB = tiendaDeUsuario(params.get("b"))?.slug ?? null;
-  const [recordados, setRecordados] = useState([]);
-  // Sin ?b=, la tienda del último que entró en este móvil.
-  const slug = slugDeB ?? recordados.find((r) => r.t)?.t ?? null;
-  const otros = recordados.filter((r) => r.t !== slug);
 
-  const [usuario, setUsuario] = useState(() => usuarioSugerido(params.get("b"), params.get("next")));
-  const claveRef = useRef(null);
+  const [usuario, setUsuario] = useState("");
   const [clave, setClave] = useState("");
   const [ver, setVer] = useState(false);
   const [error, setError] = useState(null); // { texto, status }
@@ -47,16 +38,7 @@ function LoginForm() {
   const [ayuda, setAyuda] = useState(false);
 
   useEffect(() => {
-    let lista = [];
-    try { lista = leerRecordados(localStorage.getItem(CLAVE_RECORDADOS)); } catch {}
-    setRecordados(lista);
-    // Con ?b= manda de dónde se viene (usuarioSugerido); sin él, el último de este móvil.
-    if (lista.length && !usuario) {
-      setUsuario(lista[0].u);
-      claveRef.current?.focus();
-    }
-    // Solo al abrir: luego manda lo que se toque.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try { localStorage.removeItem(CLAVE_VIEJA); } catch {}
   }, []);
 
   useEffect(() => {
@@ -85,9 +67,6 @@ function LoginForm() {
         setBusy(false);
         return;
       }
-      try {
-        localStorage.setItem(CLAVE_RECORDADOS, JSON.stringify(recordarUsuario(recordados, { negocio: data.negocio, rol: data.rol })));
-      } catch {}
       // El servidor decide a dónde: `next` solo si es de esta tienda (ver /api/login).
       // El botón sigue girando hasta que llegue la página: router.push no espera a
       // cargarla y, con mala cobertura, volver a «Entrar» parecía que no había hecho nada.
@@ -107,13 +86,6 @@ function LoginForm() {
   }
 
   const listo = usuario && clave && !busy;
-  const elegir = (u) => { setUsuario(u); setError(null); claveRef.current?.focus(); };
-
-  function olvidar() {
-    try { localStorage.removeItem(CLAVE_RECORDADOS); } catch {}
-    if (!slugDeB && recordados.some((r) => r.u === usuario)) setUsuario("");
-    setRecordados([]);
-  }
 
   return (
     <main style={paginaCentrada}>
@@ -123,34 +95,21 @@ function LoginForm() {
             <LogoFiddle tam={36} />
           </h1>
           <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>
-            Entra con el usuario de tu tienda o el de la caja.
+            Entra con tu correo o con el usuario de la caja.
           </p>
         </div>
 
         <form onSubmit={entrar} style={{ ...panel, display: "flex", flexDirection: "column" }}>
-          {(slug || otros.length > 0) && (
-            <div role="group" aria-label="Quién entra" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {slug && [["caja", "Soy la caja"], ["manager", "Soy el dueño"]].map(([rol, texto]) => (
-                <button key={rol} type="button" onClick={() => elegir(usuarioDeTienda(slug, rol))} style={solapa(usuario === usuarioDeTienda(slug, rol))}>
-                  {texto}
-                </button>
-              ))}
-              {otros.map((r) => (
-                <button key={r.u} type="button" onClick={() => elegir(r.u)} style={solapa(usuario === r.u)}>{r.u}</button>
-              ))}
-            </div>
-          )}
-
-          <label style={{ ...etiqueta, marginTop: slug || otros.length ? 14 : 0 }} htmlFor="usuario">Usuario</label>
+          <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="usuario">Correo o usuario</label>
           <input
             id="usuario"
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
+            type="text"
             autoComplete="username"
             autoCapitalize="none"
             autoCorrect="off"
-            placeholder="delicanteria"
-            autoFocus={!usuario}
+            autoFocus
             style={campo}
           />
 
@@ -158,7 +117,6 @@ function LoginForm() {
           <div style={{ display: "flex", gap: 8 }}>
             <input
               id="clave"
-              ref={claveRef}
               value={clave}
               onChange={(e) => setClave(e.target.value)}
               type={ver ? "text" : "password"}
@@ -166,7 +124,6 @@ function LoginForm() {
               autoCapitalize="none"
               autoCorrect="off"
               placeholder="••••••"
-              autoFocus={Boolean(usuario)}
               style={{ ...campo, minWidth: 0 }}
             />
             {/* Doce caracteres con guiones en un teclado de móvil: mejor poder mirarlos. */}
@@ -181,6 +138,8 @@ function LoginForm() {
 
           {error && <div role="alert" style={{ ...aviso(false), marginTop: 14 }}>{error.texto}</div>}
 
+          <a href="/recuperar" style={{ ...enlaceAyuda, display: "block", marginTop: 10 }}>¿Has olvidado tu contraseña?</a>
+
           <button type="button" onClick={() => setAyuda((v) => !v)} aria-expanded={ayuda} style={enlaceAyuda}>
             ¿No puedes entrar?
           </button>
@@ -190,8 +149,8 @@ function LoginForm() {
                 {error?.status === 429
                   ? "Hasta que pasen los 15 minutos no se comprueba ninguna contraseña, aunque sea la buena. "
                   : null}
-                Si no recuerdas la contraseña o el enlace que te mandamos no funciona, escríbenos y te damos
-                una nueva. Dinos el nombre de la tienda y si es la del dueño o la de la caja.
+                Si el enlace que te mandamos no funciona o la contraseña de la caja se ha perdido, escríbenos.
+                Dinos el nombre de la tienda y si es la del dueño o la de la caja.
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <a href={enlaceWhatsApp(MENSAJE_AYUDA)} target="_blank" rel="noopener noreferrer" style={{ ...botonSecundario, textDecoration: "none", fontSize: 13 }}>
@@ -204,13 +163,6 @@ function LoginForm() {
             </div>
           )}
         </form>
-
-        {recordados.length > 0 && (
-          <p style={{ textAlign: "center", fontSize: 12, color: C.tenue, margin: "12px 0 0", lineHeight: 1.5 }}>
-            Este móvil recuerda {recordados.length === 1 ? "el usuario" : "los usuarios"} con que se entró, nunca la contraseña.{" "}
-            <button type="button" onClick={olvidar} style={{ ...enlaceAyuda, margin: 0, padding: 0, fontSize: 12, color: C.suave }}>Olvidar</button>
-          </p>
-        )}
 
         {accesos.length > 0 && (
           <div style={{ ...panel, marginTop: 14, padding: 16, background: C.panelSuave }}>
@@ -241,7 +193,7 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default function Login() {
   return (
     <Suspense fallback={null}>
       <LoginForm />

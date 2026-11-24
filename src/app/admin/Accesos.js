@@ -50,7 +50,7 @@ export default function Accesos({ slug }) {
         <div key={a.rol} style={fila}>
           <div>
             <div style={{ fontSize: 12, color: C.tenue }}>{ROTULO[a.rol]}</div>
-            <strong style={{ fontSize: 14 }}>{a.usuario}</strong>
+            <strong style={{ fontSize: 14 }}>{a.login ? (a.rol === "manager" ? `Entra con ${a.login}` : `Usuario de la caja: ${a.login}`) : a.usuario}</strong>
             <div style={{ fontSize: 13, color: a.desde || a.respaldo ? C.suave : C.mal }}>
               {a.desde
                 ? `Contraseña ${a.elegida ? "elegida por el dueño" : "generada"} desde el ${fecha(a.desde)}`

@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  reglaDeRuta, destinoSeguro, negocioDeRuta, usuarioSugerido, tiendaDeUsuario, usuarioDeTienda, leerRecordados, recordarUsuario,
-  MAX_RECORDADOS, sitioDeSesion,
-} from "@/lib/acceso";
-import { resolverUsuario, usuarioDe } from "@/lib/auth";
+import { reglaDeRuta, destinoSeguro, negocioDeRuta, sitioDeSesion } from "@/lib/acceso";
 
 const regla = (ruta, method = "GET") => {
   const url = new URL(ruta, "http://x");
@@ -131,79 +127,6 @@ describe("negocioDeRuta", () => {
     expect(negocioDeRuta("/w/123")).toBeNull();
     expect(negocioDeRuta("/home")).toBeNull();   // la web de fiddle, no una tienda
     expect(negocioDeRuta(null)).toBeNull();
-  });
-});
-
-// Qué usuario pone /login de partida (docs/AUDITORIA-ACCESOS.md, A2): antes
-// ponía siempre el del dueño, también a la caja, que fallaba con su propia
-// contraseña hasta bloquear la IP del local.
-describe("usuarioSugerido", () => {
-  it("la caja si se venía de la caja o de una ficha; el dueño para el resto", () => {
-    expect(usuarioSugerido("nube", "/nube/caja")).toBe("nube-caja");
-    expect(usuarioSugerido("nube", "/nube/caja/")).toBe("nube-caja");
-    // El QR lleva a la ficha directo desde la cámara: eso es la caja.
-    expect(usuarioSugerido("nube", "/w/8a1f6c2e-0000-4000-8000-000000000001")).toBe("nube-caja");
-    for (const r of ["/nube/manager", "/nube/crm", "/nube/avisos", "/nube/plantilla", "/nube/ajustes", "/nube"]) {
-      expect(usuarioSugerido("nube", r), r).toBe("nube");
-    }
-    expect(usuarioSugerido("nube", null)).toBe("nube");
-    // La caja de OTRA tienda no es la de esta.
-    expect(usuarioSugerido("nube", "/fade/caja")).toBe("nube");
-  });
-
-  it("sin tienda, nada; un usuario de caja ya puesto se respeta; un next raro no cuenta", () => {
-    expect(usuarioSugerido(null, "/nube/caja")).toBe("");
-    expect(usuarioSugerido("", null)).toBe("");
-    expect(usuarioSugerido("nube caja", "/nube/caja")).toBe("");
-    expect(usuarioSugerido("nube-caja", "/nube/manager")).toBe("nube-caja");
-    expect(usuarioSugerido("nube", "//evil.com/nube/caja")).toBe("nube");
-    expect(usuarioSugerido("admin", "/admin")).toBe(""); // reservado: no es una tienda
-    expect(usuarioSugerido("victor", "/admin")).toBe("victor");
-  });
-
-  it("entiende los usuarios de tienda igual que lib/auth.js, sin importarlo (los admins no van al navegador)", () => {
-    for (const u of ["nube", "nube-caja", "fade-manager", "NUBE "]) {
-      const quien = resolverUsuario(u);
-      expect(tiendaDeUsuario(u), u).toEqual({ slug: quien.negocio, rol: quien.rol });
-    }
-    for (const u of ["nube caja", "", null]) expect(tiendaDeUsuario(u), String(u)).toBeNull();
-    // Un slug reservado no es una tienda, aunque resolverUsuario no lo mire.
-    expect(tiendaDeUsuario("admin")).toBeNull();
-    expect(tiendaDeUsuario("w")).toBeNull();
-    expect(tiendaDeUsuario("victor")).toEqual({ slug: "victor", rol: "manager" }); // aquí no hay admins: es un slug más
-    expect(usuarioDeTienda("nube", "caja")).toBe(usuarioDe("nube", "caja"));
-    expect(usuarioDeTienda("nube", "manager")).toBe(usuarioDe("nube", "manager"));
-  });
-});
-
-describe("los usuarios que recuerda el móvil en /login", () => {
-  it("el último delante, sin repetir y con tope", () => {
-    let lista = [];
-    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "caja" });
-    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "manager" });
-    lista = recordarUsuario(lista, { negocio: "delicanteria", rol: "caja" });
-    expect(lista).toEqual([{ u: "delicanteria-caja", t: "delicanteria" }, { u: "delicanteria", t: "delicanteria" }]);
-    for (const n of ["a", "b", "c", "d"]) lista = recordarUsuario(lista, { negocio: n, rol: "manager" });
-    expect(lista).toHaveLength(MAX_RECORDADOS);
-    expect(lista[0].u).toBe("d");
-  });
-
-  it("un admin no se recuerda: en el móvil de la caja no se queda propuesto para el siguiente", () => {
-    const lista = [{ u: "nube-caja", t: "nube" }];
-    expect(recordarUsuario(lista, { negocio: "plataforma", rol: "admin" })).toBe(lista);
-  });
-
-  it("lo guardado se lee con desconfianza: lo que no tenga forma de usuario se tira", () => {
-    expect(leerRecordados(null)).toEqual([]);
-    expect(leerRecordados("no es json")).toEqual([]);
-    expect(leerRecordados('{"u":"x"}')).toEqual([]);
-    expect(leerRecordados(JSON.stringify([
-      { u: "nube-caja", t: "nube", clave: "esto no se guarda nunca" },
-      { u: "<script>", t: "nube" },
-      { u: "victor", t: null },
-      { u: "nube", t: "../x" },
-      { u: "fade", t: "fade" },
-    ]))).toEqual([{ u: "nube-caja", t: "nube" }, { u: "fade", t: "fade" }]);
   });
 });
 

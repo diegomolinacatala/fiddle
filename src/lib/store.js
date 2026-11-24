@@ -1918,15 +1918,33 @@ export async function borrarDispositivos(ids) {
 // Contraseña de cada usuario de tienda (`nube` = manager, `nube-caja` = caja),
 // como hash. Sin fila, el login cae a la variable de entorno de siempre.
 
-/** @returns {Promise<{usuario:string, negocio:string, rol:string, hash:string, actualizado:string}|null>} */
+const COLUMNAS_ACCESO = "usuario, negocio, rol, hash, actualizado, login";
+
+/** @returns {Promise<{usuario:string, negocio:string, rol:string, hash:string, actualizado:string, login:string|null}|null>} */
 export async function getAcceso(usuario) {
   if (hasSupabase()) {
     return sinError(
-      await supa().from("accesos").select("usuario, negocio, rol, hash, actualizado").eq("usuario", usuario).maybeSingle(),
+      await supa().from("accesos").select(COLUMNAS_ACCESO).eq("usuario", usuario).maybeSingle(),
       "leer acceso",
     ) ?? null;
   }
   return (await enFila(() => leer("accesos", {})))[usuario] ?? null;
+}
+
+/**
+ * La fila de quien entra con ese nombre: el correo del dueño o el usuario que
+ * eligió la caja (lib/accesos.js). `login` ya viene en minúsculas.
+ */
+export async function getAccesoPorLogin(login) {
+  if (!login) return null;
+  if (hasSupabase()) {
+    return sinError(
+      await supa().from("accesos").select(COLUMNAS_ACCESO).eq("login", login).maybeSingle(),
+      "leer acceso por login",
+    ) ?? null;
+  }
+  const todos = await enFila(() => leer("accesos", {}));
+  return Object.values(todos).find((a) => a.login === login) ?? null;
 }
 
 /**
@@ -1937,23 +1955,32 @@ export async function getAcceso(usuario) {
 export async function accesosDeNegocio(negocio) {
   if (hasSupabase()) {
     return sinError(
-      await supa().from("accesos").select("usuario, rol, hash, actualizado").eq("negocio", negocio),
+      await supa().from("accesos").select("usuario, rol, hash, actualizado, login").eq("negocio", negocio),
       "leer accesos",
     ) || [];
   }
   const todos = await enFila(() => leer("accesos", {}));
-  return Object.values(todos).filter((a) => a.negocio === negocio).map(({ usuario, rol, hash, actualizado }) => ({ usuario, rol, hash, actualizado }));
+  return Object.values(todos).filter((a) => a.negocio === negocio).map(({ usuario, rol, hash, actualizado, login = null }) => ({ usuario, rol, hash, actualizado, login }));
 }
 
-export async function guardarAcceso({ usuario, negocio, rol, hash }) {
-  const fila = { usuario, negocio, rol, hash, actualizado: ahoraISO() };
+/**
+ * Guarda la contraseña de un usuario de tienda. `login` (con qué nombre entra) solo
+ * se toca si viene: cambiar la contraseña de la caja desde Ajustes no le quita el
+ * usuario que eligió. Un `login` que ya es de otra fila choca con el índice único:
+ * quien llama lo comprueba antes (lib/accesos.js).
+ */
+export async function guardarAcceso({ usuario, negocio, rol, hash, login }) {
+  const fila = { usuario, negocio, rol, hash, actualizado: ahoraISO(), ...(login !== undefined ? { login } : {}) };
   if (hasSupabase()) {
     sinError(await supa().from("accesos").upsert(fila, { onConflict: "usuario" }), "guardar acceso");
     return;
   }
   return enFila(async () => {
     const todos = await leer("accesos", {});
-    await escribir("accesos", { ...todos, [usuario]: fila });
+    if (fila.login && Object.values(todos).some((a) => a.login === fila.login && a.usuario !== usuario)) {
+      throw new Error("Ese nombre de acceso ya es de otro usuario");
+    }
+    await escribir("accesos", { ...todos, [usuario]: { ...todos[usuario], ...fila } });
   });
 }
 
