@@ -21,7 +21,7 @@ export default function Alta() {
         <h1>Crea la tarjeta de tu cafetería</h1>
         <p className="alta-sub">
           Gratis para siempre hasta {TARJETAS_GRATIS} tarjetas, con todo incluido. Si un día
-          se te queda corto, pasas a Pro; hasta entonces no pagas nada.
+          se te queda corto, pasas a un plan de pago; hasta entonces no pagas nada.
         </p>
         <Formulario />
       </div>

@@ -10,17 +10,17 @@ import { MESES_ESPERA } from "./legal";
 // ----------------------------------------------------------------------------
 // Una tienda del plan Gratis tiene 50 tarjetas en uso (lib/planes.js). El cliente
 // 51 no se va con las manos vacías: deja su correo en la página de la tienda y,
-// cuando la tienda pasa a Pro, le mandamos el enlace para sacarla sin volver al
+// cuando la tienda pasa a un plan de pago, le mandamos el enlace para sacarla sin volver al
 // mostrador.
 //
 // - Solo el correo, cifrado (tabla `espera`). Se borra AL MANDARLE el correo; si la
 //   tienda nunca pasa, a los MESES_ESPERA (la pasada diaria, lib/limpieza.js).
-// - **Solo se escribe desde una tienda SIN límite** (Pro, la pone el admin), nunca
+// - **Solo se escribe desde una tienda SIN límite** (Básico o Pro, lo pone el admin), nunca
 //   porque una gratis libere sitio: el correo sale con nuestro dominio y el nombre
 //   de la tienda, y una tienda gratis la puede crear cualquiera en /alta. Sin esto,
 //   bastaba crear «Tu banco», llenarla, apuntar correos ajenos y esperar un día a
 //   que las tarjetas vacías dejaran sitio. Es lo que promete la web: «les llega la
-//   tarjeta cuando pases a Pro».
+//   tarjeta cuando pases a un plan de pago».
 // - Por orden de llegada y como mucho MAX_POR_PASADA cada vez (Resend admite pocos
 //   por segundo y una función tiene su tiempo); lo demás, en la siguiente pasada.
 // - Cada fila se RECLAMA (se borra) antes de mandar: si el reloj y el admin la
@@ -83,7 +83,7 @@ export async function apuntarEnEspera(slug, emailEscrito) {
 
 /**
  * Manda el correo a los primeros de la cola si la tienda ya es de las que no
- * tienen límite (Pro). Nunca lanza.
+ * tienen límite (Básico o Pro). Nunca lanza.
  * @param {object|string} negocioOSlug
  * @param {{max?: number}} [opciones]
  * @returns {Promise<{mandados:number, esperan:number, sinCorreo?:boolean, error?:string}>}

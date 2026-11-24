@@ -1,16 +1,19 @@
 // ============================================================================
 // PLANES: qué puede usar cada tienda según lo que paga
 // ----------------------------------------------------------------------------
-// Dos planes desde el 20-11-2026: **Gratis** (para siempre, hasta 50 tarjetas en
-// uso y con todo) y **Pro** (de pago, sin límite). Antes hubo Esencial, Plus y Pro
-// (y antes Tarjetas y Completo). Lo que lleva cada uno NO está fijo en el código:
-// lo cambia el admin en /admin → Planes y se guarda en la tabla `plataforma`
+// Tres planes desde el 24-11-2026: **Gratis** (para siempre, hasta 50 tarjetas en
+// uso y con todo), **Básico** (29 €, sin límite, con promociones y estadísticas) y
+// **Pro** (49 €, sin límite y con todo). Antes hubo Esencial, Plus y Pro (y antes
+// Tarjetas y Completo). Gratis lleva todo a propósito: que se enamoren de lo mejor;
+// quien se queda corto elige si paga por el límite (Básico) o por todo (Pro).
+// Lo que lleva cada uno NO está fijo en el código: lo cambia el admin en /admin → Planes y se guarda en la tabla `plataforma`
 // (clave "planes"). Aquí solo está lo de partida y las reglas.
 //
 // - Cada tienda tiene su plan (`negocio.plan`, lo elige el admin en su ficha; el
 //   alta sola desde la web, /alta, empieza en Gratis).
 //   **Sin plan es Pro**, y también un plan que ya no existe (esencial, plus): una
-//   tienda de antes no pierde nada por un despliegue. La Delicantería va en Pro.
+//   tienda de antes no pierde nada por un despliegue. Básico es `basico` y no
+//   reutiliza ninguno de esos: una tienda que estuviera en Plus no baja sola. La Delicantería va en Pro.
 // - Un plan dice qué PUEDE encenderse, no qué está encendido: los avisos
 //   automáticos y la plantilla siguen teniendo su interruptor en el admin
 //   (`avisosAvanzados`, `plantillaActiva`), y el «Abierto hasta…» el suyo en
@@ -43,7 +46,7 @@ export const FUNCIONES = [
 ];
 const IDS_FUNCION = FUNCIONES.map((f) => f.id);
 
-export const IDS_PLAN = ["gratis", "pro"];
+export const IDS_PLAN = ["gratis", "basico", "pro"];
 export const PLAN_POR_DEFECTO = "pro";
 /** El de una tienda que se da de alta sola desde la web (/alta). */
 export const PLAN_DEL_ALTA = "gratis";
@@ -51,11 +54,14 @@ export const PLAN_DEL_ALTA = "gratis";
 const todas = (valor) => Object.fromEntries(IDS_FUNCION.map((id) => [id, valor]));
 
 /**
- * Lo de partida (20-11-2026): los dos con todo; Gratis, hasta 50 tarjetas en uso y
- * sin margen (pasado el límite está la lista de espera, no «unas cuantas más»).
+ * Lo de partida (24-11-2026): Gratis y Pro con todo; Gratis, hasta 50 tarjetas en
+ * uso y sin margen (pasado el límite está la lista de espera, no «unas cuantas
+ * más»). Básico, sin límite y solo con promociones y estadísticas (lo del Plus de
+ * antes).
  */
 export const PLANES_DE_PARTIDA = {
   gratis: { nombre: "Gratis", maxTarjetas: 50, margen: 0, funciones: todas(true) },
+  basico: { nombre: "Básico", maxTarjetas: null, margen: 0, funciones: { ...todas(false), estadisticas: true, promos: true } },
   pro: { nombre: "Pro", maxTarjetas: null, margen: 0, funciones: todas(true) },
 };
 
@@ -168,8 +174,12 @@ export const TEXTO_LLENA = "Ahora mismo no podemos darte la tarjeta. Déjanos tu
 /** ¿Se puede dar UNA tarjeta más? */
 export const quedaCupo = (negocio, emitidas) => cupoDe(negocio, emitidas)?.estado !== "cerrado";
 
-/** El nombre del primer plan que lleva esa función, para decir «va en el plan X». */
+/**
+ * El nombre del plan DE PAGO más barato que lleva esa función, para decir «va en el
+ * plan X». Gratis no cuenta: lo lleva todo, y a quien no la tiene es porque paga uno
+ * que no la lleva.
+ */
 export function planQueLoLleva(planes, funcion) {
   const p = normalizarPlanes(planes);
-  return IDS_PLAN.map((id) => p[id]).find((x) => x.funciones[funcion])?.nombre ?? null;
+  return IDS_PLAN.filter((id) => id !== PLAN_DEL_ALTA).map((id) => p[id]).find((x) => x.funciones[funcion])?.nombre ?? null;
 }

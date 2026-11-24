@@ -8,7 +8,7 @@ import { negocioDelPersonal } from "@/lib/tarjeta";
 import PanelAjustes from "./PanelAjustes";
 import { relojVivo } from "@/lib/relojAvisos";
 import { planesGlobales, contarTarjetas } from "@/lib/store";
-import { cupoDe } from "@/lib/planes";
+import { cupoDe, FUNCIONES } from "@/lib/planes";
 import { estadoEspera } from "@/lib/listaDeEspera";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +41,8 @@ export default async function Page({ params }) {
     nombre: planes[n.planId].nombre,
     cupo: n.cupo ? cupoDe(n, emitidas) : null,
     esperan: espera?.esperan ?? 0,
+    // Lo que su plan no lleva (Básico), para decir qué ganaría pasando a Pro.
+    faltan: FUNCIONES.filter((f) => n.funciones?.[f.id] === false).map((f) => f.nombre),
   };
   return (
     <PanelAjustes

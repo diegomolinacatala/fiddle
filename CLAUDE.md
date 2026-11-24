@@ -344,16 +344,19 @@ tienda y compartida; lo que cambia es que cada sello lleva quién lo dio.
 
 ## Los planes: qué puede usar cada tienda
 
-Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 20-11-2026, dos planes).
+Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 24-11-2026, tres planes).
 
-- **Dos planes desde el 20-11-2026: Gratis y Pro** (antes Esencial, Plus y Pro; y antes Tarjetas
-  y Completo). **Gratis es para siempre**: hasta 50 tarjetas EN USO y con todo, sin margen; es el
-  de la tienda que se da de alta sola (`PLAN_DEL_ALTA`, ver «El alta sola desde la web»). **Pro**
-  es el de pago (49 €/mes o 468 € al año por adelantado), sin límite. Lo que lleva cada uno NO
+- **Tres planes desde el 24-11-2026: Gratis, Básico y Pro** (antes Esencial, Plus y Pro; y antes
+  Tarjetas y Completo). **Gratis es para siempre**: hasta 50 tarjetas EN USO y con todo, sin margen; es el
+  de la tienda que se da de alta sola (`PLAN_DEL_ALTA`, ver «El alta sola desde la web»). Los de
+  pago, sin límite: **Básico** (`basico`, 29 €/mes o 276 € al año) con promociones y estadísticas,
+  y **Pro** (49 €/mes o 468 € al año) con todo. Gratis lleva todo a propósito: quien se queda
+  corto elige si paga por el límite (Básico) o por todo (Pro). Lo que lleva cada uno NO
   está en el código: lo cambia el admin en `/admin` → Planes (tabla `plataforma`, clave
   `planes`) y el código solo tiene lo de partida.
 - **Cada tienda elige su plan en `/admin/<slug>`; sin plan es Pro, y un plan que ya no existe
-  (`esencial`, `plus`) también.** Una tienda de antes no pierde nada por un despliegue. La
+  (`esencial`, `plus`) también.** Una tienda de antes no pierde nada por un despliegue. Por eso
+  Básico es `basico` y no reutiliza `plus`: una tienda en Plus bajaría sola. La
   Delicantería va en Pro a propósito.
 - **El plan dice qué PUEDE usarse, no qué está encendido, y nunca borra.** Los avisos automáticos
   y la plantilla siguen con su interruptor del admin; el «Abierto hasta…» con el suyo en Ajustes.
@@ -378,10 +381,10 @@ Ver [`src/lib/planes.js`](src/lib/planes.js) (06-11-2026; desde el 20-11-2026, d
   ya existen funcionan siempre, también las de una tienda gratis que no paga nunca. Solo se cuenta
   si el plan tiene límite: a las demás no les cuesta nada.
 - **La lista de espera** (`lib/listaDeEspera.js`, tabla `espera`): quien escanea una tienda llena
-  deja su correo (cifrado, `/api/espera`); cuando la tienda pasa a Pro le llega un correo con el
+  deja su correo (cifrado, `/api/espera`); cuando la tienda pasa a un plan de pago le llega un correo con el
   enlace de la página de la tienda (`/<slug>`, no el tap: un antivirus que abre el enlace no saca
   tarjetas), por orden de llegada y `MAX_POR_PASADA` cada vez. **Solo escribe una tienda SIN
-  límite** (Pro, lo pone el admin), nunca una gratis que libera sitio: cualquiera crea una gratis
+  límite** (Básico o Pro, lo pone el admin), nunca una gratis que libera sitio: cualquiera crea una gratis
   en /alta, y el correo sale con nuestro dominio y su nombre. Lo manda el reloj (`atenderTodas`) y,
   al momento, el cambio de plan del admin. Cada fila se reclama (se borra) antes de mandar: dos
   pasadas a la vez no escriben dos veces; un fallo pasajero la devuelve a su sitio y una dirección
@@ -873,9 +876,11 @@ Lo que se le da a una cafetería que aún no es cliente: qué es, cómo va, prec
 contacto (`app/home/`). Estática: no lee la base ni la sesión.
 
 - **Precios, teléfono y correo viven en `app/home/datos.js`** y en ningún otro sitio
-  (13-10-2026). Desde el 20-11-2026, dos planes: **Gratis** (0 €, para siempre, hasta 50
-  tarjetas en uso y con todo; su botón lleva a `/alta`) y **Pro** (49 €/mes, o 468 € al año
-  pagados por adelantado: 39 €/mes; sin límite y se la dejamos montada; se pide por WhatsApp).
+  (13-10-2026). Desde el 24-11-2026, tres planes: **Gratis** (0 €, para siempre, hasta 50
+  tarjetas en uso y con todo; su botón lleva a `/alta`), **Básico** (29 €/mes o 276 € al año:
+  23 €/mes; sin límite, promociones y estadísticas) y **Pro** (49 €/mes o 468 € al año: 39 €/mes;
+  sin límite y con todo). Los de pago se los dejamos montados y se piden por WhatsApp; Ajustes →
+  Tu plan saca sus precios de aquí.
   Lo que dice cada plan es lo que la app hace hoy. Lo que la app DEJA a cada plan está en
   `/admin` → Planes (ver «Los planes»): esta página no lo lee, así que si cambia allí se cambia
   aquí a mano.

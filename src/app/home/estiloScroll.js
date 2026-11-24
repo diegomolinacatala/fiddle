@@ -44,7 +44,8 @@ export const cssScroll = `
 @media (prefers-reduced-motion:no-preference) and ${ANCHA}{
   .plan{transform-origin:50% 100%}
   [data-aparece=espera] .plan:nth-child(1){rotate:-7deg;translate:46px 26px}
-  [data-aparece=espera] .plan:nth-child(2){rotate:7deg;translate:-46px 26px}
+  [data-aparece=espera] .plan:nth-child(2){translate:0 34px}
+  [data-aparece=espera] .plan:nth-child(3){rotate:7deg;translate:-46px 26px}
   [data-aparece=visto] .plan{transition:transform 1.1s var(--curva) calc(var(--i) * 120ms),
     rotate 1.1s var(--curva) calc(var(--i) * 120ms),translate 1.1s var(--curva) calc(var(--i) * 120ms),
     scale 1.1s var(--curva) calc(var(--i) * 120ms)}

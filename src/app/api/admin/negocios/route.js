@@ -125,7 +125,7 @@ export async function PUT(request) {
       const guardado = await saveNegocio(slug, { plan: body.plan });
       await auditar(sesion, slug, "config", `plan=${body.plan}`);
       const aviso = await notificarNegocio(guardado, { cartilla: true });
-      // Si pasa a Pro, a los primeros de su lista de espera les llega el correo ya,
+      // Si pasa a un plan sin límite (Básico o Pro), a los primeros de su lista de espera les llega el correo ya,
       // sin esperar al reloj, que manda el resto (lib/listaDeEspera.js). Nunca lanza.
       const espera = await atenderEspera(guardado, { max: 10 });
       return NextResponse.json({ ...sinTarjetaDueno(guardado), aviso, espera });

@@ -320,7 +320,8 @@ body:has(.home){background:${P.papel}}
 /* Dos planes: en fila con sitio para los dos; antes, uno debajo de otro. En el móvil se
    deslizan (estiloMovil.js). */
 .planes{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;max-width:560px;margin:0 auto}
-@media (min-width:860px){.planes{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:900px}}
+@media (min-width:860px){.planes{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:1180px}}
+@media (min-width:1080px){.planes{gap:20px}}
 .plan{display:flex;flex-direction:column;padding:clamp(26px,3.5vw,38px);border-radius:32px;background:var(--superficie);
   box-shadow:0 0 0 1px var(--linea)}
 .plan-destacado{background:var(--tinta);box-shadow:0 40px 70px -40px ${alfa(P.espresso, 0.6)}}
