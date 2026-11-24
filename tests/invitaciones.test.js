@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { NextRequest } from "next/server";
-import { nuevaInvitacion, leerInvitacion, aceptarInvitacion, estadoInvitacion, DIAS_VALIDA } from "@/lib/invitaciones";
+import { nuevaInvitacion, leerInvitacion, aceptarInvitacion, codigoDeInvitacion, estadoInvitacion, DIAS_VALIDA } from "@/lib/invitaciones";
+import { ultimoCodigo } from "./correoFalso.js";
 import { tokenDeTexto, tokenAlAbrir, LARGO_TOKEN } from "@/lib/tokenInvitacion";
 import { comprobarAcceso, nuevaClave } from "@/lib/accesos";
 import { problemaClaveElegida } from "@/lib/claves";
@@ -14,7 +15,16 @@ import * as rutaInvitacion from "@/app/api/invitacion/route.js";
 import * as rutaAdmin from "@/app/api/admin/invitacion/route.js";
 
 const tokenDe = (url) => url.split("#")[1];
-const CLAVES = { manager: "la del dueño 2026", caja: "caja de la tienda" };
+const EMAIL = "dueno@nube.es";
+const CLAVES = { manager: "la del dueño 2026", cajaUsuario: "barra-nube", caja: "caja de la tienda" };
+
+vi.mock("@/lib/correo", async () => (await import("./correoFalso.js")).modulo);
+
+// Lo que hace la pantalla: el código al correo y, con él, todo lo demás.
+async function aceptar(token, datos) {
+  const pedido = await codigoDeInvitacion(token, EMAIL);
+  return aceptarInvitacion(token, { reto: pedido.reto, codigo: ultimoCodigo(EMAIL), ...datos });
+}
 
 async function pedir(url, cuerpo, como) {
   const headers = { "content-type": "application/json" };
@@ -32,6 +42,7 @@ describe("invitación a una tienda", () => {
     // Como en producción: sin "contraseña = usuario".
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("USUARIOS_DEMO", "");
+    vi.stubEnv("AUTH_SECRET", "secreto-de-los-tests");
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -53,9 +64,9 @@ describe("invitación a una tienda", () => {
     expect(await leerInvitacion("x".repeat(43))).toMatchObject({ ok: false, codigo: "desconocido" });
     const token = tokenDe((await nuevaInvitacion("nube")).url);
     expect(await leerInvitacion(token, Date.now() + (DIAS_VALIDA + 1) * 86400000)).toMatchObject({ ok: false, codigo: "caducada" });
-    await aceptarInvitacion(token, CLAVES);
+    await aceptar(token, CLAVES);
     expect(await leerInvitacion(token)).toMatchObject({ ok: false, codigo: "usada" });
-    expect(await aceptarInvitacion(token, CLAVES)).toMatchObject({ ok: false, codigo: "usada" });
+    expect(await aceptar(token, CLAVES)).toMatchObject({ ok: false, codigo: "usada" });
   });
 
   it("el estado para la ficha del admin: pendiente, caducada y cuándo se usó, sin el token", async () => {
@@ -67,7 +78,7 @@ describe("invitación a una tienda", () => {
     // Pasado el plazo, el mismo enlace cuenta como caducado sin usar.
     expect(await estadoInvitacion("nube", Date.now() + (DIAS_VALIDA + 1) * 86400000)).toMatchObject({ pendiente: null, caducada: { caduca } });
 
-    await aceptarInvitacion(token, CLAVES);
+    await aceptar(token, CLAVES);
     expect(await estadoInvitacion("nube")).toMatchObject({ pendiente: null, caducada: null, ultimaUsada: expect.any(String) });
     // La de otra tienda no se mezcla.
     expect(await estadoInvitacion("fade")).toEqual({ pendiente: null, caducada: null, ultimaUsada: null });
@@ -77,14 +88,15 @@ describe("invitación a una tienda", () => {
     const generada = await nuevaClave("nube", "manager");
     const token = tokenDe((await nuevaInvitacion("nube")).url);
 
-    expect(await aceptarInvitacion(token, CLAVES)).toEqual({ ok: true, negocio: "nube", alcance: "alta" });
-    expect(await comprobarAcceso("nube", CLAVES.manager)).toMatchObject({ negocio: "nube", rol: "manager" });
-    expect(await comprobarAcceso("nube-caja", CLAVES.caja)).toMatchObject({ negocio: "nube", rol: "caja" });
-    expect(await comprobarAcceso("nube", generada.clave)).toBeNull();
+    expect(await aceptar(token, CLAVES)).toEqual({ ok: true, negocio: "nube", alcance: "alta", email: EMAIL });
+    expect(await comprobarAcceso(EMAIL, CLAVES.manager)).toMatchObject({ negocio: "nube", rol: "manager" });
+    expect(await comprobarAcceso("barra-nube", CLAVES.caja)).toMatchObject({ negocio: "nube", rol: "caja" });
+    expect(await comprobarAcceso(EMAIL, generada.clave)).toBeNull();
+    expect(await comprobarAcceso("nube", CLAVES.manager)).toBeNull(); // el nombre de siempre ya no
     // La de la caja no abre el manager.
-    expect(await comprobarAcceso("nube", CLAVES.caja)).toBeNull();
+    expect(await comprobarAcceso(EMAIL, CLAVES.caja)).toBeNull();
 
-    expect(await aceptarInvitacion(token, CLAVES)).toMatchObject({ ok: false, motivo: expect.stringMatching(/ya se usó/) });
+    expect(await aceptar(token, CLAVES)).toMatchObject({ ok: false, motivo: expect.stringMatching(/ya se usó/) });
   });
 
   it("caduca, y un enlace nuevo anula el anterior", async () => {
@@ -103,19 +115,19 @@ describe("invitación a una tienda", () => {
 
   it("rechaza contraseñas flojas o iguales entre sí, sin gastar el enlace", async () => {
     const token = tokenDe((await nuevaInvitacion("nube")).url);
-    expect(await aceptarInvitacion(token, { manager: "corta", caja: CLAVES.caja })).toMatchObject({ ok: false, campo: "manager" });
-    expect(await aceptarInvitacion(token, { manager: CLAVES.manager, caja: CLAVES.manager })).toMatchObject({ ok: false, campo: "caja" });
-    expect(await aceptarInvitacion(token, CLAVES)).toMatchObject({ ok: true });
+    expect(await aceptar(token, { ...CLAVES, manager: "corta" })).toMatchObject({ ok: false, campo: "manager" });
+    expect(await aceptar(token, { ...CLAVES, caja: CLAVES.manager })).toMatchObject({ ok: false, campo: "caja" });
+    expect(await aceptar(token, CLAVES)).toMatchObject({ ok: true });
   });
 
   it("las elegidas van tal cual: una con forma de generada («micafeteria1») ya no vale también en mayúsculas", async () => {
     // Hasta el 15-10-2026 se aplanaba como "MICA-FETE-RIA1" y entraba igual con «MICAFETERIA1»
     // o «mi ca fe teria1»: menos entropía y una sorpresa para el dueño (lib/claves.js).
     const token = tokenDe((await nuevaInvitacion("nube")).url);
-    await aceptarInvitacion(token, { manager: "micafeteria1", caja: CLAVES.caja });
-    expect(await comprobarAcceso("nube", "micafeteria1")).toMatchObject({ rol: "manager" });
-    expect(await comprobarAcceso("nube", "MICAFETERIA1")).toBeNull();
-    expect(await comprobarAcceso("nube-caja", "CAJA DE LA TIENDA")).toBeNull();
+    await aceptar(token, { ...CLAVES, manager: "micafeteria1" });
+    expect(await comprobarAcceso(EMAIL, "micafeteria1")).toMatchObject({ rol: "manager" });
+    expect(await comprobarAcceso(EMAIL, "MICAFETERIA1")).toBeNull();
+    expect(await comprobarAcceso("barra-nube", "CAJA DE LA TIENDA")).toBeNull();
   });
 
   describe("enlace solo para la contraseña del dueño (alcance «manager»)", () => {
@@ -127,14 +139,14 @@ describe("invitación a una tienda", () => {
       const token = tokenDe(url);
       expect(await leerInvitacion(token)).toMatchObject({ ok: true, alcance: "manager", usuarios: { manager: "nube", caja: "nube-caja" } });
 
-      expect(await aceptarInvitacion(token, { manager: caja.clave })).toMatchObject({ ok: false, campo: "manager", motivo: expect.stringMatching(/caja/) });
-      expect(await aceptarInvitacion(token, { manager: "corta" })).toMatchObject({ ok: false, campo: "manager" });
+      expect(await aceptar(token, { manager: caja.clave })).toMatchObject({ ok: false, campo: "manager", motivo: expect.stringMatching(/caja/) });
+      expect(await aceptar(token, { manager: "corta" })).toMatchObject({ ok: false, campo: "manager" });
       // Sin la de la caja en el cuerpo: no hace falta, y si viene se ignora.
-      expect(await aceptarInvitacion(token, { manager: "la nueva del dueño" })).toEqual({ ok: true, negocio: "nube", alcance: "manager" });
-      expect(await comprobarAcceso("nube", "la nueva del dueño")).toMatchObject({ rol: "manager" });
-      expect(await comprobarAcceso("nube", generada.clave)).toBeNull();
+      expect(await aceptar(token, { manager: "la nueva del dueño" })).toEqual({ ok: true, negocio: "nube", alcance: "manager", email: EMAIL });
+      expect(await comprobarAcceso(EMAIL, "la nueva del dueño")).toMatchObject({ rol: "manager" });
+      expect(await comprobarAcceso(EMAIL, generada.clave)).toBeNull();
       expect(await comprobarAcceso("nube-caja", caja.clave)).toMatchObject({ rol: "caja" });
-      expect(await aceptarInvitacion(token, { manager: "otra más larga" })).toMatchObject({ ok: false, motivo: expect.stringMatching(/ya se usó/) });
+      expect(await aceptar(token, { manager: "otra más larga" })).toMatchObject({ ok: false, motivo: expect.stringMatching(/ya se usó/) });
     });
 
     it("un alcance inventado no se crea; uno de antes de la columna cuenta como alta", async () => {
@@ -150,14 +162,15 @@ describe("invitación a una tienda", () => {
       const creada = await rutaAdmin.POST(await pedir("/api/admin/invitacion", { slug: "nube", alcance: "manager" }, ["plataforma", "admin", Date.now(), { usuario: "diego" }]));
       expect(creada.status).toBe(200);
       const d = await creada.json();
-      expect(d).toMatchObject({ alcance: "manager", usuarios: { manager: "nube" } });
+      expect(d).toMatchObject({ alcance: "manager" });
       expect((await rutaAdmin.POST(await pedir("/api/admin/invitacion", { slug: "nube", alcance: "caja" }, ["plataforma", "admin"]))).status).toBe(400);
 
       const token = tokenDe(d.url);
       const leida = await rutaInvitacion.POST(await pedir("/api/invitacion", { token }));
-      expect(await leida.json()).toMatchObject({ nombre: "Nube Café", alcance: "manager", usuarios: { manager: "nube" } });
+      expect(await leida.json()).toMatchObject({ nombre: "Nube Café", alcance: "manager" });
 
-      const aceptada = await rutaInvitacion.POST(await pedir("/api/invitacion", { token, manager: "la nueva del dueño" }));
+      const { reto } = await (await rutaInvitacion.POST(await pedir("/api/invitacion", { token, email: EMAIL }))).json();
+      const aceptada = await rutaInvitacion.POST(await pedir("/api/invitacion", { token, reto, codigo: ultimoCodigo(EMAIL), manager: "la nueva del dueño" }));
       expect(aceptada.status).toBe(200);
       expect(await aceptada.json()).toEqual({ ok: true, destino: "/nube/manager" });
       const cookie = aceptada.headers.get("set-cookie");

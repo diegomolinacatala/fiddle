@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
-import { crearInvitacion, getInvitacion, gastarInvitacion, reabrirInvitacion, invitacionesDeNegocio, getNegocio, guardarAcceso, hasSupabase } from "./store";
+import { crearInvitacion, getInvitacion, gastarInvitacion, reabrirInvitacion, invitacionesDeNegocio, getNegocio, guardarAcceso, hasSupabase, accesosDeNegocio } from "./store";
 import { hashClave, problemaClaveElegida } from "./claves";
-import { comprobarAcceso } from "./accesos";
-import { usuarioDe } from "./auth";
+import { claveValida, correoLibre, usuarioCajaOcupado, normalizarLogin } from "./accesos";
+import { nuevoCodigo, mandarCodigo, comprobarCodigo } from "./codigos";
+import { usuarioDe, claveDe } from "./auth";
 import { appUrl } from "./url";
 import { auditar } from "./auditoria";
 import { TOKEN } from "./tokenInvitacion";
+import { leerEmail } from "./interesados";
 
 // ============================================================================
 // INVITAR A UNA TIENDA (el dueño elige sus contraseñas)
@@ -21,6 +23,11 @@ import { TOKEN } from "./tokenInvitacion";
 //
 // Al elegirlas, las contraseñas que generó el admin dejan de valer (se
 // sobrescribe el hash), y la invitación queda gastada.
+//
+// Desde el 24-11-2026 el enlace también pone CON QUÉ se entra: el dueño escribe su
+// correo y lo verifica con un código (lib/codigos.js), que pasa a ser su usuario; y
+// elige el usuario de la caja (lib/accesos.js). Hasta que termina, los accesos de
+// antes siguen valiendo: así se le pasa el enlace a una tienda que ya trabaja.
 //
 // Cada rechazo lleva un `codigo` además del texto: la página decide con él qué
 // aconsejar (pegar el código, pedir otro, ir a entrar) y el servidor lo deja en
@@ -39,7 +46,7 @@ const huellaDe = (token) => createHash("sha256").update(String(token)).digest("h
 export const RECHAZOS = {
   incompleto: "Enlace incompleto. Ábrelo tal cual llegó en el correo.",
   desconocido: "Este enlace no vale. Puede que se haya enviado otro más nuevo.",
-  usada: "Este enlace ya se usó. Entra con tu usuario y tu contraseña.",
+  usada: "Este enlace ya se usó. Entra con tu correo y tu contraseña.",
   caducada: "Este enlace ha caducado. Pide otro.",
   sin_tienda: "La tienda de este enlace ya no existe.",
 };
@@ -86,30 +93,88 @@ export async function leerInvitacion(token, ahora = Date.now()) {
   };
 }
 
+/** Para qué es el código de un enlace: el de una invitación no vale en otra. */
+const propositoDe = (token) => `inv:${huellaDe(token).slice(0, 24)}`;
+
 /**
- * Fija las contraseñas que toque según el alcance (las dos, o solo la del manager) y
- * gasta el enlace. Van como ELEGIDAS (lib/claves.js): se comparan tal cual.
- * @returns {Promise<{ok:true, negocio:string, alcance:string} | {ok:false, motivo:string, codigo?:string, campo?:string}>}
+ * Lo que la pantalla ofrece ya escrito y si la tienda ya trabaja: el correo con que
+ * entra el dueño (o el que dio en /alta), el usuario de la caja (o el de siempre) y
+ * si ya hay accesos (para decirle que los de ahora valen hasta que termine).
+ * @returns {Promise<{email:string|null, cajaUsuario:string, yaEntra:boolean}>}
  */
-export async function aceptarInvitacion(token, { manager, caja }, ahora = Date.now()) {
+export async function sugerenciasDe(negocio) {
+  const filas = await accesosDeNegocio(negocio.slug).catch(() => []);
+  const de = (rol) => filas.find((f) => f.usuario === usuarioDe(negocio.slug, rol));
+  return {
+    email: de("manager")?.login || negocio.alta?.email || null,
+    cajaUsuario: de("caja")?.login || usuarioDe(negocio.slug, "caja"),
+    yaEntra: filas.length > 0 || Boolean(claveDe(negocio.slug, "manager") || claveDe(negocio.slug, "caja")),
+  };
+}
+
+/**
+ * Manda el código al correo que escribe el dueño. No cambia nada: solo prueba que
+ * el correo es suyo. Lo que vuelve (`reto`) va con el código al aceptar.
+ * @returns {Promise<{ok:true, reto:string, email:string} | {ok:false, motivo:string, codigo?:string, campo?:string}>}
+ */
+export async function codigoDeInvitacion(token, email, ahora = Date.now()) {
   const inv = await leerInvitacion(token, ahora);
   if (!inv.ok) return inv;
-  const { usuarios, negocio, alcance } = inv;
+  // Si el correo ya es de otra tienda se dice DESPUÉS del código (solo lo sabe su
+  // dueño): aquí, cualquiera con un enlace (y /alta da uno) sabría qué correos tienen cuenta.
+  const correo = leerEmail(email)?.toLowerCase();
+  if (!correo) return { ok: false, motivo: "Revisa el correo", campo: "email" };
+  const { reto, codigo } = await nuevoCodigo(correo, propositoDe(token), ahora);
+  const envio = await mandarCodigo(correo, codigo, { para: inv.negocio.nombre, ahora });
+  if (!envio.ok) return { ok: false, motivo: envio.motivo, campo: "email", codigo: "correo" };
+  return { ok: true, reto, email: correo };
+}
+
+/** ¿Es bueno el código? Para pasar de paso; al aceptar se vuelve a mirar. */
+export async function verificarCodigoDeInvitacion(token, reto, codigo, ahora = Date.now()) {
+  const inv = await leerInvitacion(token, ahora);
+  if (!inv.ok) return inv;
+  const r = await comprobarCodigo(reto, codigo, propositoDe(token), ahora);
+  if (!r.ok) return { ok: false, motivo: r.motivo, campo: "codigo", codigoCorreo: r.codigo };
+  const libre = await correoLibre(r.email, inv.negocio.slug);
+  return libre.problema ? { ok: false, motivo: libre.problema, campo: "email" } : { ok: true, email: libre.email };
+}
+
+/**
+ * Fija el correo y la contraseña del dueño y, con alcance "alta", el usuario y la
+ * contraseña de la caja; y gasta el enlace. Las contraseñas van como ELEGIDAS
+ * (lib/claves.js): se comparan tal cual.
+ * @param {string} token
+ * @param {{reto:string, codigo:string, manager:string, cajaUsuario?:string, caja?:string}} datos
+ * @returns {Promise<{ok:true, negocio:string, alcance:string, email:string} | {ok:false, motivo:string, codigo?:string, campo?:string}>}
+ */
+export async function aceptarInvitacion(token, { reto, codigo, manager, cajaUsuario, caja }, ahora = Date.now()) {
+  const inv = await leerInvitacion(token, ahora);
+  if (!inv.ok) return inv;
+  const { negocio, alcance } = inv;
   const slug = negocio.slug;
 
-  const malManager = problemaClaveElegida(manager, usuarios.manager);
+  // Mira el código y que el correo siga libre (otra tienda pudo quedárselo entretanto).
+  const verificado = await verificarCodigoDeInvitacion(token, reto, codigo, ahora);
+  if (!verificado.ok) return verificado;
+  const email = verificado.email;
+
+  const malManager = problemaClaveElegida(manager, email);
   if (malManager) return { ok: false, motivo: malManager, campo: "manager" };
 
   // Qué se va a guardar. Los hashes se calculan antes de gastar el enlace (tardan).
   let cambios;
   if (alcance === "manager") {
     // La caja sigue con la suya, y la sabe todo el personal: la nueva no puede ser esa.
-    if (await comprobarAcceso(usuarios.caja, manager)) {
+    if (await claveValida(slug, "caja", manager)) {
       return { ok: false, motivo: "No puede ser la misma que la de la caja: la sabe quien la use", campo: "manager" };
     }
-    cambios = [{ usuario: usuarios.manager, rol: "manager", hash: await hashClave(manager, "elegida") }];
+    cambios = [{ usuario: usuarioDe(slug, "manager"), rol: "manager", hash: await hashClave(manager, "elegida"), login: email }];
   } else {
-    const malCaja = problemaClaveElegida(caja, usuarios.caja);
+    const loginCaja = normalizarLogin(cajaUsuario);
+    const malUsuario = await usuarioCajaOcupado(loginCaja, slug);
+    if (malUsuario) return { ok: false, motivo: malUsuario, campo: "cajaUsuario" };
+    const malCaja = problemaClaveElegida(caja, loginCaja);
     if (malCaja) return { ok: false, motivo: malCaja, campo: "caja" };
     // La de la caja la sabrá cualquier empleado: no puede abrir también el manager.
     if (String(manager).trim() === String(caja).trim()) {
@@ -117,8 +182,8 @@ export async function aceptarInvitacion(token, { manager, caja }, ahora = Date.n
     }
     const [hashManager, hashCaja] = await Promise.all([hashClave(manager, "elegida"), hashClave(caja, "elegida")]);
     cambios = [
-      { usuario: usuarios.manager, rol: "manager", hash: hashManager },
-      { usuario: usuarios.caja, rol: "caja", hash: hashCaja },
+      { usuario: usuarioDe(slug, "manager"), rol: "manager", hash: hashManager, login: email },
+      { usuario: usuarioDe(slug, "caja"), rol: "caja", hash: hashCaja, login: loginCaja },
     ];
   }
 
@@ -144,7 +209,7 @@ export async function aceptarInvitacion(token, { manager, caja }, ahora = Date.n
     }
     throw e;
   }
-  return { ok: true, negocio: slug, alcance };
+  return { ok: true, negocio: slug, alcance, email };
 }
 
 /**

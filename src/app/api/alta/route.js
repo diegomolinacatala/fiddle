@@ -5,6 +5,7 @@ import { datosNegocioNuevo } from "@/lib/validacion";
 import { leerAlta, slugDeNombre } from "@/lib/alta";
 import { PLAN_DEL_ALTA } from "@/lib/planes";
 import { nuevaInvitacion } from "@/lib/invitaciones";
+import { slugChocaConLogin } from "@/lib/accesos";
 import { auditar } from "@/lib/auditoria";
 import { limpiar, temaDe, ICONOS } from "@/app/home/tarjeta/opciones";
 import { jsonError, errorInterno } from "@/lib/http";
@@ -17,9 +18,10 @@ export const dynamic = "force-dynamic";
 // ALTA SOLA (público): una cafetería se crea su tienda desde /alta
 // ----------------------------------------------------------------------------
 // Crea la tienda en el plan Gratis y una invitación de alcance "alta": el dueño
-// elige ahí su contraseña y la de la caja (lib/invitaciones.js). No hay correo
-// verificado: frenan los abusos el límite por IP, el campo trampa y que el admin
-// ve cada alta con su local en el mapa (lib/alta.js).
+// verifica ahí su correo con un código, que pasa a ser su usuario, y elige su
+// contraseña y el usuario y la contraseña de la caja (lib/invitaciones.js). Frenan
+// los abusos el límite por IP, el campo trampa, el correo verificado para entrar y
+// que el admin ve cada alta con su local en el mapa (lib/alta.js).
 // ============================================================================
 
 const META = 8;
@@ -46,8 +48,9 @@ async function crearConSlugLibre(tienda, diseno, extra) {
       { slug, nombre: tienda, tipo: "sellos", meta: META, premio: diseno.premio },
       { esSlug, ESTILOS, temaPorDefecto },
     );
-    // Un slug que no vale (se confunde con un usuario de acceso) se salta como uno ocupado.
-    if (r.error) continue;
+    // Un slug que no vale (se confunde con un usuario de acceso, o es el que eligió la
+    // caja de otra tienda) se salta como uno ocupado.
+    if (r.error || (await slugChocaConLogin(slug))) continue;
     // Dos altas con el mismo nombre a la vez: la segunda choca al insertar (en
     // Supabase lanza) y prueba el siguiente.
     const creado = await crearNegocio({ ...r.datos, tema: { ...r.datos.tema, ...diseno.tema } }, extra).catch(() => ({ error: "ocupado" }));

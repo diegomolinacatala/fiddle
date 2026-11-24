@@ -40,6 +40,8 @@ import { RESERVADOS } from "./negocios";
 //                                          contraseñas (vale el token del enlace)
 //   /api/interesados                       el último paso de «Diseña tu tarjeta»:
 //                                          deja un contacto, con límite por IP
+//   /recuperar  /api/recuperar             «He olvidado mi contraseña»: un código al
+//                                          correo del dueño (lib/codigos.js)
 //   /alta  /api/alta                       una cafetería se da de alta sola, en
 //                                          el plan Gratis (lib/alta.js), con límite
 //   /api/espera                            el correo de quien quiere tarjeta de una
@@ -56,6 +58,8 @@ const PUBLICAS = [
   /^\/privacidad$/,
   /^\/invitacion$/,
   /^\/api\/invitacion$/,
+  /^\/recuperar$/,
+  /^\/api\/recuperar$/,
   /^\/api\/interesados$/,
   /^\/api\/espera$/,
   /^\/api\/alta$/,
