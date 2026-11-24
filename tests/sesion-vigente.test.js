@@ -7,7 +7,8 @@ import { firmarSesion, verificarSesion, renovarSesion } from "@/lib/auth";
 import { sesionVigente, cerrarSesionesDe } from "@/lib/sesionVigente";
 import { nuevaClave, comprobarAcceso } from "@/lib/accesos";
 import { hashClave } from "@/lib/claves";
-import { nuevaInvitacion, aceptarInvitacion } from "@/lib/invitaciones";
+import { nuevaInvitacion, aceptarInvitacion, codigoDeInvitacion } from "@/lib/invitaciones";
+import { CODIGO_PRUEBAS } from "@/lib/codigos";
 import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { datosNegocioNuevo } from "@/lib/validacion";
 import { negocioDelPersonal } from "@/lib/tarjeta";
@@ -86,7 +87,9 @@ describe("sesionVigente", () => {
     vi.stubEnv("APP_URL", "https://sellos.app");
     const anterior = await sesion("nube", "manager", HACE_UN_RATO());
     const token = (await nuevaInvitacion("nube")).url.split("#")[1];
-    expect(await aceptarInvitacion(token, { manager: "la del dueño 2026", caja: "caja de la tienda" })).toMatchObject({ ok: true });
+    // En pruebas (sin Resend) el código es siempre el mismo y no sale ningún correo.
+    const { reto } = await codigoDeInvitacion(token, "dueno@nube.es");
+    expect(await aceptarInvitacion(token, { reto, codigo: CODIGO_PRUEBAS, manager: "la del dueño 2026", cajaUsuario: "barra-nube", caja: "caja de la tienda" })).toMatchObject({ ok: true });
     // Lo que hace /api/invitacion justo después: firmar su sesión.
     expect(await sesionVigente(await sesion("nube", "manager"))).toBeTruthy();
     expect(await sesionVigente(anterior)).toBeNull();

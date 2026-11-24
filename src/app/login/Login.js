@@ -18,8 +18,8 @@ import LogoFiddle from "@/app/LogoFiddle";
 // recordaba los últimos usuarios. Sobraba: el gestor de contraseñas del navegador
 // (Google, iCloud) ya rellena los dos, y con cuentas distintas un usuario puesto
 // por nosotros solo estorbaba. Por eso `autoComplete` bien puesto y nada más.
-// Hoy no hay forma de recuperar una contraseña sin fiddle: por eso «¿No puedes
-// entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
+// El dueño entra con su correo (y recupera la contraseña en /recuperar); la caja, con
+// su usuario. «¿No puedes entrar?» dice a quién escribir, con el contacto de app/home/datos.js.
 const MENSAJE_AYUDA = "Hola, no puedo entrar en fiddle.";
 // Lo que guardaba el login de antes en cada móvil (los últimos usuarios). Se borra.
 const CLAVE_VIEJA = "fiddle-usuarios";
@@ -95,16 +95,17 @@ function LoginForm() {
             <LogoFiddle tam={36} />
           </h1>
           <p style={{ color: C.suave, fontSize: 14, margin: 0 }}>
-            Entra con el usuario de tu tienda o el de la caja.
+            Entra con tu correo o con el usuario de la caja.
           </p>
         </div>
 
         <form onSubmit={entrar} style={{ ...panel, display: "flex", flexDirection: "column" }}>
-          <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="usuario">Usuario</label>
+          <label style={{ ...etiqueta, marginTop: 0 }} htmlFor="usuario">Correo o usuario</label>
           <input
             id="usuario"
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
+            type="text"
             autoComplete="username"
             autoCapitalize="none"
             autoCorrect="off"
@@ -137,6 +138,8 @@ function LoginForm() {
 
           {error && <div role="alert" style={{ ...aviso(false), marginTop: 14 }}>{error.texto}</div>}
 
+          <a href="/recuperar" style={{ ...enlaceAyuda, display: "block", marginTop: 10 }}>¿Has olvidado tu contraseña?</a>
+
           <button type="button" onClick={() => setAyuda((v) => !v)} aria-expanded={ayuda} style={enlaceAyuda}>
             ¿No puedes entrar?
           </button>
@@ -146,8 +149,8 @@ function LoginForm() {
                 {error?.status === 429
                   ? "Hasta que pasen los 15 minutos no se comprueba ninguna contraseña, aunque sea la buena. "
                   : null}
-                Si no recuerdas la contraseña o el enlace que te mandamos no funciona, escríbenos y te damos
-                una nueva. Dinos el nombre de la tienda y si es la del dueño o la de la caja.
+                Si el enlace que te mandamos no funciona o la contraseña de la caja se ha perdido, escríbenos.
+                Dinos el nombre de la tienda y si es la del dueño o la de la caja.
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <a href={enlaceWhatsApp(MENSAJE_AYUDA)} target="_blank" rel="noopener noreferrer" style={{ ...botonSecundario, textDecoration: "none", fontSize: 13 }}>

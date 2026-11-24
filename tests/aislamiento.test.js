@@ -119,7 +119,7 @@ const DEL_ADMIN = [
 // tests/dueno-servicio.test.js, y `enlace` (la llave del QR) en tests/dueno-enlace.test.js.
 const PUBLICAS = [
   "alta", "cron/avisos", "dueno/[...ruta]", "espera", "fondo", "google/guardar/[serial]", "imagen/[tipo]", "interesados", "invitacion", "login", "logout", "manifest",
-  "negocios", "pase/[serial]", "push/[serial]", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
+  "negocios", "pase/[serial]", "push/[serial]", "recuperar", "salud", "tap", "tarjeta/[serial]", "tarjeta/[serial]/datos",
   "tutorial", "wallet/v1/devices/[dispositivo]/registrations/[passType]/[serial]",
   "wallet/v1/devices/[dispositivo]/registrations/[passType]", "wallet/v1/log", "wallet/v1/passes/[passType]/[serial]",
 ];

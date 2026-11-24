@@ -6,7 +6,7 @@ import { esSlug, ESTILOS, temaPorDefecto } from "@/lib/negocios";
 import { ACCIONES } from "@/lib/acciones";
 import { datosNegocioNuevo, patchNegocioAdmin, notaDeCampo } from "@/lib/validacion";
 import { notificarNegocio } from "@/lib/wallet";
-import { nuevaClave, ROLES_TIENDA } from "@/lib/accesos";
+import { nuevaClave, ROLES_TIENDA, slugChocaConLogin } from "@/lib/accesos";
 import { auditar } from "@/lib/auditoria";
 import { borrarClientesDeTienda } from "@/lib/derechos";
 import { normalizarLegal } from "@/lib/legal";
@@ -70,6 +70,8 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const r = datosNegocioNuevo(body, { esSlug, ESTILOS, temaPorDefecto });
     if (r.error) return jsonError(r.error, 400);
+    // Sus usuarios de siempre (`pan`, `pan-caja`) no pueden ser el que eligió la caja de otra.
+    if (await slugChocaConLogin(r.datos.slug)) return jsonError("Ese identificador ya lo usa alguien para entrar. Elige otro.", 409);
 
     const creado = await crearNegocio(r.datos);
     if (creado.error) return jsonError(creado.error, 409);

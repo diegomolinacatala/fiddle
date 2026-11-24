@@ -174,7 +174,7 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
             accent={accent} icono="puerta" titulo="Tu acceso"
             resumen={esAdmin
               ? "Has entrado como administrador de fiddle."
-              : <>Usuario <strong style={{ color: C.texto }}>{usuarios.manager}</strong>. Si cambias tu contraseña, aquí sigues dentro; en los demás dispositivos habrá que volver a entrar.</>}
+              : <>{usuarios.manager.includes("@") ? "Entras con" : "Usuario"} <strong style={{ color: C.texto }}>{usuarios.manager}</strong>. Si cambias tu contraseña, aquí sigues dentro; en los demás dispositivos habrá que volver a entrar.</>}
             abierto={cambiandoClave}
             accion={esAdmin ? null : {
               texto: cambiandoClave ? "Cerrar" : "Cambiar mi contraseña",

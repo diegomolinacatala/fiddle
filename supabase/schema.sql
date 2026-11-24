@@ -170,6 +170,12 @@ create table if not exists accesos (
   actualizado timestamptz not null default now()
 );
 create index if not exists accesos_negocio on accesos (negocio);
+-- Con qué se entra (lib/accesos.js): el correo verificado del dueño o el usuario que
+-- eligió la caja, en minúsculas. Null = se entra con el usuario de siempre (`nube`,
+-- `nube-caja`); con login, SOLO con él. Añadida el 24-11-2026: aplicar en producción
+-- ANTES de desplegar el código que la lee.
+alter table accesos add column if not exists login text;
+create unique index if not exists accesos_login on accesos (login);
 
 -- Invitación por correo: un enlace para que el dueño elija sus contraseñas
 -- (lib/invitaciones.js). Se guarda la HUELLA (sha256) del token, nunca el token.

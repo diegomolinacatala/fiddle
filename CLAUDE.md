@@ -754,6 +754,16 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
   `POST /api/accesos/manager`, con el límite de intentos del login). Mínimo 10 caracteres
   y sin reglas de mayúsculas o números a propósito: se aconseja una frase («un café por
   favor»), que es más larga y más fácil de recordar.
+- **El dueño entra con su correo; la caja, con el usuario que eligió** (24-11-2026, columna
+  `accesos.login`, `lib/accesos.js`). Los pone la invitación: correo verificado con un código de
+  6 cifras por Resend (`lib/codigos.js`, sin tabla: un reto firmado y los fallos en `intentos`),
+  su contraseña, y usuario y contraseña de la caja. Hasta que la tienda lo hace, entra con el
+  usuario de siempre (`delicanteria`, `delicanteria-caja`); con `login`, SOLO con él. La sesión
+  sigue llevando el usuario de siempre. Un correo por tienda; el usuario de la caja es único y
+  nunca el de siempre de otra tienda (`usuarioCajaOcupado`), y una tienda nueva no puede tener
+  un slug que ya es el login de alguien (`slugChocaConLogin`). «¿Has olvidado tu contraseña?»
+  (`/recuperar`) solo sirve al dueño con correo. Sin Resend (local, web de dev) el código es
+  siempre `123456`.
 - **La invitación nunca lleva la contraseña.** Lleva un token de un solo uso que caduca,
   detrás de `#` (no llega a los logs) y en la base solo su huella. Se envía con `mailto`
   desde el correo del admin: no hay proveedor de correo. Tiene **alcance**

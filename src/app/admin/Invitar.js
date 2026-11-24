@@ -32,12 +32,12 @@ const fecha = (iso) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric
 const TEXTOS = {
   alta: {
     boton: "Invitar al dueño por correo",
-    nota: "Le llega un enlace para elegir su contraseña y la de la caja. Caduca en 7 días y sirve una vez; las contraseñas de arriba dejan de valer cuando lo use.",
+    nota: "Le llega un enlace para poner su correo (recibe un código), elegir su contraseña y el usuario y la contraseña de la caja. Caduca en 7 días y sirve una vez; los accesos de arriba dejan de valer cuando lo use.",
     listo: "Invitación lista",
   },
   manager: {
     boton: "Enlace para que el dueño elija su contraseña",
-    nota: "Para cuando la pierde: elige una nueva él mismo, sin que nadie se la dicte. Solo cambia la suya; la caja sigue igual. Caduca en 7 días y sirve una vez.",
+    nota: "Para cuando la pierde: pone su correo (recibe un código) y elige una nueva él mismo, sin que nadie se la dicte. Solo cambia la suya; la caja sigue igual. Caduca en 7 días y sirve una vez.",
     listo: "Enlace para su contraseña listo",
   },
 };
@@ -45,7 +45,7 @@ const TEXTOS = {
 /** `onCreado(alcance)`: avisa a quien pinte otro bloque de enlace de que el suyo acaba de quedar anulado. */
 export default function Invitar({ slug, alcance = "alta", onCreado = null }) {
   const [estado, setEstado] = useState(null); // { pendiente, caducada, ultimaUsada, fiable, base }
-  const [inv, setInv] = useState(null); // { url, token, caduca, alcance, nombre, usuarios }
+  const [inv, setInv] = useState(null); // { url, token, caduca, alcance, nombre }
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -174,23 +174,23 @@ function Situacion({ estado }) {
 // El correo, ya escrito. Corto: lo importante es el enlace y qué va a pasar. El
 // código va también suelto, debajo: algún correo recorta lo que va tras `#`, y
 // la página lo acepta pegado (lib/tokenInvitacion.js).
-function mailto(email, { url, token, caduca, alcance, nombre, usuarios }) {
+function mailto(email, { url, token, caduca, alcance, nombre }) {
   const soloManager = alcance === "manager";
   const asunto = soloManager ? `Tu nueva contraseña para las tarjetas de ${nombre}` : `Tu acceso a las tarjetas de ${nombre}`;
   const cuerpo = [
     "Hola:",
     "",
     soloManager
-      ? `Abre este enlace y elige tu nueva contraseña para entrar en las tarjetas de fidelización de ${nombre}.`
-      : `Ya está lista la tarjeta de fidelización de ${nombre}. Para entrar, abre este enlace y elige dos contraseñas: la tuya (para ver clientes, lanzar promos y cambiar la tarjeta) y la del móvil de la caja (solo para sumar puntos).`,
+      ? `Abre este enlace, pon tu correo (te llega un código para comprobarlo) y elige tu nueva contraseña para entrar en las tarjetas de fidelización de ${nombre}.`
+      : `Ya está lista la tarjeta de fidelización de ${nombre}. Para entrar, abre este enlace: pon tu correo (te llega un código para comprobarlo), elige tu contraseña (para ver clientes, lanzar promos y cambiar la tarjeta) y el usuario y la contraseña del móvil de la caja (solo para sumar puntos).`,
     "",
     url,
     "",
     `Si al abrirlo te pide el código, es este: ${token}`,
     "",
     soloManager
-      ? `Tu usuario sigue siendo «${usuarios.manager}». La contraseña de la caja no cambia.`
-      : `Tu usuario será «${usuarios.manager}» y el de la caja «${usuarios.caja}».`,
+      ? "Entrarás con tu correo. La caja no cambia."
+      : "Entrarás con tu correo y tu contraseña.",
     `El enlace sirve una vez y caduca el ${fecha(caduca)}. Puedes recargar la página o volver más tarde: no se pierde.`,
     "",
     "Un saludo",
