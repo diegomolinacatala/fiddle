@@ -1,17 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import MapaUbicacion from "@/app/[negocio]/manager/MapaUbicacion";
+import BuscarLocal from "./BuscarLocal";
 import CaraDelPase from "@/app/CaraDelPase";
 import { tarjetaDe } from "@/app/home/tarjeta/opciones";
-import { PALETA } from "@/app/home/paleta";
-import { leerAlta, MAX_NOMBRE_TIENDA, MAX_NOMBRE_PERSONA } from "@/lib/alta";
+import { leerAlta, MAX_DIRECCION, MAX_NOMBRE_TIENDA, MAX_NOMBRE_PERSONA } from "@/lib/alta";
 
 // La clave que deja «Diseña tu tarjeta» (/home/tarjeta) con lo elegido.
 const CLAVE_ELECCION = "fiddle:eleccion";
-const NOMINATIM = "https://nominatim.openstreetmap.org";
-// Cuánto se espera a la dirección del punto antes de enviar sin ella.
-const ESPERA_DIRECCION_MS = 4000;
 const ORDEN_CAMPOS = ["tienda", "nombre", "email", "telefono", "lugar", "acepto"];
 
 // sessionStorage puede no estar (datos bloqueados): sin él, sin tarjeta, y ya.
@@ -25,20 +21,11 @@ function leerEleccion() {
   }
 }
 
-// La dirección del punto, para que el admin sepa dónde está sin abrir el mapa. Si
-// Nominatim no contesta a tiempo se envía sin ella: las coordenadas bastan.
-async function direccionDe({ lat, lng }) {
-  const control = new AbortController();
-  const t = setTimeout(() => control.abort(), ESPERA_DIRECCION_MS);
-  try {
-    const r = await fetch(`${NOMINATIM}/reverse?format=jsonv2&zoom=18&accept-language=es&lat=${lat}&lon=${lng}`, { signal: control.signal });
-    const d = r.ok ? await r.json() : null;
-    return d?.display_name ? String(d.display_name).split(", ").slice(0, 4).join(", ") : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
+// Lo que lee el admin: «Nombre, Calle 1, Ciudad». El nombre del local va dentro de la
+// dirección porque el servidor solo guarda coordenadas y esa línea.
+function direccionParaEnviar({ nombre, direccion }) {
+  const partes = [nombre, direccion].filter(Boolean);
+  return partes.length ? partes.join(", ").slice(0, MAX_DIRECCION) : null;
 }
 
 function Campo({ id, etiqueta, error, ayuda, children }) {
@@ -52,7 +39,7 @@ function Campo({ id, etiqueta, error, ayuda, children }) {
   );
 }
 
-export default function Formulario() {
+export default function Formulario({ cerca = null }) {
   const [datos, setDatos] = useState({ tienda: "", nombre: "", email: "", telefono: "", web: "" });
   const [lugar, setLugar] = useState(null);
   const [acepto, setAcepto] = useState(false);
@@ -78,7 +65,7 @@ export default function Formulario() {
   function enfocar(errs) {
     const primero = ORDEN_CAMPOS.find((k) => errs[k]);
     if (!primero) return;
-    const el = primero === "lugar" ? raiz.current?.querySelector(".alta-mapa input") : raiz.current?.querySelector(`#${primero}`);
+    const el = primero === "lugar" ? raiz.current?.querySelector(".alta-mapa input[role=combobox]") : raiz.current?.querySelector(`#${primero}`);
     el?.focus();
   }
 
@@ -92,11 +79,10 @@ export default function Formulario() {
     }
     setEnviando(true);
     try {
-      const direccion = lugar.direccion || (await direccionDe(lugar));
       const r = await fetch("/api/alta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...datos, lugar: { ...lugar, direccion }, acepto, ...(eleccion ? { eleccion } : {}) }),
+        body: JSON.stringify({ ...datos, lugar: { lat: lugar.lat, lng: lugar.lng, direccion: direccionParaEnviar(lugar) }, acepto, ...(eleccion ? { eleccion } : {}) }),
       });
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.ir) {
@@ -125,8 +111,8 @@ export default function Formulario() {
         </div>
       )}
 
-      {/* No es un <form>: el buscador del mapa (MapaUbicacion) lleva el suyo y un
-          formulario no puede ir dentro de otro. Se envía con el botón. */}
+      {/* No es un <form>: así Enter en el buscador de sitios solo elige un resultado y no
+          envía el alta. Se envía con el botón. */}
       <div className="alta-form">
         <Campo id="tienda" etiqueta="Nombre de la cafetería" error={errores.tienda}>
           <input id="tienda" type="text" value={datos.tienda} onChange={poner("tienda")} maxLength={MAX_NOMBRE_TIENDA}
@@ -148,11 +134,11 @@ export default function Formulario() {
         <div className="alta-campo">
           <span className="alta-etiqueta">Dónde está tu local</span>
           <div className="alta-mapa">
-            <MapaUbicacion
-              valor={lugar ? { lat: lugar.lat, lng: lugar.lng } : null}
-              onChange={(v) => { setLugar(v ? { ...v, direccion: null } : null); setErrores((x) => ({ ...x, lugar: undefined })); }}
-              accent={PALETA.verde}
-              flash={(m) => setFallo(m)}
+            <BuscarLocal
+              cerca={cerca}
+              valor={lugar}
+              sugerencia={datos.tienda}
+              onChange={(v) => { setLugar(v); setErrores((x) => ({ ...x, lugar: undefined })); }}
             />
           </div>
           {errores.lugar && <span className="alta-error" role="alert">{errores.lugar}</span>}
@@ -180,7 +166,7 @@ export default function Formulario() {
         <button type="button" onClick={enviar} className="alta-boton" disabled={enviando} aria-busy={enviando || undefined}>
           {enviando ? "Creando tu tarjeta…" : "Crear mi tarjeta gratis"}
         </button>
-        <p className="alta-pie">Después eliges tu contraseña y la del móvil de la caja.</p>
+        <p className="alta-pie">Después compruebas tu correo y eliges tus accesos y los de la caja.</p>
       </div>
     </div>
   );

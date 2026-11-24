@@ -48,8 +48,10 @@ export async function middleware(req) {
   return NextResponse.redirect(url);
 }
 
-// Todo salvo estáticos: assets de Next, iconos, botones oficiales de Wallet,
-// service worker y favicon.
+// Todo salvo estáticos: assets de Next, iconos, botones oficiales de Wallet, el
+// worker del mapa de /alta, service worker y favicon. Cada carpeta que se salta
+// aquí tiene que estar en RESERVADOS (lib/negocios.js): una tienda con ese nombre
+// se saltaría el middleware.
 export const config = {
-  matcher: ["/((?!_next/|icons/|marcas/|sw\\.js|favicon\\.ico).*)"],
+  matcher: ["/((?!_next/|icons/|marcas/|mapa/|sw\\.js|favicon\\.ico).*)"],
 };
