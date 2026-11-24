@@ -5,6 +5,7 @@ import { NumeroVisto } from "@/app/useVisto";
 import ClaveNueva from "@/app/ClaveNueva";
 import CambiarClave from "./CambiarClave";
 import Bloque from "../Bloque";
+import { avanceDe } from "@/lib/primerosPasos";
 import { C, panel } from "@/app/ui";
 import { MESES_SIN_USO, legalCompleto } from "@/lib/legal";
 import { confirmar } from "@/app/Dialogo";
@@ -120,8 +121,9 @@ export default function PanelAjustes({ slug, negocio: n, plan = null, usuarios, 
     <>
 
         <section style={{ ...panel, maxWidth: 640, marginTop: 20, paddingTop: 6, paddingBottom: 6 }}>
+          {n.primerosPasos && <FilaPrimerosPasos slug={slug} negocio={n} accent={accent} />}
           <Bloque
-            primero data-recorrido="abierto" accent={accent} icono="reloj" titulo="«● Abierto hasta…» en la tarjeta"
+            primero={!n.primerosPasos} data-recorrido="abierto" accent={accent} icono="reloj" titulo="«● Abierto hasta…» en la tarjeta"
             resumen={!abiertoEnPlan
               ? "No va en tu plan: la tarjeta no dice si estás abierto. Mira «Tu plan», más abajo."
               : !n.horario
@@ -247,3 +249,17 @@ const toast = {
   background: C.toastFondo, color: C.toastTexto, padding: "10px 18px", borderRadius: 10,
   fontWeight: 500, maxWidth: "90vw", textAlign: "center", boxShadow: "0 6px 20px rgba(16,20,28,.25)",
 };
+
+/** Los primeros pasos de una tienda nueva (lib/primerosPasos.js): cuánto lleva y volver a ellos. */
+function FilaPrimerosPasos({ slug, negocio, accent }) {
+  const a = avanceDe(negocio);
+  const resumen = a.terminado
+    ? "Hechos los cinco. Puedes repasarlos cuando quieras."
+    : `${a.hechos.length} de ${a.total} hechos.${a.oculto ? " El aviso de Tienda está oculto: siguen aquí." : ""}`;
+  return (
+    <Bloque
+      primero accent={accent} icono="brote" titulo="Primeros pasos" resumen={resumen}
+      accion={{ texto: a.terminado ? "Repasarlos" : "Seguir con ellos", icono: "adelante", onClick: () => { window.location.href = `/${slug}/primeros-pasos${a.siguiente ? `#${a.siguiente}` : "#tarjeta"}`; } }}
+    />
+  );
+}

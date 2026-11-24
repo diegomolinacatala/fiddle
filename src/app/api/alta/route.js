@@ -5,6 +5,7 @@ import { datosNegocioNuevo } from "@/lib/validacion";
 import { leerAlta, slugDeNombre } from "@/lib/alta";
 import { PLAN_DEL_ALTA } from "@/lib/planes";
 import { nuevaInvitacion } from "@/lib/invitaciones";
+import { primerosPasosNuevos } from "@/lib/primerosPasos";
 import { slugChocaConLogin } from "@/lib/accesos";
 import { auditar } from "@/lib/auditoria";
 import { limpiar, temaDe, ICONOS } from "@/app/home/tarjeta/opciones";
@@ -83,6 +84,8 @@ export async function POST(request) {
       plantillaActiva: true,
       ubicaciones: [{ lat: datos.lugar.lat, lng: datos.lugar.lng }],
       alta: { fecha: new Date().toISOString(), nombre: datos.nombre, email: datos.email, telefono: datos.telefono, lugar: datos.lugar },
+      // Al elegir sus accesos, el dueño entra en sus primeros pasos (lib/primerosPasos.js).
+      primerosPasos: primerosPasosNuevos(),
     });
     if (!negocio) return jsonError("No se pudo encontrar un nombre libre para la tienda. Prueba con otro.", 409);
     const slug = negocio.slug;

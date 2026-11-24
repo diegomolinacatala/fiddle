@@ -4,6 +4,11 @@ import { firmarSesion, cookieSesion, secretoSesion, COOKIE } from "@/lib/auth";
 import { usoExcedido, limiteEnMemoria, ipDe } from "@/lib/limitador";
 import { auditar } from "@/lib/auditoria";
 import { jsonError, errorInterno } from "@/lib/http";
+import { getNegocio } from "@/lib/store";
+import { normalizarPrimerosPasos } from "@/lib/primerosPasos";
+
+// Si la base falla aquí, al panel: lo importante (entrar) ya está hecho.
+const tienePrimerosPasos = (slug) => getNegocio(slug).then((n) => Boolean(normalizarPrimerosPasos(n?.primerosPasos))).catch(() => false);
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,7 +68,10 @@ export async function POST(request) {
     await auditar({ negocio: r.negocio, rol: "manager" }, r.negocio, "invitacion", `aceptada ${r.alcance}`);
 
     // Entra ya como manager: acaba de elegir la contraseña, pedírsela otra vez sobra.
-    const res = NextResponse.json({ ok: true, destino: `/${r.negocio}/manager` });
+    // Una tienda recién dada de alta empieza por sus primeros pasos (lib/primerosPasos.js);
+    // quien recupera su acceso vuelve a su panel.
+    const destino = r.alcance === "alta" && (await tienePrimerosPasos(r.negocio)) ? "primeros-pasos" : "manager";
+    const res = NextResponse.json({ ok: true, destino: `/${r.negocio}/${destino}` });
     res.cookies.set(COOKIE, await firmarSesion(r.negocio, "manager"), cookieSesion("manager"));
     return res;
   } catch (e) {

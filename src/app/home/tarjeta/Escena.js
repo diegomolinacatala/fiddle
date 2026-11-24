@@ -37,6 +37,9 @@ import { useInclinacion, useReducirMovimiento } from "./movimiento";
 //   className     clases extra de la raíz; el resto de props (aria-label…) pasan tal cual
 //   children      se pintan dentro de la escena, por encima de la tarjeta
 //   ref           { latido() }: un latido de la tarjeta, al elegir
+//   armar         opcional: (eleccion, { puntos, promo }) => { negocio, cliente, estado? }
+//                 para pintar otra tienda que no sea la de la demo (los primeros pasos
+//                 del dueño pintan la SUYA). Sin él, tarjetaDe() de opciones.js.
 //
 // El `prob-halo` NO va aquí: es hermano de la escena (cubre toda la página, no solo
 // la escena), así que lo pone quien tenga la página.
@@ -49,7 +52,7 @@ const RESOLUCION = 2; // el `zoom` de .prob-tarjeta en estilo.js
 
 const SIN_DESPLAZO = { x: 0, y: 0 };
 
-const Escena = forwardRef(function Escena({ eleccion, parte = "todo", qr, puntos, promo = null, escala = 1, desplaza = SIN_DESPLAZO, alTocarParte, como: Raiz = "div", className = "", children, ...resto }, ref) {
+const Escena = forwardRef(function Escena({ eleccion, parte = "todo", qr, puntos, promo = null, escala = 1, desplaza = SIN_DESPLAZO, alTocarParte, armar = null, como: Raiz = "div", className = "", children, ...resto }, ref) {
   const quieto = useReducirMovimiento();
   const e = eleccion;
 
@@ -144,10 +147,12 @@ const Escena = forwardRef(function Escena({ eleccion, parte = "todo", qr, puntos
             <div className="prob-capas">
               {capas.map((c, i) => {
                 const arriba = i === capas.length - 1;
-                const { negocio, cliente } = tarjetaDe({ ...c.eleccion, nombre: e.nombre }, { puntos: c.puntos, promo: c.promo });
+                const { negocio, cliente, estado = null } = armar
+                  ? armar(c.eleccion, { puntos: c.puntos, promo: c.promo })
+                  : tarjetaDe({ ...c.eleccion, nombre: e.nombre }, { puntos: c.puntos, promo: c.promo });
                 return (
                   <div key={c.id} ref={arriba ? capaArriba : undefined} className={`prob-capa${c.id ? " entra" : ""}`} aria-hidden={!arriba}>
-                    <CaraDelPase cliente={cliente} negocio={negocio} qr={{ src: qr, codigo: cliente.codigo }} />
+                    <CaraDelPase cliente={cliente} negocio={negocio} estado={estado} qr={{ src: qr, codigo: cliente.codigo }} />
                   </div>
                 );
               })}

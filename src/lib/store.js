@@ -543,6 +543,9 @@ function fusionarConfig(actual, patch) {
     // Cómo llegó la tienda si se dio de alta sola desde la web (lib/alta.js): quién
     // y dónde. Solo lo escribe /api/alta; lo ve el admin.
     alta: patch.alta !== undefined ? patch.alta : actual.alta,
+    // Los primeros pasos del dueño (lib/primerosPasos.js): solo los tienen las tiendas
+    // de /alta. Los escribe /api/primeros-pasos; sin la clave, la tienda no ve nada.
+    primerosPasos: patch.primerosPasos !== undefined ? patch.primerosPasos : actual.primerosPasos,
   };
   return config;
 }

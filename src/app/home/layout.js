@@ -1,13 +1,8 @@
-import { Geist } from "next/font/google";
+import { fuenteWeb } from "@/app/fuenteWeb";
 import { appUrl } from "@/lib/url";
 import { PALETA } from "./paleta";
 import { ICONOS_WEB, rutaMarca } from "@/lib/marcaFiddle";
 import { fuentePase } from "@/app/fuentePase";
-
-// La letra de la web, solo aquí: el resto de la app sigue con la del sistema.
-// next/font la descarga al compilar y la sirve desde el propio dominio, que es lo
-// único que deja la CSP (font-src 'self').
-const geist = Geist({ subsets: ["latin"], display: "swap", variable: "--fuente-web" });
 
 const DESCRIPCION =
   "Tarjetas de fidelización para cafeterías en Apple Wallet y Android. Tus clientes la guardan con un escaneo y tú sumas puntos desde el móvil de la tienda.";
@@ -34,5 +29,5 @@ export const metadata = {
 export const viewport = { themeColor: PALETA.papel, viewportFit: "cover" };
 
 export default function LayoutHome({ children }) {
-  return <div className={`${geist.variable} ${fuentePase.variable}`}>{children}</div>;
+  return <div className={`${fuenteWeb.variable} ${fuentePase.variable}`}>{children}</div>;
 }

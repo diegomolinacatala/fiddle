@@ -80,6 +80,7 @@ const DEL_PERSONAL = [
   ["plantilla", "PUT", () => "/api/plantilla?b=nube", () => ({ id: "sebas001", activo: false })],
   ["plantilla/quien", "GET", () => "/api/plantilla/quien?b=nube"],
   ["plantilla/quien", "POST", () => "/api/plantilla/quien?b=nube", () => ({ id: "sebas001" })],
+  ["primeros-pasos", "POST", () => "/api/primeros-pasos?b=nube", () => ({ oculto: true })],
   ["promo", "POST", () => "/api/promo", () => ({ b: "nube", texto: "2x1" })],
   ["sesiones", "DELETE", () => "/api/sesiones?b=nube"],
 ];

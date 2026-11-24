@@ -11,6 +11,7 @@ import MapaUbicacion from "./MapaUbicacion";
 import EditorTarjeta from "./EditorTarjeta";
 import EditorCaja from "./EditorCaja";
 import TarjetaDueno from "./TarjetaDueno";
+import AvisoPrimerosPasos from "./AvisoPrimerosPasos";
 import { confirmarTarjetas } from "./confirmarTarjetas";
 import { normalizarCaja } from "@/lib/caja";
 import Recorrido from "@/app/Recorrido";
@@ -147,6 +148,10 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
 
   return (
     <>
+        {/* Solo las tiendas nuevas (lib/primerosPasos.js): lo que les falta y el botón para seguir. */}
+        {n.primerosPasos && (
+          <AvisoPrimerosPasos slug={negocio} negocio={n} accent={accent} onCambio={(pp) => setN((a) => ({ ...a, primerosPasos: pp }))} />
+        )}
 
         <div style={grid}>
           {/* ------------------------------------------------ la tienda */}
@@ -281,7 +286,9 @@ export default function PanelManager({ negocio, inicial, reloj = false, recorrid
           />
         )}
         {msg && <div role="status" style={toast}>{msg}</div>}
-        <Recorrido recorrido="manager" accent={accent} visto={recorridoVisto} />
+        {/* Una tienda con primeros pasos ya ha tenido su presentación: los globos no salen
+            solos encima (el (?) de la cabecera los sigue abriendo). */}
+        <Recorrido recorrido="manager" accent={accent} visto={recorridoVisto || Boolean(n.primerosPasos)} />
     </>
   );
 }

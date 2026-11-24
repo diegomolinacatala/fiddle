@@ -277,6 +277,9 @@ export function generar(ahora = Date.now()) {
         // para ver la pestaña. Apagarla desde el admin de dev no dura (cada función
         // de Vercel tiene su /tmp): para verla apagada, en local.
         plantillaActiva: true,
+        // Los primeros pasos del dueño (lib/primerosPasos.js), sin empezar: en dev se
+        // prueban con esta tienda. En producción solo los tienen las tiendas de /alta.
+        primerosPasos: { desde: alta(1), hechos: [], oculto: false },
         // El plan de arriba (lib/planes.js): como La Delicantería, que va en Pro a propósito.
         plan: "pro",
         // La tarjeta del dueño, encendida solo aquí. Serial y token FIJOS, por lo mismo

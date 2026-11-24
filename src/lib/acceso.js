@@ -101,9 +101,10 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   }
 
   // Páginas de un negocio: /<slug> (landing pública), /<slug>/caja, /<slug>/manager,
-  // /<slug>/crm, /<slug>/avisos, /<slug>/plantilla, /<slug>/ajustes. Todo lo que no es
+  // /<slug>/crm, /<slug>/avisos, /<slug>/plantilla, /<slug>/ajustes y /<slug>/primeros-pasos
+  // (el onboarding del dueño). Todo lo que no es
   // la caja es del manager: ve a todos los clientes, les manda avisos y cambia las contraseñas.
-  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos|plantilla|ajustes))?\/?$/);
+  const pagina = pathname.match(/^\/([a-z0-9-]+)(?:\/(caja|manager|crm|avisos|plantilla|ajustes|primeros-pasos))?\/?$/);
   if (pagina && !RESERVADOS.has(pagina[1])) {
     if (!pagina[2]) return { tipo: "publica" };
     return { tipo: "negocio", slug: pagina[1], rol: pagina[2] === "caja" ? "caja" : "manager" };
@@ -124,6 +125,8 @@ export function reglaDeRuta(pathname, params, method = "GET") {
     return { tipo: "negocio", slug: b, rol: "manager" };
   }
   if (pathname === "/api/propios") return { tipo: "negocio", slug: b, rol: "manager" };
+  // Los primeros pasos del dueño (lib/primerosPasos.js): marcar uno hecho u ocultar el aviso.
+  if (pathname === "/api/primeros-pasos") return { tipo: "negocio", slug: b, rol: "manager" };
   if (pathname === "/api/negocio") {
     return { tipo: "negocio", slug: b, rol: method === "GET" ? "caja" : "manager" };
   }

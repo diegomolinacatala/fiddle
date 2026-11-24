@@ -20,6 +20,7 @@
 // una combinación de partida con nombre; a partir de ahí cada tienda cambia lo
 // que quiera sin tocar código.
 export { MARCAS, FORMAS, BANDAS, MODOS, MODOS_DOBLES, NOMBRES_FAMILIA, familiaDeModo, modosDeFamilia } from "./apple/dibujo";
+import { normalizarPrimerosPasos } from "./primerosPasos";
 import { FORMAS, BANDAS, piezasDeTema, resolverMarca, resolverModo } from "./apple/dibujo";
 import { ESTILOS_DE_KITS, kitDe } from "./kits";
 import { normalizarCartillas } from "./validacion";
@@ -468,6 +469,8 @@ export function componerNegocio(slug, guardado) {
     // salvo que el admin los encienda para esta tienda. Apagados no se borran: las
     // reglas se quedan guardadas y vuelven tal cual al encenderlos.
     avisosAvanzados: c.avisosAvanzados === true,
+    // Los primeros pasos del dueño (lib/primerosPasos.js): null si la tienda no los tiene.
+    primerosPasos: normalizarPrimerosPasos(c.primerosPasos),
     // Su plan (lib/planes.js), tal como lo eligió el admin; null = el de por defecto
     // (Pro). Lo que le deja (`funciones`, `cupo`) lo añade el store al leerla.
     plan: IDS_PLAN.includes(c.plan) ? c.plan : null,
