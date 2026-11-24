@@ -801,13 +801,11 @@ Ver [`src/lib/accesos.js`](src/lib/accesos.js) y [`src/lib/claves.js`](src/lib/c
 - **Tras el login, `next` solo se respeta si es de la tienda que entra** (lo decide
   `/api/login`, no el navegador). Una ficha `/w/<serial>` se comprueba por la tarjeta:
   quien escaneó su propio pase no puede acabar en ella al entrar en otra tienda.
-- **`/login` rellena el usuario según de dónde se viene** (`usuarioSugerido` en
-  `lib/acceso.js`): la caja si `next` era `/<slug>/caja` o `/w/…`, el dueño si no; y dos
-  botones «Soy la caja» / «Soy el dueño». «Salir» manda `b` y `next` con su sitio. Sin `b`,
-  el último usuario de tienda que entró en ESE móvil (`localStorage`, hasta 3,
-  `leerRecordados`; nunca la contraseña ni los admins, y abajo «Olvidar»). Cada recordado
-  lleva la tienda que dijo el servidor al entrar. Hasta que
-  haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
+- **`/login` es usuario y contraseña, vacíos, siempre** (24-11-2026). Nada de rellenar el
+  usuario según de dónde se viene, ni botones «Soy la caja» / «Soy el dueño», ni usuarios
+  recordados en el móvil: el gestor de contraseñas del navegador ya los rellena, y con
+  cuentas distintas un usuario puesto por nosotros estorbaba. «Salir» manda `next` con su
+  sitio. Hasta que haya recuperación por correo, «¿No puedes entrar?» dice a quién escribir (el contacto de
   `app/home/datos.js`). Lo que se aprendió con La Delicantería (15-10-2026) está en
   [docs/AUDITORIA-ACCESOS.md](docs/AUDITORIA-ACCESOS.md).
 - **La página `/invitacion` NO quita el token de la barra**: lo guarda en la pestaña
