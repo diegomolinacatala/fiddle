@@ -12,6 +12,11 @@ import { NextRequest } from "next/server";
 // ============================================================================
 
 vi.mock("@/lib/correo", async () => (await import("./correoFalso.js")).modulo);
+// `after` (lo que va tras contestar) solo existe dentro de una petición de Next: aquí,
+// se apunta y se espera a mano.
+const tras = [];
+vi.mock("next/server", async (original) => ({ ...(await original()), after: (fn) => { tras.push(Promise.resolve().then(fn)); } }));
+const acabar = async () => { await Promise.all(tras.splice(0)); };
 const { ultimoCodigo, buzon } = await import("./correoFalso.js");
 const store = await import("@/lib/store");
 const { hashClave } = await import("@/lib/claves");
@@ -48,7 +53,11 @@ const peticion = (url, cuerpo, ip = "1.2.3.4") =>
   new NextRequest(`http://x${url}`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip }, body: JSON.stringify(cuerpo) });
 const leer = async (r) => ({ status: r.status, data: await r.json(), sesion: await verificarSesion(r.cookies.get("sesion")?.value) });
 const entrar = async (usuario, clave) => leer(await login.POST(peticion("/api/login", { usuario, clave })));
-const pedirRecuperar = async (cuerpo, ip) => leer(await recuperar.POST(peticion("/api/recuperar", cuerpo, ip)));
+async function pedirRecuperar(cuerpo, ip) {
+  const r = await leer(await recuperar.POST(peticion("/api/recuperar", cuerpo, ip)));
+  await acabar();
+  return r;
+}
 
 describe("con qué se entra", () => {
   it("el dueño con su correo (da igual mayúsculas y espacios) y la caja con su usuario; la sesión lleva el usuario de siempre", async () => {
@@ -105,6 +114,9 @@ describe("los nombres nuevos", () => {
   it("una tienda nueva no puede llamarse como el usuario que eligió una caja", async () => {
     expect(await slugChocaConLogin("barra-nube")).toBe(true);
     expect(await slugChocaConLogin("barra")).toBe(false);
+    // `barra-manager` lleva al dueño de `barra`: si una caja se llama así, `barra` no puede existir.
+    await store.guardarAcceso({ usuario: "fade-caja", negocio: "fade", rol: "caja", hash: await hashClave("caja de fade 1", "elegida"), login: "barra-manager" });
+    expect(await slugChocaConLogin("barra")).toBe(true);
   });
 });
 
@@ -119,6 +131,14 @@ describe("el código del correo", () => {
     expect(await comprobarCodigo(reto, codigo, "recuperar", ahora + 16 * 60 * 1000)).toMatchObject({ ok: false, codigo: "caducado" });
     expect(await comprobarCodigo(`${reto.slice(0, -2)}xx`, codigo, "recuperar", ahora)).toMatchObject({ ok: false, codigo: "caducado" });
     expect(limpiarCodigo("12-34 56")).toBe("123456");
+  });
+
+  it("muchas peticiones a la vez no prueban más códigos que el tope: el bueno ya llega agotado", async () => {
+    const { reto, codigo } = await nuevoCodigo(EMAIL, "recuperar");
+    const malo = codigo === "000000" ? "111111" : "000000";
+    const r = await Promise.all(Array.from({ length: 20 }, () => comprobarCodigo(reto, malo, "recuperar")));
+    expect(r.filter((x) => x.codigo === "mal").length).toBeLessThanOrEqual(8);
+    expect(await comprobarCodigo(reto, codigo, "recuperar")).toMatchObject({ ok: false, codigo: "agotado" });
   });
 });
 

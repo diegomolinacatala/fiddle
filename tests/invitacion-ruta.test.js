@@ -130,7 +130,7 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     ]);
   });
 
-  it("el código tiene que ser el del correo; con cinco fallos se agota y hay que pedir otro", async () => {
+  it("el código tiene que ser el del correo; con ocho usos se agota y hay que pedir otro", async () => {
     const { token } = await nuevaInvitacion("nube");
     const { data } = await post({ token, email: EMAIL });
     expect(data.email).toBe(EMAIL);
@@ -138,7 +138,7 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     const malo = bueno === "000000" ? "111111" : "000000";
     expect(await post({ token, reto: data.reto, codigo: malo })).toMatchObject({ status: 400, data: { campo: "codigo", codigoCorreo: "mal" } });
     expect(await post({ token, reto: data.reto, codigo: bueno })).toMatchObject({ status: 200, data: { ok: true, email: EMAIL } });
-    for (let i = 0; i < 4; i++) await post({ token, reto: data.reto, codigo: malo });
+    for (let i = 0; i < 6; i++) await post({ token, reto: data.reto, codigo: malo });
     expect(await post({ token, reto: data.reto, codigo: bueno })).toMatchObject({ status: 400, data: { codigoCorreo: "agotado" } });
     // El reto de un enlace no vale en otro.
     const { token: otro } = await nuevaInvitacion("fade");
@@ -160,7 +160,10 @@ describe("POST /api/invitacion: fijar las contraseñas", () => {
     expect(await comprobarAcceso("BARRA-NUBE", CLAVES.caja)).toMatchObject({ negocio: "nube", rol: "caja", usuario: "nube-caja" });
     // Otra tienda no puede quedarse ese correo ni ese usuario.
     const { token: deFade } = await nuevaInvitacion("fade");
-    expect(await post({ token: deFade, email: EMAIL })).toMatchObject({ status: 400, data: { campo: "email" } });
+    // Que el correo ya es de otra se dice tras el código: antes delataría qué correos tienen cuenta.
+    const pedido = await post({ token: deFade, email: EMAIL });
+    expect(pedido.status).toBe(200);
+    expect(await post({ token: deFade, reto: pedido.data.reto, codigo: ultimoCodigo(EMAIL) })).toMatchObject({ status: 400, data: { campo: "email" } });
     expect(await aceptar(deFade, CLAVES, undefined, "otra@fade.es")).toMatchObject({ status: 400, data: { campo: "cajaUsuario" } });
   });
 

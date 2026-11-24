@@ -7,6 +7,7 @@ import { usuarioDe, claveDe } from "./auth";
 import { appUrl } from "./url";
 import { auditar } from "./auditoria";
 import { TOKEN } from "./tokenInvitacion";
+import { leerEmail } from "./interesados";
 
 // ============================================================================
 // INVITAR A UNA TIENDA (el dueño elige sus contraseñas)
@@ -119,13 +120,14 @@ export async function sugerenciasDe(negocio) {
 export async function codigoDeInvitacion(token, email, ahora = Date.now()) {
   const inv = await leerInvitacion(token, ahora);
   if (!inv.ok) return inv;
-  const libre = await correoLibre(email, inv.negocio.slug);
-  if (libre.problema) return { ok: false, motivo: libre.problema, campo: "email" };
-  const { reto, codigo } = await nuevoCodigo(libre.email, propositoDe(token), ahora);
-  if (!(await mandarCodigo(libre.email, codigo, { para: inv.negocio.nombre }))) {
-    return { ok: false, motivo: "No se pudo mandar el correo. Prueba otra vez en un momento.", campo: "email", codigo: "correo" };
-  }
-  return { ok: true, reto, email: libre.email };
+  // Si el correo ya es de otra tienda se dice DESPUÉS del código (solo lo sabe su
+  // dueño): aquí, cualquiera con un enlace (y /alta da uno) sabría qué correos tienen cuenta.
+  const correo = leerEmail(email)?.toLowerCase();
+  if (!correo) return { ok: false, motivo: "Revisa el correo", campo: "email" };
+  const { reto, codigo } = await nuevoCodigo(correo, propositoDe(token), ahora);
+  const envio = await mandarCodigo(correo, codigo, { para: inv.negocio.nombre, ahora });
+  if (!envio.ok) return { ok: false, motivo: envio.motivo, campo: "email", codigo: "correo" };
+  return { ok: true, reto, email: correo };
 }
 
 /** ¿Es bueno el código? Para pasar de paso; al aceptar se vuelve a mirar. */
@@ -133,7 +135,9 @@ export async function verificarCodigoDeInvitacion(token, reto, codigo, ahora = D
   const inv = await leerInvitacion(token, ahora);
   if (!inv.ok) return inv;
   const r = await comprobarCodigo(reto, codigo, propositoDe(token), ahora);
-  return r.ok ? { ok: true, email: r.email } : { ok: false, motivo: r.motivo, campo: "codigo", codigoCorreo: r.codigo };
+  if (!r.ok) return { ok: false, motivo: r.motivo, campo: "codigo", codigoCorreo: r.codigo };
+  const libre = await correoLibre(r.email, inv.negocio.slug);
+  return libre.problema ? { ok: false, motivo: libre.problema, campo: "email" } : { ok: true, email: libre.email };
 }
 
 /**
@@ -150,12 +154,10 @@ export async function aceptarInvitacion(token, { reto, codigo, manager, cajaUsua
   const { negocio, alcance } = inv;
   const slug = negocio.slug;
 
+  // Mira el código y que el correo siga libre (otra tienda pudo quedárselo entretanto).
   const verificado = await verificarCodigoDeInvitacion(token, reto, codigo, ahora);
   if (!verificado.ok) return verificado;
-  // Entre el código y ahora, otra tienda pudo quedarse ese correo.
-  const libre = await correoLibre(verificado.email, slug);
-  if (libre.problema) return { ok: false, motivo: libre.problema, campo: "email" };
-  const email = libre.email;
+  const email = verificado.email;
 
   const malManager = problemaClaveElegida(manager, email);
   if (malManager) return { ok: false, motivo: malManager, campo: "manager" };

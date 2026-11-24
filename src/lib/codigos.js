@@ -16,7 +16,12 @@ import { leerEmail } from "./interesados";
 // sesiones que lleva el correo, para qué es y la huella del código (HMAC con ese
 // mismo secreto: con el reto en la mano no se puede probar el millón de códigos
 // sin preguntar al servidor). Al servidor se le pregunta con el límite de
-// `intentos`: MAX_FALLOS por reto, y luego hay que pedir otro (otro correo).
+// `intentos`: MAX_USOS comprobaciones por reto (buenas o malas) y MAX_USOS_CORREO
+// por correo con cualquier reto; luego hay que pedir otro (otro correo), y eso
+// también tiene tope por correo (MAX_ENVIOS_CORREO). Cada uso se APUNTA ANTES de
+// mirar el código y se cuenta después, incluido él: con cien peticiones a la vez,
+// solo las MAX_USOS primeras llegan a comparar (si se contara primero, todas
+// verían cero y probarían cien códigos).
 //
 // Un reto vale para UN propósito (`inv:<huella>` o `recuperar`): el código de
 // una invitación no sirve en otra. Dentro de sus minutos se puede volver a usar
@@ -28,7 +33,11 @@ import { leerEmail } from "./interesados";
 // ============================================================================
 
 export const MINUTOS_CODIGO = 15;
-export const MAX_FALLOS = 5;
+// Comprobaciones por reto: la pantalla gasta dos si todo va bien (pasar de paso y
+// guardar) y una más por cada contraseña que no valga. 8 entre un millón.
+export const MAX_USOS = 8;
+export const MAX_USOS_CORREO = 20;
+export const MAX_ENVIOS_CORREO = 5;
 export const CIFRAS = 6;
 export const CODIGO_PRUEBAS = "123456";
 
@@ -45,6 +54,15 @@ function huellaCodigo(nonce, proposito, email, codigo) {
   const secreto = secretoSesion();
   if (!secreto) throw new Error("Falta AUTH_SECRET");
   return createHmac("sha256", secreto).update(`codigo|${nonce}|${proposito}|${email}|${codigo}`).digest("base64url");
+}
+
+// Para contar «el mismo correo» sin guardarlo: una huella con el secreto.
+const huellaCorreo = (email) => createHmac("sha256", secretoSesion() || "codigos").update(`correo|${email}`).digest("base64url").slice(0, 22);
+
+/** Apunta un uso de `clave` y dice si, contándolo, pasa de `max` en la ventana del código. */
+async function pasaDe(clave, max, ahora) {
+  await registrarIntento(clave);
+  return (await contarIntentos(clave, ahora - MINUTOS_CODIGO * 60 * 1000)) > max;
 }
 
 /** El código escrito, limpio: solo las cifras («123 456» y «123-456» valen). */
@@ -65,12 +83,16 @@ export async function nuevoCodigo(email, proposito, ahora = Date.now()) {
 
 /**
  * Lo manda por correo. `para`: de qué es («La Delicantería»), sale en el asunto.
- * @returns {Promise<boolean>} si salió (o, en pruebas, si quedó en el log)
+ * Con tope por correo: nadie llena el buzón de otro pidiendo códigos.
+ * @returns {Promise<{ok:true} | {ok:false, motivo:string}>}
  */
-export async function mandarCodigo(email, codigo, { para } = {}) {
+export async function mandarCodigo(email, codigo, { para, ahora = Date.now() } = {}) {
+  if (await pasaDe(`codigo-envio:${huellaCorreo(email)}`, MAX_ENVIOS_CORREO, ahora)) {
+    return { ok: false, motivo: "Ya te hemos mandado varios códigos. Mira el último que llegó (también en spam) o espera un cuarto de hora." };
+  }
   if (esPruebas()) {
     console.info(`[codigos] sin Resend: el código de pruebas es ${CODIGO_PRUEBAS}`);
-    return true;
+    return { ok: true };
   }
   const de = para ? ` para ${para}` : "";
   const r = await mandarCorreo({
@@ -88,7 +110,7 @@ export async function mandarCodigo(email, codigo, { para } = {}) {
     ].join("\n"),
     html: htmlCodigo(codigo, de),
   });
-  return r.ok;
+  return r.ok ? { ok: true } : { ok: false, motivo: "No se pudo mandar el correo. Prueba otra vez en un momento." };
 }
 
 const escapar = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -114,13 +136,13 @@ export async function comprobarCodigo(reto, codigo, proposito, ahora = Date.now(
   }
   const [, nonce, , correoB64, huella] = partes;
   const email = deB64(correoB64);
-  const clave = `codigo:${nonce}`;
-  if ((await contarIntentos(clave, ahora - MINUTOS_CODIGO * 60 * 1000)) >= MAX_FALLOS) {
-    return { ok: false, codigo: "agotado", motivo: "Demasiados intentos con este código. Pide otro." };
-  }
+  const [porReto, porCorreo] = await Promise.all([
+    pasaDe(`codigo:${nonce}`, MAX_USOS, ahora),
+    pasaDe(`codigo-correo:${huellaCorreo(email)}`, MAX_USOS_CORREO, ahora),
+  ]);
+  if (porReto || porCorreo) return { ok: false, codigo: "agotado", motivo: "Demasiados intentos con este código. Pide otro." };
   const limpio = limpiarCodigo(codigo);
   if (limpio.length === CIFRAS && huellaCodigo(nonce, proposito, email, limpio) === huella) return { ok: true, email };
-  await registrarIntento(clave);
   return { ok: false, codigo: "mal", motivo: "Ese código no es. Míralo otra vez en el correo." };
 }
 

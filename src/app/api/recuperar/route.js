@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getAccesoPorLogin, getNegocio, guardarAcceso } from "@/lib/store";
 import { nuevoCodigo, mandarCodigo, comprobarCodigo } from "@/lib/codigos";
 import { claveValida } from "@/lib/accesos";
@@ -45,10 +45,19 @@ export async function POST(request) {
       if (!correo) return NextResponse.json({ error: "Revisa el correo", campo: "email" }, { status: 400 });
       if (await usoExcedido("codigo", ip)) return jsonError("Demasiados códigos pedidos desde esta conexión. Espera unos minutos.", 429);
       const nuevo = await nuevoCodigo(correo, PROPOSITO);
-      const dueno = await filaDelDueno(correo);
-      if (dueno && !(await mandarCodigo(correo, nuevo.codigo, { para: dueno.negocio.nombre }))) {
-        return NextResponse.json({ error: "No se pudo mandar el correo. Prueba otra vez en un momento.", campo: "email" }, { status: 502 });
-      }
+      // Buscar al dueño y mandar el correo van DESPUÉS de contestar (`after`): si se
+      // esperara a Resend, tardar más diría qué correos tienen cuenta. Por lo mismo,
+      // un envío que falla no se dice: queda en el log y la pantalla ofrece otro.
+      after(async () => {
+        try {
+          const dueno = await filaDelDueno(correo);
+          if (!dueno) return;
+          const envio = await mandarCodigo(correo, nuevo.codigo, { para: dueno.negocio.nombre });
+          if (!envio.ok) console.error("[recuperar] no salió el código:", envio.motivo);
+        } catch (e) {
+          console.error("[recuperar] no se pudo mandar el código:", e);
+        }
+      });
       return NextResponse.json({ reto: nuevo.reto, email: correo });
     }
 

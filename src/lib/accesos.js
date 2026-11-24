@@ -148,7 +148,9 @@ export async function correoLibre(texto, slug) {
  * usuario que eligió la caja de otra.
  */
 export async function slugChocaConLogin(slug) {
-  const filas = await Promise.all(ROLES_TIENDA.map((rol) => getAccesoPorLogin(usuarioDe(slug, rol))));
+  // `pan-manager` también lleva al dueño de `pan` (resolverUsuario).
+  const nombres = [...ROLES_TIENDA.map((rol) => usuarioDe(slug, rol)), `${slug}-manager`];
+  const filas = await Promise.all(nombres.map((n) => getAccesoPorLogin(n)));
   return filas.some(Boolean);
 }
 
