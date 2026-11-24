@@ -147,6 +147,10 @@ export function reglaDeRuta(pathname, params, method = "GET") {
   return { tipo: "sesion" };
 }
 
+/** Adónde va cada sesión cuando no pide nada: el admin a /admin, el dueño a su panel, la caja a la caja. */
+export const sitioDeSesion = ({ rol, negocio }) =>
+  rol === "admin" ? "/admin" : `/${negocio}/${rol === "manager" ? "manager" : "caja"}`;
+
 /** `next` seguro para redirigir tras el login (evita open redirects). */
 export function destinoSeguro(next) {
   if (typeof next !== "string" || !next.startsWith("/")) return null;

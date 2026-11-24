@@ -922,8 +922,11 @@ contacto (`app/home/`). Estática: no lee la base ni la sesión.
   son las dos bandas oscuras y no pueden parecer el mismo color. Los colores
   de la marca en la web, todos de ahí (el iPhone de la portada lleva los de iOS). El logo viejo («f.» rosa)
   sigue en el Perfil de Empresa de Google Wallet hasta que se suba `docs/marca/fiddle-lacre-1024.png`.
-- **«Entrar» va a `/`**, que manda a cada uno a su sitio (panel, caja o login). El login
-  enlaza de vuelta a `/home`. `home` está en `RESERVADOS`.
+- **`fiddle.es` (la raíz) es la web**: sin sesión, `/` lleva a `/home`; con sesión, a su
+  sitio (`sitioDeSesion`: panel, caja o admin). «Entrar» va a `/login`, que a quien ya está
+  dentro también lo manda a su sitio (salvo con `next`: ahí lo manda el middleware y tiene
+  que poder entrar con otro usuario). El login enlaza de vuelta a `/home`. `home` está en
+  `RESERVADOS`.
 - Las imágenes (icono, vista previa de WhatsApp, logo para subir) salen de
   `scripts/gen-marca-web.mjs` y van en `public/marcas/`, que no pasa por el middleware.
 - **Las medidas de la tarjeta salen de una captura de iPhone** (`WALLET` en `lib/vistaWallet.js`,

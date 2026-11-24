@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { reglaDeRuta, destinoSeguro, negocioDeRuta } from "@/lib/acceso";
+import { reglaDeRuta, destinoSeguro, negocioDeRuta, sitioDeSesion } from "@/lib/acceso";
 
 const regla = (ruta, method = "GET") => {
   const url = new URL(ruta, "http://x");
@@ -127,5 +127,14 @@ describe("negocioDeRuta", () => {
     expect(negocioDeRuta("/w/123")).toBeNull();
     expect(negocioDeRuta("/home")).toBeNull();   // la web de fiddle, no una tienda
     expect(negocioDeRuta(null)).toBeNull();
+  });
+});
+
+describe("sitioDeSesion", () => {
+  // Lo usan la raíz, /login y /api/login: los tres mandan a cada uno al mismo sitio.
+  it("cada rol a lo suyo", () => {
+    expect(sitioDeSesion({ rol: "admin", negocio: null })).toBe("/admin");
+    expect(sitioDeSesion({ rol: "manager", negocio: "nube" })).toBe("/nube/manager");
+    expect(sitioDeSesion({ rol: "caja", negocio: "nube" })).toBe("/nube/caja");
   });
 });
