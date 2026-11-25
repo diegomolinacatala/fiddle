@@ -82,13 +82,18 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
     aplicar(id);
   }, [aplicar]);
 
-  // Apuntar un paso hecho no para nada: si falla, se ve igual como hecho aquí y la
-  // barra de Tienda lo seguirá pidiendo. Es un recordatorio, no un dato del negocio.
+  // Apuntar un paso hecho no para nada: se ve hecho al momento y la petición va
+  // detrás. EN FILA: el servidor reescribe los primeros pasos enteros, y dos a la vez
+  // (un doble toque, dos pasos seguidos) se pisarían. Si falla, se reintenta una vez;
+  // si vuelve a fallar, la barra de Tienda lo seguirá pidiendo (es un recordatorio,
+  // no un dato del negocio).
+  const fila = useRef(Promise.resolve());
   const marcar = useCallback((id) => {
     setN((a) => ({ ...a, primerosPasos: marcarHecho(a.primerosPasos, id) }));
-    fetch(`/api/primeros-pasos?b=${slug}`, {
+    const enviar = () => fetch(`/api/primeros-pasos?b=${slug}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hecho: id }), keepalive: true,
-    }).catch(() => {});
+    }).then((r) => { if (!r.ok) throw new Error(`primeros pasos: ${r.status}`); });
+    fila.current = fila.current.then(() => enviar().catch(() => enviar())).catch((e) => console.warn("[primeros pasos] no se apuntó", id, e));
   }, [slug]);
 
   const seguir = useCallback(() => {

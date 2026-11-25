@@ -72,8 +72,8 @@ export default function PasoPromos() {
       {conPromos ? (
         <Panel
           titulo="Tu primera promoción"
-          pista="Sale en la tarjeta de todos y les suena en el móvil. A un grupo concreto, desde Avisos."
-          principal={{ texto: "Ponerla en mi tarjeta", onClick: poner, ocupado, deshabilitado: !texto.trim() }}
+          pista="Sale ya en la tarjeta de todos tus clientes y les suena en el móvil. A un grupo concreto, desde Avisos."
+          principal={{ texto: "Ponerla ya en mi tarjeta", onClick: poner, ocupado, deshabilitado: !texto.trim() }}
           error={error}
           className="pp-pro-cuerpo"
         >
