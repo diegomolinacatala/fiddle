@@ -207,3 +207,22 @@ describe("familias de modos", () => {
     expect(modosDeFamilia("casillas")).toEqual(["casillas"]);
   });
 });
+
+describe("la banda sola no se sale por los lados en el iPhone", () => {
+  // El iPhone pinta la banda (375 puntos, 1125 en el SVG) más alta y recorta los
+  // lados (LATERAL_SEGURO): una casilla fuera de ahí sale cortada en el Wallet.
+  const W = 1125;
+  const temaCasillas = { ...completarTema(temaPorDefecto({ estilo: "coffee" })), modo: "casillas", forma: "circulo" };
+
+  for (const meta of [5, 6, 8, 10, 12, 14, 16, 20, 30]) {
+    it(`con ${meta} casillas, todas dentro`, () => {
+      const svg = svgStripSellos(temaCasillas, meta, 3);
+      const circulos = [...svg.matchAll(/<circle cx="([\d.]+)" cy="[\d.]+" r="([\d.]+)"/g)].map(([, cx, r]) => [Number(cx), Number(r)]);
+      expect(circulos.length).toBeGreaterThanOrEqual(meta);
+      for (const [cx, r] of circulos) {
+        expect(cx - r).toBeGreaterThanOrEqual(W * 0.09 - 1);
+        expect(cx + r).toBeLessThanOrEqual(W * 0.91 + 1);
+      }
+    });
+  }
+});

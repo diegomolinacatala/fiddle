@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LogoFiddle from "@/app/LogoFiddle";
 import { PALETA } from "@/app/home/paleta";
 import { useAltoVisible, useReducirMovimiento } from "@/app/home/tarjeta/movimiento";
+import useTeclado from "@/app/home/experiencia/useTeclado";
 import { avanceDe, marcarHecho, pasoDeHash, siguienteDe, anteriorDe, FINAL, INICIO } from "@/lib/primerosPasos";
 import { Contexto } from "./Marco";
 import PasoTarjeta from "./PasoTarjeta";
@@ -39,6 +40,9 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
   const atrasDelPaso = useRef(null);
   const raiz = useRef(null);
   const quieto = useReducirMovimiento();
+  // Con el teclado abierto (el premio, la promo) la escena se queda en una tira y el panel
+  // toma el resto, como en la demo: si no, el campo quedaba entre la tarjeta y el teclado.
+  const teclado = useTeclado();
   useAltoVisible(raiz);
 
   // Ir a un paso. Con pushState y no con location.hash: Next sigue pushState y no
@@ -137,7 +141,7 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
   return (
     <div
       ref={raiz}
-      className={`prob prob-pagina exp pp pp-en-${paso || "nada"}${quieto ? " prob-quieto" : ""}`}
+      className={`prob prob-pagina exp pp pp-en-${paso || "nada"}${quieto ? " prob-quieto" : ""}${teclado ? " exp-teclado" : ""}`}
       style={{ "--tono": n.tema.cardBg, "--tono-2": n.tema.accent }}
     >
       <header className="prob-arriba">

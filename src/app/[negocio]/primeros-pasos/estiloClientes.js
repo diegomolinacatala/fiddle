@@ -10,7 +10,7 @@
 
 export const cssClientes = `
 .pp-cli-escena{container-type:size}
-.pp-cli-lienzo{--d:max(7.2cqw,20px);container-type:size;position:relative;width:min(92cqw,168cqh,720px);aspect-ratio:16/9}
+.pp-cli-lienzo{container-type:size;position:relative;width:min(92cqw,168cqh,720px);aspect-ratio:16/9}
 
 /* ---------- las cuatro cajas: aparecen cuando empieza a ordenarse ---------- */
 .pp-cli-caja{position:absolute;left:var(--x);top:var(--y);width:48%;height:46%;border-radius:clamp(12px,3.2cqw,20px);
@@ -27,7 +27,9 @@ export const cssClientes = `
 :is(.pp-cli-orden,.pp-cli-fin) .pp-cli-caja.apagada{opacity:.5;transition-delay:0s}
 
 /* ---------- los clientes ---------- */
-.pp-cli-punto{position:absolute;left:0;top:0;width:var(--d);height:var(--d);
+/* El tamaño, del lienzo (cqw de aquí dentro es su ancho): con un mínimo fijo, en una
+   escena baja los clientes se montaban unos encima de otros. */
+.pp-cli-punto{--d:7.6cqw;position:absolute;left:0;top:0;width:var(--d);height:var(--d);
   transform:translate(calc(var(--mx) * 1cqw),calc(var(--my) * 1cqh));
   transition:transform .85s var(--curva) calc(var(--i) * 55ms),opacity .35s}
 :is(.pp-cli-orden,.pp-cli-fin) .pp-cli-punto{transform:translate(calc(var(--gx) * 1cqw),calc(var(--gy) * 1cqh))}

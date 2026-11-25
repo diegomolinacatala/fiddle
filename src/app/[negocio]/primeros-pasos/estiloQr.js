@@ -100,7 +100,7 @@ const ESCENA = `
 const PANEL = `
 .pp-qr-acciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px}
 .pp-qr-accion{white-space:nowrap}
-.pp .pp-qr-accion{color:var(--tinta)}
+.pp .pp-qr-accion{color:var(--tinta);font-weight:600}
 .pp-qr-accion{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 14px;border:0;border-radius:999px;
   cursor:pointer;text-decoration:none;background:transparent;box-shadow:inset 0 0 0 1px var(--linea);
   font:inherit;font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--tinta-2);transition:background-color .2s,color .2s,transform .2s var(--muelle)}

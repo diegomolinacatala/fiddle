@@ -56,6 +56,15 @@ export const cssPrimerosPasos = `
 }
 @media (max-width:899.98px) and (orientation:portrait){
   .pp .exp-panel{max-height:66%}
+  .pp.exp-teclado .exp-panel{max-height:none}
+}
+/* Móviles bajos (un SE, 568 de alto): la tarjeta ya es pequeña de todos modos; que el
+   panel quepa entero sin deslizar, que es donde se toca. */
+@media (max-width:899.98px) and (orientation:portrait) and (max-height:700px){
+  .pp .exp-panel{max-height:78%}
+  .pp .exp-cuerpo{gap:12px;padding-top:8px}
+  .pp-hola-lista li{min-height:34px;font-size:15px}
+  .pp-hola-icono{width:28px;height:28px;border-radius:9px}
 }
 /* Móvil en horizontal: «Terminar luego» va encima del panel; el progreso le deja sitio. */
 @media (max-width:899.98px) and (orientation:landscape){

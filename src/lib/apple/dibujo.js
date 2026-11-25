@@ -438,15 +438,26 @@ export function svgBandaOpaca(svgTexto, fondo) {
 }
 
 // ------------------------------- banda -------------------------------
-/** Posiciones de `n` sellos repartidos en filas dentro de w x h. Pura (testeada). */
-export function rejillaSellos(n, w, h, margen) {
+/**
+ * Lo que Wallet puede comerse de cada lado de la banda. El PNG es de 375×123 pero el
+ * iPhone lo pinta a 139 de alto en una tarjeta de 360 (lib/vistaWallet.js): escala
+ * 1,13 y recorta unos 28 puntos por lado. Lo que tenga que verse entero (casillas)
+ * se queda dentro de esto.
+ */
+export const LATERAL_SEGURO = 0.09;
+
+/**
+ * Posiciones de `n` sellos repartidos en filas dentro de w x h. Pura (testeada).
+ * `lateral`: el margen de los lados, si es distinto del de arriba y abajo.
+ */
+export function rejillaSellos(n, w, h, margen, lateral = margen) {
   const filas = n <= 7 ? 1 : n <= 16 ? 2 : 3;
   const columnas = Math.ceil(n / filas);
-  const celdaW = (w - margen * 2) / columnas;
+  const celdaW = (w - lateral * 2) / columnas;
   const celdaH = (h - margen * 2) / filas;
   const diametro = Math.min(celdaW, celdaH) * 0.8;
   return Array.from({ length: n }, (_, i) => ({
-    cx: margen + celdaW * ((i % columnas) + 0.5),
+    cx: lateral + celdaW * ((i % columnas) + 0.5),
     cy: margen + celdaH * (Math.floor(i / columnas) + 0.5),
     d: diametro,
   }));
@@ -543,14 +554,16 @@ function fondoDeBanda(tema, w, h, id) {
 }
 
 /** Una casilla por sello: la cartilla de toda la vida. */
-function bandaCasillas(tema, meta, sellos, w, h) {
+function bandaCasillas(tema, meta, sellos, w, h, lado = 0) {
   const oscura = esOscura(tema);
   const casilla = forma(tema);
   // Con una marca de varias letras dentro, los sellos se emborronan: se dejan llenos a secas.
   const { nombre, texto } = marcaDe(tema);
   const conMarca = nombre !== "texto" || texto.length === 1;
 
-  return rejillaSellos(meta, w, h, 36).map(({ cx, cy, d }, i) => {
+  // Los lados, con el margen que el iPhone no recorta (`lado`): con cinco casillas por
+  // fila (diez puntos) la primera y la última salían cortadas en el Wallet.
+  return rejillaSellos(meta, w, h, 36, Math.max(36, w * lado)).map(({ cx, cy, d }, i) => {
     const lleno = i < sellos;
     if (oscura) {
       return lleno
@@ -571,7 +584,7 @@ function bandaCasillas(tema, meta, sellos, w, h) {
  * especial — se pinta la misma marca dos veces, en fantasma y recortada por
  * abajo, así que vale para cualquiera de ellas (hasta para las letras).
  */
-function bandaRelleno(tema, meta, sellos, w, h) {
+function bandaRelleno(tema, meta, sellos, w, h, lado = 0) {
   const parte = meta > 0 ? Math.min(1, Math.max(0, sellos / meta)) : 0;
   const color = tema.accent;
   const cx = w * 0.32, cy = h / 2;
@@ -580,7 +593,7 @@ function bandaRelleno(tema, meta, sellos, w, h) {
   const dibujo = queSeLlena(tema, cx, cy, h * 0.84, parte, idDe(tema, meta, sellos));
 
   // Cuánto llevas, en cifras: el nivel solo se ve "a ojo".
-  return dibujo + cuenta(tema, sellos, meta, color, w * 0.72, cy, h * 0.34, w * 0.5);
+  return dibujo + cuenta(tema, sellos, meta, color, w * 0.72, cy, h * 0.34, encajar(w * 0.72, w * 0.5, w, lado));
 }
 
 /**
@@ -669,12 +682,18 @@ const cuenta = (tema, sellos, meta, color, cx, cy, alto, ancho) => {
 };
 
 /**
+ * El ancho que puede ocupar la cuenta centrada en `cx` sin pasar del margen seguro de
+ * la derecha (`lado`, fracción del ancho). Sin margen, el que se pida.
+ */
+const encajar = (cx, ancho, w, lado) => (lado ? Math.min(ancho, 2 * (w * (1 - lado) - cx)) : ancho);
+
+/**
  * PORCIONES — una tarta partida en `meta` trozos que se van ganando.
  * A diferencia de las casillas, se ve de un vistazo cuánto falta para CERRAR la
  * figura, que es un gancho distinto: no cuentas sellos, completas algo. Vale
  * para pizza, tarta, helado o menús, y funciona con cualquier `meta`.
  */
-function bandaPorciones(tema, meta, sellos, w, h) {
+function bandaPorciones(tema, meta, sellos, w, h, lado = 0) {
   const n = Math.max(1, meta);
   const color = tema.accent;
   const cx = w * 0.33, cy = h / 2, r = h * 0.4;
@@ -693,7 +712,7 @@ function bandaPorciones(tema, meta, sellos, w, h) {
   // El aro de fuera cierra la figura: sin él las porciones flotan sueltas.
   const aro = `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r * 1.06)}" fill="none" stroke="${tenue(tema)}" stroke-opacity="0.22" stroke-width="3"/>`;
   return `<defs>${foco(`${id}-tarta`, color, cx, cy, r)}</defs>` + aro + trozos
-    + cuenta(tema, sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+    + cuenta(tema, sellos, n, color, w * 0.74, cy, h * 0.32, encajar(w * 0.74, w * 0.46, w, lado));
 }
 
 // Una pizza de verdad no sale del color de la tienda: una pizza verde no es una
@@ -720,7 +739,7 @@ const BURBUJAS = [[0.4, 60, 0.05], [0.72, 112, 0.035], [0.44, 165, 0.045], [0.74
  * pizza muy desvaída. Sin huecos entre trozos (31-10-2026): se lee como UNA pizza
  * a la que le faltan porciones, no como un abanico. Los cortes son rayas finas.
  */
-function bandaPizza(tema, meta, sellos, w, h) {
+function bandaPizza(tema, meta, sellos, w, h, lado = 0) {
   const n = Math.max(1, meta);
   const cx = w * 0.33, cy = h / 2, r = h * 0.42;
   const id = idDe(tema, meta, sellos);
@@ -784,7 +803,7 @@ function bandaPizza(tema, meta, sellos, w, h) {
       }).join("")
     : "";
 
-  return defs + falta + hecho + cortes + cuenta(tema, sellos, n, tema.accent, w * 0.74, cy, h * 0.32, w * 0.46);
+  return defs + falta + hecho + cortes + cuenta(tema, sellos, n, tema.accent, w * 0.74, cy, h * 0.32, encajar(w * 0.74, w * 0.46, w, lado));
 }
 
 /**
@@ -793,10 +812,17 @@ function bandaPizza(tema, meta, sellos, w, h) {
  * confeti y la barra se sigue leyendo. Lleva la marca de la tienda a la
  * izquierda para que no sea una barra de carga genérica.
  */
-function bandaBarra(tema, meta, sellos, w, h) {
+function bandaBarra(tema, meta, sellos, w, h, lado = 0) {
   const n = Math.max(1, meta);
   const color = tema.accent;
-  const x0 = w * 0.19, x1 = w * 0.7;
+  // Con `lado` (la banda sola en el iPhone) todo se mete dentro de lo que no recorta:
+  // la marca, la barra y la cuenta se aprietan un poco. Sin él, como siempre.
+  const icono = h * (lado ? 0.48 : 0.56);
+  const cxIcono = lado ? w * lado + icono / 2 + w * 0.01 : w * 0.105;
+  const cxCuenta = lado ? w * (1 - lado) - w * 0.1 : w * 0.855;
+  const anchoCuenta = lado ? w * 0.2 : w * 0.28;
+  const x0 = lado ? cxIcono + icono / 2 + w * 0.035 : w * 0.19;
+  const x1 = lado ? cxCuenta - anchoCuenta / 2 - w * 0.02 : w * 0.7;
   const alto = h * 0.3, y = h / 2 - alto / 2;
   const hueco = Math.min(10, ((x1 - x0) / n) * 0.22);
   const ancho = (x1 - x0 - hueco * (n - 1)) / n;
@@ -811,9 +837,9 @@ function bandaBarra(tema, meta, sellos, w, h) {
       + ` height="${n2(alto)}" rx="${n2(rx)}" ${pinta}/>`;
   }).join("");
 
-  return `<defs>${brillo(`${id}-br`, color)}</defs>` + colocar(tema, color, w * 0.105, h / 2, h * 0.56)
+  return `<defs>${brillo(`${id}-br`, color)}</defs>` + colocar(tema, color, cxIcono, h / 2, icono)
     + tramos
-    + cuenta(tema, sellos, n, color, w * 0.855, h / 2, h * 0.3, w * 0.28);
+    + cuenta(tema, sellos, n, color, cxCuenta, h / 2, h * 0.3, anchoCuenta);
 }
 
 /**
@@ -822,7 +848,7 @@ function bandaBarra(tema, meta, sellos, w, h) {
  * y no como cuenta. Las muescas de fuera dejan contar los sellos cuando son
  * pocos; dentro va la marca de la tienda.
  */
-function bandaAnillos(tema, meta, sellos, w, h) {
+function bandaAnillos(tema, meta, sellos, w, h, lado = 0) {
   const n = Math.max(1, meta);
   const color = tema.accent;
   const cx = w * 0.32, cy = h / 2;
@@ -859,7 +885,7 @@ function bandaAnillos(tema, meta, sellos, w, h) {
     : "";
   return defs + brilla + pista + avance + muescas
     + colocar(tema, color, cx, cy, r * 1.05)
-    + cuenta(tema, sellos, n, color, w * 0.74, cy, h * 0.32, w * 0.46);
+    + cuenta(tema, sellos, n, color, w * 0.74, cy, h * 0.32, encajar(w * 0.74, w * 0.46, w, lado));
 }
 
 /**
@@ -918,7 +944,9 @@ export function svgStripSellos(temaGuardado, meta, sellos, estado = null) {
   const pintar = PINTAR_BANDA[modo(tema)] || bandaCasillas;
   const id = idDe(tema, meta, llenos);
   return svg(w, alto, lineaDeEstado(tema, estado, w)
-    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + pintar(tema, meta, llenos, w, h)}</g>`);
+    // Sola en la banda, con el margen que el iPhone no recorta (LATERAL_SEGURO). Dentro de
+    // las de dos cartillas (trozoDeBanda) no: esas ya dejan su margen fuera.
+    + `<g transform="translate(0 ${arriba})">${fondoDeBanda(tema, w, h, id) + pintar(tema, meta, llenos, w, h, LATERAL_SEGURO)}</g>`);
 }
 
 export function svgStripCupon(temaGuardado, usado) {
@@ -958,7 +986,7 @@ export function svgStripCartillas(temaGuardado, filas, estado = null) {
   const arriba = estado ? ALTO_ESTADO * 3 : 0;
   const h = alto - arriba;
   const margen = estado ? 16 : 24; // arriba y abajo; con la línea de estado, algo menos
-  const lateral = w * 0.09; // ~34 pt por lado: lo que el iPhone puede recortar, y aire
+  const lateral = w * LATERAL_SEGURO; // ~34 pt por lado: lo que el iPhone puede recortar, y aire
   const altoFila = (h - margen * 2) / filas.length;
   const color = String(tema.accent || "").replace(/[^0-9a-z]/gi, "");
   const id = `cartillas-${banda(tema)}-${color}-${filas.map((f) => `${f.marca}${f.meta}-${f.sellos}`).join("-")}`;
