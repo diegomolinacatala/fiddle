@@ -4,8 +4,7 @@
 // La escena es un contenedor de tamaño: el móvil se mide con cqw / cqh. En el
 // móvil del dueño la escena es baja, así que el teléfono se enseña recortado por
 // abajo (solo la parte de arriba de la pantalla de bloqueo, donde llegan los
-// avisos); en escritorio entero, y desde 1200 px con la tarjeta de la tienda
-// detrás. El aviso entra con muelle (transform y opacity); con «reducir
+// avisos); en escritorio entero. El aviso entra con muelle (transform y opacity); con «reducir
 // movimiento», quieto.
 // ============================================================================
 
@@ -39,15 +38,6 @@ export const cssPromos = `
   .pp-pro-lienzo{--w:min(calc(94cqh / 2.05),300px,60cqw);align-items:center}
 }
 
-/* ---------- con la tarjeta de la tienda detrás ---------- */
-.pp-pro-tarjeta{display:none}
-@media (min-width:1200px){
-  .pp-pro-lienzo.con-tarjeta{justify-items:end;padding-right:4cqw}
-  .pp-pro-tarjeta{display:grid;position:absolute;left:0;top:0;bottom:0;width:calc(100% - var(--w) * .55);animation:pp-pro-tarjeta .6s var(--curva) both}
-  .pp-pro-tarjeta .prob-escena{min-width:0;min-height:0}
-  .pp-pro-lienzo.con-tarjeta .pp-pro-movil{z-index:1}
-}
-@keyframes pp-pro-tarjeta{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
 
 /* ---------- el campo ---------- */
 .pp-pro-cuerpo{gap:14px}
@@ -69,10 +59,10 @@ export const cssPromos = `
 @media (hover:hover){.pp-pro-chip:hover{transform:translateY(-1px);color:var(--tinta)}}
 
 /* ---------- sin movimiento ---------- */
-.prob-quieto :is(.pp-pro-aviso,.pp-pro-tarjeta){animation:none!important}
+.prob-quieto .pp-pro-aviso{animation:none!important}
 .prob-quieto :is(.pp-pro-chip,.pp-pro-entrada input){transition:none}
 @media (prefers-reduced-motion:reduce){
-  :is(.pp-pro-aviso,.pp-pro-tarjeta){animation:none!important}
+  .pp-pro-aviso{animation:none!important}
   :is(.pp-pro-chip,.pp-pro-entrada input){transition:none}
 }
 `;

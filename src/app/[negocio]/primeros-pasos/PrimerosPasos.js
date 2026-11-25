@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LogoFiddle from "@/app/LogoFiddle";
 import { PALETA } from "@/app/home/paleta";
 import { useAltoVisible, useReducirMovimiento } from "@/app/home/tarjeta/movimiento";
-import { avanceDe, marcarHecho, pasoDeHash, siguienteDe, anteriorDe, FINAL } from "@/lib/primerosPasos";
+import { avanceDe, marcarHecho, pasoDeHash, siguienteDe, anteriorDe, FINAL, INICIO } from "@/lib/primerosPasos";
 import { Contexto } from "./Marco";
 import PasoTarjeta from "./PasoTarjeta";
 import PasoQr from "./PasoQr";
@@ -12,6 +12,7 @@ import PasoHorario from "./PasoHorario";
 import PasoClientes from "./PasoClientes";
 import PasoPromos from "./PasoPromos";
 import PasoListo from "./PasoListo";
+import PasoHola from "./PasoHola";
 
 // ============================================================================
 // LOS PRIMEROS PASOS DEL DUEÑO (/<slug>/primeros-pasos)
@@ -28,7 +29,7 @@ import PasoListo from "./PasoListo";
 // lo guarda por /api/negocio, como desde Tienda; aquí solo se apunta qué se hizo.
 // ============================================================================
 
-const PANTALLAS = { tarjeta: PasoTarjeta, qr: PasoQr, horario: PasoHorario, clientes: PasoClientes, promos: PasoPromos, [FINAL]: PasoListo };
+const PANTALLAS = { [INICIO]: PasoHola, tarjeta: PasoTarjeta, qr: PasoQr, horario: PasoHorario, clientes: PasoClientes, promos: PasoPromos, [FINAL]: PasoListo };
 const SUB_DE_PARTIDA = { i: 0, total: 1 };
 
 export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
@@ -55,7 +56,9 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
   useEffect(() => {
     const leer = () => {
       const desdeUrl = pasoDeHash(window.location.hash);
-      const id = desdeUrl ?? avanceDe(inicial)?.siguiente ?? "tarjeta";
+      // Sin paso en la URL: la bienvenida si aún no ha hecho nada; si no, el que toca.
+      const avance = avanceDe(inicial);
+      const id = desdeUrl ?? (avance && avance.hechos.length === 0 ? INICIO : avance?.siguiente ?? "tarjeta");
       if (!desdeUrl) window.history.replaceState(null, "", `#${id}`);
       aplicar(id);
     };
@@ -97,7 +100,7 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
   }, [slug]);
 
   const seguir = useCallback(() => {
-    if (paso && paso !== FINAL) marcar(paso);
+    if (paso && paso !== FINAL && paso !== INICIO) marcar(paso);
     ir(siguienteDe(paso));
   }, [paso, marcar, ir]);
   const saltar = useCallback(() => ir(siguienteDe(paso)), [paso, ir]);

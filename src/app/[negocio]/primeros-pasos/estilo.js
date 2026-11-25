@@ -41,6 +41,45 @@ export const cssPrimerosPasos = `
 /* La cabecera no es un enlace: el logo es solo marca. */
 .pp .prob-volver{cursor:default}
 
+/* ---------- el panel, del alto de lo que lleva ----------
+   La demo tiene un panel de alto fijo porque sus pasos son parecidos; aquí van de
+   tres botones a un formulario, y con alto fijo quedaba o un hueco entre lo elegido y
+   el botón (ordenador) o una escena diminuta (móvil). El panel abraza lo suyo, con
+   tope, y la escena se queda el resto: cambia de tamaño al pasar de paso, que entra
+   deslizando de todos modos. */
+.pp .exp-panel{height:auto}
+.pp .exp-paso{flex:0 1 auto}
+.pp .exp-cuerpo{flex:0 1 auto}
+@media (min-width:900px){
+  .pp .exp-panel{min-height:0;max-height:calc(100% - 112px)}
+  .pp .exp-cuerpo{padding-top:22px;gap:20px}
+}
+@media (max-width:899.98px) and (orientation:portrait){
+  .pp .exp-panel{max-height:66%}
+}
+/* Móvil en horizontal: «Terminar luego» va encima del panel; el progreso le deja sitio. */
+@media (max-width:899.98px) and (orientation:landscape){
+  .pp .exp-progreso{padding-right:140px}
+  .pp .exp-progreso .exp-pasos{display:none}
+  .pp .exp-panel{max-height:none}
+}
+
+/* ---------- al cambiar de paso, la escena entra fundida (el panel ya desliza) ---------- */
+.pp-escena{animation:pp-escena-entra .5s var(--curva) both}
+@keyframes pp-escena-entra{from{opacity:0;transform:scale(.97)}}
+.prob-quieto .pp-escena{animation:none}
+@media (prefers-reduced-motion:reduce){.pp-escena{animation:none}}
+
+/* ---------- la bienvenida ---------- */
+.pp-hola-lista{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+.pp-hola-lista li{display:flex;align-items:center;gap:12px;min-height:44px;font-size:16px;font-weight:560;color:var(--tinta);
+  animation:pp-hola-entra .45s var(--curva) both;animation-delay:calc(var(--i) * 60ms + .15s)}
+.pp-hola-icono{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:11px;
+  background:color-mix(in srgb,var(--tono-2) 12%,transparent);color:var(--tono-2)}
+@keyframes pp-hola-entra{from{opacity:0;transform:translateY(6px)}}
+.prob-quieto .pp-hola-lista li{animation:none}
+@media (prefers-reduced-motion:reduce){.pp-hola-lista li{animation:none}}
+
 /* ---------- listo ---------- */
 .pp-listo{gap:14px}
 .pp-lista{display:grid;gap:2px;margin:0;padding:0;list-style:none}

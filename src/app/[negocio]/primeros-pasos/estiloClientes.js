@@ -10,7 +10,7 @@
 
 export const cssClientes = `
 .pp-cli-escena{container-type:size}
-.pp-cli-lienzo{--d:max(7.2cqw,20px);container-type:size;position:relative;width:min(92cqw,168cqh,560px);aspect-ratio:16/9}
+.pp-cli-lienzo{--d:max(7.2cqw,20px);container-type:size;position:relative;width:min(92cqw,168cqh,720px);aspect-ratio:16/9}
 
 /* ---------- las cuatro cajas: aparecen cuando empieza a ordenarse ---------- */
 .pp-cli-caja{position:absolute;left:var(--x);top:var(--y);width:48%;height:46%;border-radius:clamp(12px,3.2cqw,20px);
@@ -24,14 +24,14 @@ export const cssClientes = `
 .pp-cli-nombre svg{flex:none}
 .pp-cli-nombre span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :is(.pp-cli-orden,.pp-cli-fin) .pp-cli-caja{opacity:1;transform:none;transition-delay:calc(var(--j) * 90ms)}
-:is(.pp-cli-orden,.pp-cli-fin) .pp-cli-caja.apagada{opacity:.3;transition-delay:0s}
+:is(.pp-cli-orden,.pp-cli-fin) .pp-cli-caja.apagada{opacity:.5;transition-delay:0s}
 
 /* ---------- los clientes ---------- */
 .pp-cli-punto{position:absolute;left:0;top:0;width:var(--d);height:var(--d);
   transform:translate(calc(var(--mx) * 1cqw),calc(var(--my) * 1cqh));
   transition:transform .85s var(--curva) calc(var(--i) * 55ms),opacity .35s}
 :is(.pp-cli-orden,.pp-cli-fin) .pp-cli-punto{transform:translate(calc(var(--gx) * 1cqw),calc(var(--gy) * 1cqh))}
-.pp-cli-punto.apagado{opacity:.28}
+.pp-cli-punto.apagado{opacity:.45}
 .pp-cli-cuerpo-punto{position:absolute;inset:0;display:block;transition:transform .35s var(--muelle)}
 .pp-cli-punto.resalta .pp-cli-cuerpo-punto{transform:scale(1.12)}
 .pp-cli-cuerpo-punto b{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%;

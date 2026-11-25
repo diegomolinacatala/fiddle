@@ -36,9 +36,9 @@ export const cssHorario = `
 @media (max-width:899.98px) and (orientation:portrait) and (max-height:960px){.pp-tira{display:none}}
 
 /* ---------- los tres tipos de día ---------- */
-.pp-hor{gap:16px}
+.pp-hor{gap:14px}
 .pp-hor-tipos{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.pp-hor-tipos .prob-opcion{min-height:84px;padding:12px 6px 10px;align-content:space-between}
+.pp-hor-tipos .prob-opcion{min-height:68px;padding:12px 6px 10px;align-content:space-between}
 .pp-hor-tipos .prob-opcion-texto{text-align:center;line-height:1.2;text-wrap:balance}
 .pp-mini{position:relative;display:block;width:100%;height:8px;border-radius:99px;overflow:hidden;background:${alfa(P.espresso, 0.09)}}
 .pp-mini i{position:absolute;top:0;bottom:0;border-radius:99px;background:var(--tinta-3);transition:background-color .3s}

@@ -23,7 +23,7 @@ export default function PasoListo() {
       </Escenario>
       <Panel
         titulo={faltan ? "Tu tarjeta ya funciona" : "Todo listo"}
-        pista={faltan ? "Lo que te has saltado sigue aquí y en Tienda, para cuando quieras." : "Pon el QR en el mostrador y empieza a sumar puntos desde la caja."}
+        pista={faltan ? "Lo pendiente te espera en Tienda." : "Pon el QR en el mostrador y a sumar puntos."}
         principal={{ texto: "Ir a mi panel", onClick: () => { window.location.href = `/${slug}/manager`; } }}
         ahoraNo={false}
         className="pp-listo"

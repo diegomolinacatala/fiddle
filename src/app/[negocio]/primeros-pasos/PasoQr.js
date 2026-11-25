@@ -17,7 +17,7 @@ export default function PasoQr() {
       </Escenario>
       <Panel
         titulo="Tu QR del mostrador"
-        pista="Ponlo junto a la caja: quien lo escanee se lleva tu tarjeta al móvil, sin descargar nada."
+        pista="Ponlo junto a la caja. Lo escanean y se llevan tu tarjeta."
         className="pp-qr-cuerpo"
       >
         <div className="pp-qr-acciones">

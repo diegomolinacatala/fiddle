@@ -31,6 +31,8 @@ export const PASOS = [
 export const IDS = PASOS.map((p) => p.id);
 /** La pantalla del final: no es un paso, no se cuenta ni se marca. */
 export const FINAL = "listo";
+/** La bienvenida, antes del primer paso: tampoco se cuenta ni se marca. */
+export const INICIO = "hola";
 
 const fecha = (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v : null);
 
@@ -96,12 +98,12 @@ export function conOculto(pp, oculto) {
  */
 export function pasoDeHash(hash) {
   const id = String(hash || "").replace(/^#/, "");
-  if (id === FINAL) return FINAL;
+  if (id === FINAL || id === INICIO) return id;
   return IDS.includes(id) ? id : null;
 }
 
 /** El que sigue a `id` (el final tras el último). */
-export const siguienteDe = (id) => (id === FINAL ? FINAL : IDS[IDS.indexOf(id) + 1] ?? FINAL);
+export const siguienteDe = (id) => (id === FINAL ? FINAL : id === INICIO ? IDS[0] : IDS[IDS.indexOf(id) + 1] ?? FINAL);
 
 /** El anterior a `id`, o null en el primero. */
 export function anteriorDe(id) {

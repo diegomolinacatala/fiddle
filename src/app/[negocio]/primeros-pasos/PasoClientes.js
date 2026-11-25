@@ -76,7 +76,9 @@ export default function PasoClientes() {
     return () => { clearTimeout(ordena); clearTimeout(fin); };
   }, [quieto]);
 
-  const resalta = tocado || fase === "fin" ? sel : null;
+  // Solo se apagan los demás cuando el dueño toca un grupo: de partida se ven los cuatro
+  // con sus colores (apagados de entrada, la escena se leía gris y triste).
+  const resalta = tocado ? sel : null;
   const elegir = (clave) => { setSel(clave); setTocado(true); };
 
   return (
@@ -85,8 +87,8 @@ export default function PasoClientes() {
         <Lienzo fase={fase} resalta={resalta} />
       </Escenario>
       <Panel
-        titulo="Tus clientes, ordenados solos"
-        pista="fiddle aprende el ritmo de cada uno. Tú decides a quién escribir."
+        titulo="Tus clientes, en grupos"
+        pista="Se ordenan solos. Tú decides a quién escribir."
         principal={{ texto: "Entendido", onClick: seguir }}
         className="pp-cli-cuerpo"
       >

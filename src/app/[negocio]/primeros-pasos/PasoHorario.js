@@ -95,7 +95,6 @@ export default function PasoHorario() {
           <Grupo titulo="Horas">
             <ElegirHoras tramos={rapido.tramos} alMover={(i, campo, sentido) => setRapido((r) => ({ ...r, tramos: moverHora(r.tramos, i, campo, sentido) }))} />
           </Grupo>
-          <p className="pp-hor-nota">Cada día distinto y los festivos, en Tienda, Horario.</p>
         </Panel>
       ) : (
         <Panel llave="resumen" titulo="Tu horario" ahoraNo={false} className="pp-hor">
@@ -104,7 +103,7 @@ export default function PasoHorario() {
             <p className="pp-hor-resumen-texto">{resumenHorario(n.horario)}</p>
             <button type="button" className="pp-hor-sec" onClick={() => setEditando(true)}>Cambiarlo</button>
           </div>
-          {!inicial && <p className="pp-hor-nota">Tiene días con horas distintas: si lo cambias aquí, todos quedan iguales.</p>}
+          {!inicial && <p className="pp-hor-nota">Al cambiarlo aquí, todos los días quedan iguales.</p>}
         </Panel>
       )}
     </>

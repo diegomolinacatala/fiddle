@@ -29,15 +29,17 @@ import {
 const PAUSA_AL_ELEGIR = 280; // ms: lo justo para ver el cambio en la tarjeta antes de seguir
 
 const TEXTOS = {
-  color: ["Tu color", "Desliza y mira cómo queda tu tarjeta"],
-  icono: ["Tu icono", "Es el dibujo de tus sellos"],
-  premio: ["El premio", "Cuántos puntos pide y qué se lleva el cliente"],
-  puntos: ["Cómo se ven los puntos", "Toca la que más te guste"],
-  extras: ["Lo que puedes añadir", "Se encienden y se apagan cuando quieras"],
+  color: ["Tu color", "Desliza y mírala cambiar"],
+  icono: ["Tu icono", "El dibujo de tus sellos"],
+  premio: ["El premio", null],
+  puntos: ["Cómo se ven los puntos", null],
+  extras: ["Lo que puedes añadir", null],
 };
 
 // Qué encuadra la cámara en cada pantalla.
-const PARTES = { color: "todo", icono: "cabecera banda", premio: "banda campos", puntos: "banda", extras: "cabecera banda" };
+// Siempre la tarjeta entera: al acercarse a una parte se salía por los lados (ordenador)
+// o se metía bajo el panel (móvil), y parecía rota. El cambio se ve con el latido.
+const PARTES = { color: "todo", icono: "todo", premio: "todo", puntos: "todo", extras: "todo" };
 
 // Tocar una parte de la tarjeta lleva a la pantalla que la cambia.
 const PANTALLA_DE_PARTE = { cabecera: "icono", banda: "puntos", campos: "premio" };
@@ -122,7 +124,7 @@ export default function PasoTarjeta() {
   }[id] ?? null;
   const [titulo, pistaDeSiempre] = TEXTOS[id];
   // Con dos cartillas cada una lleva su dibujo en los sellos: aquí solo cambia el de arriba.
-  const pista = id === "icono" && !tienePremioUnico(n) ? "El dibujo de arriba de tu tarjeta" : pistaDeSiempre;
+  const pista = id === "icono" && !tienePremioUnico(n) ? "El dibujo de arriba" : pistaDeSiempre;
 
   return (
     <>
@@ -160,7 +162,7 @@ function PantallaColor({ n, cambios, cambiar, quieto }) {
   return (
     <>
       <Colores valor={cambios.paleta ?? actual ?? PALETAS[0].id} alCambiar={alCambiar} quieto={quieto} />
-      {propio && <p className="pp-tarjeta-aviso">Ahora usas un color propio. Si eliges uno de aquí, lo cambiarás.</p>}
+      {propio && <p className="pp-tarjeta-aviso">Ahora lleva tus colores propios.</p>}
       {n.tema?.banda !== "foto" && (
         <Grupo titulo="Fondo de la banda">
           <Segmentos opciones={FONDOS} valor={cambios.fondo ?? fondoDe(n.tema)} alCambiar={(f) => cambiar("fondo", f)} />
@@ -203,11 +205,11 @@ function PantallaPremio({ n, cambios, cambiar }) {
   const igual = (a, b) => a.trim().toLowerCase() === b.toLowerCase();
   return (
     <>
-      <Grupo titulo="Puntos para el premio">
+      <Grupo titulo="Puntos para conseguirlo">
         <Segmentos opciones={metas} valor={cambios.meta ?? n.meta} alCambiar={(m) => cambiar("meta", m)} />
       </Grupo>
       <div className="pp-tarjeta-campo">
-        <label htmlFor="pp-tarjeta-premio" className="exp-etiqueta">Qué se lleva</label>
+        <label htmlFor="pp-tarjeta-premio" className="exp-etiqueta">Qué regalas</label>
         <div className="prob-nombre">
           <input
             id="pp-tarjeta-premio" value={premio} maxLength={MAX_PREMIO} autoComplete="off" enterKeyHint="done"
@@ -217,7 +219,7 @@ function PantallaPremio({ n, cambios, cambiar }) {
         </div>
       </div>
       <div className="pp-tarjeta-chips" role="group" aria-label="Ideas de premio">
-        {ideas.map((idea) => (
+        {ideas.slice(0, 4).map((idea) => (
           <button key={idea} type="button" className="pp-tarjeta-chip" aria-pressed={igual(premio, idea)} onClick={() => cambiar("premio", idea)}>
             {idea}
           </button>
@@ -251,17 +253,16 @@ function PantallaExtras({ n, cambios, cambiar, puedeAbierto }) {
         {puedeAbierto && (
           <Fila
             id="pp-tarjeta-abierto" titulo="«Abierto hasta…» en la tarjeta" activa={abiertoEncendido(n, cambios)}
-            texto={n.horario ? "La tarjeta dice si estás abierto y hasta qué hora." : "Sale en cuanto pongas tu horario, dos pasos más allá."}
+            texto={n.horario ? "Dice si estás abierto ahora." : "Sale cuando pongas tu horario."}
             alCambiar={(v) => cambiar("abierto", v)}
           />
         )}
         <Fila
           id="pp-tarjeta-nombre" titulo="Pedir el nombre al escanear" activa={pideNombre(n, cambios)}
-          texto="Antes de darle la tarjeta, el cliente dice cómo se llama."
+          texto="Así la caja sabe quién es."
           alCambiar={(v) => cambiar("pedirNombre", v)}
         />
       </div>
-      <p className="pp-tarjeta-nota">Tu logo, una foto de fondo o un segundo premio los añades luego en Tienda, Editar tarjeta.</p>
     </>
   );
 }

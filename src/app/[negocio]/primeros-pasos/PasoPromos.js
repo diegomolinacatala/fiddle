@@ -1,38 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Escena from "@/app/home/tarjeta/Escena";
 import { Aviso } from "@/app/home/Telefono";
 import { PROMOS } from "@/app/home/experiencia/logica";
 import { tiene } from "@/lib/planes";
 import { Escenario, Panel, usePasos } from "./Marco";
-import { armarTienda } from "./tienda";
 
 // ============================================================================
 // PASO 5: PROMOCIONES
 // ----------------------------------------------------------------------------
 // Hablar con sus clientes. La escena es la pantalla de bloqueo de un cliente a la
 // que le llega el aviso de la tienda cada vez que cambia el texto (el aviso es el
-// mismo de la web: lo que sale en el pase al cambiar el campo PROMO) y, si hay
-// sitio, la tarjeta de la tienda con la promo puesta. Ponerla va por /api/promo,
+// mismo de la web: lo que sale en el pase al cambiar el campo PROMO), sola y grande:
+// con la tarjeta al lado, el móvil la tapaba a medias. Ponerla va por /api/promo,
 // el camino de siempre: la escribe en todos los pases y avisa. Sin promociones en
 // su plan, no hay campo: se cuenta dónde se activan.
 // ============================================================================
 
 const MAX_PROMO = 60;
 const ESPERA_VISTA_MS = 450; // lo que se escribe tarda un poco en llegar a la escena: un aviso por letra cansa
-const ANCHO_CON_TARJETA = 1200; // por debajo no cabe la tarjeta al lado del móvil
-const SUGERENCIAS = [...PROMOS, "Segundo café a mitad de precio", "Hoy, tostada de regalo con tu café"];
+// Tres ideas, no más: con cinco, el panel del móvil se llenaba de chips.
+const SUGERENCIAS = [PROMOS[0], PROMOS[1], "Segundo café a mitad de precio"];
 
 export default function PasoPromos() {
-  const { n, setN, slug, qr, seguir } = usePasos();
+  const { n, setN, slug, seguir } = usePasos();
   const conPromos = tiene(n, "promos");
   const [texto, setTexto] = useState(conPromos ? n.promo || "" : "");
   const [vista, setVista] = useState(texto.trim());
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
-  const hayTarjeta = useAnchoMinimo(ANCHO_CON_TARJETA);
-  const armar = useMemo(() => armarTienda({ ...n, promo: null }), [n]);
 
   useEffect(() => {
     const t = setTimeout(() => setVista(texto.trim()), ESPERA_VISTA_MS);
@@ -60,20 +56,15 @@ export default function PasoPromos() {
   return (
     <>
       <Escenario etiqueta="La pantalla de un cliente: le llega tu promoción" className="pp-pro-escena">
-        <div className={`pp-pro-lienzo${hayTarjeta ? " con-tarjeta" : ""}`} aria-hidden="true">
-          {hayTarjeta && (
-            <div className="pp-pro-tarjeta">
-              <Escena eleccion={{ promo: vista }} armar={armar} promo={vista || null} qr={qr.src} />
-            </div>
-          )}
+        <div className="pp-pro-lienzo" aria-hidden="true">
           <PantallaBloqueo negocio={n} promo={vista} />
         </div>
       </Escenario>
       {conPromos ? (
         <Panel
-          titulo="Tu primera promoción"
-          pista="Sale ya en la tarjeta de todos tus clientes y les suena en el móvil. A un grupo concreto, desde Avisos."
-          principal={{ texto: "Ponerla ya en mi tarjeta", onClick: poner, ocupado, deshabilitado: !texto.trim() }}
+          titulo="Tu primera promo"
+          pista="Les llega a todos al momento."
+          principal={{ texto: "Ponerla ya", onClick: poner, ocupado, deshabilitado: !texto.trim() }}
           error={error}
           className="pp-pro-cuerpo"
         >
@@ -87,7 +78,7 @@ export default function PasoPromos() {
       ) : (
         <Panel
           titulo="Tu primera promoción"
-          pista="Las promociones van en los planes de pago. Las activas en Ajustes, Tu plan."
+          pista="Van en los planes de pago, en Ajustes."
           principal={{ texto: "Seguir", onClick: seguir }}
         />
       )}
@@ -148,17 +139,4 @@ function PantallaBloqueo({ negocio, promo }) {
       </div>
     </div>
   );
-}
-
-// ¿La pantalla es al menos así de ancha? Solo en el navegador: antes de medirla, que no.
-function useAnchoMinimo(px) {
-  const [ok, setOk] = useState(false);
-  useEffect(() => {
-    const m = window.matchMedia(`(min-width:${px}px)`);
-    const leer = () => setOk(m.matches);
-    leer();
-    m.addEventListener("change", leer);
-    return () => m.removeEventListener("change", leer);
-  }, [px]);
-  return ok;
 }

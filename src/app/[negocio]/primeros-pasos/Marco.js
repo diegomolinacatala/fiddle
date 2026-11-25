@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import Cabeza from "@/app/home/experiencia/Cabeza";
 import { Flecha } from "@/app/home/tarjeta/controles";
 import Icono from "@/app/Icono";
-import { PASOS, FINAL } from "@/lib/primerosPasos";
+import { PASOS, FINAL, INICIO } from "@/lib/primerosPasos";
 
 // ============================================================================
 // EL MARCO DE CADA PASO (lo que comparten las cinco pantallas)
@@ -68,7 +68,7 @@ export function Panel({ llave, titulo, pista, principal, ahoraNo = true, error =
   const boton = principal === undefined ? { texto: "Seguir", onClick: seguir } : principal;
   return (
     <aside className="prob-panel exp-panel pp-panel" aria-label="Primeros pasos">
-      <Progreso />
+      {paso !== INICIO && <Progreso />}
       <section key={`${paso}:${llave ?? ""}`} className={`exp-paso${quieto ? "" : " desde-dcha"}`}>
         <div className={`exp-cuerpo${className ? ` ${className}` : ""}`}>
           <Cabeza titulo={titulo} pista={pista} />

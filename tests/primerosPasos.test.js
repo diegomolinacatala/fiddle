@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  IDS, FINAL, normalizarPrimerosPasos, primerosPasosNuevos, avanceDe, mostrarAviso,
+  IDS, FINAL, INICIO, normalizarPrimerosPasos, primerosPasosNuevos, avanceDe, mostrarAviso,
   marcarHecho, conOculto, pasoDeHash, siguienteDe, anteriorDe, leerCambio,
 } from "@/lib/primerosPasos";
 
@@ -57,11 +57,13 @@ describe("primeros pasos", () => {
   it("el hash dice el paso; uno desconocido no", () => {
     expect(pasoDeHash("#horario")).toBe("horario");
     expect(pasoDeHash("#listo")).toBe(FINAL);
+    expect(pasoDeHash("#hola")).toBe(INICIO);
     expect(pasoDeHash("#nada")).toBeNull();
     expect(pasoDeHash("")).toBeNull();
   });
 
   it("siguiente y anterior recorren los cinco y acaban en el final", () => {
+    expect(siguienteDe(INICIO)).toBe("tarjeta");
     expect(siguienteDe("tarjeta")).toBe("qr");
     expect(siguienteDe("promos")).toBe(FINAL);
     expect(anteriorDe("tarjeta")).toBeNull();
