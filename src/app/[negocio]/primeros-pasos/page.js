@@ -18,6 +18,7 @@ import { cssQr } from "./estiloQr";
 import { cssHorario } from "./estiloHorario";
 import { cssClientes } from "./estiloClientes";
 import { cssPromos } from "./estiloPromos";
+import { cssCristal } from "./estiloCristal";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Primeros pasos" };
@@ -55,7 +56,7 @@ export default async function Page({ params }) {
 
   return (
     <div className="home claro">
-      <style>{css + cssPiezas + cssPagina + cssExperiencia + cssPrimerosPasos + cssTarjeta + cssQr + cssHorario + cssClientes + cssPromos}</style>
+      <style>{css + cssPiezas + cssPagina + cssExperiencia + cssPrimerosPasos + cssTarjeta + cssQr + cssHorario + cssClientes + cssPromos + cssCristal}</style>
       <main id="contenido">
         <PrimerosPasos slug={slug} inicial={negocioDelPersonal(n)} tapUrl={tapUrl} qr={qr} />
       </main>

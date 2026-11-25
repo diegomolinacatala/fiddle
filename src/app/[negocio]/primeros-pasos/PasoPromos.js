@@ -71,7 +71,7 @@ export default function PasoPromos() {
           <Campo texto={texto} alCambiar={setTexto} alEnviar={poner} />
           <div className="pp-pro-chips" role="group" aria-label="Ideas de promoción">
             {SUGERENCIAS.map((s) => (
-              <button key={s} type="button" className={`pp-pro-chip${s === texto ? " igual" : ""}`} onClick={() => poner(s)}>{s}</button>
+              <button key={s} type="button" className={`pp-pro-chip${s === texto ? " igual" : ""}`} aria-pressed={s === texto} onClick={() => poner(s)}>{s}</button>
             ))}
           </div>
         </Panel>
