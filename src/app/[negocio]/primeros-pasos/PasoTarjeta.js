@@ -33,7 +33,7 @@ const TEXTOS = {
   icono: ["Tu icono", "Es el dibujo de tus sellos"],
   premio: ["El premio", "Cuántos puntos pide y qué se lleva el cliente"],
   puntos: ["Cómo se ven los puntos", "Toca la que más te guste"],
-  extras: ["Lo que puedes añadir", "Los dos son opcionales"],
+  extras: ["Lo que puedes añadir", "Se encienden y se apagan cuando quieras"],
 };
 
 // Qué encuadra la cámara en cada pantalla.
@@ -120,7 +120,9 @@ export default function PasoTarjeta() {
     premio: { texto: "Seguir", onClick: avanzar },
     extras: { texto: "Guardar mi tarjeta", onClick: enviar, ocupado },
   }[id] ?? null;
-  const [titulo, pista] = TEXTOS[id];
+  const [titulo, pistaDeSiempre] = TEXTOS[id];
+  // Con dos cartillas cada una lleva su dibujo en los sellos: aquí solo cambia el de arriba.
+  const pista = id === "icono" && !tienePremioUnico(n) ? "El dibujo de arriba de tu tarjeta" : pistaDeSiempre;
 
   return (
     <>

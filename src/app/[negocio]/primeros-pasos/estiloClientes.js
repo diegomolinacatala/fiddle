@@ -54,7 +54,8 @@ export const cssClientes = `
 .pp-cli-opcion:active{transform:scale(.97)}
 @media (hover:hover){.pp-cli-opcion:hover{transform:translateY(-1px)}}
 .pp-cli-ico{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--g);color:#fff}
-.pp-cli-etiqueta{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Dos líneas antes que cortar el nombre de un grupo («Cerca del premio» a 375 px). */
+.pp-cli-etiqueta{min-width:0;line-height:1.15;text-wrap:balance;overflow-wrap:anywhere}
 .pp-cli-nueva{display:grid;gap:8px;animation:pp-cli-entra .35s var(--curva) both}
 .pp-cli-desc{font-size:15px;line-height:1.4;color:var(--tinta)}
 .pp-cli-idea{padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.4;color:var(--tinta-2);

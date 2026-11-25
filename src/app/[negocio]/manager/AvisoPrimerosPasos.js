@@ -46,7 +46,7 @@ export default function AvisoPrimerosPasos({ slug, negocio, accent, onCambio }) 
   if (!mostrarAviso(negocio)) {
     return deshacer ? (
       <div role="status" style={toast}>
-        <span>Oculto. Lo tienes en Ajustes, en «Primeros pasos».</span>
+        <span>Oculto. Lo tienes en Ajustes.</span>
         <button type="button" onClick={() => ocultar(false)} style={botonToast}>Deshacer</button>
       </div>
     ) : null;
@@ -106,7 +106,7 @@ const cerrar = {
 const srSolo = { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 };
 const toast = {
   position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 20,
-  display: "flex", alignItems: "center", gap: 14, background: C.toastFondo, color: C.toastTexto, padding: "8px 8px 8px 16px", borderRadius: 10,
+  display: "flex", alignItems: "center", gap: 14, width: "max-content", background: C.toastFondo, color: C.toastTexto, padding: "8px 8px 8px 16px", borderRadius: 10,
   fontWeight: 500, fontSize: 14, maxWidth: "calc(100vw - 32px)", boxShadow: "0 6px 20px rgba(16,20,28,.25)",
 };
 const botonToast = { border: 0, background: "none", color: "inherit", fontWeight: 650, fontSize: 14, padding: "8px 10px", minHeight: 40, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };

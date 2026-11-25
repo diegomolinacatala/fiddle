@@ -53,3 +53,16 @@ export default async function Page({ params }) {
     />
   );
 }
+
+/**
+ * Con qué entra cada uno, para enseñarlo en «Tu acceso» y en la caja: el correo del
+ * dueño o el usuario elegido de la caja (accesos.login) y, si aún no lo tienen (una
+ * tienda sin migrar), el usuario de siempre (`slug`, `slug-caja`).
+ */
+function usuariosDeEntrada(accesos) {
+  const de = (rol) => {
+    const a = accesos.find((x) => x.rol === rol);
+    return a?.login || a?.usuario || "";
+  };
+  return { manager: de("manager"), caja: de("caja") };
+}

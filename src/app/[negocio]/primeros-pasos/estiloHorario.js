@@ -31,6 +31,9 @@ export const cssHorario = `
 .pp-tira-marcas em:first-child{translate:0 0}
 .pp-tira-marcas em:last-child{translate:-100% 0}
 @media (max-height:520px){.pp-tira{display:none}}
+/* En el móvil la escena es baja: con la tira, la tarjeta quedaba diminuta y lo que se
+   está enseñando es su «Abierto hasta…». La semana ya se ve en los botones del panel. */
+@media (max-width:899.98px) and (orientation:portrait) and (max-height:960px){.pp-tira{display:none}}
 
 /* ---------- los tres tipos de día ---------- */
 .pp-hor{gap:16px}

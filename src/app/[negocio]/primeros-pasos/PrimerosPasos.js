@@ -42,6 +42,8 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
 
   // Ir a un paso. Con pushState y no con location.hash: Next sigue pushState y no
   // vuelve a poner su URL encima (con location.hash, la pantalla y la URL se separaban).
+  // El estado va a null: Next copia el suyo, y si se le pasa el suyo cree que la
+  // llamada es de él y no apunta la URL nueva.
   const aplicar = useCallback((id) => {
     setPaso(id);
     setSubEstado(SUB_DE_PARTIDA);
@@ -54,13 +56,15 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
     const leer = () => {
       const desdeUrl = pasoDeHash(window.location.hash);
       const id = desdeUrl ?? avanceDe(inicial)?.siguiente ?? "tarjeta";
-      if (!desdeUrl) window.history.replaceState(window.history.state, "", `#${id}`);
+      if (!desdeUrl) window.history.replaceState(null, "", `#${id}`);
       aplicar(id);
     };
+    // Un hash escrito a mano no pasa por pushState: se le cuenta a Next, o lo pisa al volver a pintar.
+    const aMano = () => { window.history.replaceState(null, "", window.location.hash); leer(); };
     leer();
     window.addEventListener("popstate", leer);
-    window.addEventListener("hashchange", leer);
-    return () => { window.removeEventListener("popstate", leer); window.removeEventListener("hashchange", leer); };
+    window.addEventListener("hashchange", aMano);
+    return () => { window.removeEventListener("popstate", leer); window.removeEventListener("hashchange", aMano); };
     // Solo al montar: luego manda la URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -74,7 +78,7 @@ export default function PrimerosPasos({ slug, inicial, tapUrl, qr }) {
   }, [paso, sub.i]);
 
   const ir = useCallback((id) => {
-    window.history.pushState(window.history.state, "", `#${id}`);
+    window.history.pushState(null, "", `#${id}`);
     aplicar(id);
   }, [aplicar]);
 
